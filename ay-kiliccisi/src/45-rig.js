@@ -23,6 +23,11 @@ function humanGeo(kind){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,s
   merchant:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,sh2:.39,sh:.19,hw:.1,skin:[.88,.7,.56],c1:[.45,.2,.25],c2:[.28,.22,.18],hair:[.2,.18,.16],hat:1,belly:1},
   guard:{H:1.0,torso:.44,ua:.28,fa:.26,th:.42,sh2:.41,sh:.2,hw:.1,skin:[.9,.72,.6],c1:[.55,.57,.62],c2:[.22,.3,.6],hair:[.2,.16,.12],helm:1,spear:1},
   goblin:{H:1.0,torso:.26,ua:.2,fa:.19,th:.22,sh2:.22,sh:.13,hw:.07,skin:[.42,.58,.26],c1:[.38,.27,.17],c2:[.3,.22,.14],gob:1,dagger:1},
+  elder:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.17,hw:.09,skin:[.88,.72,.62],c1:[.32,.28,.38],c2:[.28,.26,.3],hair:[.86,.86,.84],beard:1,staff:1,dress:1},
+  smith:{H:1.0,torso:.44,ua:.29,fa:.27,th:.4,sh2:.39,sh:.21,hw:.1,skin:[.82,.6,.48],c1:[.32,.22,.16],c2:[.24,.2,.17],hair:[.14,.1,.08],belly:1,apron:1,hammer:1,beard:1},
+  hunter:{H:1.0,torso:.41,ua:.27,fa:.25,th:.41,sh2:.4,sh:.17,hw:.09,skin:[.93,.77,.66],c1:[.24,.34,.2],c2:[.3,.24,.16],hair:[.5,.27,.1],hood:1,bow:1},
+  priest:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.16,hw:.085,skin:[.96,.84,.76],c1:[.9,.88,.84],c2:[.82,.8,.74],hair:[.75,.62,.4],dress:1,hood:1},
+  king:{H:1.0,torso:.66,ua:.5,fa:.46,th:.52,sh2:.5,sh:.38,hw:.18,skin:[.14,.08,.14],c1:[.07,.04,.07],c2:[.1,.05,.09],hair:[.05,.03,.05],big:1,king:1,dress:1},
   bigGoblin:{H:1.0,torso:.62,ua:.48,fa:.44,th:.5,sh2:.48,sh:.36,hw:.17,skin:[.36,.47,.25],c1:[.32,.24,.16],c2:[.26,.2,.14],gob:1,big:1,club:1}}[kind];
  const def=humanDef(K),P=[],sk=K.skin,c1=K.c1,c2=K.c2,big=K.big?1:0,gob=K.gob?1:0;
  // hips + lower clothing
@@ -56,6 +61,16 @@ function humanGeo(kind){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,s
  // legs
  for(const[s,t,sh,ft]of[[1,9,10,11],[-1,12,13,14]]){P.push([limbG(K.th,.07+big*.08,.052+big*.07,gob?sk:c2),t]);P.push([limbG(K.sh2,.05+big*.07,.038+big*.06,gob?sk:c2),sh]);
   P.push([tint(sphere(8,6,d=>[d[0]*(.05+big*.06),-.025+d[1]*(.04+big*.03),.045+big*.06+d[2]*(.1+big*.08)],{c:[0,-.025,.05]}),gob?sk:[.22,.16,.12]),ft])}
+ // role details: beard, hood, apron, bow; the Demon King's crown of horns, burning eyes, spiked mantle and tail
+ if(K.beard)P.push([tint(sphere(10,8,d=>[d[0]*hr*.7,hr*.35+d[1]*hr*.55,hr*.75+d[2]*hr*.35],{c:[0,hr*.35,hr*.75]}),K.hair),2]);
+ if(K.hood)P.push([tint(sphere(14,9,d=>[d[0]*hr*1.22,hr*1.05+d[1]*hr*1.25,d[2]*hr*1.2-.015],{c:[0,hr,0],th:u=>PI*(.55+.2*Math.cos(2*PI*(u-.5)))}),c1),2]);
+ if(K.apron)P.push([tint(loft([{y:T*.55,rx:.17,rz:.135},{y:-.5,rx:.21,rz:.16}],12,1,{fn:a=>Math.sin(a)>0?1.04:.0001}),[.3,.2,.14]),1]);
+ if(K.bow)P.push([tint(tube([[.16,T*.95,-.14],[.02,T*.5,-.2],[-.16,T*.05,-.14]],{r:()=>.012,seg:5,n:8}),[.4,.27,.14]),1]);
+ if(K.king){for(let i=0;i<7;i++){const a=(i/6-.5)*2.2,hx=Math.sin(a)*hr*.95,hz=Math.cos(a)*hr*.6;P.push([tint(tube([[hx,hr*1.55,hz],[hx*1.3,hr*2.3+(i===3?.12:0),hz*1.2-.04],[hx*1.4,hr*2.9+(i===3?.25:0),hz*1.1-.12]],{r:t=>lp(.035,.003,t),seg:5,n:5}),[.25,.05,.06]),2])}
+  for(const s of[-1,1]){P.push([tint(sphere(6,5,d=>[s*hr*.38+d[0]*hr*.16,hr*1.0+d[1]*hr*.08,hr*.9+d[2]*.02],{c:[s*hr*.38,hr,hr*.9]}),[3,.6,.3]),2]);P.push([tint(tube([[s*(.36+.05),T*.98,0],[s*.62,T*1.25,-.05],[s*.78,T*1.45,-.12]],{r:t=>lp(.08,.004,t),seg:6,n:5}),[.2,.04,.05]),1])}
+  P.push([tint(tube([[0,-.05,-.25],[0,-.35,-.75],[0,-.6,-1.35],[.2,-.75,-2.0],[.45,-.7,-2.5]],{r:t=>lp(.14,.02,t),seg:8,n:12}),[.12,.05,.1]),0]);P.push([tint(loft([{y:T*.98,rx:.5,rz:.32},{y:-1.1,rx:.7,rz:.55}],16,2,{fn:a=>Math.sin(a)<.1?1:.0001}),[.2,.02,.04]),1])}
+ if(K.staff)P.push([tint(tube([[0,-.06,-.9],[0,-.06,.75],[0,-.1,.9]],{r:()=>.02,seg:6,n:3}),[.38,.28,.18]),8]);
+ if(K.hammer)P.push([merge([tint(tube([[0,-.06,-.1],[0,-.06,.45]],{r:()=>.02,seg:6,n:2}),[.36,.26,.16]),tint(tube([[-.09,-.06,.45],[.09,-.06,.45]],{r:()=>.05,seg:6,n:2}),[.35,.35,.38])]),8]);
  // props in the right hand (along the hand's local z, which points up/forward when the elbow is bent)
  if(K.spear)P.push([merge([tint(tube([[0,-.06,-.9],[0,-.06,1.35]],{r:()=>.018,seg:6,n:2}),[.45,.32,.2]),tint(tube([[0,-.06,1.35],[0,-.06,1.62]],{r:t=>lp(.035,.002,t),flat:.3,seg:6,n:3,wide:[1,0,0]}),[.8,.82,.88])]),8]);
  if(K.dagger)P.push([merge([tint(tube([[0,-.05,-.06],[0,-.05,.06]],{r:()=>.016,seg:5,n:2}),[.3,.2,.12]),tint(tube([[0,-.05,.06],[0,-.05,.36]],{r:t=>lp(.025,.003,t),flat:.25,seg:5,n:3,wide:[1,0,0]}),[.7,.7,.66])]),8]);

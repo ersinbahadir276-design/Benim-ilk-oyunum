@@ -13,7 +13,8 @@ let AC=null;const sfx={on(){if(AC)return;try{AC=new (window.AudioContext||window
  block(){this.tone(.18,900,500,.3,'triangle');this.noise(.12,2500,1200,.2)},hurt(){this.tone(.18,300,160,.25,'square')},charge(){this.tone(.9,200,520,.12,'sine')},charged(){this.tone(.25,900,1300,.2,'triangle')},
  grab(){this.noise(.25,600,200,.3,'lowpass')},stab(){this.noise(.18,1200,300,.45,'lowpass');this.tone(.2,140,50,.5)},struggle(){this.noise(.08,800,400,.2)},gobShout(){this.tone(.22,420,620,.18,'square')},
  roar(v=1){this.tone(1.4,90,45,.45*v,'sawtooth');this.noise(1.4,500,120,.35*v,'lowpass')},hiss(){this.noise(.6,5000,2500,.25,'highpass')},snap(){this.noise(.08,2500,800,.5);this.tone(.08,200,80,.4,'square')},
- wings(v=.6){this.noise(.3,250,80,.4*v,'lowpass')},inhale(){this.noise(1.6,200,1800,.25)},fire(){this.noise(.25,700,300,.25,'lowpass')},hey(){this.tone(.25,330,280,.2,'triangle')}};
+ wings(v=.6){this.noise(.3,250,80,.4*v,'lowpass')},rare(){this.tone(.25,660,990,.2,'triangle');setTimeout(()=>this.tone(.35,990,1320,.2,'triangle'),120)},anvil(){this.tone(.3,1400,900,.3,'triangle');this.noise(.1,3000,1500,.3)},drink(){this.noise(.5,300,600,.15,'lowpass')},
+ rest(){this.tone(1.2,220,330,.2,'sine');this.tone(1.2,330,495,.12,'sine')},chest(){this.noise(.25,400,200,.3,'lowpass');this.tone(.3,500,800,.15,'triangle')},break(){this.tone(.3,300,90,.4,'square');this.noise(.25,2000,400,.3)},lock(){this.tone(.08,1200,1500,.12,'square')},howl(){this.tone(1.6,300,520,.3,'sawtooth');setTimeout(()=>this.tone(1.2,520,380,.25,'sawtooth'),700)},horn(){this.tone(1.3,150,140,.4,'sawtooth')},inhale(){this.noise(1.6,200,1800,.25)},fire(){this.noise(.25,700,300,.25,'lowpass')},hey(){this.tone(.25,330,280,.2,'triangle')}};
 // ---------- effects: sword arcs, sparks, ground telegraphs
 function buildFx(){const g=G(),n=18;for(let i=0;i<=n;i++){const t=i/n,a=lp(-1.15,1.15,t),w=Math.sin(PI*t),r0=1.75-w*.75,r1=1.75+w*.75;
   for(const[r,c]of[[r0,[.45,.6,1]],[r1,[1,1,1]]]){g.P.push(Math.sin(a)*r,0,Math.cos(a)*r);g.N.push(0,1,0);g.C.push(c[0],c[1],c[2]);g.U.push(0,0);g.W.push(0)}
@@ -49,11 +50,13 @@ function markFor(a,kind){if(a.dead)return null;
  if(kind==='npc'){if(a.st==='watch')return['!','yel'];return null}
  if(a.st==='windup'||a.st==='open'||(kind==='dragon'&&(a.st==='claw'&&a.ct<2.7||a.st==='breath'&&a.ct<2.7)))return['!','red'];
  if(a.open&&a.open())return['★','gold'];if(!a.hostile()&&a.aware>.25)return['?','yel'];if(a.hostile()&&a.hp<a.max&&kind!=='dragon')return['','hpb'];return null}
-function updateMarks(){let i=0;const put=(a,kind,h)=>{const m=markFor(a,kind);if(!m)return;const p=project(a.x,(a.y||0)+h+(a.air||0),a.z);if(!p)return;let e=markEls[i];if(!e){e=document.createElement('div');$('marks').appendChild(e);markEls[i]=e}i++;
-  e.className='mark '+m[1];e.style.display='block';e.style.left=p[0]+'px';e.style.top=p[1]+'px';if(m[1]==='hpb')e.innerHTML='<i style="width:'+cl(a.hp/a.max*100,0,100)+'%"></i>';else e.textContent=m[0]};
+function updateMarks(){let i=0;const putTxt=(a,txt,cls,h)=>{if(!txt)return;const p=project(a.x,(a.y||0)+h,a.z);if(!p)return;let e=markEls[i];if(!e){e=document.createElement('div');$('marks').appendChild(e);markEls[i]=e}i++;e.className='mark '+cls;e.style.display='block';e.style.left=p[0]+'px';e.style.top=p[1]+'px';e.textContent=txt};
+ const put=(a,kind,h)=>{const m=markFor(a,kind);if(!m)return;const p=project(a.x,(a.y||0)+h+(a.air||0),a.z);if(!p)return;let e=markEls[i];if(!e){e=document.createElement('div');$('marks').appendChild(e);markEls[i]=e}i++;
+  e.className='mark '+m[1];e.style.display='block';e.style.left=p[0]+'px';e.style.top=p[1]+'px';if(m[1]==='hpb')e.innerHTML='<i style="width:'+cl(a.hp/a.max*100,0,100)+'%"></i><b style="width:'+(posFrac(a)*100)+'%"></b><em>Sv.'+(a.lv||1)+'</em>';else e.textContent=m[0]};
  for(const s of wslots)if(s.w)put(s.w,'wolf',1.25*s.w.sc);
  for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<60)put(g,'gob',g.big?3.0:1.45);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<60)put(c,'croc',1.0);
- for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<40)put(n,'npc',2.0);if(DRAGON&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<90){const h=DRAGON.alt?DRAGON.alt()+6:6;put(DRAGON,'dragon',h)}
+ for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<40){if(n.role&&questFor(n))putTxt(n,'!','gold',2.25);else put(n,'npc',2.0)}if(VEYRA&&VEYRA.on&&!VEYRA.hidden)putTxt(VEYRA,VEYRA.down?'✚':'',VEYRA.down?'red':'tame',1.9);
+ if(P.lock){const f=P.lock,h=f.hitPts?f.hitPts()[0][1]-(f.y||0):1.0;putTxt(f,'◎','lock',h)}for(const f of foes())if(isBroken(f)&&Math.hypot(f.x-P.x,f.z-P.z)<25)putTxt(f,'İNFAZ','crit',(f.big?2.6:1.5));if(DRAGON&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<90){const h=DRAGON.alt?DRAGON.alt()+6:6;put(DRAGON,'dragon',h)}
  for(;i<markEls.length;i++)markEls[i].style.display='none'}
 // ---------- wolf callbacks (System messages, sounds, pin)
 const PARTN={omuzL:'sol omzuna',omuzR:'sağ omzuna',kolL:'sol koluna',kolR:'sağ koluna',govde:'göğsüne',bacakL:'sol bacağına',bacakR:'sağ bacağına'};let lastSpot=-9;
@@ -71,6 +74,8 @@ const GS={onAggro(w){sfx.growl()},onWindup(w){sfx.snarl()},onPounce(w){sfx.noise
  onKill(w,byPet){SYS.kills++;SYS.meat++;addXP(w.alpha?70:30,P);note('[Sistem] Kurt öldürüldü'+(byPet?' (yoldaşın)':'')+' · +'+(w.alpha?70:30)+' XP · +1 çiğ et');GT.stop=Math.max(GT.stop,.12);save(P)}};
 // ---------- interaction: silent choke on an unaware goblin from behind, talk, feed/tame a wolf, statue
 function interact(){const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
+ const ai=nearAltar();if(ai>=0){restAt(ai);return}const ci=nearChest();if(ci>=0){P.yaw=Math.atan2(CHESTS[ci].x-P.x,CHESTS[ci].z-P.z);P.interactT=.6;openChest(ci);return}
+ if(storyInteract())return;
  let n=null,nd=2.8;for(const o of NPCS){const d=Math.hypot(o.x-P.x,o.z-P.z);if(d<nd){nd=d;n=o}}if(n){npcTalk(n);return}
  let b=null,bd=3.2;for(const w of wolves){if(w.dead||w.tame)continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<bd){bd=d;b=w}}
  if(!b){if(Math.hypot(P.x-10,P.z-50)<5)note('«Unutulmuş Şövalye» — güller bile onu terk etmedi.');else{const g=GOBS.find(g=>!g.dead&&Math.hypot(g.x-P.x,g.z-P.z)<2.5);note(g?(g.hostile()||g.aware>=.5?'Goblin seni fark etti: boyun kilidi olmaz':'Arkasına geç: önünden yaklaşırsan görür'):'Yakında etkileşilecek bir şey yok')}return}
@@ -84,13 +89,16 @@ function step(dt){GT.dt=dt;if(dt>0){GT.clock+=dt;updatePlayer(dt);
   for(const w of wolves)if(Math.hypot(w.x-P.x,w.z-P.z)<170||w.tame||w.dead)updateWolf(w,P,dt,GS);
   for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<180)updateGob(g,dt);for(const n of NPCS)updateNpc(n,dt);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<200)updateCroc(c,dt);
   updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
+  updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);
+  const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
  poseTarget();applyPose(P.ps);PM=playerMatrix(dt);
  if(P.pinBy){const w=P.pinBy,b=mpt(PM,SK.GP[w.part.bone]),ty=Math.atan2(b[0]-w.x,b[2]-w.z);w.yaw+=angd(ty,w.yaw)*.25;const gx=b[0]-Math.sin(w.yaw)*.95*w.sc,gz=b[2]-Math.cos(w.yaw)*.95*w.sc;w.x=lp(w.x,gx,.25);w.z=lp(w.z,gz,.25);w.y=hAt(w.x,w.z)}
  queueTelegraphs()}
 // enemies' visible tells on the ground
 function queueTelegraphs(){for(const w of wolves){if(w.st!=='windup'||w.dead||w.tame)continue;const L=cl(Math.hypot(w.ax-w.x,w.az-w.z)+.4,2.5,8);tele('strip',w.x,w.z,.9,L,Math.atan2(w.ax-w.x,w.az-w.z),sst(0,.3,w.t))}
- for(const g of GOBS){if(g.dead||g.st!=='windup')continue;if(g.big)tele('circle',g.x+Math.sin(g.yaw)*2.3,g.z+Math.cos(g.yaw)*2.3,1.35,0,0,sst(0,.4,g.t));else tele('strip',g.x,g.z,.7,1.8,g.yaw,1)}
+ for(const g of GOBS){if(g.dead||g.st!=='windup')continue;if(g.big&&g.move==='stomp')tele('circle',g.x,g.z,5.6,0,0,1);else if(g.big&&g.move==='sweep')tele('circle',g.x+Math.sin(g.yaw)*1.2,g.z+Math.cos(g.yaw)*1.2,3.2,0,0,sst(0,.4,g.t));else if(g.big)tele('circle',g.x+Math.sin(g.yaw)*2.3*g.sc/1.25,g.z+Math.cos(g.yaw)*2.3*g.sc/1.25,1.35,0,0,sst(0,.4,g.t));else tele('strip',g.x,g.z,.7,1.8,g.yaw,1)}
+ for(const w of wolves)if(w.st==='howl'&&!w.dead)tele('circle',w.x,w.z,3,0,0,.6);
  for(const c of CROCS){if(c.dead||c.st!=='open')continue;const h=crocHead(c);tele('circle',h[0]+Math.sin(c.yaw)*.4,h[2]+Math.cos(c.yaw)*.4,1.2,0,0,sst(0,.3,c.t))}
  const d=DRAGON;if(d&&!d.dead){if(d.st==='claw'&&d.ct>.6&&d.ct<2.8)tele('circle',d.x+Math.sin(d.yaw)*6.2+Math.cos(d.yaw)*-1.2,d.z+Math.cos(d.yaw)*6.2-Math.sin(d.yaw)*-1.2,2.6,0,0,sst(.6,1.2,d.ct));
   if(d.st==='breath'&&d.breathA&&d.ct<4.4){const ax=d.breathA[0],az=d.breathA[1],bx=d.breathB[0],bz=d.breathB[1];tele('strip',ax,az,3.6,Math.hypot(bx-ax,bz-az),Math.atan2(bx-ax,bz-az),d.ct<2.7?1:.5)}
@@ -112,10 +120,12 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  pShadow.M=mtrs([P.x,hAt(P.x,P.z)+.07,P.z],[0,0,0]);const ps=down?.75:.42;pShadow.M[0]*=ps;pShadow.M[10]*=ps;
  for(const w of WATERS)w.alpha=w.alpha;
  streamForest(P.x,P.z,(window.__G&&__G.fastStream)?99:1);for(const f of CAMPFIRES){const k=1+Math.sin(GT.time*13+f.x)*.12;f.o.M=mtrs([f.x,f.y+.1,f.z],[0,GT.time*.7,0]);f.o.M[5]*=k*(1+Math.sin(GT.time*9)*.15)}
- skinAll();drawWolves(P,GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks()}
+ updateAltars(GT.time);if(HERO.glow){const g=P.berserk>0?1.6+.4*Math.sin(GT.time*12):(P.rage>=100?1.1+.3*Math.sin(GT.time*6):1);HERO.glow.col=[g,.25*g,.15*g]}if(HERO.armor&&P.berserk>0){const a=eqItem('armor'),t=a&&a.look?a.look.tint:[1,1,1],k=.25+.15*Math.sin(GT.time*10);HERO.armor.col=[t[0]*(1+k),t[1]*(1-k*.4),t[2]*(1-k*.4)]}else if(HERO.armor){const a=eqItem('armor');HERO.armor.col=a&&a.look?a.look.tint.slice():[1,1,1]}
+ skinAll();drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
-function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='td')return'';
+function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';
+ if(nearAltar()>=0)return'ETKİLEŞ: sunakta dinlen'+(SYS.altars&&SYS.altars[nearAltar()]?'':' (yak)');if(nearChest()>=0)return'ETKİLEŞ: sandığı aç';const sp=storyPrompt();if(sp)return sp;
  const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return'Büyük goblin tutulamaz';if(!isWolf(v)&&d<1.9)return'ETKİLEŞ: boyun kilidi  ·  ZIPLA ×2: üstüne atla';return isWolf(v)?'ZIPLA ×2: kurdun sırtına atla':'ZIPLA ×2: goblinin üstüne atla'}
  for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<2.8)return'ETKİLEŞ: konuş';return''}
 function uiTick(dt){hudT-=dt;if(hudT<=0){hudT=.1;hud(P);drawRadar();
@@ -124,8 +134,10 @@ function uiTick(dt){hudT-=dt;if(hudT<=0){hudT=.1;hud(P);drawRadar();
   e.textContent=hostile?'TEHLİKE':sus?'ŞÜPHE':P.crouch?'GİZLİ':'';e.className=hostile?'red':sus?'yel':'';
   const pr=promptText(),pe=$('prompt');pe.textContent=pr;pe.style.display=pr?'block':'none';
   const m=$('mash');if(P.st==='down'&&P.pinBy){m.style.display='block';m.firstChild.style.width=cl(P.struggle*100,0,100)+'%'}else m.style.display='none';
-  const kd=Math.hypot(P.x,P.z),b=angd(Math.atan2(-P.x,-P.z),CAM.yaw);$('compass').innerHTML=(kd<120?'Krallık':'<span style="display:inline-block;transform:rotate('+(-b)+'rad)">▲</span> Krallık '+Math.round(kd)+' m')+'<br><small>'+ZNAME[zoneAt(P.x,P.z)]+'</small>';
-  const bb=$('boss'),dr=DRAGON;if(dr&&!dr.dead&&dr.hostile()&&Math.hypot(dr.x-P.x,dr.z-P.z)<120){bb.style.display='block';$('bossf').style.width=cl(dr.hp/dr.max*100,0,100)+'%'}else bb.style.display='none';
+  const kd=Math.hypot(P.x,P.z),b=angd(Math.atan2(-P.x,-P.z),CAM.yaw);const tg=questTarget();if(tg){const bb2=angd(Math.atan2(tg[0]-P.x,tg[1]-P.z),CAM.yaw),dd=Math.hypot(tg[0]-P.x,tg[1]-P.z);$('compass').innerHTML='<span style="display:inline-block;color:#ffd76a;transform:rotate('+(-bb2)+'rad)">◆</span> Görev '+Math.round(dd)+' m<br><small>'+ZNAME[zoneAt(P.x,P.z)]+' · Sv.'+regionLevel(P.x,P.z)+'</small>'}else $('compass').innerHTML=(kd<120?'Krallık':'<span style="display:inline-block;transform:rotate('+(-b)+'rad)">▲</span> Krallık '+Math.round(kd)+' m')+'<br><small>'+ZNAME[zoneAt(P.x,P.z)]+'</small>';
+  const bb=$('boss'),dr=bossTarget();if(dr){bb.style.display='block';$('bossn').textContent=(dr===DRAGON?'KÜL KANAT · EJDERHA':dr.title||'')+' · Sv.'+(dr.lv||18);$('bossf').style.width=cl(dr.hp/dr.max*100,0,100)+'%';$('bossp').style.width=posFrac(dr)*100+'%'}else bb.style.display='none';
+  $('rgf').style.width=(P.berserk>0?P.berserk/12*100:P.rage||0)+'%';$('rgf').className=P.berserk>0?'on':(P.rage>=100?'full':'');$('bRage').style.display=(P.rage>=100||P.berserk>0)?'flex':'none';$('bRage').classList.toggle('on',P.berserk>0);
+  $('bFlask').innerHTML='İKSİR<br><b>'+SYS.flasks+'/'+SYS.flaskMax+'</b>';const sk=SYS.skill,cdl=sk&&P.cd&&P.cd[sk]?Math.max(0,P.cd[sk]-GT.clock):0;$('bSkill').innerHTML=sk?SKILLS[sk].n.split(' ').map(w=>w.slice(0,6)).join('<br>')+(cdl>0?'<br><b>'+cdl.toFixed(0)+'</b>':''):'YETENEK';$('bSkill').classList.toggle('cd',cdl>0);$('bLock').classList.toggle('on',!!P.lock);
   let nw=null,nd=3.2;for(const w of wolves){if(w.dead||w.tame)continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<nd){nd=d;nw=w}}$('bInt').classList.toggle('on',!!pr&&pr.startsWith('ETKİLEŞ')||(!!nw&&!hostileSt(nw)));
   $('bBlk').classList.toggle('on',P.st==='block');$('bSpr').classList.toggle('on',P.sprinting);$('bCrc').classList.toggle('on',P.crouch)}
  chkT-=dt;if(chkT<=0){chkT=.4;checkQuests(P)}saveT-=dt;if(saveT<=0){saveT=6;save(P)}}
@@ -144,6 +156,7 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
   if(up){const u=e=>{e.stopPropagation();up()};el.addEventListener('pointerup',u);el.addEventListener('pointercancel',u);el.addEventListener('lostpointercapture',u)}};
  const atkDown=()=>{IN.atkHeld=true;IN.atkAt=GT.clock;IN.atkEdge=true;IN.atkUsed=false;IN.mash=(IN.mash||0)+1},atkUp=()=>{if(IN.atkHeld){IN.atkHeld=false;IN.atkUp=true}};
  btn('bAtk',atkDown,atkUp);btn('bDod',()=>{press('dodge');IN.mash=(IN.mash||0)+1});btn('bJmp',()=>{press('jump');IN.mash=(IN.mash||0)+1});btn('bInt',()=>press('inter'));btn('bSys',()=>toggleWin(P));
+ btn('bFlask',()=>drinkFlask());btn('bSkill',()=>useSkill());btn('bRage',()=>startRage());btn('bLock',()=>toggleLock());
  btn('bBlk',()=>{IN.blockHeld=true;IN.mash=(IN.mash||0)+1},()=>{IN.blockHeld=false});btn('bSpr',()=>{P.sprintHeld=true;P.crouch=false},()=>{P.sprintHeld=false});btn('bCrc',()=>{P.crouch=!P.crouch;if(P.crouch)P.sprintHeld=false});
  let jId=null,jx=0,jy=0,lId=null,lx=0,ly=0;const kbg=$('kbg'),kn=$('kn');
  cv.addEventListener('pointerdown',e=>{sfx.on();if(e.clientX<innerWidth*.42&&jId===null){jId=e.pointerId;jx=e.clientX;jy=e.clientY;kbg.style.display='block';kbg.style.left=jx-60+'px';kbg.style.top=jy-60+'px'}else if(lId===null){lId=e.pointerId;lx=e.clientX;ly=e.clientY}});
@@ -153,19 +166,19 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
  document.addEventListener('contextmenu',e=>e.preventDefault());const K={};
  const kb=()=>{IN.kx=(K.KeyD?1:0)-(K.KeyA?1:0);IN.kz=(K.KeyW?1:0)-(K.KeyS?1:0)};
  addEventListener('keydown',e=>{if(e.repeat)return;sfx.on();K[e.code]=1;kb();if(e.code==='KeyF'||e.code==='KeyJ')atkDown();if(e.code==='Space'){press('jump');IN.mash=(IN.mash||0)+1;e.preventDefault()}if(e.code==='KeyQ'||e.code==='KeyK'){press('dodge');IN.mash=(IN.mash||0)+1}
-  if(e.code==='KeyR'||e.code==='KeyL'){IN.blockHeld=true;IN.mash=(IN.mash||0)+1}if(e.code==='KeyE')press('inter');if(e.code==='ShiftLeft'||e.code==='ShiftRight'){P.sprintHeld=true;P.crouch=false}
+  if(e.code==='KeyR'||e.code==='KeyL'){IN.blockHeld=true;IN.mash=(IN.mash||0)+1}if(e.code==='KeyE')press('inter');if(e.code==='KeyH')drinkFlask();if(e.code==='KeyV')useSkill();if(e.code==='KeyG')startRage();if(e.code==='KeyT')toggleLock();if(e.code==='ShiftLeft'||e.code==='ShiftRight'){P.sprintHeld=true;P.crouch=false}
   if(e.code==='KeyC'){P.crouch=!P.crouch;if(P.crouch)P.sprintHeld=false}if(e.code==='Tab'||e.code==='KeyM'){toggleWin(P);e.preventDefault()}});
  addEventListener('keyup',e=>{K[e.code]=0;kb();if(e.code==='KeyF'||e.code==='KeyJ')atkUp();if(e.code==='KeyR'||e.code==='KeyL')IN.blockHeld=false;if(e.code==='ShiftLeft'||e.code==='ShiftRight')P.sprintHeld=false});
  addEventListener('blur',()=>{IN.atkHeld=false;IN.blockHeld=false;P.sprintHeld=false})}
 // ---------- boot + adaptive quality (performance: measure first, then lower resolution, grass, draw distance)
 const QUAL={QL:0};
-function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnNpcs();spawnCrocs();dragonInit(TX);load();P.hp=maxHP();if(SYS.cp&&SYS.gate){P.x=0;P.z=60;CAM.tx=0;CAM.tz=60}bindInput();
+function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
  streamForest(P.x,P.z,999);$('load').style.display='none';
- if(SYS.intro){GT.paused=false;$('intro').style.display='none';note('[Sistem] Tekrar hoş geldin, Oyuncu.')}else{$('intro').style.display='flex';$('introb').addEventListener('click',()=>{sfx.on();SYS.intro=1;$('intro').style.display='none';GT.paused=false;
-   note('[Sistem] Reenkarnasyon tamamlandı.');setTimeout(()=>note('[Sistem] Sınıf verildi: Ay Kılıççısı'),900);setTimeout(()=>note('[Sistem] İlk görev: «Uyanış»'),1900);save(P)})}
+ if(SYS.intro){GT.paused=false;$('intro').style.display='none';note('[Sistem] Tekrar hoş geldin, Kara Zırh.')}else{$('intro').style.display='flex';$('introb').addEventListener('click',()=>{sfx.on();SYS.intro=1;$('intro').style.display='none';GT.paused=false;if(!SYS.prologue){SYS.prologue=1;showManhwa(PANELS.prologue(),()=>{note('[Sistem] Sınıf: Kara Zırh. İlk görev: «Uyanış»');save(P)})}
+   save(P)})}
  let last=performance.now();
  function frame(now){requestAnimationFrame(frame);const raw=now-last,dtR=Math.min(raw/1000,.05);last=now;GT.time+=dtR;let dt=dtR;
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
@@ -173,5 +186,10 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
  window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
+  X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
+   ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
+   POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
+   BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
+   openWin,renderWin,uiTick,maxHP,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}

@@ -1,0 +1,102 @@
+# PROGRESS — Ay Kılıççısı: Kara Zırh
+
+Her oturumun başında bu dosyayı oku, kaldığın yerden devam et. Oturum sonunda güncelle.
+Teslim edilen oyun: `dist/ay-kiliccisi.html` (tek HTML). Kaynak: `src/` + `data/`, birleştirme `python3 tools/build.py`.
+Testler (Playwright + yazılımsal WebGL): `NODE_PATH=$(npm root -g) node test/harness.js test/<senaryo>.js`
+- `s-mech.js` → aşama 1 mekanikleri (47 test, `mech-tests.js`)
+- `s-loop.js` → aşama 2 oynanış döngüsü (71 test, `loop-tests.js`)
+- `s-ui.js`, `s-save.js`, `s-portrait.js`, `s-perf.js` → dokunmatik, kayıt, dikey ekran, performans
+- `s-p2shots.js`, `s-p2portrait.js` → ekran görüntüleri (`test/out/`)
+Hikâye ve karakterler: `SENARYO.md`. Yayın: claude.ai artifact XSyZ8dWNspYrNFxSMeMqp4 (aynı adrese güncellenir).
+
+## Tasarım kararları (oyun yönetmeni notları)
+
+**Neden 3 saat kalır?** Her bölgenin bir hikâye sebebi, bir mini boss'u, saklı sandıkları ve bir sunağı var.
+Oyuncu bir sonraki bölgenin daha tehlikeli olduğunu görür (düşman seviyesi bölgeye bağlı), ama oradaki
+ödülü de görür (nadir sandık, efsanevi eşya, yeni yetenek). Ölüm cezası küçük ama hissedilir (altın kesesi
+ölünen yerde kalır, geri alınabilir), böylece tekrar denemek ister.
+
+**Çekirdek döngü:** Keşfet (sunak, sandık, iz, olay) → Tehlike (bölge düşmanı, gece yaratığı, elit) →
+Savaş (okunur hazırlık, kaçın/blok/savuştur, duruş kırma, İNFAZ) → Ödül (eşya, altın, XP, malzeme) →
+Güçlen (seviye, stat, ekipman, yetenek, demirci) → Daha tehlikeli bölge (hikâye kapısı açılır).
+
+**Savaşın kalbi:** Her düşmanın bir *duruş* (denge) çubuğu var. Saldırılar, özellikle ağır saldırı ve
+savuşturma, duruşu kırar; kırılan düşman sendeler ve **İNFAZ** ile bitirilir. Zorluk can şişirerek değil,
+davranışla gelir: kurt yan yan dolanıp aldatır, goblin kaçıp yardım çağırır, büyük goblin geniş savurur,
+boss'lar aşama değiştirir. Alan saldırıları yerde kırmızı halka ile menzilini gösterir. **Öfke** (Berserk)
+çubuğu vurdukça ve vuruldukça dolar; dolunca zırh kızarır: daha çok hasar, sendelememe, duruş kırma ×1.5;
+bitince 3 sn nefes nefese kalırsın (bedeli var) ve zırh fısıldar (hikâye).
+
+**İlerleme:** Seviye + stat (Güç, Çeviklik, Dayanıklılık), 4 ekipman yuvası (Silah, Zırh, Tılsım, Yüzük),
+5 nadirlik (Sıradan, Sağlam, Nadir, Destansı, Efsanevi), 6 isimli efsanevi (boss/sır ödülü, oyun tarzını
+değiştirir: kanatma, duruş, ateş izi, savuşturma penceresi, öfke ×2, kor patlaması), demircide +1..+5.
+Yetenekler yeni hareketlerdir: Dönen Kesik (Sv.3 / Kül Yele), Savaş Kükremesi (Kırık Diş), Gölge Adımı (Sv.6),
+Yer Yaran (Sv.10 / Veyra'nın güveni 40).
+
+**Yapay zekâ:** Her canlı kendi önünü görür (görüş konisi + görüş hattı), grubunu uyarır. Kavgada 4 m
+içindekini görmese de duyar. Veyra fayda puanlamasıyla karar verir (iyileştir / kaçın / alev patlaması /
+uzak ateş / yakın kesik / yaklaş / takip), konuşur, güveni artar; önünde saldırıya hazırlanan düşmanın
+vuruşu ona da değer, yere düşerse ETKİLEŞ ile kaldırılır.
+
+## Yol haritası
+
+### Aşama 1 — tamamlandı
+- [x] Dövüş temeli: hafif/ağır/koşu/zıplama saldırısı, 4 yönlü kaçınma, blok + savunma canı + savuşturma
+- [x] Kurt atlayışı, ragdoll, parça tutma; goblinler; timsah; sessiz alt etmeler; ejderha deseni
+- [x] 2,8 km harita, bölgeler, köy NPC'leri, görüş sistemi, 47 mekanik testi
+
+### Aşama 2 — tamamlandı (oturum 2–3)
+- [x] Selene kaldırıldı → Kara Zırhlı kahraman Kael (berserk_armor iskeletinin oranları, model tamamen bize ait)
+- [x] Dev kılıç (eşyaya göre boy/renk/ışıma), iki elle ağır vuruşlar
+- [x] Ganimet: nadirlik, özellikler, isimli efsaneviler; düşmanlardan ve 39 sandıktan düşer, ışık sütunu, otomatik toplama
+- [x] Sistem penceresi 7 sekme: Durum, Envanter (kuşan/parçala), Yetenek, Görev, Harita, Demirci, Ayar (+lisanslar)
+- [x] 9 sunak: kontrol noktası, iyileşme, iksir dolumu, düşmanlar geri gelir, hızlı yolculuk; ölünce altın kesesi
+- [x] İksir düğmesi (3 şişe, sandık/rahibe ile 6'ya kadar)
+- [x] Duruş çubuğu + İNFAZ; Öfke (Berserk) modu
+- [x] Hedef kilidi (HEDEF düğmesi)
+- [x] Bölge seviyeleri (krallık 1 … ejder yuvası 18)
+- [x] Yetenek düğmesi + 4 yetenek
+- [x] Mini boss: Alfa Kurt «Kül Yele» (uluma → sürü), Goblin Şefi «Kırık Diş» (3 saldırı, yere vurma halkası, boru → kamp)
+- [x] Manhwa panelli hikâye: önsöz, 1. ve 2. bölüm, kafesler, prenses (seçim), Kül Yele ve ejderha sonu
+- [x] Veyra (boynuzlu iblis kız): kendi modelimiz, yoldaş yapay zekâsı, serbest bırak / öldür seçimi
+- [x] Ana görev zinciri (10 adım) + köyde görev veren NPC'ler (Doran, Hask, Lena, Mira) + 2 yan görev
+      (Lena: 3 kurt postu → kurt postu zırh; Mira: Ustanın Mirası, 3 mühür → «Aldren'in Yemini»)
+
+### Aşama 3 — sonraki oturumlar (öncelik sırası)
+- [ ] Şeytan Kral Azgal: savaşılabilir model (aldrich iskelet oranları), Kül Kale bölgesi, 3 aşamalı final
+- [ ] Ejderha 2. aşama (öfkeli) + Kül Kanat sonrası manhwa
+- [ ] Yılan Rahibe boss'u (gwyndolin iskeleti), bataklık tapınağı zindanı
+- [ ] Gece yaratıkları (hortlak/iskelet), rastgele olaylar (pusu, kervan, kayıp çocuk), nadir yaratık Ak Kurt
+- [ ] Gizli zincirler: Ak Kurt, Soluk Avcı (SENARYO.md)
+- [ ] Veyra'yı öldürme yolunun devamı (Hırlayan konuşmaları, farklı son)
+- [ ] Set bonusları, evcil yaratık güçlendirme ağacı
+- [ ] Mağaralar (gizli geçitler)
+- [ ] Veyra yüzü: şimdiki doku düz; daha ifadeli yüz ve göz animasyonu
+- [ ] Kamera ağaç tacının içine girince saydamlaştırma
+
+## Bilinen sorunlar / test edilemeyenler
+- Gerçek Android cihazda dokunma, titreşim ve gerçek GPU performansı test edilemedi (yazılımsal WebGL ile ölçüldü).
+- Ses yalnızca kodla üretiliyor (WebAudio); kulakla dinlenemedi.
+- Manhwa panelleri oyun motoruyla çizilir; ilk açılışta 1–2 sn "Sahne çiziliyor…" görünür.
+- Eğimli zeminde büyük tehlike halkası yer yer zemine gömülebilir.
+
+## Modeller (yalnızca iskelet oranları alındı)
+| Kaynak dosya | Kullanım | Durum |
+| --- | --- | --- |
+| berserk_armor.glb (Angy97, CC BY 4.0) | Kahramanın iskelet oranları | iskelet var (83 kemik) |
+| kawaiope.glb (chained_tan, CC BY 4.0) | Veyra'nın iskelet oranları + saç/etek/pelerin kemikleri | iskelet var (92) |
+| aldrich_devourer_of_gods.glb (9S, CC BY 4.0) | Şeytan Kral oranları (kuyruk zinciri) | iskelet var (166) |
+| dark_sun_gwyndolin.glb (9S, CC BY 4.0) | Yılan Rahibe (yılan kuyruk zincirleri) — aşama 3 | iskelet var (545) |
+| arknights_endfield_-laevatain-.glb | — | iskelet yok; Veyra kendi tasarımımız |
+| body_base_low_poly_elf.glb | — | iskelet yok |
+| momonga_ainz_ooal_gown.glb (CC BY-NC) | — | iskelet yok |
+| mita_miside_free.glb (CC BY-NC-ND) | kullanılmıyor | iskelet yok, değiştirme yasak |
+| tarisland dragon (yeni zip) | aynı ejderha | önceki dosyayla birebir aynı |
+
+## Oturum günlüğü
+- Oturum 2: tasarım belgesi, PROGRESS.md, SENARYO.md; Kara Zırh kahramanı; ganimet, sunak, sandık, duruş/İNFAZ,
+  öfke, yetenekler, hedef kilidi, bölge seviyeleri, bosslar, Veyra, hikâye modülleri yazıldı.
+- Oturum 3: hepsi birleştirildi ve test edildi. Yeni düğmeler (İKSİR, YETENEK, HEDEF, ÖFKE) + yatay/dikey yerleşim,
+  öfke çubuğu, boss adı + duruş çubuğu, hızlı yolculuk, manhwa görünümü (sabit oranlı paneller, sıra kuyruğu),
+  görev pusulası, yeni sesler. Düzeltilenler: açılış sırası (Veyra/hikâye), kese ve mühür toplama artık oyun
+  adımında, kavgada 4 m algı, Veyra'ya düşman vuruşu, Kırık Diş yere vurma halkası. s-loop.js 71/71.

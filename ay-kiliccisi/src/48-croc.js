@@ -21,7 +21,7 @@ function updateCroc(c,dt){c.t+=dt;c.flash=Math.max(0,c.flash-dt*6);c.cd-=dt;cons
  if(c.dead){c.deadT+=dt;if(c.deadT>150&&d>110)Object.assign(c,{dead:0,hp:c.max,x:c.hx,z:c.hz,st:'idle',aware:0,deadT:0});c.y=crocY(c.x,c.z);return}
  const range=18,sees=senseTick(c,P,dt,range,.8);
  if(!c.hostile()){if(fillAware(c,P,sees,dt,range)){sfx.hiss();note('[!] Bir timsah seni fark etti!','red');alertGroup(c,P,25,CROCS)}if(c.aware>=1){c.st='rush';c.t=0}}
- else if(sees){c.ls=[P.x,P.z];c.unseen=0}else c.unseen=(c.unseen||0)+dt;
+ else if(sees||d<4&&P.alive){c.ls=[P.x,P.z];c.unseen=0}else c.unseen=(c.unseen||0)+dt;
  const inSwamp=Math.hypot(c.x-SWAMP[0],c.z-SWAMP[1])<SWAMP[2]+50;
  switch(c.st){
  case'idle':c.spd=lp(c.spd,0,.1);c.jaw=lp(c.jaw,.05,.1);if(c.aware>.3){c.st='alert';c.t=0}else if(c.t>rr(6,12)){c.st='drift';c.t=0;const a=rnd()*6.28;c.tx=c.hx+Math.cos(a)*rr(3,12);c.tz=c.hz+Math.sin(a)*rr(3,12)}break;

@@ -1,6 +1,16 @@
 module.exports = async ({ page, shot, G, log }) => {
   await page.waitForTimeout(1200); await shot('ui-1-intro', { wait: 300 });
   await page.click('#introb'); await page.waitForTimeout(600);
+  // the prologue manhwa opens; scroll and tap DEVAM like a phone user
+  await page.waitForSelector('#manhwa .mh-next', { timeout: 60000 }); const open1 = await G(() => document.getElementById('manhwa').style.display === 'block' && __G.GT.paused);
+  await page.evaluate(() => { document.getElementById('manhwa').scrollTop = 99999; }); await page.waitForTimeout(300); await page.tap('#manhwa .mh-next'); await page.waitForTimeout(400);
+  const closed = await G(() => document.getElementById('manhwa').style.display === 'none' && !__G.GT.paused && __G.SYS.prologue === 1);
+  log('dokunmatik: UYAN → önsöz manhwası açılıyor, oyun duruyor; DEVAM ile oyuna dönülüyor', open1 && closed);
+  await page.tap('#bSys'); await page.waitForTimeout(400); const tabs = await page.locator('#win .tab').count(); await page.locator('#win .tab', { hasText: 'Envanter' }).first().tap(); await page.waitForTimeout(300);
+  const inv = await page.locator('#win .slot').count(); log('dokunmatik: Sistem → Envanter sekmesi dokunarak açılıyor (4 kuşanma yuvası)', tabs >= 7 && inv >= 4, JSON.stringify({ sekme: tabs, eşya: inv }));
+  await shot('ui-2b-inventory', { wait: 200 }); await page.evaluate(() => { document.getElementById('winx').click(); });
+  await G(() => { __G.SYS.flasks = 3; __G.P.hp = 20; }); await page.tap('#bFlask'); await page.waitForTimeout(150); const dr = await G(() => [__G.P.st, __G.SYS.flasks]);
+  log('dokunmatik: İKSİR düğmesi içiriyor', dr[0] === 'drink' && dr[1] === 2, dr); await page.waitForTimeout(1500);
   await G(() => { __G.SYS.gold = 7; __G.SYS.meat = 3; }); await page.tap('#bSys'); await page.waitForTimeout(500); await shot('ui-2-system', { wait: 300 });
   await page.evaluate(() => { document.getElementById('winb').scrollTop = 99999; }); await shot('ui-3-system-bottom', { wait: 300 });
   await page.evaluate(() => { document.getElementById('winx').click(); });

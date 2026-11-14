@@ -118,7 +118,7 @@ window.runMech = function () {
   {
     const camps = {}; for (const g of G.GOBS) camps[g.group] = (camps[g.group] || 0) + 1;
     ok('goblinler: kamplarda gruplar (küçük + büyük)', G.GOBS.filter((g) => g.big).length >= 4 && G.GOBS.filter((g) => !g.big).length >= 20, camps);
-    const big = G.GOBS.find((g) => g.big); const BX = big.x, BZ = big.z;
+    const big = G.GOBS.find((g) => g.big && !g.boss); const BX = big.x, BZ = big.z;
     const smash = (offX, offZ) => { calmAll(); freshP(BX + offX, BZ + offZ, 0); big.x = BX; big.z = BZ; big.yaw = 0; big.hp = big.max; big.st = 'windup'; big.t = 0; big.hitDone = false; big.cd = 0; const hp0 = P.hp; let windT = 0;
       for (const g of G.GOBS) if (g !== big && Math.hypot(g.x - BX, g.z - BZ) < 30) { g.x += 300; g.hx = g.x; }
       sim(3, (t) => { big.yaw = 0; if (big.st === 'windup') windT = t; if (big.st === 'recover') return false; }); return [hp0 - P.hp, windT, P.st]; };
@@ -141,11 +141,11 @@ window.runMech = function () {
     sim(2.4, () => { revMax = Math.max(revMax, P.ps.rev || 0); }); ok('ZIPLA ×2 goblin: üstüne atla, kılıcı ucu aşağı iki elle sapla, ayağa kalk', k1 === 'leap' && gob.dead && P.st === 'move' && revMax > .8 && (P.ps.rev || 0) < .1, { tür: k1, ters_tutuş: +revMax.toFixed(2) });
     const w = G.wolves.find((w) => !w.dead && !w.tame); setup(w); w.st = 'idle'; freshP(GX, GZ - 3.5, 0); G.press('jump'); sim(.15); G.press('jump'); sim(.05); const k2 = P.td && P.td.kind; sim(3.6);
     ok('ZIPLA ×2 kurt: sırtına atla, boyun kilidi', k2 === 'leap' && w.dead && P.st === 'move', { tür: k2, kurt_öldü: !!w.dead });
-    // cancel: a wolf pounces during the choke -> takedown cancelled, Selene pinned, goblin gets up fully
+    // cancel: a wolf pounces during the choke -> takedown cancelled, hero pinned, goblin gets up fully
     setup(gob); freshP(GX, GZ - 1.3, 0); G.press('inter'); sim(.3); const w2 = G.wolves.find((x) => !x.dead && !x.tame && x !== w); w2.x = P.x - 3.5; w2.z = P.z - .8; w2.yaw = Math.atan2(P.x - w2.x, P.z - w2.z); w2.st = 'windup'; w2.t = .2; w2.aware = 1; w2.cd = 0; w2.unseen = 0; w2.sees = true; w2.calm = 0; w2.hx = w2.x; w2.hz = w2.z; w2.resolved = false; w2.dodged = false;
     let cancelled = false, escT = -1, escDone = -1, interrupted = false;
     sim(5, (t) => { if (!P.td && P.pinBy && !cancelled) cancelled = true; if (gob.st === 'escape' && escT < 0) escT = t; if (escT > 0 && gob.st !== 'escape' && escDone < 0) escDone = t; if (escT > 0 && escDone < 0 && gob.st !== 'escape') interrupted = true; if (P.pinBy && Math.floor(t * 10) !== Math.floor((t - DT) * 10)) IN.mash = 1; });
-    ok('alt etme sırasında kurt saldırırsa iptal: Selene yere düşüp tutuluyor', cancelled, { iptal: cancelled });
+    ok('alt etme sırasında kurt saldırırsa iptal: Kael yere düşüp tutuluyor', cancelled, { iptal: cancelled });
     ok('iptalde goblin kurtuluyor ve kalkma animasyonu sonuna kadar oynuyor', escT > 0 && escDone - escT >= .95 && !interrupted && !gob.dead, { kalkma_süresi: +(escDone - escT).toFixed(2), goblin: gob.st });
     clearIn();
   }

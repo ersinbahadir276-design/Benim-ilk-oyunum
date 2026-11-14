@@ -1,5 +1,5 @@
 // ===================== the dragon (your GLB: Tarisland Dragon) =====================
-// Skeleton animation from the embedded clips (cross-faded), CPU skinning like Selene. Learnable pattern:
+// Skeleton animation from the embedded clips (cross-faded), CPU skinning like the hero. Learnable pattern:
 // GROUND  roar -> walk in -> CLAW (2.4 s raised claw + red circle) -> 1.7 s open -> second claw -> take-off
 // AIR     hover -> FIRE BREATH (rears up and inhales 2.7 s, red line on the ground) -> sweep leaves burning ground -> x2
 // LAND    down (shockwave circle) -> 3.2 s tired and open -> back to ground pattern

@@ -30,7 +30,7 @@ function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                 
   const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
-const hostileSt=w=>w.st==='chase'||w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='circle'||w.st==='recover'||w.st==='hurt';
+const hostileSt=w=>w.st==='howl'||w.st==='chase'||w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='circle'||w.st==='recover'||w.st==='hurt';
 const tokenBusy=()=>wolves.some(w=>!w.tame&&(w.st==='windup'||w.st==='pounce'||w.st==='pin'));
 // can this wolf see the player right now? only a cone in front, blocked by trees
 function wolfSees(w,P){if(!P.alive||w.calm>0)return false;const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz),R=(P.crouch?13:27)*(w.alpha?1.15:1);
@@ -62,7 +62,7 @@ function updateWolf(w,P,dt,GS){
   w.tail=Math.sin(w.t*9)*.5;w.y=hAt(w.x,w.z);return}
  // ---------------- perception
  w.seeT=(w.seeT||rnd()*.12)-dt;if(w.seeT<=0){w.seeT=.12;w.sees=wolfSees(w,P)}const sees=w.sees,safe=Math.hypot(P.x,P.z)<150,was=w.aware;
- if(sees){w.ls=[P.x,P.z];w.unseen=0;if(!hostileSt(w))w.aware=Math.min(1,w.aware+dt*(P.crouch?.5:1)/(.22+d/32))}else{w.unseen+=dt;if(!hostileSt(w))w.aware=Math.max(0,w.aware-dt*.35)}
+ if(sees||hostileSt(w)&&d<4&&P.alive){w.ls=[P.x,P.z];w.unseen=0;if(!hostileSt(w))w.aware=Math.min(1,w.aware+dt*(P.crouch?.5:1)/(.22+d/32))}else{w.unseen+=dt;if(!hostileSt(w))w.aware=Math.max(0,w.aware-dt*.35)}
  if(sees&&was<.5&&w.aware>=.5&&!hostileSt(w)){GS.onSpotted(w);for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&!hostileSt(o)&&o.st!=='mounted'&&Math.hypot(o.x-w.x,o.z-w.z)<18){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.55)}}
  if(!hostileSt(w)&&w.calm<=0&&!sees&&((P.noise>0&&d<P.noise)||(P.sprinting&&d<9))&&w.st!=='alert'&&w.st!=='search'){w.st='alert';w.t=0;w.ls=[P.x,P.z]}
  w.tail=lp(w.tail,0,.1);

@@ -1,6 +1,6 @@
 // ===================== village NPCs: villagers, merchants, guards =====================
 // They live in the village, walk between houses, the well and the market; guards stand at the gates or patrol.
-// They also only see what is in front of them; if one notices Selene sneaking, the people around turn to look.
+// They also only see what is in front of them; if one notices the player sneaking, the people around turn to look.
 const NPCS=[];const NPCM={};
 const NPC_LINES={villager:['Ormanda kurt ulumaları artıyor, dikkatli ol.','Göl kıyısında bir nehir dağlardan iner.','Bataklığa gitme, timsahlar suyun içinde bekler.','Kuzeydeki dağlarda bir ejderhanın kanat sesleri duyuluyor.'],
  merchant:['Hoş geldin yolcu! Altınla taze et satarım.','Goblin kamplarından altın düşer, bana getir.'],guard:['Krallığın kapısı açıktır, ama silahını kınında tut.','Doğudaki goblin kampı her gece daha cesur.','Büyük goblinin sopası bir öküzü yere serer. Kaçmayı bil.']};
@@ -15,7 +15,7 @@ function spawnNpcs(){for(const k of['villager','villager2','merchant','guard'])N
 function npcGoal(n){const R=Math.random;if(R()<.3){n.tx=-10+(R()-.5)*6;n.tz=52+(R()-.5)*6}else if(R()<.5&&STALLS.length){const s=STALLS[Math.floor(R()*STALLS.length)];n.tx=s[0]*1.12;n.tz=s[1]*1.12}else{const h=HOUSES[Math.floor(R()*HOUSES.length)];n.tx=h.dx;n.tz=h.dz}}
 function updateNpc(n,dt){n.t+=dt;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d>170)return;
  const sees=senseTick(n,P,dt,16),was=n.aware;fillAware(n,P,sees,dt,16);
- // noticed while sneaking: the NPC calls out and everyone close turns to look at Selene
+ // noticed while sneaking: the NPC calls out and everyone close turns to look at the player
  if(sees&&P.crouch&&was<.5&&n.aware>=.5){n.st='watch';n.t=0;sfx.hey();note('[Köy] '+(n.kind==='guard'?'Muhafız':n.kind==='merchant'?'Tüccar':'Köylü')+': "Hey! Orada kim var?"');for(const o of NPCS)if(o!==n&&Math.hypot(o.x-n.x,o.z-n.z)<20){o.st='watch';o.t=0;o.ls=[P.x,P.z]}}
  if(sees&&!P.crouch&&d<6&&!n.said){n.said=1;n.look=3}if(d>14)n.said=0;
  if(sees)n.ls=[P.x,P.z];
@@ -26,7 +26,7 @@ function updateNpc(n,dt){n.t+=dt;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d>170)re
   break;
  case'walk':if(agentMove(n,n.tx,n.tz,n.kind==='guard'?1.6:1.25,dt,n.rad,4)<1.2||n.t>45){n.st='idle';n.t=0}break;
  case'watch':n.spd=lp(n.spd,0,.3);if(n.ls)agentFace(n,n.ls[0],n.ls[1],dt,5);if(n.t>3.5){n.st='idle';n.t=0}break}
- // head turns to look at Selene when she is in view and close
+ // head turns to look at the player when the player is in view and close
  const want=sees&&d<9?cl(angd(Math.atan2(P.x-n.x,P.z-n.z),n.yaw),-.9,.9):0;n.hyaw=lp(n.hyaw,want,Math.min(1,dt*4));
  for(const o of NPCS){if(o===n)continue;const ex=n.x-o.x,ez=n.z-o.z,q=ex*ex+ez*ez;if(q<.5&&q>1e-6){const k=Math.sqrt(q);n.x+=ex/k*(.7-k)*.5;n.z+=ez/k*(.7-k)*.5}}
  const pd=Math.hypot(P.x-n.x,P.z-n.z);if(pd<.7&&pd>1e-4){n.x+=(n.x-P.x)/pd*(.7-pd);n.z+=(n.z-P.z)/pd*(.7-pd)}

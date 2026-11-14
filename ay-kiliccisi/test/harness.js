@@ -15,7 +15,7 @@ const path = require('path'), fs = require('fs');
   page.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text().slice(0, 400)); if (m.type() === 'log' && process.env.VERBOSE) console.log('page:', m.text()); });
   await page.addInitScript(() => { try { if (window.name !== 'kept') { localStorage.clear(); window.name = 'kept'; } } catch (e) {} });
   await page.goto('file://' + path.resolve(__dirname, '../dist/ay-kiliccisi.html') + (scen.query || ''));
-  await page.waitForFunction('window.__G', { timeout: 120000 });
+  try { await page.waitForFunction('window.__G', { timeout: 120000, polling: 500 }); } catch (e) { console.log('YÜKLENEMEDİ\n' + errs.join('\n')); await b.close(); process.exit(2); }
   if (!scen.keepIntro) await page.evaluate(() => { const b = document.getElementById('introb'); if (b && document.getElementById('intro').style.display !== 'none') b.click(); });
   const shot = async (name, opts = {}) => { await page.waitForTimeout(opts.wait ?? 250); await page.screenshot({ path: path.join(out, name + '.jpg'), type: 'jpeg', quality: 72 }); };
   const G = (fn, arg) => page.evaluate(fn, arg);
