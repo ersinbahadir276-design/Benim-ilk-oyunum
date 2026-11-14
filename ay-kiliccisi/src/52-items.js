@@ -58,7 +58,7 @@ function upgrade(it){if(it.up>=5){note('En yüksek seviye (+5)');return false}co
  SYS.gold-=c.gold;SYS.shards-=c.shards;it.up++;note('[Demirci] '+it.name+' +'+it.up,'gold');sfx.anvil();applyLooks();save(P);return true}
 // ---------- looks: weapon geometry + armour tint follow the equipped items
 let swordSkin=null;
-function applyLooks(){const a=eqItem('armor');if(HERO.armor)HERO.armor.col=a&&a.look?a.look.tint.slice():[1,1,1];buildSword()}
+function applyLooks(){const a=eqItem('armor'),t=a&&a.look?a.look.tint.slice():[1,1,1];if(HERO.armor){if(HERO.armor.pbr){HERO.armor.tintM=t;HERO.armor.col=[1,1,1]}else HERO.armor.col=t}buildSword()}
 function buildSword(){const w=eqItem('weapon'),L=(w&&w.look)||BASES.rusty.look,H=HB;
  if(swordSkin){const i=skins.indexOf(swordSkin.s);if(i>=0)skins.splice(i,1);unobj(swordSkin.o);const j=pObjs.indexOf(swordSkin.o);if(j>=0)pObjs.splice(j,1);freeGeo(swordSkin.s.geo);if(swordSkin.og){unobj(swordSkin.og);const k=pObjs.indexOf(swordSkin.og);if(k>=0)pObjs.splice(k,1);const m=skins.indexOf(swordSkin.sg);if(m>=0)skins.splice(m,1)}swordSkin=null}
  const save=SK.R.map(r=>r);for(let i=0;i<SK.n;i++)SK.R[i]=R3I;for(const f of['Index','Middle','Ring','Little'])for(const[seg,a]of[['Proximal',1.1],['Intermediate',1.2],['Distal',.7]])SK.R[H['right'+f+seg]]=rZ(a);

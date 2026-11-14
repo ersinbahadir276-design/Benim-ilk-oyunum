@@ -8,4 +8,4 @@ module.exports = async ({ page, shot, G }) => {
   await page.waitForTimeout(5000); await shot('p2-manhwa-portrait-1');
   for (let k = 1; k <= 4; k++) { await G((k) => { const m = document.getElementById('manhwa'); m.scrollTop = k * 700; }, k); await shot('p2-manhwa-portrait-' + (k + 1), { wait: 300 }); }
 };
-module.exports.portrait = true;
+module.exports.portrait = true; module.exports.keepStrip = true;

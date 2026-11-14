@@ -65,17 +65,24 @@ function mirrorX(g){for(let i=0;i<g.P.length;i+=3){g.P[i]=-g.P[i];g.N[i]=-g.N[i]
 function tint(g,c){for(let i=0;i<g.C.length;i+=3){g.C[i]*=c[0];g.C[i+1]*=c[1];g.C[i+2]*=c[2]}return g}
 // ===================== WebGL =====================
 const cv=document.getElementById('c'),gl=cv.getContext('webgl',{antialias:true,alpha:false});
-const VS=`attribute vec3 aP,aN,aC;attribute vec2 aU;attribute float aW,aJ;uniform mat4 uVP,uM;uniform float uT,uOut,uSkin;uniform vec4 uB[66];
-varying vec3 vW,vN,vC;varying vec2 vU;varying float vD;
-void main(){vec4 lp=vec4(aP,1.0);vec3 ln=aN;if(uSkin>0.5){int i=int(aJ+0.5)*3;vec4 r0=uB[i],r1=uB[i+1],r2=uB[i+2];lp=vec4(dot(r0,lp),dot(r1,lp),dot(r2,lp),1.0);ln=vec3(dot(r0.xyz,aN),dot(r1.xyz,aN),dot(r2.xyz,aN));}vec4 w=uM*lp;float s=sin(uT*1.15+w.y*3.0+w.x*2.5)*0.02*aW;w.x+=s;w.z+=s*0.6;vec3 n=(uM*vec4(ln,0.0)).xyz;w.xyz+=n*uOut;vW=w.xyz;vN=n;vU=aU;vC=aC;gl_Position=uVP*w;vD=gl_Position.w;}`;
-const FS=`precision mediump float;uniform sampler2D uTex;uniform float uUseTex,uUnlit,uIsOut,uShade,uCut,uBlend,uAlpha,uFlash;uniform vec3 uCol,uL,uCam,uOutCol,uFogC,uSun;uniform vec2 uFog;
-varying vec3 vW,vN,vC;varying vec2 vU;varying float vD;
+const VS=`attribute vec3 aP,aN,aC;attribute vec2 aU;attribute float aW;attribute vec4 aJ,aK,aM;uniform mat4 uVP,uM;uniform float uT,uOut,uSkin;uniform vec4 uB[66];
+varying vec3 vW,vN,vC;varying vec2 vU;varying float vD;varying vec4 vM;
+vec3 bp(int i,vec4 p){return vec3(dot(uB[i],p),dot(uB[i+1],p),dot(uB[i+2],p));}
+void main(){vec4 lp=vec4(aP,1.0);vec3 ln=aN;vM=aM;if(uSkin>0.5){vec4 n4=vec4(aN,0.0);int i0=int(aJ.x+0.5)*3,i1=int(aJ.y+0.5)*3,i2=int(aJ.z+0.5)*3,i3=int(aJ.w+0.5)*3;
+ lp=vec4(bp(i0,lp)*aK.x+bp(i1,lp)*aK.y+bp(i2,lp)*aK.z+bp(i3,lp)*aK.w,1.0);ln=bp(i0,n4)*aK.x+bp(i1,n4)*aK.y+bp(i2,n4)*aK.z+bp(i3,n4)*aK.w;}vec4 w=uM*lp;float s=sin(uT*1.15+w.y*3.0+w.x*2.5)*0.02*aW;w.x+=s;w.z+=s*0.6;vec3 n=(uM*vec4(ln,0.0)).xyz;w.xyz+=n*uOut;vW=w.xyz;vN=n;vU=aU;vC=aC;gl_Position=uVP*w;vD=gl_Position.w;}`;
+const FS=`precision mediump float;uniform sampler2D uTex;uniform float uUseTex,uUnlit,uIsOut,uShade,uCut,uBlend,uAlpha,uFlash,uPbr;uniform vec3 uCol,uL,uCam,uOutCol,uFogC,uSun,uEm,uTintM;uniform vec2 uFog;
+varying vec3 vW,vN,vC;varying vec2 vU;varying float vD;varying vec4 vM;
 void main(){vec4 tx=vec4(1.0);if(uUseTex>0.5)tx=texture2D(uTex,vU);if(uCut>0.0&&tx.a<uCut)discard;float al=(uBlend>0.5?tx.a:1.0)*uAlpha;
 float fg=clamp((vD-uFog.x)/(uFog.y-uFog.x),0.0,1.0);
 if(uIsOut>0.5){gl_FragColor=vec4(mix(uOutCol*uSun,uFogC,fg),1.0);return;}
 vec3 base=uCol*vC*tx.rgb;
 if(uUnlit>0.5){gl_FragColor=vec4(mix(base,uFogC,fg*uShade),al);return;}
 vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;float d=dot(n,uL);
+if(uPbr>0.5){base*=mix(vec3(1.0),uTintM,vM.w);float gl2=vM.x,mt=vM.y;vec3 v=normalize(uCam-vW),h=normalize(uL+v);
+ float lt=mix(clamp((d+0.3)/1.3,0.0,1.0),smoothstep(0.0,0.2,d),0.6);float hm=n.y*0.5+0.5;vec3 amb=mix(vec3(0.34,0.29,0.25),mix(uFogC,vec3(0.56,0.63,0.82),0.55),hm)*uSun;
+ vec3 df=base*(amb*0.78+uSun*lt*0.9)*(1.0-mt*0.38);float sp=pow(max(dot(n,h),0.0),mix(6.0,90.0,gl2))*gl2*1.6*lt;vec3 r=reflect(-v,n);float ek=clamp(r.y*0.5+0.5,0.0,1.0);
+ vec3 cc=df+mix(vec3(0.06),base*2.3+0.05,mt)*sp*uSun+mix(vec3(0.1,0.09,0.08),vec3(0.62,0.68,0.85),ek)*uSun*mt*(0.15+gl2*0.5)*(base*1.8+0.06);
+ float rm=pow(1.0-max(dot(n,v),0.0),3.0);cc+=vec3(0.22,0.3,0.5)*rm*0.2;cc=mix(cc,base*1.25+uEm*0.55,vM.z);cc=mix(cc,vec3(1.0),uFlash);gl_FragColor=vec4(mix(cc,uFogC,fg),al);return;}
 float lit=smoothstep(-0.03,0.05,d);vec3 sh=base*vec3(0.68,0.69,0.9);vec3 c=mix(base,sh,(1.0-lit)*uShade)*uSun;
 vec3 v=normalize(uCam-vW);float rim=pow(1.0-max(dot(n,v),0.0),3.0);c+=vec3(0.2,0.3,0.7)*rim*0.22*uShade;
 c=mix(c,vec3(1.0),uFlash);gl_FragColor=vec4(mix(c,uFogC,fg),al);}`;
@@ -98,21 +105,21 @@ let prog,gprog,loc={},gloc={},U16=true;
 function mkProg(vs,fs){const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o};
  const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p}
 function initGL(){prog=mkProg(VS,FS);try{if(gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)>0)gprog=mkProg(GVS,GFS)}catch(e){gprog=null}
- for(const a of['aP','aN','aC','aU','aW','aJ'])loc[a]=gl.getAttribLocation(prog,a);loc.uSkin=gl.getUniformLocation(prog,'uSkin');loc.uB=gl.getUniformLocation(prog,'uB');
- for(const u of['uVP','uM','uT','uOut','uTex','uUseTex','uUnlit','uIsOut','uShade','uCut','uBlend','uAlpha','uFlash','uCol','uL','uCam','uOutCol','uFogC','uSun','uFog'])loc[u]=gl.getUniformLocation(prog,u);
+ for(const a of['aP','aN','aC','aU','aW','aJ','aK','aM'])loc[a]=gl.getAttribLocation(prog,a);loc.uSkin=gl.getUniformLocation(prog,'uSkin');loc.uB=gl.getUniformLocation(prog,'uB');
+ for(const u of['uVP','uM','uT','uOut','uTex','uUseTex','uUnlit','uIsOut','uShade','uCut','uBlend','uAlpha','uFlash','uCol','uL','uCam','uOutCol','uFogC','uSun','uFog','uPbr','uEm','uTintM'])loc[u]=gl.getUniformLocation(prog,u);
  if(gprog)for(const a of['aB','aV'])gloc[a]=gl.getAttribLocation(gprog,a);if(gprog)for(const u of['uVP','uCen','uT','uTile','uFogC','uSun','uFog','uHN','uHS','uHO','uH'])gloc[u]=gl.getUniformLocation(gprog,u);
  gl.enable(gl.DEPTH_TEST)}
 // geometry buffers (shared between objects); dyn=true keeps CPU copies for skinning
 function geo(g,dyn){const b=(d,u)=>{const x=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,x);gl.bufferData(gl.ARRAY_BUFFER,d instanceof Float32Array?d:new Float32Array(d),u?gl.DYNAMIC_DRAW:gl.STATIC_DRAW);return x};
  if(g.P.length/3>65535)throw new Error('mesh too large: '+g.P.length/3);
  const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,g.I instanceof Uint16Array?g.I:new Uint16Array(g.I),gl.STATIC_DRAW);
- return{P:b(g.P,dyn),N:b(g.N,dyn),C:b(g.C),U:b(g.U),W:b(g.W),J:g.J?b(g.J):null,I:ib,n:g.I.length,nv:g.P.length/3}}
-function freeGeo(ge){for(const k of['P','N','C','U','W','J','I'])if(ge[k])gl.deleteBuffer(ge[k])}
+ const nv=g.P.length/3;return{P:b(g.P,dyn),N:b(g.N,dyn),C:b(g.C),U:b(g.U||new Float32Array(nv*2)),W:b(g.W||new Float32Array(nv)),J:g.J?b(g.J instanceof Float32Array?g.J:Float32Array.from(g.J)):null,Jn:g.J?g.J.length/nv:0,K:g.K?b(g.K):null,M:g.M?b(g.M):null,I:ib,n:g.I.length,nv}}
+function freeGeo(ge){for(const k of['P','N','C','U','W','J','K','M','I'])if(ge[k])gl.deleteBuffer(ge[k])}
 function unobj(m){const i=objs.indexOf(m);if(i>=0){objs.splice(i,1);objsDirty=true}}
 function updGeo(ge,P,N){gl.bindBuffer(gl.ARRAY_BUFFER,ge.P);gl.bufferSubData(gl.ARRAY_BUFFER,0,P);gl.bindBuffer(gl.ARRAY_BUFFER,ge.N);gl.bufferSubData(gl.ARRAY_BUFFER,0,N)}
 const objs=[];let objsDirty=true;
 function obj(ge,o={}){const m={geo:ge,M:o.M||MID,col:o.col||[1,1,1],tex:o.tex||null,out:o.out||0,outCol:o.outCol||[.12,.12,.22],unlit:o.unlit?1:0,shade:o.shade===undefined?1:o.shade,cut:o.cut||0,blend:o.blend?1:0,
-  order:o.order||0,alpha:1,flash:0,vis:true,bones:o.bones||null,pos:o.pos||null,cull:o.cull||0,noOff:o.noOff?1:0,ds:o.ds===undefined?1:o.ds};objs.push(m);objsDirty=true;return m}
+  order:o.order||0,alpha:1,flash:0,vis:true,pbr:o.pbr?1:0,em:o.em||[1,.32,.12],tintM:[1,1,1],bones:o.bones||null,pos:o.pos||null,cull:o.cull||0,noOff:o.noOff?1:0,ds:o.ds===undefined?1:o.ds};objs.push(m);objsDirty=true;return m}
 function texture(src){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
  gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);return t}
 const cnv=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
@@ -126,16 +133,17 @@ function drawAll(VP,cam,L,time,env){
  for(const m of objs){if(!m.vis)continue;
   if(m.cull){const dx=m.pos[0]-env.focus[0],dz=m.pos[2]-env.focus[2];if(dx*dx+dz*dz>m.cull*m.cull)continue}
   const ge=m.geo;if(ge!==lastGeo){const at=(l,b,s)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.vertexAttribPointer(l,s,gl.FLOAT,false,0,0)};
-   at(loc.aP,ge.P,3);at(loc.aN,ge.N,3);at(loc.aC,ge.C,3);at(loc.aU,ge.U,2);at(loc.aW,ge.W,1);if(ge.J){gl.enableVertexAttribArray(loc.aJ);at(loc.aJ,ge.J,1)}else{gl.disableVertexAttribArray(loc.aJ);gl.vertexAttrib1f(loc.aJ,0)}gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ge.I);lastGeo=ge}
+   at(loc.aP,ge.P,3);at(loc.aN,ge.N,3);at(loc.aC,ge.C,3);at(loc.aU,ge.U,2);at(loc.aW,ge.W,1);if(ge.J){gl.enableVertexAttribArray(loc.aJ);at(loc.aJ,ge.J,ge.Jn)}else{gl.disableVertexAttribArray(loc.aJ);gl.vertexAttrib4f(loc.aJ,0,0,0,0)}
+   if(ge.K){gl.enableVertexAttribArray(loc.aK);at(loc.aK,ge.K,4)}else{gl.disableVertexAttribArray(loc.aK);gl.vertexAttrib4f(loc.aK,1,0,0,0)}if(ge.M){gl.enableVertexAttribArray(loc.aM);at(loc.aM,ge.M,4)}else{gl.disableVertexAttribArray(loc.aM);gl.vertexAttrib4f(loc.aM,0,0,0,0)}gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ge.I);lastGeo=ge}
   if(m.bones){gl.uniform1f(loc.uSkin,1);gl.uniform4fv(loc.uB,m.bones)}else gl.uniform1f(loc.uSkin,0);
   gl.uniformMatrix4fv(loc.uM,false,m.M);gl.uniform3fv(loc.uCol,m.col);gl.uniform1f(loc.uUnlit,m.unlit);gl.uniform1f(loc.uShade,m.shade);gl.uniform1f(loc.uCut,m.cut);gl.uniform1f(loc.uBlend,m.blend);gl.uniform1f(loc.uAlpha,m.alpha);gl.uniform1f(loc.uFlash,m.flash);
-  gl.uniform1f(loc.uUseTex,m.tex?1:0);if(m.tex)gl.bindTexture(gl.TEXTURE_2D,m.tex);
+  gl.uniform1f(loc.uPbr,m.pbr);gl.uniform3fv(loc.uEm,m.em);gl.uniform3fv(loc.uTintM,m.tintM);gl.uniform1f(loc.uUseTex,m.tex?1:0);if(m.tex)gl.bindTexture(gl.TEXTURE_2D,m.tex);
   if(m.blend){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);if(!m.noOff){gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-1-m.order,-1-m.order)}else gl.disable(gl.POLYGON_OFFSET_FILL)}
   else{gl.disable(gl.BLEND);gl.depthMask(true);gl.disable(gl.POLYGON_OFFSET_FILL)}
   if(m.ds)gl.disable(gl.CULL_FACE);else{gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK)}
   gl.uniform1f(loc.uIsOut,0);gl.uniform1f(loc.uOut,0);gl.drawElements(gl.TRIANGLES,ge.n,gl.UNSIGNED_SHORT,0);drawn++;
   if(m.out>0&&!m.blend){gl.enable(gl.CULL_FACE);gl.cullFace(gl.FRONT);gl.uniform1f(loc.uIsOut,1);gl.uniform1f(loc.uOut,m.out);gl.uniform3fv(loc.uOutCol,m.outCol);gl.drawElements(gl.TRIANGLES,ge.n,gl.UNSIGNED_SHORT,0)}}
- for(const a of['aP','aN','aC','aU','aW','aJ'])gl.disableVertexAttribArray(loc[a]);
+ for(const a of['aP','aN','aC','aU','aW','aJ','aK','aM'])gl.disableVertexAttribArray(loc[a]);
  gl.disable(gl.BLEND);gl.depthMask(true);gl.disable(gl.POLYGON_OFFSET_FILL);gl.disable(gl.CULL_FACE);
  if(grassGeo&&HTEX&&gprog&&grassGeo.n>0){gl.useProgram(gprog);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.uniform1i(gloc.uH,0);gl.uniform1f(gloc.uHN,HN);gl.uniform1f(gloc.uHS,HS);gl.uniform1f(gloc.uHO,-WS);gl.uniformMatrix4fv(gloc.uVP,false,VP);gl.uniform3fv(gloc.uCen,env.focus);gl.uniform1f(gloc.uT,time);gl.uniform1f(gloc.uTile,grassGeo.tile);
   gl.uniform3fv(gloc.uFogC,env.fogC);gl.uniform3fv(gloc.uSun,env.sun);gl.uniform2f(gloc.uFog,env.fog[0],env.fog[1]);
@@ -145,3 +153,13 @@ function makeGrass(count,tile){const B=new Float32Array(count*9),V=new Float32Ar
  for(let i=0;i<count;i++){const x=rnd()*tile,z=rnd()*tile,r=rnd(),a=rnd()*6.283,w=.045+rnd()*.03;
   for(let k=0;k<3;k++){B[i*9+k*3]=x;B[i*9+k*3+1]=z;B[i*9+k*3+2]=r;V[i*9+k*3]=k===0?-w:k===1?w:0;V[i*9+k*3+1]=k===2?1:0;V[i*9+k*3+2]=a}}
  const mk=d=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);return b};grassGeo={B:mk(B),V:mk(V),n:count*3,tile}}
+
+// ---------- sculpted models (data/models.js, built by tools/sculpt): gzip+base64 -> typed arrays
+const MODEL={};
+async function decodeModels(){if(typeof MODELS==='undefined'||typeof DecompressionStream==='undefined')return;
+ for(const k in MODELS){try{const bin=Uint8Array.from(atob(MODELS[k]),c=>c.charCodeAt(0)),buf=await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(),dv=new DataView(buf);
+  let q=0;const nv=dv.getUint32(0,true),ni=dv.getUint32(4,true);q=8;const lo=[],sc=[];for(let a=0;a<3;a++){lo.push(dv.getFloat32(q,true));q+=4}for(let a=0;a<3;a++){sc.push(dv.getFloat32(q,true));q+=4}
+  const P=new Float32Array(nv*3),N=new Float32Array(nv*3),C=new Float32Array(nv*3),M=new Float32Array(nv*4),J=new Float32Array(nv*4),K=new Float32Array(nv*4),I=new Uint16Array(ni);
+  for(let i=0;i<nv*3;i++){P[i]=lo[i%3]+dv.getUint16(q,true)*sc[i%3];q+=2}for(let i=0;i<nv*3;i++)N[i]=dv.getInt8(q++)/127;for(let i=0;i<nv*3;i++)C[i]=dv.getUint8(q++)/255*1.6;
+  for(let i=0;i<nv*4;i++)M[i]=dv.getUint8(q++)/255;for(let i=0;i<nv*4;i++)J[i]=dv.getUint8(q++);for(let i=0;i<nv*4;i++)K[i]=dv.getUint8(q++)/255;for(let i=0;i<ni;i++){I[i]=dv.getUint16(q,true);q+=2}
+  MODEL[k]={P,N,C,M,J,K,I,nv}}catch(e){console.warn('model',k,e)}}}

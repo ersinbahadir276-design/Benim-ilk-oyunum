@@ -12,7 +12,7 @@ function skinAll(){const A=SK.A;for(const s of skins){const p=s.restP,q=s.restN,
   P[v3]=px;P[v3+1]=py;P[v3+2]=pz;N[v3]=ax;N[v3+1]=ay;N[v3+2]=az}
  updGeo(s.geo,P,N)}}
 function addSkin(g,J,W,o){const nv=g.P.length/3,s={restP:Float32Array.from(g.P),restN:Float32Array.from(g.N),J,W,nv,P:new Float32Array(nv*3),N:new Float32Array(nv*3)};
- s.geo=geo({P:s.restP,N:s.restN,U:g.U,C:g.C,W:g.W,I:g.I},true);skins.push(s);const ob=obj(s.geo,o);pObjs.push(ob);return ob}
+ s.geo=geo({P:s.restP,N:s.restN,U:g.U,C:g.C,W:g.W,M:g.M,I:g.I},true);skins.push(s);const ob=obj(s.geo,o);pObjs.push(ob);return ob}
 const mix3=(a,b,t)=>[lp(a[0],b[0],t),lp(a[1],b[1],t),lp(a[2],b[2],t)];
 let PLD=null;
 // the hero: canonical skeleton from the berserk_armor proportions + our own armour mesh (src/31-hero.js)

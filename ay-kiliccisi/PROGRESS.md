@@ -62,6 +62,26 @@ vuruşu ona da değer, yere düşerse ETKİLEŞ ile kaldırılır.
 - [x] Ana görev zinciri (10 adım) + köyde görev veren NPC'ler (Doran, Hask, Lena, Mira) + 2 yan görev
       (Lena: 3 kurt postu → kurt postu zırh; Mira: Ustanın Mirası, 3 mühür → «Aldren'in Yemini»)
 
+### Aşama 2.5 — görsel kalite (oturum 4, kullanıcı: "modeller silindir olmasın, Play Store kalitesi")
+Yöntem: `tools/sculpt/` — modeller işaretli uzaklık (SDF) "kili" ile heykel gibi yapılır: elipsoid/koni/kutu/kabuk,
+yumuşak birleşim, kesme düzlemleri, gürültü ile kürk/kumaş. Voksel ızgara (5 mm) → yüzey ağları → yüzeye izdüşüm →
+meshoptimizer sadeleştirme (~20k üçgen) → köşe başına: SDF normali, malzeme rengi + gürültü + kenar aşınması +
+oyuk kiri + gömülü gölge (AO), malzeme kanalı (parlaklık, metal, ışıma, renklenebilir), 4 kemik ağırlığı.
+Çıktı: `data/models.js` (gzip+base64), oyunda `decodeModels()` (10-engine.js) açar → `MODEL[ad]`.
+Çalıştırma: `cd tools/sculpt && npm install` (bir kez), sonra `node --max-old-space-size=6000 tools/sculpt/build.mjs [ad]`.
+İskeletler: `test/s-skel.js` oyundan `tools/sculpt/skeletons.json` üretir. İnceleme: `node test/view.js <ad> <çıktı>`.
+Motor: 4 ağırlıklı GPU deri (aJ/aK vec4), malzeme kanalı aM, `obj({pbr:1})` → yeni ışık (gök/zemin ortamı,
+metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
+- [x] Model hattı + görüntüleyici
+- [x] Kahraman Kael heykel modeli oyunda (CPU deri, 58 kemik, ~21k üçgen)
+- [ ] İnsan türleri (köylü ×2, tüccar, muhafız, Doran, Hask, Lena, Mira) — parametrik insan heykeli, A-duruş bağlama
+      (oyunda: bind dönüşleri omuz rZ(±.55), kalça rZ(±.06); rigDraw sonrası kemik = W·Bind⁻¹)
+- [ ] Goblin + büyük goblin (şef), Şeytan Kral
+- [ ] Kurt (tek deri: gövde, kafa, çene, kuyruk, 4×2 bacak; drawWolves parça matrisleri × T(-bind))
+- [ ] Veyra (20 kemik), timsah (16 kemik)
+- [ ] Kılıç heykeli (eşyaya göre boy/genişlik ölçeği + renk)
+- [ ] Dünya: ağaç, kaya, ev (sonra)
+
 ### Aşama 3 — sonraki oturumlar (öncelik sırası)
 - [ ] Şeytan Kral Azgal: savaşılabilir model (aldrich iskelet oranları), Kül Kale bölgesi, 3 aşamalı final
 - [ ] Ejderha 2. aşama (öfkeli) + Kül Kanat sonrası manhwa

@@ -120,7 +120,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  pShadow.M=mtrs([P.x,hAt(P.x,P.z)+.07,P.z],[0,0,0]);const ps=down?.75:.42;pShadow.M[0]*=ps;pShadow.M[10]*=ps;
  for(const w of WATERS)w.alpha=w.alpha;
  streamForest(P.x,P.z,(window.__G&&__G.fastStream)?99:1);for(const f of CAMPFIRES){const k=1+Math.sin(GT.time*13+f.x)*.12;f.o.M=mtrs([f.x,f.y+.1,f.z],[0,GT.time*.7,0]);f.o.M[5]*=k*(1+Math.sin(GT.time*9)*.15)}
- updateAltars(GT.time);if(HERO.glow){const g=P.berserk>0?1.6+.4*Math.sin(GT.time*12):(P.rage>=100?1.1+.3*Math.sin(GT.time*6):1);HERO.glow.col=[g,.25*g,.15*g]}if(HERO.armor&&P.berserk>0){const a=eqItem('armor'),t=a&&a.look?a.look.tint:[1,1,1],k=.25+.15*Math.sin(GT.time*10);HERO.armor.col=[t[0]*(1+k),t[1]*(1-k*.4),t[2]*(1-k*.4)]}else if(HERO.armor){const a=eqItem('armor');HERO.armor.col=a&&a.look?a.look.tint.slice():[1,1,1]}
+ updateAltars(GT.time);if(HERO.glow){const g=P.berserk>0?1.6+.4*Math.sin(GT.time*12):(P.rage>=100?1.1+.3*Math.sin(GT.time*6):1);HERO.glow.col=[g,.25*g,.15*g]}if(HERO.armor){const a=eqItem('armor'),t=HERO.armor.pbr?[1,1,1]:(a&&a.look?a.look.tint:[1,1,1]),k=P.berserk>0?.25+.15*Math.sin(GT.time*10):0;HERO.armor.col=[t[0]*(1+k),t[1]*(1-k*.4),t[2]*(1-k*.4)]}
  skinAll();drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
@@ -190,6 +190,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
+   dbg:{get PLD(){return PLD},humanGeo,crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
    openWin,renderWin,uiTick,maxHP,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}
