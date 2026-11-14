@@ -23,6 +23,16 @@ window.runGameplayTests = async function () {
   G.keys.w = false; sim(0.5); G.edge.crouch = true; sim(0.5); ok('oyuncu: çömelme klibi', P.crouching && P.cur._clip.name === 'Crouch_Idle_Loop', P.cur._clip.name);
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
+  // 1b) saç / ceket eteği yay kemikleri: koşarken savrulur, kemik boyu korunur, NaN yok, durunca yatışır
+  { const S = P.hero.spring; ok('yay kemikleri yüklendi (saç + etek)', S && S.joints.length >= 20 && S.colliders.length >= 10, S ? S.joints.length + ' eklem, ' + S.colliders.length + ' çarpıştırıcı' : 'yok');
+    const tipLen = () => S.joints.map((j) => { j.bone.updateMatrixWorld(true); const p = j.bone.getWorldPosition(j.localTail.clone()); const t = j.localTail.clone().applyMatrix4(j.bone.matrixWorld); return t.distanceTo(p) / j.length; });
+    const rots = () => S.joints.map((j) => j.bone.quaternion.clone());
+    P.x = 0; P.z = 6; P.state = 'move'; G.keys = {}; sim(1.5); const r0 = rots();
+    G.keys.w = true; G.keys.run = true; let maxDev = 0, over = 0; sim(1.2, (i) => { over = Math.max(over, ...S.joints.map((j) => j.bone.quaternion.angleTo(j.initLocalRot) - j.group.maxAngle)); if (i % 6 === 0) { const r = rots(); maxDev = Math.max(maxDev, ...r.map((q, k) => q.angleTo(r0[k]))); } }); G.keys = {};
+    const L = tipLen(); ok('yay kemikleri: depar sırasında saç/etek savrulur', maxDev > 0.05, 'maks sapma ' + maxDev.toFixed(3) + ' rad');
+    ok('yay kemikleri: boy korunur, NaN yok', L.every((x) => Number.isFinite(x) && Math.abs(x - 1) < 0.02), 'min ' + Math.min(...L).toFixed(3) + ' maks ' + Math.max(...L).toFixed(3));
+    sim(3); const settle = Math.max(...rots().map((q, k) => q.angleTo(S.joints[k].initLocalRot))); ok('yay kemikleri: durunca dinlenme pozuna yatışır', settle < 0.3, settle.toFixed(3) + ' rad');
+    ok('yay kemikleri: depar sırasında açı sınırı aşılmaz', over <= 0.01, 'aşım ' + over.toFixed(3)); }
 
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
