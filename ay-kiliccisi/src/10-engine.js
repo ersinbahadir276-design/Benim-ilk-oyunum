@@ -65,20 +65,20 @@ function mirrorX(g){for(let i=0;i<g.P.length;i+=3){g.P[i]=-g.P[i];g.N[i]=-g.N[i]
 function tint(g,c){for(let i=0;i<g.C.length;i+=3){g.C[i]*=c[0];g.C[i+1]*=c[1];g.C[i+2]*=c[2]}return g}
 // ===================== WebGL =====================
 const cv=document.getElementById('c'),gl=cv.getContext('webgl',{antialias:true,alpha:false});
-const VS=`attribute vec3 aP,aN,aC;attribute vec2 aU;attribute float aW;attribute vec4 aJ,aK,aM;uniform mat4 uVP,uM;uniform float uT,uOut,uSkin;uniform vec4 uB[66];
-varying vec3 vW,vN,vC;varying vec2 vU;varying float vD;varying vec4 vM;
+const VS=`attribute vec3 aP,aN,aC;attribute vec2 aU;attribute float aW;attribute vec4 aJ,aK,aM;uniform mat4 uVP,uM;uniform float uT,uOut,uSkin;uniform mediump float uPbr;uniform vec4 uB[66];
+varying vec3 vW,vN,vC;varying vec2 vU;varying float vD,vK;varying vec4 vM;
 vec3 bp(int i,vec4 p){return vec3(dot(uB[i],p),dot(uB[i+1],p),dot(uB[i+2],p));}
 void main(){vec4 lp=vec4(aP,1.0);vec3 ln=aN;vM=aM;if(uSkin>0.5){vec4 n4=vec4(aN,0.0);int i0=int(aJ.x+0.5)*3,i1=int(aJ.y+0.5)*3,i2=int(aJ.z+0.5)*3,i3=int(aJ.w+0.5)*3;
- lp=vec4(bp(i0,lp)*aK.x+bp(i1,lp)*aK.y+bp(i2,lp)*aK.z+bp(i3,lp)*aK.w,1.0);ln=bp(i0,n4)*aK.x+bp(i1,n4)*aK.y+bp(i2,n4)*aK.z+bp(i3,n4)*aK.w;}vec4 w=uM*lp;float s=sin(uT*1.15+w.y*3.0+w.x*2.5)*0.02*aW;w.x+=s;w.z+=s*0.6;vec3 n=(uM*vec4(ln,0.0)).xyz;w.xyz+=n*uOut;vW=w.xyz;vN=n;vU=aU;vC=aC;gl_Position=uVP*w;vD=gl_Position.w;}`;
+ lp=vec4(bp(i0,lp)*aK.x+bp(i1,lp)*aK.y+bp(i2,lp)*aK.z+bp(i3,lp)*aK.w,1.0);ln=bp(i0,n4)*aK.x+bp(i1,n4)*aK.y+bp(i2,n4)*aK.z+bp(i3,n4)*aK.w;}vec4 w=uM*lp;vK=aW;float s=sin(uT*1.15+w.y*3.0+w.x*2.5)*0.02*aW*(1.0-uPbr);w.x+=s;w.z+=s*0.6;vec3 n=(uM*vec4(ln,0.0)).xyz;w.xyz+=n*uOut;vW=w.xyz;vN=n;vU=aU;vC=aC;gl_Position=uVP*w;vD=gl_Position.w;}`;
 const FS=`precision mediump float;uniform sampler2D uTex;uniform float uUseTex,uUnlit,uIsOut,uShade,uCut,uBlend,uAlpha,uFlash,uPbr;uniform vec3 uCol,uL,uCam,uOutCol,uFogC,uSun,uEm,uTintM;uniform vec2 uFog;
-varying vec3 vW,vN,vC;varying vec2 vU;varying float vD;varying vec4 vM;
+varying vec3 vW,vN,vC;varying vec2 vU;varying float vD,vK;varying vec4 vM;
 void main(){vec4 tx=vec4(1.0);if(uUseTex>0.5)tx=texture2D(uTex,vU);if(uCut>0.0&&tx.a<uCut)discard;float al=(uBlend>0.5?tx.a:1.0)*uAlpha;
 float fg=clamp((vD-uFog.x)/(uFog.y-uFog.x),0.0,1.0);
 if(uIsOut>0.5){gl_FragColor=vec4(mix(uOutCol*uSun,uFogC,fg),1.0);return;}
 vec3 base=uCol*vC*tx.rgb;
 if(uUnlit>0.5){gl_FragColor=vec4(mix(base,uFogC,fg*uShade),al);return;}
 vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;float d=dot(n,uL);
-if(uPbr>0.5){base*=mix(vec3(1.0),uTintM,vM.w);float gl2=vM.x,mt=vM.y;vec3 v=normalize(uCam-vW),h=normalize(uL+v);
+if(uPbr>0.5){if(uUseTex>0.5)base=mix(uCol*vC,tx.rgb,tx.a*vK);base*=mix(vec3(1.0),uTintM,vM.w);float gl2=vM.x,mt=vM.y;vec3 v=normalize(uCam-vW),h=normalize(uL+v);
  float lt=mix(clamp((d+0.3)/1.3,0.0,1.0),smoothstep(0.0,0.2,d),0.6);float hm=n.y*0.5+0.5;vec3 amb=mix(vec3(0.34,0.29,0.25),mix(uFogC,vec3(0.56,0.63,0.82),0.55),hm)*uSun;
  vec3 df=base*(amb*0.78+uSun*lt*0.9)*(1.0-mt*0.38);float sp=pow(max(dot(n,h),0.0),mix(6.0,90.0,gl2))*gl2*1.6*lt;vec3 r=reflect(-v,n);float ek=clamp(r.y*0.5+0.5,0.0,1.0);
  vec3 cc=df+mix(vec3(0.06),base*2.3+0.05,mt)*sp*uSun+mix(vec3(0.1,0.09,0.08),vec3(0.62,0.68,0.85),ek)*uSun*mt*(0.15+gl2*0.5)*(base*1.8+0.06);
@@ -161,5 +161,5 @@ async function decodeModels(){if(typeof MODELS==='undefined'||typeof Decompressi
   let q=0;const nv=dv.getUint32(0,true),ni=dv.getUint32(4,true);q=8;const lo=[],sc=[];for(let a=0;a<3;a++){lo.push(dv.getFloat32(q,true));q+=4}for(let a=0;a<3;a++){sc.push(dv.getFloat32(q,true));q+=4}
   const P=new Float32Array(nv*3),N=new Float32Array(nv*3),C=new Float32Array(nv*3),M=new Float32Array(nv*4),J=new Float32Array(nv*4),K=new Float32Array(nv*4),I=new Uint16Array(ni);
   for(let i=0;i<nv*3;i++){P[i]=lo[i%3]+dv.getUint16(q,true)*sc[i%3];q+=2}for(let i=0;i<nv*3;i++)N[i]=dv.getInt8(q++)/127;for(let i=0;i<nv*3;i++)C[i]=dv.getUint8(q++)/255*1.6;
-  for(let i=0;i<nv*4;i++)M[i]=dv.getUint8(q++)/255;for(let i=0;i<nv*4;i++)J[i]=dv.getUint8(q++);for(let i=0;i<nv*4;i++)K[i]=dv.getUint8(q++)/255;for(let i=0;i<ni;i++){I[i]=dv.getUint16(q,true);q+=2}
-  MODEL[k]={P,N,C,M,J,K,I,nv}}catch(e){console.warn('model',k,e)}}}
+  for(let i=0;i<nv*4;i++)M[i]=dv.getUint8(q++)/255;for(let i=0;i<nv*4;i++)J[i]=dv.getUint8(q++);for(let i=0;i<nv*4;i++)K[i]=dv.getUint8(q++)/255;for(let i=0;i<ni;i++){I[i]=dv.getUint16(q,true);q+=2}const U=new Float32Array(nv*2),Wm=new Float32Array(nv);if(q+nv*5<=buf.byteLength){for(let i=0;i<nv*2;i++){U[i]=dv.getUint16(q,true)/65535;q+=2}for(let i=0;i<nv;i++)Wm[i]=dv.getUint8(q++)/255}
+  MODEL[k]={P,N,C,M,J,K,I,U,Wm,nv}}catch(e){console.warn('model',k,e)}}}

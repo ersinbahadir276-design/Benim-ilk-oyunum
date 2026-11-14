@@ -29,9 +29,9 @@ function mm(a, b) { const o = new Float32Array(16); for (let c = 0; c < 4; c++) 
 (async () => { const m = await decode(MODELS[Q.get('m') || 'hero']); cv.width = innerWidth; cv.height = innerHeight; gl.viewport(0, 0, cv.width, cv.height);
   const buf = (d, loc, n) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, d, gl.STATIC_DRAW); const l = gl.getAttribLocation(pr, loc); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, n, gl.FLOAT, false, 0, 0); };
   buf(m.P, 'aP', 3); buf(m.N, 'aN', 3); buf(m.C, 'aC', 3); buf(m.M, 'aM', 4); const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.I, gl.STATIC_DRAW);
-  const yaw = +(Q.get('yaw') || 0.5), pitch = +(Q.get('pitch') || 0.12), dist = +(Q.get('dist') || 3.2), ty = +(Q.get('ty') || 1.1), tx = +(Q.get('tx') || 0);
-  const eye = [tx + Math.sin(yaw) * Math.cos(pitch) * dist, ty + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist];
-  const VP = mm(persp(+(Q.get('fov') || 0.6), cv.width / cv.height, 0.05, 50), look(eye, [tx, ty, 0]));
+  const yaw = +(Q.get('yaw') || 0.5), pitch = +(Q.get('pitch') || 0.12), dist = +(Q.get('dist') || 3.2), ty = +(Q.get('ty') || 1.1), tx = +(Q.get('tx') || 0), tz = +(Q.get('tz') || 0);
+  const eye = [tx + Math.sin(yaw) * Math.cos(pitch) * dist, ty + Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist];
+  const VP = mm(persp(+(Q.get('fov') || 0.6), cv.width / cv.height, 0.05, 50), look(eye, [tx, ty, tz]));
   const u = (n) => gl.getUniformLocation(pr, n); gl.uniformMatrix4fv(u('uVP'), false, VP); gl.uniform3fv(u('uL'), nrm([0.5, 0.75, 0.6])); gl.uniform3fv(u('uCam'), eye); gl.uniform3fv(u('uSun'), [1.05, 1.0, 0.92]);
   gl.uniform3fv(u('uEm'), [1, 0.3, 0.1]); gl.uniform3fv(u('uTintM'), [1, 1, 1]); gl.uniform1f(u('uShow'), +(Q.get('show') || 0));
   gl.enable(gl.DEPTH_TEST); gl.clearColor(0.43, 0.5, 0.6, 1); gl.clear(16640); gl.drawElements(gl.TRIANGLES, m.I.length, gl.UNSIGNED_SHORT, 0); window.done = { nv: m.nv, tris: m.I.length / 3 }; })().catch((e) => { window.done = { err: String(e) }; });

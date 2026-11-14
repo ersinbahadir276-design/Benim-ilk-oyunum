@@ -5,7 +5,7 @@ const here = path.dirname(fileURLToPath(import.meta.url)), root = path.join(here
 const SK = JSON.parse(fs.readFileSync(path.join(here, 'skeletons.json'), 'utf8'));
 const cacheDir = path.join(here, 'cache'); fs.mkdirSync(cacheDir, { recursive: true });
 const only = process.argv.slice(2);
-const list = fs.readdirSync(path.join(here, 'models')).filter((f) => f.endsWith('.mjs')).map((f) => f.slice(0, -4));
+const list = fs.readdirSync(path.join(here, 'models')).filter((f) => f.endsWith('.mjs') && !f.startsWith('_')).map((f) => f.slice(0, -4));
 for (const name of list) {
   if (only.length && !only.includes(name)) continue;
   const t0 = Date.now(); const def = (await import(path.join(here, 'models', name + '.mjs'))).default(SK);

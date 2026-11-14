@@ -18,7 +18,34 @@ function humanDef(k){const s=k.sh||.19,hw=k.hw||.095;return[{p:-1,o:[0,0,0]},{p:
  {p:0,o:[hw,-.04,0]},{p:9,o:[0,-k.th,0]},{p:10,o:[0,-k.sh2,0]},{p:0,o:[-hw,-.04,0]},{p:12,o:[0,-k.th,0]},{p:13,o:[0,-k.sh2,0]},{p:2,o:[0,.02,.06]}]}
 const limbG=(len,r0,r1,col,seg=8)=>tint(tube([[0,.02,0],[0,-len*.5,0],[0,-len,0]],{r:t=>lp(r0,r1,t),seg,n:4}),col);
 // kind: villager|villager2|merchant|guard|goblin|bigGoblin
-function humanGeo(kind){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,sh2:.39,sh:.18,hw:.09,skin:[.92,.75,.62],c1:[.55,.36,.22],c2:[.33,.3,.26],hair:[.3,.2,.12]},
+// painted faces for the sculpted humans (front projection: u=.5+x/(2.4hr), v=.5-y/(2.4hr) around the head centre)
+const FACES={villager:{iris:'#5a3a1c',brow:'#3a2414',lip:'#a0594c'},villager2:{iris:'#3f7a4a',brow:'#7a4a22',lip:'#c2606a',lash:1,blush:1},merchant:{iris:'#4a3020',brow:'#2c2018',lip:'#9a5448',stache:'#2c2018'},
+ guard:{iris:'#4a6080',brow:'#2a2018',lip:'#94564a',stern:1},elder:{iris:'#6a7a8a',brow:'#d8d8d4',lip:'#9a6a60',old:1},smith:{iris:'#3a2a1a',brow:'#1c1410',lip:'#8a4c40',stern:1},
+ hunter:{iris:'#4a7a3a',brow:'#7a3a14',lip:'#b86058',lash:1,freckle:1},priest:{iris:'#4a6aa0',brow:'#a08050',lip:'#c07068',lash:1,blush:1}};
+function faceTex(kind){const F=FACES[kind];if(!F)return null;const c=cnv(256,256),g=c.getContext('2d');g.clearRect(0,0,256,256);
+ const ex=36,ey=127;g.lineCap='round';
+ for(const s of[-1,1]){const x=128+s*ex;// sclera, iris, pupil, highlight, upper lid + lashes, lower lid
+  g.fillStyle='#f4efe8';g.beginPath();g.ellipse(x,ey,13,7.5,0,0,7);g.fill();
+  g.fillStyle=F.iris;g.beginPath();g.arc(x,ey+.5,6.6,0,7);g.fill();g.fillStyle='#0c0806';g.beginPath();g.arc(x,ey+.5,3,0,7);g.fill();
+  g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.arc(x-2.4,ey-2.2,1.7,0,7);g.fill();
+  g.strokeStyle='#241612';g.lineWidth=F.lash?3.2:2.4;g.beginPath();g.ellipse(x,ey+1.5,13.5,9,0,PI*1.06,PI*1.94);g.stroke();
+  if(F.lash){g.lineWidth=1.6;g.beginPath();g.moveTo(x+s*12,ey-4);g.lineTo(x+s*16,ey-7.5);g.stroke()}
+  g.strokeStyle='rgba(60,30,20,.35)';g.lineWidth=1.2;g.beginPath();g.ellipse(x,ey-.5,12,7,0,PI*.15,PI*.85);g.stroke();
+  // brow
+  g.strokeStyle=F.brow;g.lineWidth=F.stern?5.5:4.2;g.beginPath();g.moveTo(x-s*13,108+(F.stern?3:0));g.quadraticCurveTo(x,101,x+s*14,108-(F.stern?2:0));g.stroke();
+  if(F.old){g.strokeStyle='rgba(70,40,30,.35)';g.lineWidth=1.2;for(let k=0;k<3;k++){g.beginPath();g.moveTo(x+s*15,ey+2+k*3);g.lineTo(x+s*21,ey+k*4);g.stroke()}}
+  if(F.blush){g.fillStyle='rgba(220,90,90,.22)';g.beginPath();g.ellipse(x+s*4,ey+22,11,6,0,0,7);g.fill()}
+  if(F.freckle){g.fillStyle='rgba(120,60,30,.45)';for(let k=0;k<6;k++){g.beginPath();g.arc(x+s*(k%3)*4-s*2,ey+17+(k>>1)*3,1,0,7);g.fill()}}}
+ // nose shading and nostrils, lips, chin line
+ g.fillStyle='rgba(90,45,30,.28)';g.beginPath();g.ellipse(128,152,7,3,0,0,7);g.fill();g.fillStyle='rgba(60,25,20,.5)';for(const s of[-1,1]){g.beginPath();g.ellipse(128+s*4.5,151,2,1.3,0,0,7);g.fill()}
+ g.fillStyle=F.lip;g.beginPath();g.moveTo(113,178);g.quadraticCurveTo(128,172,143,178);g.quadraticCurveTo(128,186,113,178);g.fill();
+ g.strokeStyle='rgba(60,20,20,.75)';g.lineWidth=1.6;g.beginPath();g.moveTo(112,178);g.quadraticCurveTo(128,(F.stern?179:181),144,178);g.stroke();
+ if(F.stache){g.fillStyle=F.stache;g.beginPath();g.moveTo(108,176);g.quadraticCurveTo(128,160,148,176);g.quadraticCurveTo(128,170,108,176);g.fill()}
+ if(F.old){g.strokeStyle='rgba(70,40,30,.3)';g.lineWidth=1.4;for(const s of[-1,1]){g.beginPath();g.moveTo(128+s*12,160);g.quadraticCurveTo(128+s*20,172,128+s*18,184);g.stroke()}g.beginPath();g.moveTo(108,96);g.lineTo(148,96);g.moveTo(112,90);g.lineTo(144,90);g.stroke()}
+ return texture(c)}
+function humanGeo(kind){const sg=sculptGeo(kind);if(sg){const K0=humanGeoK(kind),def=humanDef(K0);return{def,geo:sg,K:K0,binv:bindInv(def,HBIND),tex:faceTex(kind)}}return humanGeoOld(kind)}
+function humanGeoK(kind){return humanGeoOld(kind,true)}
+function humanGeoOld(kind,onlyK){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,sh2:.39,sh:.18,hw:.09,skin:[.92,.75,.62],c1:[.55,.36,.22],c2:[.33,.3,.26],hair:[.3,.2,.12]},
   villager2:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.17,hw:.09,skin:[.95,.8,.68],c1:[.36,.45,.32],c2:[.5,.42,.3],hair:[.55,.38,.2],dress:1},
   merchant:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,sh2:.39,sh:.19,hw:.1,skin:[.88,.7,.56],c1:[.45,.2,.25],c2:[.28,.22,.18],hair:[.2,.18,.16],hat:1,belly:1},
   guard:{H:1.0,torso:.44,ua:.28,fa:.26,th:.42,sh2:.41,sh:.2,hw:.1,skin:[.9,.72,.6],c1:[.55,.57,.62],c2:[.22,.3,.6],hair:[.2,.16,.12],helm:1,spear:1},
@@ -29,7 +56,7 @@ function humanGeo(kind){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,s
   priest:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.16,hw:.085,skin:[.96,.84,.76],c1:[.9,.88,.84],c2:[.82,.8,.74],hair:[.75,.62,.4],dress:1,hood:1},
   king:{H:1.0,torso:.66,ua:.5,fa:.46,th:.52,sh2:.5,sh:.38,hw:.18,skin:[.14,.08,.14],c1:[.07,.04,.07],c2:[.1,.05,.09],hair:[.05,.03,.05],big:1,king:1,dress:1},
   bigGoblin:{H:1.0,torso:.62,ua:.48,fa:.44,th:.5,sh2:.48,sh:.36,hw:.17,skin:[.36,.47,.25],c1:[.32,.24,.16],c2:[.26,.2,.14],gob:1,big:1,club:1}}[kind];
- const def=humanDef(K),P=[],sk=K.skin,c1=K.c1,c2=K.c2,big=K.big?1:0,gob=K.gob?1:0;
+ if(onlyK)return K;const def=humanDef(K),P=[],sk=K.skin,c1=K.c1,c2=K.c2,big=K.big?1:0,gob=K.gob?1:0;
  // hips + lower clothing
  P.push([tint(loft([{y:-.1,rx:.1+big*.13,rz:.08+big*.1},{y:0,rx:.14+big*.15,rz:.1+big*.12},{y:.1,rx:.13+big*.16,rz:.1+big*.14}],12,2),c2),0]);
  if(K.dress)P.push([tint(loft([{y:.06,rx:.15,rz:.12},{y:-.2,rx:.2,rz:.17},{y:-.55,rx:.27,rz:.24}],14,2,{fn:a=>1+.04*Math.sin(a*7)}),c1),0]);
@@ -95,9 +122,18 @@ function crocGeo(){const skin=[.27,.35,.2],bel=[.66,.65,.48],dk=[.17,.22,.13],P=
   P.push([merge([tint(tube([[0,0,0],[0,-.12,0],[0,-.22,.02]],{r:t=>lp(.06,.045,t),seg:7,n:3}),skin),tint(sphere(7,5,d=>[d[0]*.07,-.24+d[1]*.025,.06+d[2]*.09],{c:[0,-.24,.06]}),dk)]),l])}
  const g=rigMerge(P);return{def:crocDef(),geo:geo(g)}}
 // ---------- per-character render object (one skinned draw + blob shadow)
-function rigObj(model,o={}){const ob=obj(model.geo,{bones:new Float32Array(MAXB*12),out:o.out||.012,outCol:o.outCol||[.08,.08,.1],shade:.9,pos:[0,0,0],cull:o.cull||140});
- const sh=obj(WG.shadow,{unlit:1,blend:1,col:[0,0,.03],noOff:0,shade:0,pos:[0,0,0],cull:o.cull||140});sh.alpha=.3;return{ob,sh,def:model.def.map(b=>({p:b.p,o:b.o})),rot:[]}}
-function rigDraw(R,x,y,z,yaw,sc,rot,shadowR,extraRoot){const d=R.def;rigFK(d,rot,[x,y,z],yaw,sc,R.ob.bones,extraRoot);R.ob.pos=[x,y,z];R.ob.vis=true;
+// sculpted models are bound in an A-pose (arms out, legs apart): skin matrix = bone world x inverse bind
+const HBIND={3:[0,0,.55],6:[0,0,-.55],9:[0,0,.06],12:[0,0,-.06]};
+function bindInv(def,bind){const WR=[],WP=[],out=new Float32Array(def.length*12);for(let i=0;i<def.length;i++){const b=def[i],e=bind&&bind[i],R=e?eul(e[0],e[1],e[2]):R3I;
+  if(b.p<0){WR[i]=R;WP[i]=[0,0,0]}else{WR[i]=r3m(WR[b.p],R);WP[i]=vadd(WP[b.p],r3v(WR[b.p],b.o))}const m=WR[i],q=i*12;
+  out[q]=m[0];out[q+1]=m[3];out[q+2]=m[6];out[q+4]=m[1];out[q+5]=m[4];out[q+6]=m[7];out[q+8]=m[2];out[q+9]=m[5];out[q+10]=m[8];
+  out[q+3]=-(m[0]*WP[i][0]+m[3]*WP[i][1]+m[6]*WP[i][2]);out[q+7]=-(m[1]*WP[i][0]+m[4]*WP[i][1]+m[7]*WP[i][2]);out[q+11]=-(m[2]*WP[i][0]+m[5]*WP[i][1]+m[8]*WP[i][2])}return out}
+function applyBinv(B,V,n){for(let i=0;i<n;i++){const q=i*12,a=B.slice(q,q+12);for(let r=0;r<3;r++){const o=q+r*4,a0=a[r*4],a1=a[r*4+1],a2=a[r*4+2];
+  B[o]=a0*V[q]+a1*V[q+4]+a2*V[q+8];B[o+1]=a0*V[q+1]+a1*V[q+5]+a2*V[q+9];B[o+2]=a0*V[q+2]+a1*V[q+6]+a2*V[q+10];B[o+3]=a0*V[q+3]+a1*V[q+7]+a2*V[q+11]+a[r*4+3]}}}
+function sculptGeo(name){const m=MODEL[name];return m?geo({P:m.P,N:m.N,C:m.C,M:m.M,J:m.J,K:m.K,U:m.U,W:m.Wm,I:m.I}):null}
+function rigObj(model,o={}){const ob=obj(model.geo,{bones:new Float32Array(MAXB*12),out:model.binv?Math.min(o.out||.012,.006):(o.out||.012),outCol:o.outCol||[.08,.08,.1],shade:.9,pos:[0,0,0],cull:o.cull||140,pbr:model.binv?1:0});
+ const sh=obj(WG.shadow,{unlit:1,blend:1,col:[0,0,.03],noOff:0,shade:0,pos:[0,0,0],cull:o.cull||140});sh.alpha=.3;if(model.tex)ob.tex=model.tex;return{ob,sh,def:model.def.map(b=>({p:b.p,o:b.o})),rot:[],binv:model.binv||null}}
+function rigDraw(R,x,y,z,yaw,sc,rot,shadowR,extraRoot){const d=R.def;rigFK(d,rot,[x,y,z],yaw,sc,R.ob.bones,extraRoot);if(R.binv)applyBinv(R.ob.bones,R.binv,d.length);R.ob.pos=[x,y,z];R.ob.vis=true;
  R.sh.M=mtrs([x,hAt(x,z)+.06,z],[0,yaw,0]);const s=shadowR*sc;R.sh.M[0]*=s;R.sh.M[2]*=s;R.sh.M[8]*=s*1.3;R.sh.M[10]*=s*1.3;R.sh.pos=[x,0,z];R.sh.vis=true}
 function rigHide(R){R.ob.vis=false;R.sh.vis=false}
 // humanoid pose from a small parameter set; q fields default 0

@@ -19,6 +19,12 @@ function buildWolfGeo(){const fur=hex(0x7d8088),bel=hex(0xc2beb4),dk=hex(0x45474
  WG.lo=geo(merge([tint(tube([[0,.02,0],[0,-W_LO+.03,0]],{r:t=>lp(.048,.036,t),seg:7,n:4}),m3(fur,bel,.3)),tint(sphere(8,6,d=>[d[0]*.05,-W_LO+.01+d[1]*.035,.03+d[2]*.07],{c:[0,-W_LO+.01,.03]}),dk)]));
  const sh=G();sh.P.push(0,0,0);sh.N.push(0,1,0);sh.C.push(1,1,1);sh.U.push(0,0);sh.W.push(0);for(let k=0;k<=16;k++){const a=k/16*2*PI;sh.P.push(Math.cos(a),0,Math.sin(a));sh.N.push(0,1,0);sh.C.push(1,1,1);sh.U.push(0,0);sh.W.push(0);if(k)sh.I.push(0,k+1,k)}
  WG.shadow=geo(sh);
+ // sculpted wolf (tools/sculpt/models/wolf.mjs): one skinned mesh; the part matrices below become its 12 bones
+ WG.skin=MODEL.wolf?sculptGeo('wolf'):null;
+ if(WG.skin){const H=[0,.3,.76],J=[0,.245,.86];WG.bind=[[0,0,0],H,J,[0,.1,-.62],...WHIP.map(h=>[h[0],h[1],h[2]]),...WHIP.map(h=>[h[0],h[1]-W_UP,h[2]])];
+  const mk=()=>({M:MID,vis:true,col:[1,1,1],flash:0});
+  for(let i=0;i<WSLOTS;i++){const s={body:mk(),head:mk(),jaw:mk(),tail:mk(),legs:[[mk(),mk()],[mk(),mk()],[mk(),mk()],[mk(),mk()]],sh:obj(WG.shadow,{unlit:1,blend:1,col:[0,0,.03],noOff:0,shade:0}),w:null,
+   sk:obj(WG.skin,{bones:new Float32Array(MAXB*12),out:.006,outCol:[.08,.08,.11],shade:.9,pbr:1,pos:[0,0,0],cull:150})};s.sh.alpha=.32;wslots.push(s)}return}
  for(let i=0;i<WSLOTS;i++){const o={out:.012,outCol:[.1,.1,.14],shade:.9},s={body:obj(WG.body,o),head:obj(WG.head,o),jaw:obj(WG.jaw,o),tail:obj(WG.tail,o),legs:[],sh:obj(WG.shadow,{unlit:1,blend:1,col:[0,0,.03],noOff:0,shade:0}),w:null};
   for(let l=0;l<4;l++)s.legs.push([obj(WG.up,o),obj(WG.lo,o)]);s.sh.alpha=.32;wslots.push(s)}}
 function mkWolf(x,z,o={}){const w={x,z,y:hAt(x,z),yaw:o.yaw===undefined?rnd()*6.28:o.yaw,hx:x,hz:z,st:'idle',t:rr(0,3),hp:60,max:60,sc:o.sc||rr(.94,1.08),ph:rnd()*6,spd:0,tx:x,tz:z,aware:0,ls:[x,z],unseen:0,cd:rr(.3,1.5),
@@ -107,7 +113,7 @@ function updateWolf(w,P,dt,GS){
 // ---------------- rendering: assign the nearest wolves to render slots and pose their parts
 function mroty(m,x,y,z,rx,ry,rz){return mmul(m,mtrs([x,y,z],[rx,ry,rz]))}
 function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Math.hypot(w.x-P.x,w.z-P.z),w]).filter(a=>a[0]<150).sort((a,b)=>a[0]-b[0]).slice(0,WSLOTS);
- for(let i=0;i<WSLOTS;i++){const s=wslots[i],e=near[i],vis=!!e;s.body.vis=s.head.vis=s.jaw.vis=s.tail.vis=s.sh.vis=vis;for(const l of s.legs)l[0].vis=l[1].vis=vis;s.w=vis?e[1]:null;if(!vis)continue;
+ for(let i=0;i<WSLOTS;i++){const s=wslots[i],e=near[i],vis=!!e;if(s.sk)s.sk.vis=vis;s.body.vis=s.head.vis=s.jaw.vis=s.tail.vis=s.sh.vis=vis;for(const l of s.legs)l[0].vis=l[1].vis=vis;s.w=vis?e[1]:null;if(!vis)continue;
   const w=e[1],sc=w.sc,moving=w.spd>.3,run=w.spd>4,bob=moving?Math.abs(Math.sin(w.ph))*(run?.05:.02):Math.sin(time*2+w.ph)*.006,H=(.66-w.crouch*.2+bob)*sc,sink=w.dead>4?(w.dead-4)*.25:0;
   let M=mmul(mtrs([w.x,w.y+H+w.air-sink+(w.roll*-.42*sc),w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll]));
   for(let k=0;k<12;k++)M[k]*=sc;
@@ -121,4 +127,7 @@ function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Mat
     let hh=Math.max(.12,(hw[1]-gy)/sc-lift);const L=W_UP+W_LO,dd=Math.min(Math.hypot(hh,sw),L-.002),ga=Math.atan2(sw,hh),A=Math.acos(cl((W_UP*W_UP+dd*dd-W_LO*W_LO)/(2*W_UP*dd),-1,1)),K=Math.acos(cl((W_UP*W_UP+W_LO*W_LO-dd*dd)/(2*W_UP*W_LO),-1,1));
     au=-(ga+hp[3]*A)-w.pitch;al=hp[3]*(PI-K)}
    o[0].M=mroty(M,hp[0],hp[1],hp[2],au,0,0);o[1].M=mroty(o[0].M,0,-W_UP,0,al,0,0);o[0].col=o[1].col=tintc;o[0].flash=o[1].flash=fl}
+  if(s.sk){const parts=[s.body,s.head,s.jaw,s.tail,s.legs[0][0],s.legs[1][0],s.legs[2][0],s.legs[3][0],s.legs[0][1],s.legs[1][1],s.legs[2][1],s.legs[3][1]],B=s.sk.bones;
+   parts.forEach((p,i)=>{const M=p.M,b=WG.bind[i],q=i*12;for(let r=0;r<3;r++){B[q+r*4]=M[r];B[q+r*4+1]=M[4+r];B[q+r*4+2]=M[8+r];B[q+r*4+3]=M[12+r]-(M[r]*b[0]+M[4+r]*b[1]+M[8+r]*b[2])}});
+   s.sk.vis=true;s.sk.col=tintc;s.sk.flash=fl;s.sk.pos=[w.x,w.y,w.z]}
   const ss=.62*sc*(1-Math.min(.6,w.air*.35));s.sh.M=mtrs([w.x,w.y+.06,w.z],[0,w.yaw,0]);s.sh.M[0]*=ss;s.sh.M[2]*=ss;s.sh.M[8]*=ss*1.6;s.sh.M[10]*=ss*1.6;s.sh.vis=!(w.dead>4)}}

@@ -59,7 +59,7 @@ export async function sculpt(M) {
   const remap = new Int32Array(P.length / 3).fill(-1), V = []; const outI = [];
   for (const q of simp) { if (remap[q] < 0) { remap[q] = V.length / 3; V.push(P[q * 3], P[q * 3 + 1], P[q * 3 + 2]); } outI.push(remap[q]); }
   // attributes
-  const nv = V.length / 3, N = new Float32Array(nv * 3), C = new Float32Array(nv * 3), MT = new Float32Array(nv * 4), J = new Uint8Array(nv * 4), W = new Float32Array(nv * 4);
+  const nv = V.length / 3, UV = new Float32Array(nv * 2), MASK = new Float32Array(nv), N = new Float32Array(nv * 3), C = new Float32Array(nv * 3), MT = new Float32Array(nv * 4), J = new Uint8Array(nv * 4), W = new Float32Array(nv * 4);
   const boneIx = (name) => { const i = M.bones.indexOf(name); if (i < 0) throw new Error(M.name + ': unknown bone ' + name); return i; };
   for (let v = 0; v < nv; v++) {
     const x = V[v * 3], y = V[v * 3 + 1], z = V[v * 3 + 2], g = grad(x, y, z, vox * 0.6); N[v * 3] = g[0]; N[v * 3 + 1] = g[1]; N[v * 3 + 2] = g[2];
@@ -84,6 +84,7 @@ export async function sculpt(M) {
     c = c.map((q) => q * (1 - (mt.dirt ?? 0.35) * cavity)); c = c.map((q) => q * (0.35 + 0.65 * ao));
     C[v * 3] = c[0]; C[v * 3 + 1] = c[1]; C[v * 3 + 2] = c[2];
     MT[v * 4] = mt.gloss ?? 0.2; MT[v * 4 + 1] = mt.metal ?? 0; MT[v * 4 + 2] = mt.em ?? 0; MT[v * 4 + 3] = mt.tint ?? (mt.metal ? 1 : 0);
+    if (M.uv) { const t = M.uv(x, y, z, top); if (t) { UV[v * 2] = t[0]; UV[v * 2 + 1] = t[1]; MASK[v] = t[2] || 0; } }
     // skin weights
     const acc = new Map(), addW = (b, w) => acc.set(b, (acc.get(b) || 0) + w);
     const use = top.rigid ? [near[0]] : near.filter((q) => q[1] - dmin < 0.12);
@@ -91,7 +92,7 @@ export async function sculpt(M) {
     const ws4 = [...acc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4); const tot = ws4.reduce((a, q) => a + q[1], 0);
     ws4.forEach(([b, w], k) => { J[v * 4 + k] = b; W[v * 4 + k] = w / tot; });
   }
-  return { name: M.name, nv, P: new Float32Array(V), N, C, M: MT, J, W, I: new Uint16Array(outI), info: { voxels: NX * NY * NZ, activeBlocks: active, rawTris, tris: outI.length / 3, verts: nv } };
+  return { name: M.name, nv, P: new Float32Array(V), N, C, M: MT, J, W, UV, MASK, I: new Uint16Array(outI), info: { voxels: NX * NY * NZ, activeBlocks: active, rawTris, tris: outI.length / 3, verts: nv } };
 }
 
 // compact binary: header + int16 positions, int8 normals, u8 colour, u8 material, u8 joints, u8 weights, u16 index
@@ -99,7 +100,7 @@ export function pack(m) {
   const nv = m.nv, ni = m.I.length; let lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
   for (let v = 0; v < nv; v++) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], m.P[v * 3 + a]); hi[a] = Math.max(hi[a], m.P[v * 3 + a]); }
   const sc = lo.map((l, a) => (hi[a] - l) / 65535 || 1);
-  const size = 8 + 24 + nv * (6 + 3 + 3 + 4 + 4 + 4) + ni * 2, buf = new ArrayBuffer(size + (size % 4 ? 4 - size % 4 : 0)), dv = new DataView(buf); let q = 0;
+  const size = 8 + 24 + nv * (6 + 3 + 3 + 4 + 4 + 4) + ni * 2 + nv * 5, buf = new ArrayBuffer(size + (size % 4 ? 4 - size % 4 : 0)), dv = new DataView(buf); let q = 0;
   dv.setUint32(q, nv, true); q += 4; dv.setUint32(q, ni, true); q += 4; for (let a = 0; a < 3; a++) { dv.setFloat32(q, lo[a], true); q += 4; } for (let a = 0; a < 3; a++) { dv.setFloat32(q, sc[a], true); q += 4; }
   for (let i = 0; i < nv * 3; i++) { dv.setUint16(q, Math.round((m.P[i] - lo[i % 3]) / sc[i % 3]), true); q += 2; }
   for (let i = 0; i < nv * 3; i++) dv.setInt8(q++, Math.round(Math.max(-1, Math.min(1, m.N[i])) * 127));
@@ -108,5 +109,7 @@ export function pack(m) {
   for (let i = 0; i < nv * 4; i++) dv.setUint8(q++, m.J[i]);
   for (let v = 0; v < nv; v++) { const w = [0, 1, 2, 3].map((k) => Math.round(m.W[v * 4 + k] * 255)); w[0] += 255 - (w[0] + w[1] + w[2] + w[3]); for (let k = 0; k < 4; k++) dv.setUint8(q++, Math.max(0, w[k])); }
   for (let i = 0; i < ni; i++) { dv.setUint16(q, m.I[i], true); q += 2; }
+  for (let i = 0; i < nv * 2; i++) { dv.setUint16(q, Math.round(Math.max(0, Math.min(1, m.UV[i])) * 65535), true); q += 2; }
+  for (let i = 0; i < nv; i++) dv.setUint8(q++, Math.round(Math.max(0, Math.min(1, m.MASK[i])) * 255));
   return new Uint8Array(buf);
 }
