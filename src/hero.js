@@ -110,7 +110,14 @@ export async function loadHero(base = 'assets/models/') {
   root.add(model); toonify(model);
   root.updateMatrixWorld(true);
   const clips = { ...retarget(a1.scene, a1.animations, root), ...retarget(a2.scene, a2.animations, root) };
-  // T-poz dinlenme durumuna dön
+  // Darbe tepkisi: Hit_Chest yalnızca üst gövdede, kendi ilk karesine göre katmanlı (additive) oynatılır;
+  // böylece koşu/yürüme/saldırı sürerken gövde sarsılır, bacaklar animasyonuna devam eder.
+  if (clips.Hit_Chest) {
+    const upper = /(Spine|Chest|Neck|Head|Shoulder|UpperArm|LowerArm|Hand)\.quaternion$/;
+    const c = clips.Hit_Chest.clone(); c.name = 'Hit_Chest_Add';
+    c.tracks = c.tracks.filter((t) => upper.test(t.name));
+    clips.Hit_Chest_Add = THREE.AnimationUtils.makeClipAdditive(c, 0);
+  }
   const sword = makeSword();
   const hand = root.getObjectByName('J_Bip_R_Hand');
   sword.position.set(-0.07, -0.02, 0.02); sword.rotation.set(Math.PI / 2, 0, 0);

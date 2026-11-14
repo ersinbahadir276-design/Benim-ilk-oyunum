@@ -73,6 +73,42 @@ window.runGameplayTests = async function () {
     P.x = 0; P.z = 6; P.yaw = Math.PI; P.hp = P.hpMax;
   }
 
+  // 1d) ayak IK'si: eğimde ayaklar zemine oturur; darbe tepkisi: katmanlı klip + yönlü savrulma + geri itilme
+  {
+    const R = P.hero.root, IK = P.ik, gnd = IK.ground, feet = ['J_Bip_L_Foot', 'J_Bip_R_Foot'].map((n) => R.getObjectByName(n));
+    const clear = () => feet.map((f) => { const v = f.getWorldPosition(new THREE_V()); return v.y - gnd(v.x, v.z); });
+    let bx = 0, bz = 0, bg = 0; // test için ~30° eğimli bir yer bul
+    for (let x = -60; x <= 60; x += 3) for (let z = -120; z <= -40; z += 3) { const s = Math.hypot(gnd(x + 0.5, z) - gnd(x - 0.5, z), gnd(x, z + 0.5) - gnd(x, z - 0.5)); if (s > bg && s < 0.6) { bg = s; bx = x; bz = z; } }
+    const yaw = Math.atan2(gnd(bx + 0.5, bz) - gnd(bx - 0.5, bz), gnd(bx, bz + 0.5) - gnd(bx, bz - 0.5)) + Math.PI / 2; // eğime yan dur
+    const moved = G.animals.filter((x) => Math.hypot(x.x - bx, x.z - bz) < 30 || Math.hypot(x.x, x.z - 6) < 15).map((x) => [x, x.x, x.z]); moved.forEach(([x]) => { x.x += 300; });
+    const stand = (x, z, y, en) => { IK.enabled = en; IK.reset(); P.x = x; P.z = z; P.y = gnd(x, z); P.state = 'move'; P.speed = 0; P.hp = P.hpMax; G.keys = {}; G.edge = {}; sim(1.5, () => { P.yaw = y; }); return clear(); };
+    const flat = stand(0, 6, 0, true), off = stand(bx, bz, yaw, false), on = stand(bx, bz, yaw, true);
+    const ref = (flat[0] + flat[1]) / 2;
+    ok('ayak IK: eğimde iki ayak da zemine oturur', on.every((c) => Math.abs(c - ref) < 0.03) && Math.abs(off[0] - off[1]) > 0.08,
+      `eğim=${(Math.atan(bg) * 57.3).toFixed(0)}° IK yok=${off.map((c) => c.toFixed(2))} IK=${on.map((c) => c.toFixed(2))} düz=${ref.toFixed(2)}`);
+    ok('ayak IK: kalça aşağıdaki ayağa göre alçalır', IK.debug.pelvis < -0.03 && IK.debug.pelvis > -0.41, IK.debug.pelvis.toFixed(3));
+    const leg = (S) => R.getObjectByName(`J_Bip_${S}_LowerLeg`).getWorldPosition(new THREE_V()).distanceTo(R.getObjectByName(`J_Bip_${S}_Foot`).getWorldPosition(new THREE_V()));
+    const finite = ['L', 'R'].every((S) => ['UpperLeg', 'LowerLeg', 'Foot'].every((b) => Number.isFinite(R.getObjectByName(`J_Bip_${S}_${b}`).quaternion.w)));
+    ok('ayak IK: NaN yok, baldır boyu korunur', finite && Math.abs(leg('L') - leg('R')) < 0.005, leg('L').toFixed(3) + '/' + leg('R').toFixed(3));
+    P.x = 0; P.z = 6; P.y = gnd(0, 6); sim(0.5); let mw = 1, my = 0; G.edge.jump = true; sim(1.2, () => { my = Math.max(my, P.y - gnd(P.x, P.z)); if (P.y > gnd(P.x, P.z) + 0.5) mw = Math.min(mw, IK.weight); });
+    ok('ayak IK: havadayken devre dışı', my > 0.5 && mw < 0.3, 'ağırlık=' + mw.toFixed(2) + ' y=' + my.toFixed(2)); sim(1.5);
+    IK.enabled = true; P.x = 0; P.z = 6; P.y = gnd(0, 6); P.yaw = 0; P.state = 'move'; P.speed = 0; sim(1);
+
+    // darbe: önden gelen saldırgan (sahte), oyuncu geriye itilir, göğüs saldırganın tersine eğilir
+    const chest = R.getObjectByName('J_Bip_C_Head'), hipsB = R.getObjectByName('J_Bip_C_Hips');
+    const lean = () => { const a = chest.getWorldPosition(new THREE_V()), b = hipsB.getWorldPosition(new THREE_V()); return a.sub(b).setY(0); };
+    const l0 = lean(), z0 = P.z, clip0 = P.cur._clip.name;
+    P.iframes = 0; P.damage(12, { x: P.x, z: P.z + 2 });
+    let maxBack = 0, addOn = false; sim(0.25, () => { maxBack = Math.max(maxBack, -(lean().z - l0.z)); addOn = addOn || (P.hitAct?.isRunning() && P.hitAct.getEffectiveWeight() > 0.3); });
+    ok('darbe tepkisi: katmanlı Hit_Chest oynar, yürüme klibi bozulmaz', addOn && P.hero.clips.Hit_Chest_Add?.blendMode === 2501 && P.cur._clip.name === clip0, clip0 + ' → ' + P.cur._clip.name);
+    ok('darbe tepkisi: gövde saldırganın tersine savrulur', maxBack > 0.03, 'geri eğilme=' + maxBack.toFixed(3) + ' m');
+    ok('darbe tepkisi: hafif geri itilme', z0 - P.z > 0.1 && z0 - P.z < 1, 'itilme=' + (z0 - P.z).toFixed(2) + ' m');
+    sim(1.2); const l1 = lean();
+    ok('darbe tepkisi: gövde toparlanır (birikme yok)', l1.distanceTo(l0) < 0.03 && Math.abs(P.kbx) + Math.abs(P.kbz) < 0.01, 'fark=' + l1.distanceTo(l0).toFixed(3));
+    moved.forEach(([x, ox, oz]) => { x.x = ox; x.z = oz; });
+    P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax; P.iframes = 0;
+  }
+
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
   a = find('rabbit'); freeze(a); put(a, 1.2); P.crouching = false; ok('tavşan: çömelmeden evcilleşmez', a.tryTame() === false);

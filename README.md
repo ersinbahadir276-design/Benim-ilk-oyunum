@@ -58,14 +58,14 @@ Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oy
 
 - Gönderilen arşivde **yalnızca ejderha** vardı. Diğer 12 tür el yapımı sanatçı modeli değil, kodla üretilmiş düşük poligonlu modellerdir; görsel kaliteleri ejderha ve kahramanın altındadır. Bu türler için GLB gönderilirse aynı `GLBCreature` sınıfıyla (ejderha/tilki gibi) bağlanır.
 - Ejderhanın `fly2` klibi sabit bir sinematik uçuş yolu içerdiği için oyunda kullanılmıyor; ejderha yerde yürür ve savaşır. Özgün 46 MB dosya, oyunda kullanılmayan 21 klip çıkarılarak 11 MB'a indirildi (`tools/build-assets.mjs`); ağ ve dokulara dokunulmadı, yalnızca malzeme tanımı three.js'in okuyabildiği PBR biçimine çevrildi.
-- Prosedürel hayvanlarda ayak–zemin kilidi (IK) yok; hızlı dönüşlerde ayaklar hafif kayabilir.
+- Kahramanda eğimli arazi için ayak IK'si var (`src/ik.js`); prosedürel hayvanlarda ayak–zemin kilidi henüz yok, hızlı dönüşlerde ayakları hafif kayabilir.
 - Kahramanın saç ve paça/etek kumaşı VRM yay kemikleriyle (`src/springbone.js`) sallanır. Dosyadaki kumaş ayarları sürtünmesiz olduğu için oyunda sürtünme, hafif yerçekimi ve açı sınırı eklendi; bu yüzden hareket VRoid/UniVRM'dekinden birebir aynı değildir. Ağız hareketi yalnızca bağırış/nefes için; konuşma (dudak senkronu) yok. Ata binme ve kayıt (save) sistemi henüz yok.
 - Depoda daha önce bir oyun ya da kız karakter bulunmuyordu (depo boştu); oyun sıfırdan kuruldu, kaldırılacak bir karakter yoktu.
 
 ## Test
 
 - `test/model-viewer.html?m=wolf` — her modeli ve animasyonunu tek tek oynatır (kahramanda `&f=joy` ifade, `&look=1` kameraya bakış) (`m=hero`, `dragon`, `fox`, `rabbit`, `deer`, `horse`, `bear`, `lion`, `tiger`, `crocodile`, `snake`, `eagle`, `shadowbeast`, `ogre`).
-- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 65 oynanış testi: oyuncu animasyon durumları, saç/kumaş yay kemikleri, yüz ifadeleri ve bakış, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama.
+- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 73 oynanış testi: oyuncu animasyon durumları, saç/kumaş yay kemikleri, yüz ifadeleri ve bakış, eğimde ayak IK'si, darbe tepkisi, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama.
 
 ## Geliştirme planı
 

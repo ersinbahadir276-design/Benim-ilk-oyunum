@@ -1,6 +1,9 @@
 // Oyuncu: erkek kahramanın hareketi, dövüşü ve animasyon durum makinesi.
 import * as THREE from 'three';
 import { floorY, waterDepth } from './world.js';
+import { FootIK } from './ik.js';
+
+const _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
 
 const COMBO = ['Sword_Regular_A', 'Sword_Regular_B', 'Sword_Regular_C'];
 export class Player {
@@ -8,6 +11,9 @@ export class Player {
     this.g = game; this.hero = hero; this.x = 0; this.z = 4; this.y = floorY(0, 4, 0.95); this.vy = 0; this.yaw = Math.PI; this.speed = 0;
     this.hpMax = 100; this.hp = 100; this.stamina = 100; this.alive = true; this.crouching = false; this.radius = 0.4; this.alt = 0;
     this.state = 'move'; this.stT = 0; this.combo = 0; this.queued = false; this.hitDone = false; this.iframes = 0; this.cur = null; this.hurt = 0;
+    this.kbx = 0; this.kbz = 0; this.hitT = 9; this.hitAmp = 0; this.hitDir = new THREE.Vector3(0, 0, 1);
+    this.ik = new FootIK(hero.root, (x, z) => floorY(x, z, 0.95));
+    this.spineB = ['J_Bip_C_Spine', 'J_Bip_C_Chest', 'J_Bip_C_UpperChest'].map((n) => hero.root.getObjectByName(n)).filter(Boolean);
     game.scene.add(hero.root); this.play('Idle_Loop');
   }
   play(name, { fade = 0.18, once = false, ts = 1 } = {}) {
@@ -21,9 +27,38 @@ export class Player {
   damage(n, from) {
     if (!this.alive || this.iframes > 0) return;
     this.hp -= n; this.hurt = 0.35; this.g.floatText(`-${Math.round(n)}`, this, '#ff5a5a'); this.g.ui.hurtFlash();
+    if (this.hp > 0) this.hitReact(n, from);
     if (this.hp <= 0) { this.hp = 0; this.alive = false; this.state = 'dead'; this.stT = 4.5; this.crouching = false; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Death01', { once: true, fade: 0 }); this.g.msg('Yenildin... Kampta yeniden doğacaksın.'); }
   }
-  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); this.hero.spring?.reset(); this.hero.face?.reset(); for (const a of this.g.animals) if (a.target === this) a.target = null; }
+  // Darbe tepkisi: üst gövdeye katmanlı Hit_Chest klibi + saldırganın tersine yönlü gövde savrulması + hafif geri itilme.
+  hitReact(n, from) {
+    const s = Math.min(1, 0.45 + n / 30);
+    if (from && from.x != null) this.hitDir.set(this.x - from.x, 0, this.z - from.z); else this.hitDir.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    if (this.hitDir.lengthSq() < 1e-6) this.hitDir.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    this.hitDir.normalize(); this.hitT = 0; this.hitAmp = 0.38 * s;
+    const push = (this.state === 'attack' ? 1.2 : 2.6) * s; this.kbx = this.hitDir.x * push; this.kbz = this.hitDir.z * push;
+    const clip = this.hero.clips.Hit_Chest_Add;
+    if (clip && this.state !== 'roll') {
+      // önden gelen darbede klip tam, arkadan gelende yarı ağırlıkta (klip göğse önden vuruşu gösterir)
+      const front = -(Math.sin(this.yaw) * this.hitDir.x + Math.cos(this.yaw) * this.hitDir.z);
+      const a = this.hero.mixer.clipAction(clip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = false;
+      a.reset(); a.timeScale = 0.85; a.setEffectiveWeight(s * (front > 0 ? 1 : 0.5)); a.play(); this.hitAct = a;
+    }
+  }
+  // Mixer'dan sonra: darbe yönüne göre omurga zincirine dünya uzayında eğilme (yükseliş 70 ms, sönüm ~0.4 sn).
+  applyFlinch(dt) {
+    this.hitT += dt; const t = this.hitT; if (t > 0.8 || !this.alive) return;
+    const env = t < 0.07 ? Math.sin((t / 0.07) * Math.PI / 2) : Math.exp(-(t - 0.07) * 7);
+    const ang = this.hitAmp * env; if (ang < 1e-3) return;
+    _v.crossVectors(UP, this.hitDir).normalize();
+    const share = [0.25, 0.35, 0.4];
+    this.spineB.forEach((b, i) => {
+      _q.setFromAxisAngle(_v, ang * share[i]);
+      b.getWorldQuaternion(_q2).premultiply(_q);
+      b.parent.getWorldQuaternion(_q).invert(); b.quaternion.copy(_q.multiply(_q2)); b.updateMatrixWorld(true);
+    });
+  }
+  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); this.hero.spring?.reset(); this.hero.face?.reset(); this.ik.reset(); this.kbx = this.kbz = 0; this.hitT = 9; for (const a of this.g.animals) if (a.target === this) a.target = null; }
   busy(name, time) { this.state = name; this.stT = time; }
   interactAnim(kneel) { if (this.state !== 'move') return; this.crouching && !kneel ? 0 : this.busy('interact', this.play(kneel ? 'PickUp_Kneeling' : 'Interact', { once: true, ts: 1.6 }) * 0.9); }
 
@@ -62,6 +97,12 @@ export class Player {
       if (waterDepth(nx, nz) < 1.15) { this.x = nx; this.z = nz; }
       const p = { x: this.x, z: this.z }; g.world.collide(p, this.radius); this.x = p.x; this.z = p.z;
     } else if (!(mvx || mvz)) this.speed *= Math.max(0, 1 - dt * 12);
+    // darbe geri itmesi (oyuncu hızını değiştirmez; evcilleştirmedeki "kıpırdama" kontrolünü bozmaz)
+    if (Math.abs(this.kbx) + Math.abs(this.kbz) > 0.01) {
+      const nx = this.x + this.kbx * dt, nz = this.z + this.kbz * dt;
+      if (waterDepth(nx, nz) < 1.15) { this.x = nx; this.z = nz; const p = { x: this.x, z: this.z }; g.world.collide(p, this.radius); this.x = p.x; this.z = p.z; }
+      const f = Math.max(0, 1 - dt * 9); this.kbx *= f; this.kbz *= f;
+    }
     // dikey
     this.vy -= 20 * dt; this.y += this.vy * dt; const gr = floorY(this.x, this.z, 0.95);
     if (this.y <= gr) { this.y = gr; this.vy = 0; if (this.state === 'jump' && this.airT > 0.1) { this.state = 'land'; this.stT = this.play('Jump_Land', { once: true, ts: 1.8, fade: 0.1 }) * 0.55; } }
@@ -80,6 +121,8 @@ export class Player {
     this.hero.mixer.update(dt);
     const r = this.hero.root; r.position.set(this.x, this.y, this.z); r.rotation.y = this.yaw;
     r.updateMatrixWorld(true);
+    this.applyFlinch(dt);
+    this.ik.update(dt, this.alive && (this.state === 'move' || this.state === 'attack' || this.state === 'interact' || this.state === 'land') && this.y <= gr + 0.02);
     if (this.hero.face) this.updateFace(dt);
     if (this.hero.spring) this.hero.spring.update(dt);
   }
