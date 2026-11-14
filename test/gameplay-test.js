@@ -2,6 +2,7 @@
 // Kullanım: test/run-tests.mjs (Playwright) ya da konsolda:  await runGameplayTests()
 window.runGameplayTests = async function () {
   const G = window.GAME, P = G.player, out = [];
+  const THREE_V = P.hero.root.position.constructor; // three.js Vector3 (modül dışından erişim)
   const real = G.running; G.running = false; // gerçek zamanlı döngüyü durdur, elle ilerlet
   const sim = (sec, each) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { if (each && each(i) === false) break; G.update(1 / 30); } };
   const ok = (name, cond, extra = '') => out.push({ name, pass: !!cond, extra: String(extra) });
@@ -23,6 +24,22 @@ window.runGameplayTests = async function () {
   G.keys.w = false; sim(0.5); G.edge.crouch = true; sim(0.5); ok('oyuncu: çömelme klibi', P.crouching && P.cur._clip.name === 'Crouch_Idle_Loop', P.cur._clip.name);
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
+
+  // 1b) yay kemikleri: saç ve ceket eteği harekete tepki verir, NaN üretmez, durunca yatışır
+  {
+    const S = P.hero.spring, J = S ? S.joints : [];
+    ok('kahraman: yay kemikleri yüklendi (saç + ceket)', J.length >= 20 && J.some((j) => /Hair/.test(j.bone.name)) && J.some((j) => /Coat/.test(j.bone.name)), J.length);
+    const dev = () => J.reduce((m, j) => Math.max(m, j.bone.quaternion.angleTo(j.initLocalQ)), 0);
+    const finite = () => J.every((j) => Number.isFinite(j.bone.quaternion.x) && Number.isFinite(j.curTail.x));
+    P.x = 0; P.z = 6; S.reset(); G.keys.w = true; G.keys.run = true; let mx = 0; sim(1.2, () => { mx = Math.max(mx, dev()); });
+    G.keys.w = false; G.keys.run = false;
+    ok('kahraman: koşarken saç/etek sallanır', mx > 0.05 && finite(), 'maks açı=' + mx.toFixed(3));
+    sim(4); const rest = dev();
+    ok('kahraman: durunca yay kemikleri yatışır', rest < mx * 0.6 && finite(), 'açı=' + rest.toFixed(3));
+    const lens = J.map((j) => S.tailWorld(j).distanceTo(new THREE_V().setFromMatrixPosition(j.bone.matrixWorld)) / j.length);
+    ok('kahraman: kemik uzunlukları korunur', lens.every((r) => Math.abs(r - 1) < 0.02), Math.max(...lens.map((r) => Math.abs(r - 1))).toFixed(4));
+    P.x = 0; P.z = 6;
+  }
 
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
@@ -66,7 +83,7 @@ window.runGameplayTests = async function () {
   release();
   // 16) kartal: yem bırak, iner ve yer
   a = find('eagle'); const ex = a.x, ez = a.z; for (let i = 0; i < 2; i++) { P.x = a.x + 6; P.z = a.z; G.inv.sel = 'meat'; P.yaw = 0; G.dropBait(); P.x += 12; const t0 = a.trust; sim(60, () => a.trust === t0 && !a.tamed); }
-  ok('kartal: yere iner, 2 yemle evcilleşir', a.tamed, 'trust=' + a.trust + ' alt=' + a.alt.toFixed(1)); sim(5); ok('kartal yoldaş: oyuncunun üstünde uçar', a.alt > 2 && a.dist(P) < 12, 'alt=' + a.alt.toFixed(1) + ' d=' + a.dist(P).toFixed(1));
+  ok('kartal: yere iner, 2 yemle evcilleşir', a.tamed, 'trust=' + a.trust + ' alt=' + a.alt.toFixed(1)); sim(5); ok('kartal yoldaş: oyuncunun üstünde uçar', a.alt > 2 && a.dist(P) < 12, 'alt=' + a.alt.toFixed(1) + ' d=' + a.dist(P).toFixed(1) + ' st=' + a.state + ' tamed=' + a.tamed + ' dead=' + a.dead + ' stay=' + a.stay + ' hedef=' + (a.target ? a.target.kind || 'oyuncu' : '-'));
   // 17) gölge pençe + ejderha
   a = find('shadowbeast'); put(a, 2.4); guard = 0; while (a.frac > 0.3 && guard++ < 60) a.damage(10, P); ok('gölge pençe: ay taşıyla evcilleşir', a.tryTame() && a.tamed);
   a = find('dragon'); put(a, 5); guard = 0; while (a.frac > 0.2 && guard++ < 200) a.damage(10, P); ok('ejderha: mücevherle evcilleşir', a.tryTame() && a.tamed, a.frac.toFixed(2));

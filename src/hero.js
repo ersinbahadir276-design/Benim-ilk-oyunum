@@ -2,6 +2,7 @@
 // Klipler kaynak iskeletten (UE tarzı manken) kahramanın iskeletine çalışma anında aktarılır (retarget).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { springBonesFromVRM0 } from './springbone.js';
 
 const SIDE = (l, r) => (s) => (s === 'l' ? l : r);
 const MAP = { pelvis: 'J_Bip_C_Hips', spine_01: 'J_Bip_C_Spine', spine_02: 'J_Bip_C_Chest', spine_03: 'J_Bip_C_UpperChest', neck_01: 'J_Bip_C_Neck', Head: 'J_Bip_C_Head' };
@@ -114,5 +115,25 @@ export async function loadHero(base = 'assets/models/') {
   sword.position.set(-0.07, -0.02, 0.02); sword.rotation.set(Math.PI / 2, 0, 0);
   hand.add(sword);
   const mixer = new THREE.AnimationMixer(root);
-  return { root, model, clips, mixer, sword, head: root.getObjectByName('J_Bip_C_Head') };
+  // saç ve ceket eteği için yay kemikleri (VRM secondaryAnimation)
+  root.updateMatrixWorld(true);
+  // VRM dosyasında ceket eteği için çarpıştırıcı yok: bacaklardan geçmesin diye uyluklara küreler eklenir
+  const legColliders = (bones) => {
+    if (!bones.some((b) => /CoatSkirt/.test(b.name))) return [];
+    const out = [];
+    for (const S of ['L', 'R']) {
+      const up = root.getObjectByName(`J_Bip_${S}_UpperLeg`), knee = root.getObjectByName(`J_Bip_${S}_LowerLeg`);
+      if (!up || !knee) continue;
+      for (const t of [0.22, 0.5, 0.78]) out.push({ node: up, offset: knee.position.clone().multiplyScalar(t), radius: 0.075 - t * 0.02 });
+    }
+    return out;
+  };
+  // Dosyadaki ceket ayarı sürtünmesiz ve yerçekimsiz (drag 0, gravity 0): koşarken sönümlenmeden döner.
+  // Kumaş gibi davranması için hafif yerçekimi, en az sürtünme ve salınım açısı sınırı verilir; saça da açı sınırı.
+  const tune = (g, bones) => {
+    if (bones.some((b) => /CoatSkirt/.test(b.name))) { g.drag = Math.max(g.drag, 0.25); g.gravityPower = Math.max(g.gravityPower, 0.25); g.gravityDir.set(0, -1, 0); g.maxAngle = 1.05; }
+    else { g.drag = Math.max(g.drag, 0.3); g.maxAngle = 0.9; }
+  };
+  const spring = await springBonesFromVRM0(vrm, { center: root, extraColliders: legColliders, tune });
+  return { root, model, clips, mixer, sword, spring, head: root.getObjectByName('J_Bip_C_Head') };
 }
