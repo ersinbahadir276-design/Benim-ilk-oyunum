@@ -6,13 +6,14 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
+import { solveTwoBone, setWorldQuat } from './ik.js';
 
 const PI = Math.PI, TAU = PI * 2;
 const C = (h) => new THREE.Color(h);
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const ease = (x) => x * x * (3 - 2 * x);
-const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _fw = new THREE.Vector3(), _qc = new THREE.Quaternion();
 
 /* ------------------------------------------------------------------ TÜR TABLOSU */
 // tame.steps: evcilleştirme için gereken başarılı adım sayısı. Yöntemler taming.js içinde uygulanır.
@@ -20,7 +21,9 @@ export const SPECIES = {
   rabbit: { name: 'Tavşan', kind: 'quad', hp: 18, dmg: 0, walk: 1.6, run: 8.5, temper: 'prey', diet: 'herb', sense: 11, drops: { meat: 1 }, tame: { method: 'sneakFeed', item: 'carrot', steps: 1, hint: 'Çömelerek (C) yaklaş ve havuç ver' },
     len: 0.42, h: 0.2, bodyR: 0.115, width: 0.95, color: 0xb9a48c, belly: 0xf1ebe0, legR: 0.03, neckLen: 0.07, neckAng: 0.9, headR: 0.075, snoutLen: 0.05, snoutR: 0.045, ears: 'long', tail: { type: 'stub', r: 0.05, color: 0xffffff }, gait: 'hop', hindBoost: 1.5, cadence: 1.5, profile: [[-0.5, 0], [-0.46, 0.7], [-0.25, 1.05], [0.05, 0.95], [0.3, 0.75], [0.46, 0.55], [0.5, 0]] },
   fox: { name: 'Tilki', kind: 'glb', model: 'fox', hp: 40, dmg: 5, walk: 1.5, run: 7.5, temper: 'shy', diet: 'omni', sense: 14, drops: { meat: 1 }, tame: { method: 'bait', item: ['meat', 'berry'], steps: 2, hint: 'Yere et ya da böğürtlen bırak (G) ve 7 m geri çekil' },
-    scale: 0.0115, len: 1.1, h: 0.55, viewSize: 1.2, clips: { idle: 'Survey', walk: 'Walk', run: 'Run' } },
+    scale: 0.0115, len: 1.1, h: 0.55, viewSize: 1.2, clips: { idle: 'Survey', walk: 'Walk', run: 'Run' },
+    // ayak IK'si zincirleri: [üst, orta, uç] — uç kemiğinin dünya yönü korunur, altındaki parmaklar onu izler
+    ikLegs: ['Left', 'Right'].flatMap((S) => [[`b_${S}UpperArm`, `b_${S}ForeArm`, `b_${S}Hand`], [`b_${S}Leg01`, `b_${S}Leg02`, `b_${S}Foot01`]]) },
   deer: { name: 'Geyik', kind: 'quad', hp: 55, dmg: 6, walk: 1.5, run: 9, temper: 'prey', diet: 'herb', sense: 16, drops: { meat: 2 }, tame: { method: 'sneakFeed', item: 'berry', steps: 3, hint: 'Çömelerek (C) yaklaş, 3 kez böğürtlen ver' },
     len: 1.25, h: 1.0, bodyR: 0.24, width: 0.8, color: 0xa87343, belly: 0xe6d3b3, legR: 0.045, legTaper: 0.5, neckLen: 0.5, neckAng: 1.05, headR: 0.11, snoutLen: 0.17, snoutR: 0.065, headDown: 0.5, ears: 'leaf', antlers: true, hooves: true, tail: { type: 'stub', r: 0.06, color: 0xffffff }, gait: 'gallop', cadence: 1.0 },
   horse: { name: 'At', kind: 'quad', hp: 110, dmg: 12, walk: 1.8, run: 11, temper: 'prey', diet: 'herb', sense: 13, drops: { meat: 3 }, tame: { method: 'calm', item: 'apple', steps: 1, hint: 'Elma ver, sonra kıpırdamadan E basılı tutarak sakinleştir' },
@@ -45,7 +48,8 @@ export const SPECIES = {
     len: 1.2, h: 2.9, color: 0x6c8a5a, belly: 0x8aa671, cloth: 0x5a4030, viewSize: 3.2 },
   dragon: { name: 'Ejderha', kind: 'glb', model: 'dragon', hp: 650, dmg: 45, walk: 2.4, run: 6.5, temper: 'territorial', diet: 'carn', sense: 26, drops: { dragongem: 1, meat: 6 }, tame: { method: 'weakenFeed', item: 'dragongem', hpBelow: 0.2, steps: 1, hint: 'Canını %20 altına düşür, sonra ejder mücevheri sun' },
     scale: 0.16, len: 10, h: 4.2, viewSize: 12, radius: 3.4, attackTime: 1.67, attackHit: 0.75, dieTime: 7.4,
-    clips: { idle: 'stand', walk: 'walk', run: 'walk', attack: 'skill08', die: 'die', eat: 'stand' }, runScale: 1.7 },
+    clips: { idle: 'stand', walk: 'walk', run: 'walk', attack: 'skill08', die: 'die', eat: 'stand' }, runScale: 1.7,
+    ikLegs: ['L', 'R'].flatMap((S) => [[`Bip001-${S}-UpperArm`, `Bip001-${S}-Forearm`, `Bip001-${S}-Hand`], [`Bip001-${S}-Thigh`, `Bip001-${S}-Calf`, `Bip001-${S}-HorseLink`]]) },
 };
 
 /* ------------------------------------------------------------------ GEOMETRİ YARDIMCILARI */
@@ -419,11 +423,14 @@ class Biped extends Creature {
       el.add(mesh(ap)); this.arms.push({ sh, el, s });
       const th = J(hips, s * 0.3 * S, -0.1 * S, 0); th.add(mesh([limb(0.25 * S, 0.19 * S, 0.5 * S, skin)]));
       const kn = J(th, 0, -0.5 * S, 0); kn.add(mesh([limb(0.19 * S, 0.15 * S, 0.48 * S, skin), at(ball(0.2 * S, skin, 1, 0.55, 1.7), 0, -0.56 * S, 0.12 * S)]));
-      this.legs.push({ th, kn, s });
+      // ayak IK'si: uyluk 0.5·S, baldır (diz → ayak bileği) 0.48·S
+      this.legs.push({ th, kn, s, L0: 0.5 * S, L1: 0.48 * S, ank: new THREE.Vector3(0, -0.48 * S, 0), off: 0, ax: 0, kx: 0, p: new THREE.Vector3(), tgt: new THREE.Vector3() });
     }
-    this.hipH = hipH;
+    this.hipH = hipH; this.ikW = 0; this.ikDrop = 0; this.ikEnabled = true; this._ikOn = false;
   }
-  animate(dt, anim, t) {
+  animate(dt, anim, t, o = {}) {
+    // önceki karenin IK düzeltmesini geri al: yumuşatma (r) saf animasyon açılarından devam etsin, düzeltme birikmesin
+    if (this._ikOn) { this.hips.position.y = this._ahy; for (const l of this.legs) { l.th.rotation.x = l.ax; l.kn.rotation.x = l.kx; } this._ikOn = false; }
     this._begin(dt, anim); const k = this.k, moving = anim === 'walk' || anim === 'run';
     this.amp += ((moving ? (anim === 'run' ? 1 : 0.6) : 0) - this.amp) * k; if (moving) this.phase += dt * (anim === 'run' ? 7.5 : 4.2);
     const A = this.amp, ph = this.phase, death = anim === 'die' ? ease(clamp01(this.at / 1.1)) : 0;
@@ -439,6 +446,41 @@ class Biped extends Creature {
       else { this.r(a.sh, -s * 0.5 * A + 0.1, 0, a.s * 0.22); this.r(a.el, -0.35 - A * 0.3, 0, 0); }
     });
     this.pivot.rotation.x += (-death * PI / 2 - this.pivot.rotation.x) * k; this.pivot.position.y += (death * 0.45 - this.pivot.position.y) * k;
+    this._footIK(dt, o, anim);
+  }
+  // İki ayaklı ayak IK'si: dev animasyonu düz zemin varsayar (gövde eğime yatmaz). Her ayak bileğinin altındaki zeminin kök
+  // zeminine göre farkı hedefe eklenir; erişilemeyen hedefte kalça alçalır; uyluk + baldır düzlemsel iki kemikli IK ile çözülür.
+  _footIK(dt, o, anim) {
+    const G = o.ground, sp = this.spec, legs = this.legs;
+    for (const l of legs) { l.ax = l.th.rotation.x; l.kx = l.kn.rotation.x; }
+    this._ahy = this.hips.position.y;
+    const want = G && o.ik !== false && this.ikEnabled && anim !== 'die' && !o.air;
+    this.ikW = want ? this.ikW + (1 - this.ikW) * Math.min(1, dt * 6) : 0;
+    const w = this.ikW;
+    if (w < 0.002) { for (const l of legs) l.off = 0; this.ikDrop = 0; return; }
+    this._ikOn = true;
+    const root = this.root, k = Math.min(1, dt * 14), rootY = root.position.y, maxUp = sp.h * 0.2, maxDn = sp.h * 0.16;
+    root.updateMatrixWorld(true);
+    let need = 0;
+    for (const l of legs) {
+      l.kn.localToWorld(l.p.copy(l.ank));
+      const off = THREE.MathUtils.clamp(G(l.p.x, l.p.z) - rootY, -maxDn, maxUp);
+      l.off += (off - l.off) * k;
+      l.tgt.copy(l.p); l.tgt.y += l.off * w;
+      l.th.getWorldPosition(_v1);
+      need = Math.max(need, _v1.distanceTo(l.tgt) - Math.max(_v1.distanceTo(l.p), (l.L0 + l.L1) * 0.97));
+    }
+    this.ikDrop += (Math.min(need, sp.h * 0.15) - this.ikDrop) * k;
+    if (this.ikDrop > 1e-4) this.hips.position.y -= this.ikDrop;
+    this.hips.updateMatrixWorld(true);
+    for (const l of legs) {
+      this.hips.worldToLocal(_v2.copy(l.tgt)).sub(l.th.position);
+      const L0 = l.L0, L1 = l.L1, d = THREE.MathUtils.clamp(_v2.length(), Math.abs(L0 - L1) + 1e-3, (L0 + L1) * 0.999);
+      const b = Math.acos(THREE.MathUtils.clamp((d * d - L0 * L0 - L1 * L1) / (2 * L0 * L1), -1, 1));
+      l.th.rotation.x = Math.atan2(-_v2.z, -_v2.y) - Math.atan2(L1 * Math.sin(b), L0 + L1 * Math.cos(b));
+      l.kn.rotation.x = b;
+    }
+    this.root.updateMatrixWorld(true);
   }
 }
 
@@ -460,8 +502,16 @@ class GLBCreature extends Creature {
     this.mixer = new THREE.AnimationMixer(model); this.actions = {};
     for (const c of src.animations) this.actions[c.name] = this.mixer.clipAction(c);
     this.cur = null; this.radius = sp.radius || sp.len * 0.4; this.height = sp.h * 1.25;
+    // ayak IK'si: modelin kendi bacak zincirleri
+    this.legs = (sp.ikLegs || []).map(([a, b, c]) => {
+      const f = (n) => { let r = null; model.traverse((x) => { if (!r && x.isBone && x.name.startsWith(n)) r = x; }); if (!r) throw new Error(kind + ': kemik yok ' + n); return r; };
+      return { A: f(a), B: f(b), C: f(c), off: 0, p: new THREE.Vector3(), tgt: new THREE.Vector3(), qa: new THREE.Quaternion(), qb: new THREE.Quaternion() };
+    });
+    this.ikW = 0; this.ikDrop = 0; this.ikEnabled = this.legs.length > 0; this._ikOn = false;
   }
   animate(dt, anim, t, o = {}) {
+    // önceki karenin IK düzeltmesini geri al (klipte izi olmayan kemiklerde birikmesin)
+    if (this._ikOn) { this.model.position.y = 0; for (const l of this.legs) { l.A.quaternion.copy(l.qa); l.B.quaternion.copy(l.qb); } this._ikOn = false; }
     this._begin(dt, anim); const sp = this.spec, k = this.k;
     let name = sp.clips[anim], procAttack = false, procDie = false;
     if (!name) { if (anim === 'attack') { name = sp.clips.run; procAttack = true; } else if (anim === 'die') { name = this.cur?._clip.name || sp.clips.idle; procDie = true; } else name = sp.clips.idle; }
@@ -479,6 +529,42 @@ class GLBCreature extends Creature {
     pv.position.z += (lunge * sp.len * 0.35 - pv.position.z) * k;
     pv.rotation.x += (lunge * -0.25 + eat + (o.slope || 0) - pv.rotation.x) * k;
     pv.rotation.z += (death * PI / 2 * 0.95 - pv.rotation.z) * k; pv.position.y += (death * sp.h * 0.22 + eat * sp.h * 0.1 - pv.position.y) * k;
+    this._footIK(dt, o, anim, procAttack || eat > 0);
+  }
+  // İskeletli (GLB) modellerde ayak IK'si: klip, kökten geçen ve gövde eğimine (o.slope) eşit bir düzlem varsayar. Her bacak
+  // ucunun altındaki gerçek zeminin bu düzlemden farkı hedefe eklenir, erişilemeyen hedefte model alçalır ve her bacak
+  // analitik iki kemikli IK ile çözülür (kemik boyları korunur). Uç kemiğin dünya yönü korunur, parmaklar onu izler.
+  _footIK(dt, o, anim, proc) {
+    const legs = this.legs, G = o.ground, sp = this.spec;
+    if (!legs.length) return;
+    const want = G && o.ik !== false && this.ikEnabled && !proc && anim !== 'die' && !o.air;
+    this.ikW = want ? this.ikW + (1 - this.ikW) * Math.min(1, dt * 6) : 0;
+    const w = this.ikW;
+    if (w < 0.002) { for (const l of legs) l.off = 0; this.ikDrop = 0; return; }
+    this._ikOn = true;
+    const root = this.root, k = Math.min(1, dt * 14), rx = root.position.x, rz = root.position.z, rootY = root.position.y;
+    const fx = Math.sin(root.rotation.y), fz = Math.cos(root.rotation.y), grad = -Math.tan(o.slope || 0), maxUp = sp.h * 0.45, maxDn = sp.h * 0.35;
+    root.updateMatrixWorld(true); _fw.set(fx, 0, fz);
+    let need = 0;
+    for (const l of legs) {
+      l.qa.copy(l.A.quaternion); l.qb.copy(l.B.quaternion);
+      l.C.getWorldPosition(l.p);
+      const fwd = (l.p.x - rx) * fx + (l.p.z - rz) * fz;
+      const off = THREE.MathUtils.clamp(G(l.p.x, l.p.z) - (rootY + fwd * grad), -maxDn, maxUp);
+      l.off += (off - l.off) * k;
+      l.tgt.copy(l.p); l.tgt.y += l.off * w;
+      l.A.getWorldPosition(_v1); l.B.getWorldPosition(_v2); const reach = _v1.distanceTo(_v2) + _v2.distanceTo(l.p);
+      need = Math.max(need, _v1.distanceTo(l.tgt) - Math.max(_v1.distanceTo(l.p), reach * 0.97));
+    }
+    this.ikDrop += (Math.min(need, sp.h * 0.3) - this.ikDrop) * k;
+    // model pivotun çocuğu; pivot eğimle döndüğü için alçaltma pivot uzayındaki dikey eksen boyunca yapılır (küçük açıda yeterli)
+    this.model.position.y = -this.ikDrop;
+    this.model.updateMatrixWorld(true);
+    for (const l of legs) {
+      l.C.getWorldQuaternion(_qc);
+      solveTwoBone(l.A, l.B, l.C, l.tgt, _fw);
+      setWorldQuat(l.C, _qc);
+    }
   }
 }
 

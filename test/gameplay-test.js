@@ -151,6 +151,37 @@ window.runGameplayTests = async function () {
     P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax;
   }
 
+  // 1f) iskeletli (GLB: tilki, ejderha) ve iki ayaklı (Mağara Devi) ayak IK'si: düzde poz değişmez, yan eğimde bacak uçları zemine oturur
+  {
+    const gnd = P.ik.ground;
+    let bx = 0, bz = 0, bg = 0;
+    for (let x = -60; x <= 60; x += 3) for (let z = -120; z <= -40; z += 3) { const s = Math.hypot(gnd(x + 0.5, z) - gnd(x - 0.5, z), gnd(x, z + 0.5) - gnd(x, z - 0.5)); if (s > bg && s < 0.6) { bg = s; bx = x; bz = z; } }
+    const side = Math.atan2(gnd(bx + 0.5, bz) - gnd(bx - 0.5, bz), gnd(bx, bz + 0.5) - gnd(bx, bz - 0.5)) + Math.PI / 2;
+    const moved = G.animals.filter((x) => Math.hypot(x.x - bx, x.z - bz) < 40 || Math.hypot(x.x, x.z) < 25).map((x) => [x, x.x, x.z]); moved.forEach(([x]) => { x.x += 300; });
+    const tip = (a, l) => (l.C ? l.C.getWorldPosition(new THREE_V()) : l.kn.localToWorld(l.ank.clone()));
+    const clr = (a) => a.c.legs.map((l) => { const v = tip(a, l); return v.y - a._gfn(v.x, v.z); });
+    const stand = (a, x, z, yaw, en) => { a.c.ikEnabled = en; P.x = x + 9; P.z = z + 9; P.state = 'move'; P.hp = P.hpMax; P.iframes = 99; sim(1.5, () => { a.x = x; a.z = z; a.yaw = yaw; freeze(a); a.hp = a.hpMax; a.dead = false; }); };
+    for (const [kind, tol] of [['fox', 0.02], ['ogre', 0.03], ['dragon', 0.08]]) {
+      const a = find(kind), keep = [a.x, a.z, a.yaw];
+      stand(a, 2, 1, 0.7, false); if (a.c.mixer) a.c.mixer.timeScale = 0; // klip zamanı dondurulur: tüm ölçümler aynı pozda
+      sim(0.6, () => { a.x = 2; a.z = 1; freeze(a); }); const c0 = clr(a);
+      stand(a, 2, 1, 0.7, true); const cf = clr(a);
+      stand(a, bx, bz, side, false); const off = clr(a);
+      stand(a, bx, bz, side, true); const on = clr(a);
+      const dev = (c) => Math.max(...c.map((v, i) => Math.abs(v - c0[i])));
+      ok(`yaratık IK (${kind}): düz zeminde poz değişmez`, dev(cf) < 0.01 && a.c.ikW > 0.9, 'fark=' + dev(cf).toFixed(4));
+      ok(`yaratık IK (${kind}): yan eğimde bacak uçları zemine oturur`, dev(on) < tol && dev(on) < dev(off) * 0.5,
+        `eğim=${(Math.atan(bg) * 57.3).toFixed(0)}° IK yok=${dev(off).toFixed(3)} IK=${dev(on).toFixed(3)} m (bacak başına: ${on.map((v, i) => (v - c0[i]).toFixed(3))})`);
+      const fin = a.c.legs.every((l) => (l.A ? [l.A, l.B, l.C].every((j) => [j.quaternion.x, j.quaternion.w].every(Number.isFinite)) : Number.isFinite(l.th.rotation.x + l.kn.rotation.x)));
+      ok(`yaratık IK (${kind}): NaN yok`, fin);
+      if (a.c.mixer) a.c.mixer.timeScale = 1;
+      a.dead = true; a.deadT = 0; sim(0.1); ok(`yaratık IK (${kind}): ölünce devre dışı`, a.c.ikW === 0); a.dead = false; a.hp = a.hpMax; a.c.reset();
+      a.x = keep[0]; a.z = keep[1]; a.yaw = keep[2]; a.home = { x: keep[0], z: keep[1] }; freeze(a); a.calmT = 0; a.stT = 0;
+    }
+    moved.forEach(([x, ox, oz]) => { x.x = ox; x.z = oz; });
+    P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax; P.iframes = 0;
+  }
+
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
   a = find('rabbit'); freeze(a); put(a, 1.2); P.crouching = false; ok('tavşan: çömelmeden evcilleşmez', a.tryTame() === false);
