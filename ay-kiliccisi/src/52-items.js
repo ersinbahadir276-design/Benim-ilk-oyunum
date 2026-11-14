@@ -67,12 +67,19 @@ function buildSword(){const w=eqItem('weapon'),L=(w&&w.look)||BASES.rusty.look,H
  for(let i=0;i<SK.n;i++)SK.R[i]=save[i];
  const ax=vnorm(vsub(fc[0],fc[3])),cen=vmul(vadd(vadd(fc[0],fc[1]),vadd(fc[2],fc[3])),.25),up=vnorm(vsub([0,1,0],vmul(ax,ax[1]))),sd=vcross(up,ax);
  const Q=(dx,dy,dz)=>vadd(cen,vadd(vadd(vmul(sd,dx),vmul(up,dy)),vmul(ax,dz))),L0=.16,L1=L.len,Wd=L.wid,sw=[];
+ if(MODEL.sword){// sculpted greatsword (tools/sculpt/models/sword.mjs), blade stretched to the item's length/width and tinted
+  const m=MODEL.sword,nv=m.nv,Pp=new Float32Array(nv*3),Nn=new Float32Array(nv*3),bl=(L1-.15)/(1.5-.15),wk=Wd/.068;
+  for(let i=0;i<nv;i++){let x=m.P[i*3],y=m.P[i*3+1],z=m.P[i*3+2];if(z>.15){z=.15+(z-.15)*bl;y*=wk}const p=Q(x,y,z);Pp[i*3]=p[0];Pp[i*3+1]=p[1];Pp[i*3+2]=p[2];
+   const n=vnorm(vadd(vadd(vmul(sd,m.N[i*3]),vmul(up,m.N[i*3+1]/wk)),vmul(ax,m.N[i*3+2])));Nn[i*3]=n[0];Nn[i*3+1]=n[1];Nn[i*3+2]=n[2]}
+  const J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);for(let i=0;i<nv;i++){J[i*4]=H.rightHand;Wt[i*4]=1}
+  const o=addSkin({P:Pp,N:Nn,C:m.C,M:m.M,U:new Float32Array(nv*2),W:new Float32Array(nv),I:m.I},J,Wt,{out:.003,outCol:[.04,.04,.06],shade:.9,pbr:1});o.tintM=[0,1,2].map(k=>(L.col[k]+L.edge[k])/.9);swordSkin={o,s:skins[skins.length-1]}}
+ else{
  sw.push(tint(tube([Q(0,0,L0),Q(0,0,L1*.45),Q(0,0,L1-.2),Q(0,0,L1)],{r:t=>Wd*(t<.86?1-t*.18:(1-t)/.14*.84),flat:.2,seg:6,n:16,wide:up}),L.col));
  for(const s of[-1,1])sw.push(tint(tube([Q(0,s*Wd*.92,L0+.02),Q(0,s*Wd*.8,L1-.25),Q(0,s*.012,L1-.02)],{r:()=>.007,seg:4,n:6}),L.edge));
  sw.push(tint(tube([Q(0,-.2,.1),Q(0,-.13,.135),Q(0,0,.14),Q(0,.13,.135),Q(0,.2,.1)],{r:t=>.026-.008*Math.abs(t-.5),seg:6,n:10,wide:ax}),KC.iron));
  sw.push(tint(tube([Q(0,0,-.26),Q(0,0,.12)],{r:()=>.021,seg:6,n:2}),KC.leather));sw.push(tint(sphere(8,6,d=>vadd(Q(0,0,-.29),vmul(d,.032)),{c:Q(0,0,-.29)}),KC.bronze));
  const g=merge(sw),nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);for(let i=0;i<nv;i++){J[i*4]=H.rightHand;Wt[i*4]=1}
- const o=addSkin(g,J,Wt,{out:.004,outCol:[.04,.04,.06],shade:.9});swordSkin={o,s:skins[skins.length-1]};
+ const o=addSkin(g,J,Wt,{out:.004,outCol:[.04,.04,.06],shade:.9});swordSkin={o,s:skins[skins.length-1]};}
  if(L.glow){const gg=tint(tube([Q(0,0,L0+.05),Q(0,0,L1-.3)],{r:()=>.012,flat:.5,seg:4,n:2,wide:up}),[1,1,1]),n2=gg.P.length/3,J2=new Uint8Array(n2*4),W2=new Float32Array(n2*4);for(let i=0;i<n2;i++){J2[i*4]=H.rightHand;W2[i*4]=1}
   swordSkin.og=addSkin(gg,J2,W2,{unlit:1,col:L.glow,shade:0});swordSkin.sg=skins[skins.length-1]}
  SK.tipRest=Q(0,0,L1-.05);SK.midRest=Q(0,0,L1*.55);SK.gripRest=cen;SK.gripAx=ax;SK.bladeLen=L1}

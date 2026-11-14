@@ -12,7 +12,7 @@ function mkCroc(x,z){const c={x,z,y:0,yaw:rnd()*6.28,hyaw:0,hx:x,hz:z,st:'idle',
  c.onKilled=()=>{SYS.ckills=(SYS.ckills||0)+1;SYS.meat+=2;addXP(90,P);note('[Sistem] Timsah öldürüldü · +90 XP · +2 çiğ et');save(P)};
  c.onAlerted=()=>{if(!c.hostile()&&!c.dead){c.st='alert';c.t=0}};
  CROCS.push(c);return c}
-function spawnCrocs(){CROCM=crocGeo();const R=mkRng(31);let n=0,tries=0;while(n<7&&tries++<500){const a=R()*6.283,d=Math.sqrt(R())*(SWAMP[2]-30),x=SWAMP[0]+Math.cos(a)*d,z=SWAMP[1]+Math.sin(a)*d;if(depthAt(x,z)<.25)continue;mkCroc(x,z);n++}
+function spawnCrocs(){CROCM=MODEL.croc?{def:crocDef(),geo:sculptGeo('croc'),binv:bindInv(crocDef(),null)}:crocGeo();const R=mkRng(31);let n=0,tries=0;while(n<7&&tries++<500){const a=R()*6.283,d=Math.sqrt(R())*(SWAMP[2]-30),x=SWAMP[0]+Math.cos(a)*d,z=SWAMP[1]+Math.sin(a)*d;if(depthAt(x,z)<.25)continue;mkCroc(x,z);n++}
  for(const c of CROCS){c.R=rigObj(CROCM,{out:.012,cull:140,outCol:[.06,.08,.05]});rigHide(c.R)}}
 const crocY=(x,z)=>Math.max(hAt(x,z),waterAt(x,z)-.22);
 function crocMove(c,tx,tz,speed,dt,turn){const d=agentMove(c,tx,tz,speed,dt,c.rad,turn);return d}

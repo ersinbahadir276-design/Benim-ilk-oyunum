@@ -10,18 +10,18 @@ const ap = (m, v) => [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4
 
 // spec: { hr, skin, c1, c2, hair, flags... } — see models/*.mjs
 export function humanoid(ALL, kind, S) {
-  const def = ALL.kinds[kind], { WR, WP } = fk(def), P = [], hr = S.hr || 0.105; let faceUV = null;
+  const def = S.def || ALL.kinds[kind], BN = S.bones || BONES, { WR, WP } = fk(def), P = [], hr = S.hr || 0.105; let faceUV = null;
   const at = (b, p) => v3.add(WP[b], ap(WR[b], p)); // a point in a bone's local frame (rest axes: limbs hang along -y)
   const add = (p) => { P.push(p); return p; };
   const side = (fn) => { fn(1, 3, 4, 5, 9, 10, 11, 'l'); fn(-1, 6, 7, 8, 12, 13, 14, 'r'); };
-  const N = (i) => BONES[i];
+  const N = (i) => BN[i];
   const T = def[2].o[1], sh = Math.abs(def[3].o[0]), big = S.big ? 1 : 0, gob = S.gob ? 1 : 0;
   const shY = WP[3][1], headB = WP[2], hc = v3.add(headB, [0, hr * 0.95, 0]);
   const legLen = -WP[11][1];
   // ---------------------------------------------------------------- torso + clothing
-  const chestR = [sh * 0.98 + big * 0.06, T * 0.36, 0.12 + big * 0.12 + (S.belly ? 0.02 : 0)], waistR = [sh * 0.85 + big * 0.05 + (S.belly ? 0.05 : 0), T * 0.34, 0.11 + big * 0.12 + (S.belly ? 0.08 : 0)];
+  const bt = S.bulk ?? big, chestR = [sh * 0.98 + bt * 0.06, T * 0.36, 0.12 + bt * 0.12 + (S.belly ? 0.02 : 0)], waistR = [sh * (S.waist || 0.85) + bt * 0.05 + (S.belly ? 0.05 : 0), T * 0.34, 0.11 + bt * 0.12 + (S.belly ? 0.08 : 0)];
   const hunch = gob ? 0.06 + big * 0.08 : 0;
-  const chest = ellipsoid([0, 0.06 + T * 0.72, hunch * 0.3], chestR, gob ? rot.x(0.25) : null), waist = ellipsoid([0, 0.06 + T * 0.3, (S.belly ? 0.03 : 0)], waistR), pelvis = ellipsoid([0, -0.01, 0], [sh * 0.86 + big * 0.06, 0.12, 0.115 + big * 0.1]);
+  const chest = ellipsoid([0, 0.06 + T * 0.72, hunch * 0.3], chestR, gob ? rot.x(0.25) : null), waist = ellipsoid([0, 0.06 + T * 0.3, (S.belly ? 0.03 : 0)], waistR), pelvis = ellipsoid([0, -0.01, 0], [sh * (S.waist || 0.86) + bt * 0.06, 0.12, 0.115 + bt * 0.1]);
   const torso = U(0.07, chest, waist);
   const spineW = (x, y) => { const t = Math.max(0, Math.min(1, (y - 0.0) / (T * 0.45))); return [['spine', t], ['root', 1 - t]]; };
   add({ name: 'torso', mat: S.torsoMat || 'c1', boneFn: spineW, tau: 0.05, sdf: torso });
@@ -110,7 +110,7 @@ export function humanoid(ALL, kind, S) {
   }
   // ---------------------------------------------------------------- role extras
   for (const f of S.extras || []) f({ add, at, WP, WR, hc, hr, T, sh, big, chestR, waistR, legLen, H, N, side, headB });
-  return { name: kind, uv: faceUV, voxel: S.voxel || 0.0058, tris: S.tris || 7000, err: S.err ?? 0.0018, bones: BONES, parts: P, decals: S.decals ? S.decals({ H, hr }) : [], mats: S.mats };
+  return { name: kind, uv: faceUV, voxel: S.voxel || 0.0058, tris: S.tris || 7000, err: S.err ?? 0.0018, bones: BN, parts: P, decals: S.decals ? S.decals({ H, hr }) : [], mats: S.mats };
 }
 
 // shared material builder

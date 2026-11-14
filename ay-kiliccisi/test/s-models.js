@@ -9,6 +9,10 @@ module.exports = async ({ page, shot, G }) => {
   await G(() => { const g = __G, w = g.wolves.find((w) => !w.dead && !w.boss && !w.tame); g.tp(w.x + 3, w.z + 3); w.st = 'idle'; w.aware = 0; w.t = 0; for (let i = 0; i < 20; i++) { g.GT.time += 1 / 60; g.step(1 / 60); }
     g.__lockCam = 1; g.CAM.yaw = w.yaw + 2.2; g.CAM.dist = 2.6; g.CAM.pitch = 0.12; g.CAM.tx = w.x; g.CAM.tz = w.z; g.CAM.ty = w.y + 0.55; }); await shot('m-wolf', { wait: 700 });
   await G(() => { const g = __G, w = g.wolves.find((w) => !w.dead && !w.boss && !w.tame); w.st = 'chase'; w.spd = 6; for (let i = 0; i < 30; i++) { g.GT.time += 1 / 60; g.step(1 / 60); w.st = 'chase'; } g.CAM.tx = w.x; g.CAM.tz = w.z; g.CAM.yaw = w.yaw + 1.6; g.CAM.dist = 3; }); await shot('m-wolf-run', { wait: 300 });
+  await G(() => { const g = __G, X = g.X; g.SYS.main = 8; X.chooseFate(true); const V = X.VEYRA, P = g.P; g.tp(40, 430); V.x = P.x + 1.5; V.z = P.z + 1.5; V.yaw = 0.4; V.st = 'follow'; for (let i = 0; i < 10; i++) { g.GT.time += 1 / 60; g.step(1 / 60); }
+    g.__lockCam = 1; g.CAM.yaw = V.yaw + Math.PI + 0.35; g.CAM.dist = 2.4; g.CAM.pitch = 0.06; g.CAM.tx = V.x; g.CAM.tz = V.z; g.CAM.ty = V.y + 0.95; }); await shot('m-veyra', { wait: 800 });
+  await G(() => { const g = __G, V = g.X.VEYRA; g.CAM.dist = 0.85; g.CAM.ty = V.y + 1.42; g.CAM.yaw = V.yaw + Math.PI + 0.2; }); await shot('m-veyra-face', { wait: 600 });
+  await G(() => { const g = __G, V = g.X.VEYRA; g.CAM.dist = 2.4; g.CAM.ty = V.y + 0.95; g.CAM.yaw = V.yaw + 0.5; }); await shot('m-veyra-back', { wait: 600 });
   await focus({ npc: 'elder' }, 'm-elder', 2.4, 0.08, 0.35, 1.0);
   await focus({ npc: 'elder' }, 'm-elder-face', 0.9, 0.02, 0.15, 1.5);
   await focus({ npc: 'smith' }, 'm-smith', 2.4, 0.08, 0.3, 1.0);

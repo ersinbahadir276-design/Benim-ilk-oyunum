@@ -55,7 +55,7 @@ function veyraModel(){const L=veyraProportions(),hw=L.legX,torso=L.neckY-(L.hipY
  add(tint(tube([[0,-.05,-.08],[0,-.05,.06]],{r:()=>.014,seg:6,n:2}),dark),8);add(tint(tube([[-.07,-.05,.07],[.07,-.05,.07]],{r:()=>.012,seg:5,n:2}),[.7,.5,.2]),8);
  add(tint(tube([[0,-.05,.08],[0,-.05,.5],[0,-.05,.86]],{r:t=>.026*(1-t*t*.85),flat:.22,seg:6,n:8,wide:[1,0,0]}),ember),8);
  const g=rigMerge(P2);return{def,geo:geo(g)}}
-function veyraInit(){VEYM=veyraModel();const tex=veyraTex();VEYRA={x:SWAMP[0]-60,z:SWAMP[1]-40,y:0,yaw:0,hyaw:0,on:false,st:'chained',t:0,hp:100,max:100,spd:0,ph:0,q:{},R:null,down:false,cd:{},act:null,actT:0,think:0,lastSay:-99,hidden:false,
+function veyraInit(){VEYM=veyraModel();if(MODEL.veyra){const def=VEYM.def;VEYM={def,geo:sculptGeo('veyra'),binv:bindInv(def,HBIND),tex:faceTex('veyra')}}const tex=VEYM.binv?VEYM.tex:veyraTex();VEYRA={x:SWAMP[0]-60,z:SWAMP[1]-40,y:0,yaw:0,hyaw:0,on:false,st:'chained',t:0,hp:100,max:100,spd:0,ph:0,q:{},R:null,down:false,cd:{},act:null,actT:0,think:0,lastSay:-99,hidden:false,
   rad:.32,lv:1,trust:SYS.trust||0};VEYRA.R=rigObj(VEYM,{out:.01,outCol:[.12,.02,.04],cull:160});VEYRA.R.ob.tex=tex;rigHide(VEYRA.R);
  if(SYS.veyraFate==='freed'){VEYRA.on=true;VEYRA.st='follow';VEYRA.x=P.x-2;VEYRA.z=P.z-2}}
 const VLINES={kill:['Bir tane daha.','Yavaş kalıyorsun, Kara Zırh.','Bu kadar mı?'],low:['Geri çekil! Seni ben korurum.','Kanın akıyor, dikkat et!'],boss:['Bu güçlü. Hazırlığını izle!','Saldırmadan önce kıpırdıyor, gördün mü?'],

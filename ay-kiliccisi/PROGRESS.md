@@ -74,13 +74,17 @@ Motor: 4 ağırlıklı GPU deri (aJ/aK vec4), malzeme kanalı aM, `obj({pbr:1})`
 metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [x] Model hattı + görüntüleyici
 - [x] Kahraman Kael heykel modeli oyunda (CPU deri, 58 kemik, ~21k üçgen)
-- [ ] İnsan türleri (köylü ×2, tüccar, muhafız, Doran, Hask, Lena, Mira) — parametrik insan heykeli, A-duruş bağlama
-      (oyunda: bind dönüşleri omuz rZ(±.55), kalça rZ(±.06); rigDraw sonrası kemik = W·Bind⁻¹)
-- [ ] Goblin + büyük goblin (şef), Şeytan Kral
-- [ ] Kurt (tek deri: gövde, kafa, çene, kuyruk, 4×2 bacak; drawWolves parça matrisleri × T(-bind))
-- [ ] Veyra (20 kemik), timsah (16 kemik)
-- [ ] Kılıç heykeli (eşyaya göre boy/genişlik ölçeği + renk)
-- [ ] Dünya: ağaç, kaya, ev (sonra)
+- [x] İnsan türleri (köylü ×2, tüccar, muhafız, Doran, Hask, Lena, Mira): `lib/humanoid.mjs` + `models/*.mjs`,
+      A-duruş bağlama (omuz rZ ±.55, kalça rZ ±.06 = oyundaki HBIND; rigDraw sonrası kemik = W·Bind⁻¹, `bindInv/applyBinv`).
+      Yüzler boyalı doku (`FACES` + `faceTex` 45-rig.js), önden izdüşüm UV + maske (aW kanalı) — gözler üçgen sayısından bağımsız keskin.
+- [x] Goblin, büyük goblin (şef aynı model + renk), Şeytan Kral (boynuz taç, yanan gözler, dikenli omuz, pelerin, kuyruk)
+- [x] Kurt: tek deri, 12 kemik (drawWolves parça matrisleri × T(-bind)); 13 çizim yerine 1
+- [x] Veyra (20 kemik: saç, etek ön/arka, kuyruk, saç2; kızıl göz, yarık göz bebeği, diş), timsah (16 kemik)
+- [x] Kılıç heykeli (siper, oluk, mücevher, sargı); boy/genişlik eşyaya göre, bıçak rengi `tintM`
+- [x] 30 m ötesinde dış çizgi çizilmiyor (telefon performansı)
+- [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
+- [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse
+- [ ] Şeytan Kral'ın kolları ince; aşama 3 boss dövüşünde iyileştirilecek
 
 ### Aşama 3 — sonraki oturumlar (öncelik sırası)
 - [ ] Şeytan Kral Azgal: savaşılabilir model (aldrich iskelet oranları), Kül Kale bölgesi, 3 aşamalı final
@@ -116,6 +120,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 ## Oturum günlüğü
 - Oturum 2: tasarım belgesi, PROGRESS.md, SENARYO.md; Kara Zırh kahramanı; ganimet, sunak, sandık, duruş/İNFAZ,
   öfke, yetenekler, hedef kilidi, bölge seviyeleri, bosslar, Veyra, hikâye modülleri yazıldı.
+- Oturum 4: kullanıcı modelleri çok kötü buldu → SDF heykel hattı; kahraman, 8 insan, goblinler, kurt, Veyra, timsah, Şeytan Kral, kılıç yeniden yapıldı; yeni ışık.
 - Oturum 3: hepsi birleştirildi ve test edildi. Yeni düğmeler (İKSİR, YETENEK, HEDEF, ÖFKE) + yatay/dikey yerleşim,
   öfke çubuğu, boss adı + duruş çubuğu, hızlı yolculuk, manhwa görünümü (sabit oranlı paneller, sıra kuyruğu),
   görev pusulası, yeni sesler. Düzeltilenler: açılış sırası (Veyra/hikâye), kese ve mühür toplama artık oyun

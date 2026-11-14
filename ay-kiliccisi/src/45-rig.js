@@ -21,12 +21,12 @@ const limbG=(len,r0,r1,col,seg=8)=>tint(tube([[0,.02,0],[0,-len*.5,0],[0,-len,0]
 // painted faces for the sculpted humans (front projection: u=.5+x/(2.4hr), v=.5-y/(2.4hr) around the head centre)
 const FACES={villager:{iris:'#5a3a1c',brow:'#3a2414',lip:'#a0594c'},villager2:{iris:'#3f7a4a',brow:'#7a4a22',lip:'#c2606a',lash:1,blush:1},merchant:{iris:'#4a3020',brow:'#2c2018',lip:'#9a5448',stache:'#2c2018'},
  guard:{iris:'#4a6080',brow:'#2a2018',lip:'#94564a',stern:1},elder:{iris:'#6a7a8a',brow:'#d8d8d4',lip:'#9a6a60',old:1},smith:{iris:'#3a2a1a',brow:'#1c1410',lip:'#8a4c40',stern:1},
- hunter:{iris:'#4a7a3a',brow:'#7a3a14',lip:'#b86058',lash:1,freckle:1},priest:{iris:'#4a6aa0',brow:'#a08050',lip:'#c07068',lash:1,blush:1}};
+ hunter:{iris:'#4a7a3a',brow:'#7a3a14',lip:'#b86058',lash:1,freckle:1},veyra:{iris:'#d4201c',brow:'#5a0c12',lip:'#a83848',lash:1,slit:1,fang:1},priest:{iris:'#4a6aa0',brow:'#a08050',lip:'#c07068',lash:1,blush:1}};
 function faceTex(kind){const F=FACES[kind];if(!F)return null;const c=cnv(256,256),g=c.getContext('2d');g.clearRect(0,0,256,256);
  const ex=36,ey=127;g.lineCap='round';
  for(const s of[-1,1]){const x=128+s*ex;// sclera, iris, pupil, highlight, upper lid + lashes, lower lid
   g.fillStyle='#f4efe8';g.beginPath();g.ellipse(x,ey,13,7.5,0,0,7);g.fill();
-  g.fillStyle=F.iris;g.beginPath();g.arc(x,ey+.5,6.6,0,7);g.fill();g.fillStyle='#0c0806';g.beginPath();g.arc(x,ey+.5,3,0,7);g.fill();
+  g.fillStyle=F.iris;g.beginPath();g.arc(x,ey+.5,6.6,0,7);g.fill();g.fillStyle='#0c0806';g.beginPath();if(F.slit)g.ellipse(x,ey+.5,1.4,5.6,0,0,7);else g.arc(x,ey+.5,3,0,7);g.fill();
   g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.arc(x-2.4,ey-2.2,1.7,0,7);g.fill();
   g.strokeStyle='#241612';g.lineWidth=F.lash?3.2:2.4;g.beginPath();g.ellipse(x,ey+1.5,13.5,9,0,PI*1.06,PI*1.94);g.stroke();
   if(F.lash){g.lineWidth=1.6;g.beginPath();g.moveTo(x+s*12,ey-4);g.lineTo(x+s*16,ey-7.5);g.stroke()}
@@ -40,6 +40,7 @@ function faceTex(kind){const F=FACES[kind];if(!F)return null;const c=cnv(256,256
  g.fillStyle='rgba(90,45,30,.28)';g.beginPath();g.ellipse(128,152,7,3,0,0,7);g.fill();g.fillStyle='rgba(60,25,20,.5)';for(const s of[-1,1]){g.beginPath();g.ellipse(128+s*4.5,151,2,1.3,0,0,7);g.fill()}
  g.fillStyle=F.lip;g.beginPath();g.moveTo(113,178);g.quadraticCurveTo(128,172,143,178);g.quadraticCurveTo(128,186,113,178);g.fill();
  g.strokeStyle='rgba(60,20,20,.75)';g.lineWidth=1.6;g.beginPath();g.moveTo(112,178);g.quadraticCurveTo(128,(F.stern?179:181),144,178);g.stroke();
+ if(F.fang){g.fillStyle='#fffaf0';g.beginPath();g.moveTo(133,179);g.lineTo(137,179);g.lineTo(135,185);g.fill()}
  if(F.stache){g.fillStyle=F.stache;g.beginPath();g.moveTo(108,176);g.quadraticCurveTo(128,160,148,176);g.quadraticCurveTo(128,170,108,176);g.fill()}
  if(F.old){g.strokeStyle='rgba(70,40,30,.3)';g.lineWidth=1.4;for(const s of[-1,1]){g.beginPath();g.moveTo(128+s*12,160);g.quadraticCurveTo(128+s*20,172,128+s*18,184);g.stroke()}g.beginPath();g.moveTo(108,96);g.lineTo(148,96);g.moveTo(112,90);g.lineTo(144,90);g.stroke()}
  return texture(c)}

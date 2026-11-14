@@ -142,7 +142,7 @@ function drawAll(VP,cam,L,time,env){
   else{gl.disable(gl.BLEND);gl.depthMask(true);gl.disable(gl.POLYGON_OFFSET_FILL)}
   if(m.ds)gl.disable(gl.CULL_FACE);else{gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK)}
   gl.uniform1f(loc.uIsOut,0);gl.uniform1f(loc.uOut,0);gl.drawElements(gl.TRIANGLES,ge.n,gl.UNSIGNED_SHORT,0);drawn++;
-  if(m.out>0&&!m.blend){gl.enable(gl.CULL_FACE);gl.cullFace(gl.FRONT);gl.uniform1f(loc.uIsOut,1);gl.uniform1f(loc.uOut,m.out);gl.uniform3fv(loc.uOutCol,m.outCol);gl.drawElements(gl.TRIANGLES,ge.n,gl.UNSIGNED_SHORT,0)}}
+  if(m.out>0&&!m.blend&&!(m.pos&&(m.pos[0]-cam[0])*(m.pos[0]-cam[0])+(m.pos[2]-cam[2])*(m.pos[2]-cam[2])>900)){gl.enable(gl.CULL_FACE);gl.cullFace(gl.FRONT);gl.uniform1f(loc.uIsOut,1);gl.uniform1f(loc.uOut,m.out);gl.uniform3fv(loc.uOutCol,m.outCol);gl.drawElements(gl.TRIANGLES,ge.n,gl.UNSIGNED_SHORT,0)}}
  for(const a of['aP','aN','aC','aU','aW','aJ','aK','aM'])gl.disableVertexAttribArray(loc[a]);
  gl.disable(gl.BLEND);gl.depthMask(true);gl.disable(gl.POLYGON_OFFSET_FILL);gl.disable(gl.CULL_FACE);
  if(grassGeo&&HTEX&&gprog&&grassGeo.n>0){gl.useProgram(gprog);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.uniform1i(gloc.uH,0);gl.uniform1f(gloc.uHN,HN);gl.uniform1f(gloc.uHS,HS);gl.uniform1f(gloc.uHO,-WS);gl.uniformMatrix4fv(gloc.uVP,false,VP);gl.uniform3fv(gloc.uCen,env.focus);gl.uniform1f(gloc.uT,time);gl.uniform1f(gloc.uTile,grassGeo.tile);
