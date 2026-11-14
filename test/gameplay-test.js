@@ -78,5 +78,18 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) kahraman: saç/palto yay kemikleri, yüz ifadeleri, baş bakışı
+  { const H = P.hero; release(); G.animals.forEach((x) => { if (!x.tamed && !x.dead) freeze(x); if (!x.dead && Math.hypot(x.x, x.z - 6) < 30) { x.x += 80; x.home && (x.home.x += 80); } });
+    P.x = 0; P.z = 6; P.state = 'move'; P.alive = true; P.hp = P.hpMax; sim(0.5);
+    ok('kahraman: yay kemikleri kuruldu (saç + palto)', H.springs && H.springs.joints.length >= 20, H.springs?.joints.length);
+    const coat = H.springs.joints.find((j) => /CoatSkirt/.test(j.j.bone.name)).j.bone, q0 = coat.quaternion.clone();
+    G.keys.w = true; G.keys.run = true; sim(1.2); G.keys.w = G.keys.run = false;
+    ok('kahraman: palto koşarken sallanır', coat.quaternion.angleTo(q0) > 0.01 && [coat.quaternion.x, coat.quaternion.w].every(Number.isFinite), coat.quaternion.angleTo(q0).toFixed(3));
+    sim(3); ok('kahraman: fizik durulur (patlama yok)', H.springs.joints.every(({ j }) => j.cur.length() < 5 && Number.isFinite(j.cur.x)));
+    let blinked = false; sim(8, () => { if ((H.face.values.blink || 0) > 0.5) blinked = true; }); ok('kahraman: göz kırpar', blinked);
+    G.edge.attack = true; sim(0.3); ok('kahraman: saldırıda öfkeli ifade', H.face.values.angry > 0.4, H.face.values.angry?.toFixed(2)); sim(2);
+    P.damage(1, null); sim(0.2); ok('kahraman: hasarda acı ifadesi', H.face.values.sorrow > 0.3, H.face.values.sorrow?.toFixed(2)); P.iframes = 0; sim(1.5);
+    const fx = G.animals.find((x) => !x.dead && !x.tamed); const fy = P.yaw; fx.x = P.x + Math.sin(fy + 0.7) * 4; fx.z = P.z + Math.cos(fy + 0.7) * 4; freeze(fx); sim(1);
+    ok('kahraman: başını yakındaki hayvana çevirir', P.alive && Math.abs(H.look.yaw) > 0.3, H.look.yaw.toFixed(2)); }
   G.running = real; return out;
 };

@@ -2,6 +2,7 @@
 // Klipler kaynak iskeletten (UE tarzı manken) kahramanın iskeletine çalışma anında aktarılır (retarget).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { setupVRMExtras, HeadLook } from './vrm-extras.js';
 
 const SIDE = (l, r) => (s) => (s === 'l' ? l : r);
 const MAP = { pelvis: 'J_Bip_C_Hips', spine_01: 'J_Bip_C_Spine', spine_02: 'J_Bip_C_Chest', spine_03: 'J_Bip_C_UpperChest', neck_01: 'J_Bip_C_Neck', Head: 'J_Bip_C_Head' };
@@ -114,5 +115,16 @@ export async function loadHero(base = 'assets/models/') {
   sword.position.set(-0.07, -0.02, 0.02); sword.rotation.set(Math.PI / 2, 0, 0);
   hand.add(sword);
   const mixer = new THREE.AnimationMixer(root);
-  return { root, model, clips, mixer, sword, head: root.getObjectByName('J_Bip_C_Head') };
+  // saç/palto fiziği, yüz ifadeleri ve baş bakışı (VRM ikincil sistemleri)
+  const extras = await setupVRMExtras(vrm, root);
+  const head = root.getObjectByName('J_Bip_C_Head');
+  const look = new HeadLook(root, root.getObjectByName('J_Bip_C_Neck'), head);
+  // Animasyon karışımından SONRA, kök konumu ayarlandıktan sonra çağrılır.
+  const post = (dt, lookTarget, lookActive) => {
+    root.updateMatrixWorld(true);
+    look.update(dt, lookTarget, lookActive);
+    extras?.face.update(dt);
+    extras?.springs.update(dt);
+  };
+  return { root, model, clips, mixer, sword, head, springs: extras?.springs, face: extras?.face, look, post };
 }

@@ -20,8 +20,8 @@ export class Player {
   }
   damage(n, from) {
     if (!this.alive || this.iframes > 0) return;
-    this.hp -= n; this.hurt = 0.35; this.g.floatText(`-${Math.round(n)}`, this, '#ff5a5a'); this.g.ui.hurtFlash();
-    if (this.hp <= 0) { this.hp = 0; this.alive = false; this.state = 'dead'; this.stT = 4.5; this.crouching = false; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Death01', { once: true, fade: 0 }); this.g.msg('Yenildin... Kampta yeniden doğacaksın.'); }
+    this.hp -= n; this.hurt = 0.35; this.hero.face?.set('sorrow', 0.7, 0.6); this.g.floatText(`-${Math.round(n)}`, this, '#ff5a5a'); this.g.ui.hurtFlash();
+    if (this.hp <= 0) { this.hp = 0; this.alive = false; this.state = 'dead'; this.stT = 4.5; this.crouching = false; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Death01', { once: true, fade: 0 }); this.g.msg('Yenildin... Kampta yeniden doğacaksın.'); this.hero.face?.set('sorrow', 1, 4.5); }
   }
   respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); for (const a of this.g.animals) if (a.target === this) a.target = null; }
   busy(name, time) { this.state = name; this.stT = time; }
@@ -79,6 +79,21 @@ export class Player {
     this.hp = Math.min(this.hpMax, this.hp + (this.alive && this.hurt < -6 ? dt * 1.2 : 0));
     this.hero.mixer.update(dt);
     const r = this.hero.root; r.position.set(this.x, this.y, this.z); r.rotation.y = this.yaw;
+    if (this.hero.post) {
+      const lookOn = this.alive && (this.state === 'move' || this.state === 'land') && this.speed < 5;
+      this.hero.post(dt, lookOn ? this.lookTarget() : null, lookOn);
+    }
+  }
+  // Baş bakışı: önde ve yakında olan en ilginç canlı (yoldaş, tehdit ya da av)
+  lookTarget() {
+    let best = null, bs = Infinity;
+    for (const a of this.g.animals) {
+      if (a.dead || !a.c?.root.visible) continue; const d = a.dist(this); if (d > 9) continue;
+      const score = d - (a.target === this ? 4 : 0) - (a.tamed ? 1 : 0);
+      if (score < bs) { bs = score; best = a; }
+    }
+    if (!best) return null;
+    return (this._lt ||= new THREE.Vector3()).set(best.x, best.y + (best.alt || 0) + best.c.height * 0.75, best.z);
   }
   turn(want, dt, rate) { let d = (want - this.yaw) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; this.yaw += d * Math.min(1, dt * rate); }
   startAttack(i) {
@@ -86,6 +101,7 @@ export class Player {
     let best = null, bd = 4.5; for (const a of this.g.animals) { if (a.dead || a.tamed || a.alt > 2.5) continue; const d = a.dist(this) - a.radius; if (d < bd && (a.target === this || a.byPlayerT > 0 || a.spec.temper !== 'prey')) { const ang = Math.atan2(a.x - this.x, a.z - this.z); let df = Math.abs(((ang - this.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI); if (df < 1.3) { bd = d; best = ang; } } }
     if (best != null) this.yaw = best;
     this.combo = i; this.queued = false; this.hitDone = false; this.state = 'attack';
+    this.hero.face?.set('angry', 0.9, 0.9);
     this.atkDur = this.play(COMBO[i], { once: true, ts: [0.85, 0.9, 1.7][i], fade: 0.1 }) * [1, 1, 0.72][i]; this.stT = this.atkDur;
     const a = this.cur; if (a) a.reset().play();
   }
