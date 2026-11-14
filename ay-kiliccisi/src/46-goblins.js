@@ -1,0 +1,93 @@
+// ===================== goblins: small ones in fast weak groups, one big club-wielder per camp =====================
+const GOBS=[];let GOBM=null,BIGM=null;
+const GOB_HOSTILE={chase:1,circle:1,windup:1,strike:1,recover:1,stagger:1,hurt:1,escape:1};
+function mkGob(x,z,big,group,camp){const g={big,x,z,y:hAt(x,z),yaw:rnd()*6.28,hyaw:0,hx:x,hz:z,st:'idle',t:rr(0,3),hp:big?260:38,max:big?260:38,spd:0,aware:0,ls:[x,z],unseen:9,group,camp,
+  rad:big?.8:.33,sc:big?1.25:1,ph:rnd()*6,cd:rr(.5,1.5),eye:big?2.3:1.0,flash:0,kx:0,kz:0,held:null,dead:0,R:null,q:{},slot:rnd()*6.28,hitDone:false,deadT:0,swims:false};
+ g.hostile=()=>!!GOB_HOSTILE[g.st];
+ g.open=()=>g.st==='stagger'||(g.big&&g.st==='recover');
+ g.hurt=(dmg,dx,dz,kind)=>gobHurt(g,dmg,dx,dz,kind);
+ g.onParried=()=>{g.st='stagger';g.t=0;g.flash=1;g.kx=-Math.sin(g.yaw)*(g.big?2:5);g.kz=-Math.cos(g.yaw)*(g.big?2:5)};
+ g.grab=(kind)=>{g.held=kind;g.st=kind;g.t=0;g.spd=0};
+ g.escape=()=>{const from=g.held;g.held=null;g.st='escape';g.t=0;g.from=from;g.aware=1;g.ls=[P.x,P.z]};
+ g.calmDown=()=>{if(g.dead)return;g.aware=0;if(g.hostile()&&g.st!=='escape'){g.st='return';g.t=0}};
+ g.onKilled=(byPet)=>{SYS.gkills=(SYS.gkills||0)+1;SYS.gold=(SYS.gold||0)+(g.big?20:4);addXP(g.big?120:25,P);note('[Sistem] '+(g.big?'Büyük goblin':'Goblin')+' öldürüldü · +'+(g.big?120:25)+' XP · +'+(g.big?20:4)+' altın');save(P)};
+ g.onAlerted=()=>{if(!g.hostile()&&!g.held&&!g.dead){g.st='alert';g.t=0}};
+ GOBS.push(g);return g}
+function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');
+ CAMPSITES.forEach((c,i)=>{const grp='camp'+i;for(let k=0;k<4;k++){const a=k/4*2*PI+.4,p=collide(c.x+Math.cos(a)*5,c.z+Math.sin(a)*5,.4);const g=mkGob(p[0],p[1],false,grp,c);g.yaw=Math.atan2(c.x-g.x,c.z-g.z)+PI}
+  const bp=collide(c.x+Math.cos(c.gate)*14,c.z+Math.sin(c.gate)*14,.9),b=mkGob(bp[0],bp[1],true,grp,c);b.yaw=c.gate;
+  // a small patrol group outside the palisade
+  for(let k=0;k<3;k++){const a=c.gate+(k-1)*.25,p=collide(c.x+Math.cos(a)*40,c.z+Math.sin(a)*40,.4);const g=mkGob(p[0],p[1],false,grp+'p',c);g.patrol=[[c.x+Math.cos(c.gate)*40,c.z+Math.sin(c.gate)*40],[c.x+Math.cos(c.gate+1.2)*45,c.z+Math.sin(c.gate+1.2)*45],[c.x+Math.cos(c.gate-1.2)*45,c.z+Math.sin(c.gate-1.2)*45]];g.pi=k%3}});
+ for(const g of GOBS){g.R=rigObj(g.big?BIGM:GOBM,{out:.014,cull:150});rigHide(g.R)}}
+function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;g.hp-=dmg;g.flash=1;g.aware=1;g.ls=[P.x,P.z];
+ if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
+ const kb=g.big?1.2:5;g.kx=dx*kb;g.kz=dz*kb;
+ if(g.st!=='escape'&&g.st!=='choked'&&g.st!=='pinned'){if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
+ alertGroup(g,P,22,GOBS);return false}
+const gobTokens=()=>GOBS.filter(g=>!g.dead&&!g.big&&(g.st==='windup'||g.st==='strike')).length;
+function updateGob(g,dt){g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
+ if(Math.abs(g.kx)+Math.abs(g.kz)>.05&&!g.held){const p=collide(g.x+g.kx*dt,g.z+g.kz*dt,g.rad);g.x=p[0];g.z=p[1];const k=Math.exp(-dt*7);g.kx*=k;g.kz*=k}
+ if(g.dead){g.deadT+=dt;if(g.deadT>140&&d>100){Object.assign(g,{dead:0,hp:g.max,x:g.hx,z:g.hz,st:'idle',aware:0,deadT:0,held:null})}g.y=hAt(g.x,g.z);return}
+ if(g.st==='choked'||g.st==='pinned'){g.spd=0;g.y=hAt(g.x,g.z);return}
+ if(g.st==='escape'){// the get-up (or stumble free) always plays to the end, nothing interrupts it
+  const T=g.from==='pinned'?1.4:1.0;if(g.t>T){g.st='chase';g.t=0;g.aware=1;alertGroup(g,P,22,GOBS)}g.y=hAt(g.x,g.z);return}
+ // perception
+ const range=g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
+ if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted){sfx.gobShout();note(g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
+  if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
+ else if(sees){g.ls=[P.x,P.z];g.unseen=0}else g.unseen=(g.unseen||0)+dt;
+ g.hyaw=lp(g.hyaw,0,Math.min(1,dt*4));
+ switch(g.st){
+ case'idle':g.spd=lp(g.spd,0,.2);g.hyaw=Math.sin(g.t*.6+g.ph)*.6;if(g.aware>.25){g.st='alert';g.t=0}else if(g.patrol&&g.t>3){g.st='patrol';g.t=0}else if(g.t>rr(5,9)&&!g.big){g.st='wander';g.t=0;const a=rnd()*6.28;g.tx=g.hx+Math.cos(a)*rr(2,7);g.tz=g.hz+Math.sin(a)*rr(2,7)}break;
+ case'wander':if(agentMove(g,g.tx,g.tz,1.3,dt,g.rad,4)<.8||g.t>9){g.st='idle';g.t=0}break;
+ case'patrol':{const w=g.patrol[g.pi];if(agentMove(g,w[0],w[1],1.6,dt,g.rad,4)<1.5){g.pi=(g.pi+1)%g.patrol.length;g.st='idle';g.t=0}break}
+ case'alert':g.spd=lp(g.spd,0,.3);agentFace(g,g.ls[0],g.ls[1],dt,5);if(g.aware>=1){g.st='chase';g.t=0}else if(g.t>3.5&&g.aware<.3){g.st='idle';g.t=0}break;
+ case'return':if(agentMove(g,g.hx,g.hz,g.big?2:3,dt,g.rad,4)<1.5||g.t>30){g.st='idle';g.t=0;g.aware=0}break;
+ case'chase':{if(!P.alive||Math.hypot(g.x-g.hx,g.z-g.hz)>90||g.unseen>8){g.st='return';g.t=0;g.aware=0;break}
+  const tx=g.unseen<1?P.x:g.ls[0],tz=g.unseen<1?P.z:g.ls[1];
+  if(g.big){if(d<3.2&&g.cd<=0&&P.st!=='down'){g.st='windup';g.t=0;g.hitDone=false;sfx.roar(.6);break}agentMove(g,tx,tz,2.4,dt,g.rad,3);break}
+  if(d<4.2&&g.unseen<1){if(gobTokens()<2&&g.cd<=0&&P.st!=='down'&&P.st!=='getup'){g.st='windup';g.t=0;g.hitDone=false;sfx.gobShout();break}g.st='circle';g.t=0;g.dur=rr(.6,1.4);break}
+  agentMove(g,tx,tz,5.4,dt,g.rad,8);break}
+ case'circle':{const a=Math.atan2(g.x-P.x,g.z-P.z)+.8*dt*(g.side||1),gx=P.x+Math.sin(a)*3.4,gz=P.z+Math.cos(a)*3.4;agentMove(g,gx,gz,3,dt,g.rad,6);agentFace(g,P.x,P.z,dt,9);
+  if(g.t>g.dur){g.st='chase';g.t=0}break}
+ case'windup':{g.spd=lp(g.spd,0,.4);const T=g.big?1.35:.5;if(g.t<T*.7)agentFace(g,P.x,P.z,dt,g.big?2.2:9);if(g.t>=T){g.st='strike';g.t=0;sfx.swing()}break}
+ case'strike':{const T=g.big?.38:.2,u=g.t/T;
+  if(!g.big){g.x+=Math.sin(g.yaw)*3*dt;g.z+=Math.cos(g.yaw)*3*dt;if(!g.hitDone&&u>.5){g.hitDone=true;const fa=Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw));if(d<1.6&&fa<1.1)hitPlayer({src:g,dmg:7,guard:18,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:'flinch'})}}
+  else if(!g.hitDone){// the club must really touch Selene: segment (club) vs capsule (body) test every frame of the swing
+   const seg=clubSeg(g),hit=segCapsule(seg[0],seg[1],[P.x,P.y+.2,P.z],[P.x,P.y+1.55,P.z],.42);if(hit){g.hitDone=true;hitPlayer({src:g,dmg:30,guard:62,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:'down',power:1.5})}}
+  if(u>=1){if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.cd=g.big?rr(1.6,2.4):rr(.9,1.6)}break}
+ case'recover':g.spd=0;if(g.t>(g.big?1.25:.5)){g.st='chase';g.t=0}break;
+ case'stagger':g.spd=0;if(g.t>(g.big?2.1:1.5)){g.st='chase';g.t=0}break;
+ case'hurt':g.spd=0;if(g.t>.3){g.st='chase';g.t=0}break}
+ // keep goblins apart
+ for(const o of GOBS){if(o===g||o.dead)continue;const ex=g.x-o.x,ez=g.z-o.z,q=ex*ex+ez*ez,m=g.rad+o.rad;if(q<m*m&&q>1e-6){const k=Math.sqrt(q);g.x+=ex/k*(m-k)*.5;g.z+=ez/k*(m-k)*.5}}
+ g.y=hAt(g.x,g.z);if(g.spd>.2)g.ph+=g.spd*dt*(g.big?2.2:4.2)}
+function gobFK(g,time){const tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc,extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));g.root=[g.x,y,g.z,extra];rigFK(g.R.def,gobPose(g,time),[g.x,y,g.z],g.yaw,g.sc,g.R.ob.bones,extra)}
+function clubSeg(g){gobFK(g,GT.time);const d=g.R.def;return[boneW(d,8,[0,-.08,.3],g.sc),boneW(d,8,[0,-.08,1.75],g.sc)]}
+// closest distance between segment AB (club) and segment CD (body axis) < r
+function segCapsule(A,B,C,D,r){let best=1e9;for(let i=0;i<=8;i++){const t=i/8,p=[lp(A[0],B[0],t),lp(A[1],B[1],t),lp(A[2],B[2],t)],cd=vsub(D,C),u=cl(vdot(vsub(p,C),cd)/vdot(cd,cd),0,1),q=vadd(C,vmul(cd,u));best=Math.min(best,Math.hypot(...vsub(p,q)))}return best<r+.18}
+// ---------- poses
+function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.big?0:cl((g.spd-2)/3,0,1);
+ if(g.st!=='dead'&&g.st!=='choked'&&g.st!=='pinned'&&g.st!=='escape'){gaitPose(q,g.ph,A,run);q.spP=(q.spP||0)+(g.big?.25:.32);q.hdP=-.2;q.hdY=g.hyaw;q.LsZ=.25;q.RsZ=.25;q.ReX=(q.ReX||0)-.6;q.LeX=(q.LeX||0)-.4}
+ const u=g.big?g.t/1.35:g.t/.5;
+ switch(g.st){
+ case'idle':q.spP+=Math.sin(time*1.4+g.ph)*.04;break;
+ case'alert':q.hdP=-.05;q.spP=.15;q.RsX=-.7;q.ReX=-1.2;break;
+ case'windup':if(g.big){const k=sst(0,.8,u);q.RsX=lp(0,-3.0,k);q.RsZ=.35;q.ReX=lp(-.6,-1.4,k);q.LsX=lp(0,-2.6,k);q.LsZ=.5;q.LeX=-1.2;q.spP=lp(.25,-.35,k);q.hdP=-.4;q.jaw=.5;q.LhX=-.4;q.LkX=.5;q.RhX=.2;q.RkX=.3}
+  else{const k=sst(0,1,u);q.RsX=lp(-.4,-2.4,k);q.RsZ=.6;q.ReX=-1.4;q.spP=.45;q.spY=-.5*k;q.LhX=-.5;q.LkX=.8;q.RhX=.3;q.RkX=.4;q.hdP=-.3}break;
+ case'strike':{const k=sst(0,1,g.t/(g.big?.38:.2));if(g.big){q.RsX=lp(-3.0,.4,k);q.RsZ=.25;q.ReX=lp(-1.4,-.2,k);q.LsX=lp(-2.6,.2,k);q.LsZ=.4;q.LeX=-.3;q.spP=lp(-.35,.75,k);q.hipP=.2*k;q.LhX=-.7;q.LkX=.9;q.RhX=.3;q.RkX=.4;q.jaw=.7}
+  else{q.RsX=lp(-2.4,.8,k);q.RsY=lp(0,.6,k);q.RsZ=.3;q.ReX=-.2;q.spP=.55;q.spY=lp(-.5,.5,k);q.LhX=-.7;q.LkX=.9;q.RhX=.4;q.RkX=.3}break}
+ case'recover':if(g.big){q.RsX=.5;q.RsZ=.25;q.ReX=-.2;q.LsX=.3;q.spP=.75;q.hipP=.25;q.hdP=.3;q.LhX=-.7;q.LkX=.9}else{q.spP=.4}break;
+ case'stagger':case'hurt':{const k=Math.sin(g.t*14)*.3;q.spP=-.4+k*.3;q.hdP=-.5;q.RsX=-1.6;q.LsX=-1.4;q.LsZ=.6;q.RsZ=.6;q.hipP=-.15;q.LhX=.3;q.RkX=.5;break}
+ case'choked':{const k=Math.sin(g.t*17);q.hdP=-.6;q.spP=-.35;q.RsX=-1.8+k*.5;q.LsX=-1.6-k*.5;q.LsZ=.7;q.RsZ=.7;q.LeX=-1.5;q.ReX=-1.5;q.LhX=.25+k*.3;q.RhX=-.2-k*.3;q.LkX=.4;q.RkX=.5;q.jaw=.8;break}
+ case'pinned':q.LsX=-2.6;q.RsX=-2.6+Math.sin(g.t*20)*.3*Math.max(0,1-g.t);q.LsZ=.4;q.RsZ=.4;q.hdP=-.6;q.jaw=.6;break;
+ case'escape':{const T=g.from==='pinned'?1.4:1.0,u2=g.t/T;if(g.from==='pinned'){q.LsX=lp(-2.6,0,u2);q.RsX=lp(-2.6,0,u2);q.LhX=lp(0,-1.4,sst(0,.5,u2))*(1-sst(.6,1,u2));q.LkX=lp(0,2.2,sst(0,.5,u2))*(1-sst(.6,1,u2));q.RhX=q.LhX*.7;q.RkX=q.LkX*.7;q.spP=lp(0,.8,sst(0,.5,u2))*(1-sst(.7,1,u2))}
+  else{q.spP=.5*(1-u2);q.hdP=-.4;q.LhX=-.4;q.RkX=.5}break}
+ case'dead':break}
+ return humanPose(q)}
+// root tilt for lying states (face-down when pinned, on the back when dead)
+function gobRootTilt(g){if(g.st==='pinned')return 1.45;if(g.st==='escape'&&g.from==='pinned')return 1.45*(1-sst(0,.85,g.t/1.4));if(g.st==='dead')return -1.45*sst(0,.6,g.t);return 0}
+function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z);if(d>140||(g.dead&&g.deadT>20)){rigHide(g.R);continue}
+  const rot=gobPose(g,time),tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc;
+  const extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);
+  g.R.ob.flash=g.flash;g.R.ob.col=g.st==='stagger'||g.open()?[1.15,1.05,.8]:[1,1,1]}}

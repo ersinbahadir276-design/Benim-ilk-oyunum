@@ -1,0 +1,15 @@
+<!doctype html><html><body style="margin:0;background:#888"><script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three'; import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const r=new THREE.WebGLRenderer({preserveDrawingBuffer:true});r.setSize(360,240);document.body.appendChild(r.domElement);
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x9ab);sc.add(new THREE.HemisphereLight(0xffffff,0x445533,2.5));
+const cam=new THREE.PerspectiveCamera(40,360/240,0.1,500);
+const g=await new GLTFLoader().loadAsync((new URLSearchParams(location.search).get('f')||'d.glb'));const m=g.scene;sc.add(m);
+const mix=new THREE.AnimationMixer(m);window.N=g.animations.length;window.names=g.animations.map(a=>a.name);
+const grid=new THREE.GridHelper(40,40);sc.add(grid);
+window.pose=(i,f,ang)=>{mix.stopAllAction();const c=g.animations[i];const a=mix.clipAction(c);a.play();let mn=1e9;for(const t of c.tracks)mn=Math.min(mn,t.times[0]);mix.setTime(0);a.time=mn+(c.duration-mn)*f;mix.update(0);
+ m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);const cen=b.getCenter(new THREE.Vector3()),sz=b.getSize(new THREE.Vector3()).length();
+ const H=m.getObjectByName("Bip001-Pelvis_04").getWorldPosition(new THREE.Vector3());cam.position.set(H.x+Math.sin(ang)*70,H.y+12,H.z+Math.cos(ang)*70);cam.lookAt(H.x,H.y+4,H.z);r.render(sc,cam);
+ return [b.min.toArray().map(v=>+v.toFixed(1)),b.max.toArray().map(v=>+v.toFixed(1))];};
+window.READY=1;
+</script></body></html>
