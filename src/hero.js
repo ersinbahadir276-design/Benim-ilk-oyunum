@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { springBonesFromVRM0 } from './springbone.js';
+import { HeroFace } from './face.js';
 
 const SIDE = (l, r) => (s) => (s === 'l' ? l : r);
 const MAP = { pelvis: 'J_Bip_C_Hips', spine_01: 'J_Bip_C_Spine', spine_02: 'J_Bip_C_Chest', spine_03: 'J_Bip_C_UpperChest', neck_01: 'J_Bip_C_Neck', Head: 'J_Bip_C_Head' };
@@ -135,5 +136,7 @@ export async function loadHero(base = 'assets/models/') {
     else { g.drag = Math.max(g.drag, 0.3); g.maxAngle = 0.9; }
   };
   const spring = await springBonesFromVRM0(vrm, { center: root, extraColliders: legColliders, tune });
-  return { root, model, clips, mixer, sword, spring, head: root.getObjectByName('J_Bip_C_Head') };
+  // yüz ifadeleri (blendshape) ve baş/göz bakışı
+  const face = new HeroFace(vrm, root);
+  return { root, model, clips, mixer, sword, spring, face, head: root.getObjectByName('J_Bip_C_Head') };
 }

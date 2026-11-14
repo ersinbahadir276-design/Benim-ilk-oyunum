@@ -41,10 +41,43 @@ window.runGameplayTests = async function () {
     P.x = 0; P.z = 6;
   }
 
+  // 1c) yüz: blendshape ifadeleri, göz kırpma, baş/göz bakışı
+  {
+    const F = P.hero.face, sh = F ? F.shapes : {};
+    const inf = (n) => (sh[n] ? Math.max(...sh[n].map((b) => b.m.morphTargetInfluences[b.i])) : -1);
+    ok('kahraman: yüz blendshape grupları yüklendi', ['blink', 'joy', 'angry', 'sorrow', 'surprised', 'a', 'o'].every((n) => sh[n]?.length), Object.keys(sh).join(','));
+    calmAll(); P.x = 0; P.z = 6; P.yaw = Math.PI; P.hp = P.hpMax; G.keys = {}; G.edge = {}; let mb = 0; sim(9, () => { mb = Math.max(mb, inf('blink')); });
+    ok('kahraman: kendiliğinden göz kırpar', mb > 0.8, 'maks=' + mb.toFixed(2));
+    G.edge.attack = true; let ma = 0, mo = 0; sim(0.7, () => { ma = Math.max(ma, inf('angry')); mo = Math.max(mo, inf('a')); });
+    ok('kahraman: saldırırken öfkeli ifade + bağırış', ma > 0.5 && mo > 0.2, `öfke=${ma.toFixed(2)} ağız=${mo.toFixed(2)}`); sim(1.5);
+    P.iframes = 0; P.damage(5, null); sim(0.15); ok('kahraman: hasar alınca acı ifadesi', inf('sorrow') > 0.4, inf('sorrow').toFixed(2)); sim(1);
+    // bakış: önündeki hayvana baş ve gözler döner
+    const a = G.animals.find((x) => !x.dead && !x.tamed && x.alt === 0 && x.spec.kind !== 'bird');
+    const keep = { x: a.x, z: a.z }; freeze(a); P.x = 0; P.z = 6; P.yaw = 0; sim(1.5);
+    const head = P.hero.head, q0 = head.getWorldQuaternion(new head.quaternion.constructor());
+    const fwd = () => new THREE_V(0, 0, 1).applyQuaternion(head.getWorldQuaternion(new head.quaternion.constructor()).multiply(q0.clone().invert()));
+    a.x = P.x + 3.5 * Math.sin(1.0); a.z = P.z + 3.5 * Math.cos(1.0); P._lookT = 0; sim(1.5, () => { a.x = P.x + 3.5 * Math.sin(1.0); a.z = P.z + 3.5 * Math.cos(1.0); P.yaw = 0; });
+    const dir = new THREE_V(a.x - P.x, 0, a.z - P.z).normalize(), f = fwd(); f.y = 0; f.normalize();
+    ok('kahraman: ilgi çeken hayvana başını çevirir', P._lookA === a && F.lookW > 0.8 && f.angleTo(dir) < 0.65, `açı=${f.angleTo(dir).toFixed(2)} yaw=${F.yaw.toFixed(2)} w=${F.lookW.toFixed(2)}`);
+    ok('kahraman: gözler de hedefe döner', Math.abs(F.eyeYaw) > 0.02 && Math.sign(F.eyeYaw) === Math.sign(F.yaw), F.eyeYaw.toFixed(3));
+    // göz kemikleri animasyonsuz: ek dönüş karelerce birikmemeli (göz bebeği kaybolmaz)
+    const eyeRest = F.eyes.map((e) => e.quaternion.clone()); sim(3, () => { a.x = P.x + 3.5 * Math.sin(1.0); a.z = P.z + 3.5 * Math.cos(1.0); P.yaw = 0; });
+    const drift = Math.max(...F.eyes.map((e, i) => e.quaternion.angleTo(eyeRest[i])));
+    ok('kahraman: göz dönüşü birikmez', F.eyes.length === 2 && drift < 0.05 && F.eyes.every((e) => e.quaternion.angleTo(new head.quaternion.constructor()) < 0.4), 'kayma=' + drift.toFixed(3));
+    a.x = keep.x; a.z = keep.z; a.calmT = 0; a.stT = 0; P.x = 0; P.z = 6; P.yaw = Math.PI; P._lookT = 0;
+    const away = G.animals.filter((x) => Math.hypot(x.x - P.x, x.z - P.z) < 12).map((x) => [x, x.x, x.z]); away.forEach(([x]) => { x.x += 200; });
+    sim(2); ok('kahraman: hedef yokken bakış sıfırlanır', F.lookW < 0.2, F.lookW.toFixed(2) + ' ' + (P._lookA?.kind || '-'));
+    away.forEach(([x, ox, oz]) => { x.x = ox; x.z = oz; });
+    const finite = ['J_Bip_C_Neck', 'J_Bip_C_Head'].every((n) => Number.isFinite(P.hero.root.getObjectByName(n).quaternion.w));
+    ok('kahraman: bakış NaN üretmez', finite);
+    P.x = 0; P.z = 6; P.yaw = Math.PI; P.hp = P.hpMax;
+  }
+
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
   a = find('rabbit'); freeze(a); put(a, 1.2); P.crouching = false; ok('tavşan: çömelmeden evcilleşmez', a.tryTame() === false);
   P.crouching = true; ok('tavşan: çömelip havuçla evcilleşir', a.tryTame() && a.tamed && G.pets.length === 1); P.crouching = false;
+  sim(0.1); ok('kahraman: evcilleştirince sevinç ifadesi', P.hero.face.joyT > 0 && P.hero.face.w.joy > 0.1, P.hero.face.joyT.toFixed(2));
   // 3) geyik: 3 adım
   a = find('deer'); freeze(a); put(a, 1.5); P.crouching = true; a.tryTame(); a.tryTame(); ok('geyik: 2 adımda henüz evcil değil', !a.tamed && a.trust === 2); a.tryTame(); ok('geyik: 3. böğürtlenle evcilleşir', a.tamed); P.crouching = false;
   // 4) at: elma + basılı tutarak sakinleştirme
@@ -83,7 +116,13 @@ window.runGameplayTests = async function () {
   release();
   // 16) kartal: yem bırak, iner ve yer
   a = find('eagle'); const ex = a.x, ez = a.z; for (let i = 0; i < 2; i++) { P.x = a.x + 6; P.z = a.z; G.inv.sel = 'meat'; P.yaw = 0; G.dropBait(); P.x += 12; const t0 = a.trust; sim(60, () => a.trust === t0 && !a.tamed); }
-  ok('kartal: yere iner, 2 yemle evcilleşir', a.tamed, 'trust=' + a.trust + ' alt=' + a.alt.toFixed(1)); sim(5); ok('kartal yoldaş: oyuncunun üstünde uçar', a.alt > 2 && a.dist(P) < 12, 'alt=' + a.alt.toFixed(1) + ' d=' + a.dist(P).toFixed(1) + ' st=' + a.state + ' tamed=' + a.tamed + ' dead=' + a.dead + ' stay=' + a.stay + ' hedef=' + (a.target ? a.target.kind || 'oyuncu' : '-'));
+  ok('kartal: yere iner, 2 yemle evcilleşir', a.tamed, 'trust=' + a.trust + ' alt=' + a.alt.toFixed(1));
+  // Bu test yalnızca takip uçuşunu ölçer: 120 sn'lik yem beklemesi sırasında yaklaşan vahşi avcıların
+  // kartalı savaşa çekip öldürmesi (önceki kararsızlığın nedeni) burada sahneden uzaklaştırılarak ayıklanır.
+  let lastHit = '-'; const origDmg = a.damage.bind(a); a.damage = (n, f) => { lastHit = f ? f.kind || 'oyuncu' : '?'; return origDmg(n, f); };
+  calmAll(); const moved = G.animals.filter((x) => !x.tamed && x.spec.temper !== 'prey' && Math.hypot(x.x - P.x, x.z - P.z) < 30).map((x) => [x, x.x]); moved.forEach(([x]) => { x.x += 300; });
+  P.hp = P.hpMax; sim(5); ok('kartal yoldaş: oyuncunun üstünde uçar', a.alt > 2 && a.dist(P) < 12, 'alt=' + a.alt.toFixed(1) + ' d=' + a.dist(P).toFixed(1) + ' st=' + a.state + ' tamed=' + a.tamed + ' dead=' + a.dead + ' stay=' + a.stay + ' hedef=' + (a.target ? a.target.kind || 'oyuncu' : '-') + ' son vuran=' + lastHit);
+  moved.forEach(([x, ox]) => { x.x = ox; }); delete a.damage;
   // 17) gölge pençe + ejderha
   a = find('shadowbeast'); put(a, 2.4); guard = 0; while (a.frac > 0.3 && guard++ < 60) a.damage(10, P); ok('gölge pençe: ay taşıyla evcilleşir', a.tryTame() && a.tamed);
   a = find('dragon'); put(a, 5); guard = 0; while (a.frac > 0.2 && guard++ < 200) a.damage(10, P); ok('ejderha: mücevherle evcilleşir', a.tryTame() && a.tamed, a.frac.toFixed(2));

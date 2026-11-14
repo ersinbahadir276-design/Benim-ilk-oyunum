@@ -19,8 +19,17 @@ if (name === 'hero') {
   let cur; const play = (n) => { cur?.stop(); cur = h.mixer.clipAction(h.clips[n]); cur.reset().play(); };
   Object.keys(h.clips).forEach((n) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => play(n); ui.appendChild(b); });
   if (P.get('a')) play(P.get('a'));
-  update = (dt) => { h.mixer.update(dt); h.root.updateMatrixWorld(true); h.spring?.update(dt); };
-  window.T = { setTime: (t) => { h.mixer.setTime(0); h.spring?.reset(); const n = Math.round(t * 60); for (let i = 0; i < n; i++) update(1 / 60); } };
+  // ifade önizleme: ?f=joy|angry|sorrow|surprised|a|o ... ve ?look=1 (baş/göz bakışı kameraya)
+  const F = h.face; let expr = P.get('f') || '';
+  Object.keys(F.shapes).forEach((n) => { const b = document.createElement('button'); b.textContent = '☺ ' + n; b.onclick = () => { expr = expr === n ? '' : n; }; ui.appendChild(b); });
+  const camT = new THREE.Vector3();
+  update = (dt) => {
+    h.mixer.update(dt); h.root.updateMatrixWorld(true);
+    if (expr) { F.update(dt, { state: 'move', hurt: 0, hpFrac: 1, yaw: 0, eye: new THREE.Vector3(), target: null }); for (const k in F.w) F.w[k] = k === expr ? 1 : 0; F._apply(); }
+    else F.update(dt, { state: 'move', hurt: 0, hpFrac: 1, yaw: 0, eye: h.head.getWorldPosition(new THREE.Vector3()), target: P.get('look') ? camT.copy(cam.position) : null });
+    h.spring?.update(dt);
+  };
+  window.T = { setTime: (t) => { h.mixer.setTime(0); h.spring?.reset(); h.face.reset(); const n = Math.round(t * 60); for (let i = 0; i < n; i++) update(1 / 60); } };
 } else {
   await loadGLBCreatures('../assets/models/');
   const c = makeCreature(name); scene.add(c.root); size = c.spec.viewSize || c.spec.len || 2;

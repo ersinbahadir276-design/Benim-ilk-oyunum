@@ -23,7 +23,7 @@ export class Player {
     this.hp -= n; this.hurt = 0.35; this.g.floatText(`-${Math.round(n)}`, this, '#ff5a5a'); this.g.ui.hurtFlash();
     if (this.hp <= 0) { this.hp = 0; this.alive = false; this.state = 'dead'; this.stT = 4.5; this.crouching = false; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Death01', { once: true, fade: 0 }); this.g.msg('Yenildin... Kampta yeniden doğacaksın.'); }
   }
-  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); this.hero.spring?.reset(); for (const a of this.g.animals) if (a.target === this) a.target = null; }
+  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); this.hero.spring?.reset(); this.hero.face?.reset(); for (const a of this.g.animals) if (a.target === this) a.target = null; }
   busy(name, time) { this.state = name; this.stT = time; }
   interactAnim(kneel) { if (this.state !== 'move') return; this.crouching && !kneel ? 0 : this.busy('interact', this.play(kneel ? 'PickUp_Kneeling' : 'Interact', { once: true, ts: 1.6 }) * 0.9); }
 
@@ -79,7 +79,32 @@ export class Player {
     this.hp = Math.min(this.hpMax, this.hp + (this.alive && this.hurt < -6 ? dt * 1.2 : 0));
     this.hero.mixer.update(dt);
     const r = this.hero.root; r.position.set(this.x, this.y, this.z); r.rotation.y = this.yaw;
-    if (this.hero.spring) { r.updateMatrixWorld(true); this.hero.spring.update(dt); }
+    r.updateMatrixWorld(true);
+    if (this.hero.face) this.updateFace(dt);
+    if (this.hero.spring) this.hero.spring.update(dt);
+  }
+  // Yüz: duruma göre ifade, ilgi çeken hayvana baş/göz bakışı; evcilleştirince sevinç, saldırıya uğrayınca şaşkınlık.
+  updateFace(dt) {
+    const g = this.g, F = this.hero.face;
+    const pets = g.pets ? g.pets.length : 0; if (pets > (this._pets ?? pets)) F.joy(); this._pets = pets;
+    this._lookT = (this._lookT || 0) - dt;
+    if (this._lookT <= 0) {
+      this._lookT = 0.25; let best = null, bs = Infinity, threats = 0;
+      for (const a of g.animals || []) {
+        if (a.dead) continue; if (a.target === this) threats++;
+        const dx = a.x - this.x, dz = a.z - this.z, d = Math.hypot(dx, dz); if (d > 10 || d < 0.4) continue;
+        let df = Math.atan2(dx, dz) - this.yaw; df = Math.abs(Math.atan2(Math.sin(df), Math.cos(df))); if (df > 1.9) continue;
+        // tehdit > etkileşim hedefi > yakın ve önde olan
+        const s = d + df * 3 - (a.target === this ? 6 : 0) - (g.near?.animal === a ? 4 : 0);
+        if (s < bs) { bs = s; best = a; }
+      }
+      if (threats > (this._threats || 0)) F.surprise(); this._threats = threats; this._lookA = best;
+    }
+    const a = this._lookA && !this._lookA.dead ? this._lookA : null;
+    const head = this.hero.head; const eye = this._eye || (this._eye = head.position.clone()); head.getWorldPosition(eye); eye.y += 0.06;
+    const tgt = a ? { x: a.x, y: (a.c?.root?.position.y ?? a.y) + (a.alt > 0 ? 0 : Math.max(0.3, a.radius * 0.9)), z: a.z } : null;
+    const dur = this.atkDur || 1, phase = this.state === 'attack' ? 1 - Math.max(0, this.stT) / dur : 0;
+    F.update(dt, { state: this.state, hurt: this.hurt, hpFrac: this.hp / this.hpMax, combo: this.combo, attackPhase: phase, stamina: this.stamina, sprinting: this.speed > 5.6, crouching: this.crouching, yaw: this.yaw, eye, target: tgt });
   }
   turn(want, dt, rate) { let d = (want - this.yaw) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; this.yaw += d * Math.min(1, dt * rate); }
   startAttack(i) {
