@@ -2,6 +2,7 @@
 // Kullanım: test/run-tests.mjs (Playwright) ya da konsolda:  await runGameplayTests()
 window.runGameplayTests = async function () {
   const G = window.GAME, P = G.player, out = [];
+  const THREE_V = P.hero.root.position.constructor;
   const real = G.running; G.running = false; // gerçek zamanlı döngüyü durdur, elle ilerlet
   const sim = (sec, each) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { if (each && each(i) === false) break; G.update(1 / 30); } };
   const ok = (name, cond, extra = '') => out.push({ name, pass: !!cond, extra: String(extra) });
@@ -23,6 +24,20 @@ window.runGameplayTests = async function () {
   G.keys.w = false; sim(0.5); G.edge.crouch = true; sim(0.5); ok('oyuncu: çömelme klibi', P.crouching && P.cur._clip.name === 'Crouch_Idle_Loop', P.cur._clip.name);
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
+
+  // 1b) saç/ceket yay kemikleri (VRM secondaryAnimation)
+  { const S = P.hero.spring, J = S.groups.flatMap((g) => g.joints);
+    ok('kahraman: yay kemikleri kuruldu (saç + ceket)', S.groups.length >= 8 && J.some((j) => j.bone.name.startsWith('HairJoint')) && J.some((j) => j.bone.name.startsWith('J_Sec_')), S.groups.length + ' grup / ' + J.length + ' eklem');
+    const hair = J.find((j) => j.bone.name.startsWith('HairJoint') && j.bone.parent.name === 'J_Bip_C_Head');
+    P.x = 0; P.z = 6; G.keys = {}; sim(1.5);
+    G.keys.w = true; G.keys.run = true; let maxDev = 0; sim(1.5, () => { maxDev = Math.max(maxDev, hair.bone.quaternion.angleTo(hair.rest)); }); G.keys = {};
+    ok('kahraman: depar sırasında saç salınır', maxDev > 0.01, 'sapma=' + maxDev.toFixed(3) + ' rad');
+    sim(3); ok('kahraman: durunca saç dinlenme pozuna döner', hair.bone.quaternion.angleTo(hair.rest) < 0.05, hair.bone.quaternion.angleTo(hair.rest).toFixed(3));
+    const v = new THREE_V(); let lenErr = 0, finite = true;
+    P.hero.root.updateMatrixWorld(true);
+    for (const j of J) { j.bone.getWorldPosition(v); const t = j.cur.clone().applyMatrix4(j.g.center.matrixWorld); lenErr = Math.max(lenErr, Math.abs(t.distanceTo(v) - j.length)); finite = finite && Number.isFinite(j.bone.quaternion.x + j.bone.quaternion.w); }
+    ok('kahraman: yay kemikleri kararlı (uzunluk korunur, NaN yok)', finite && lenErr < 1e-3, 'hata=' + lenErr.toExponential(1));
+  }
 
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
