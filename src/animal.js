@@ -1,6 +1,7 @@
 // Hayvan varlığı: yabani davranış (yapay zekâ), evcilleştirme adımları ve evcil yoldaş davranışı.
 import { makeCreature, SPECIES } from './creatures.js';
 import { height, floorY, waterDepth, HALF } from './world.js';
+import { killXP, tameXP } from './progression.js';
 
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
@@ -57,6 +58,7 @@ export class Animal {
     if (from === this.g.player || from?.tamed) {
       const got = []; for (const [k, v] of Object.entries(this.spec.drops || {})) { this.g.inv.add(k, v); got.push(`${v} ${ITEMS[k].name}`); }
       if (got.length) this.g.msg(`Ganimet: ${got.join(', ')}`);
+      this.g.prog?.gain(killXP(this.kind), 'kill');
     }
   }
   respawn() {
@@ -91,6 +93,15 @@ export class Animal {
     const no = g.petCounter[this.kind] = (g.petCounter[this.kind] || 0) + 1; this.petName = this.spec.name + (no > 1 ? ' ' + no : '');
     this.altGoal = this.spec.kind === 'bird' ? 4 : 0; g.pets.push(this); this.set('follow');
     g.msg(`✨ ${this.petName} evcilleştirildi! (${g.pets.length}/5)`); g.floatText('❤❤❤', this, '#ff6f9c');
+    g.prog?.gain(tameXP(this.kind), 'tame');
+  }
+  // kayıttan yoldaşı geri getir (mesaj ve XP yok)
+  restorePet(d) {
+    const g = this.g;
+    this.tamed = true; this.dead = false; this.target = null; this.cowerT = 0; this.calmT = 0; this.trust = this.spec.tame?.steps || 1;
+    this.petName = d.name; this.hunger = d.hunger; this.hp = Math.min(this.hpMax, d.hp); this.stay = d.stay;
+    this.home = { x: this.x, z: this.z }; this.y = floorY(this.x, this.z, 0); this.alt = this.altGoal = this.spec.kind === 'bird' ? 4 : 0;
+    this.c.reset?.(); this.c.root.visible = true; g.pets.push(this); this.set(this.stay ? 'idle' : 'follow'); this._place();
   }
   // E tuşu: bir evcilleştirme adımı dene. Başarılıysa true.
   tryTame() {
@@ -168,7 +179,7 @@ export class Animal {
     if (this.spec.kind === 'bird') this.altGoal = d < 9 ? 0.7 : 5;
     if (this.state === 'attack') {
       this.atkT += dt; this.face(tgt, dt);
-      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed && this.hunger < 25 ? 0.5 : 1), this); }
+      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed ? (this.hunger < 25 ? 0.5 : 1) * (this.g.prog?.stats.petBonus || 1) : 1), this); }
       if (this.atkT >= this.c.attackTime) { this.cool = 0.5 + Math.random() * 0.5; this.set('chase'); }
       return 'attack';
     }

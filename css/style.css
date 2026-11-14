@@ -25,7 +25,7 @@
 .slot{position:relative;width:54px;height:62px;background:#000a;border:2px solid #fff3;border-radius:10px;text-align:center;font-size:24px;padding-top:4px;cursor:pointer}
 .slot.sel{border-color:#ffd75e;background:#3a300fcc}.slot small{display:block;font-size:9px;opacity:.85;white-space:nowrap;overflow:hidden}
 .slot b{position:absolute;right:4px;top:1px;font-size:11px}.slot u{position:absolute;left:4px;top:1px;font-size:9px;opacity:.6;text-decoration:none}
-#helpbtn{position:absolute;left:12px;top:62px;width:30px;height:30px;border-radius:50%;border:1px solid #fff5;background:#0008;color:#fff;font-weight:700;cursor:pointer}
+#helpbtn{position:absolute;left:12px;top:80px;width:30px;height:30px;border-radius:50%;border:1px solid #fff5;background:#0008;color:#fff;font-weight:700;cursor:pointer}
 #floats span{position:absolute;font-weight:800;font-size:18px;text-shadow:0 1px 3px #000;transform:translate(-50%,-50%);pointer-events:none}
 #hurt{position:absolute;inset:0;box-shadow:inset 0 0 120px 30px #c0001a;opacity:0;transition:opacity .4s}
 #overlay{position:fixed;inset:0;background:radial-gradient(#1b2a44,#070b14);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
@@ -39,3 +39,10 @@
 #tbtns button{width:54px;height:54px;border-radius:50%;border:1px solid #fff5;background:#0008;color:#fff;font-size:20px}
 #tbtns button.on{background:#ffd75e;color:#000}
 @media (max-width:760px){#pets{width:150px;font-size:11px}.bar{width:150px}#focus{top:64px}.slot{width:44px;height:54px;font-size:20px}#log{bottom:230px}#prompt{bottom:84px}#hold{bottom:74px}}
+
+.bar.xp{height:10px}.bar.xp i{background:linear-gradient(#9fe6ff,#3b8fd6)}.bar.xp span{font-size:9px;line-height:9px}
+#lvlflash{position:absolute;left:50%;top:28%;transform:translateX(-50%);font:900 42px/1 system-ui,sans-serif;color:#ffe27a;text-shadow:0 0 18px #ffb300,0 2px 4px #000;letter-spacing:.08em;opacity:0;pointer-events:none}
+#lvlflash.go{animation:lvl 2.2s ease-out}
+@keyframes lvl{0%{opacity:0;transform:translateX(-50%) scale(.6)}15%{opacity:1;transform:translateX(-50%) scale(1.08)}70%{opacity:1;transform:translateX(-50%) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(-30px)}}
+#saveinfo{font-size:13px;opacity:.85;margin:6px 0}
+#newgame{margin-top:10px;font-size:15px;font-weight:700;padding:9px 20px;border-radius:24px;border:0;background:#ffffff26;color:#fff;cursor:pointer}

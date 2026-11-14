@@ -78,5 +78,24 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) ilerleme: XP, seviye, istatistikler
+  const R = G.prog; ok('ilerleme: evcilleştirme/av XP verdi', R.total > 100 && R.level > 1, 'sv=' + R.level + ' toplam=' + R.total);
+  const lv0 = R.level, hpM0 = P.hpMax; P.hp = 10; R.gain(R.need - R.xp); ok('ilerleme: seviye atlama can/hasar artırır, canı doldurur', R.level === lv0 + 1 && P.hpMax > hpM0 && P.hp === P.hpMax && P.dmgMul > 1, `sv=${R.level} hpMax=${P.hpMax} ×${P.dmgMul.toFixed(2)}`);
+  let t0 = R.total; a = find('rabbit'); a.damage(999, P); ok('ilerleme: av XP', R.total > t0, R.total - t0);
+  t0 = R.total; const n2 = G.world.nodes.find((x) => x.type === 'carrot' && x.ready); P.x = n2.x + 0.8; P.z = n2.z; P.state = 'move'; sim(0.1); G.edge.interact = true; sim(0.2); ok('ilerleme: toplama XP', R.total === t0 + 2, R.total - t0);
+  a = find('wolf'); put(a, 1.5); freeze(a); a.hp = a.hpMax; const wh0 = a.hp; P.yaw = Math.atan2(a.x - P.x, a.z - P.z); P.combo = 0; P.swing(); ok('ilerleme: kılıç hasarı seviyeyle ölçeklenir', Math.abs((wh0 - a.hp) - 18 * P.dmgMul) < 0.01, (wh0 - a.hp).toFixed(1));
+  // 22) kayıt / yükleme
+  release(); P.x = 30; P.z = 30; P.snapToGround(); a = find('rabbit'); put(a, 2); P.crouching = true; G.inv.add('carrot', 1); a.tryTame(); a.petName = 'Pamuk'; a.hunger = 42;
+  const snap = JSON.parse(JSON.stringify((await import('../src/progression.js')).serialize(G))); const lvS = R.level, xpS = R.xp, carS = G.inv.count('carrot');
+  release(); R.level = 1; R.xp = 0; R.apply(); G.inv.items = { flute: 1 }; P.x = 0; P.z = 4;
+  ok('kayıt: yükleme başarılı', G.save.load(snap));
+  ok('kayıt: seviye/XP/envanter geri gelir', R.level === lvS && R.xp === xpS && G.inv.count('carrot') === carS && P.hpMax === (R.constructor.stats(lvS).hpMax), `sv=${R.level} havuç=${G.inv.count('carrot')}`);
+  ok('kayıt: konum geri gelir', Math.abs(P.x - snap.player.x) < 0.01 && Math.abs(P.z - snap.player.z) < 0.01 && Math.hypot(P.x, P.z - 4) > 5, P.x.toFixed(1) + ',' + P.z.toFixed(1));
+  const rpet = G.pets[0]; ok('kayıt: yoldaş adı/açlığıyla geri gelir', G.pets.length === 1 && rpet.kind === 'rabbit' && rpet.petName === 'Pamuk' && rpet.hunger === 42 && rpet.tamed, G.pets.map((p) => p.petName).join());
+  sim(3); ok('kayıt: geri gelen yoldaş takip eder', rpet.dist(P) < 6, rpet.dist(P).toFixed(1));
+  const { validate } = await import('../src/progression.js');
+  const bad = validate({ v: 1, level: 999, xp: -5, player: { x: 1e9, z: 'a', hp: 50 }, inv: { carrot: 3, hack: 9, meat: -2 }, pets: [{ kind: 'ogre' }, { kind: 'wolf', hp: 30 }, { kind: 'nope' }] });
+  ok('kayıt: bozuk veri doğrulanır/kırpılır', bad.level === 30 && bad.xp === 0 && bad.player.x === 190 && bad.player.z === 4 && !bad.inv.hack && !bad.inv.meat && bad.inv.carrot === 3 && bad.pets.length === 1 && validate({ v: 2 }) === null && validate(null) === null);
+  const key = 'yaban-yoldaslari-save-v1', prev = localStorage.getItem(key); G.save.write(); const pk = G.save.peek(); ok('kayıt: localStorage yaz/oku', pk && pk.level === R.level && pk.pets.length === 1); if (prev) localStorage.setItem(key, prev); else localStorage.removeItem(key);
   G.running = real; return out;
 };
