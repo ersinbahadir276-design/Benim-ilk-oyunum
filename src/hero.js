@@ -2,6 +2,7 @@
 // Klipler kaynak iskeletten (UE tarzı manken) kahramanın iskeletine çalışma anında aktarılır (retarget).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SpringBones } from './springbone.js';
 
 const SIDE = (l, r) => (s) => (s === 'l' ? l : r);
 const MAP = { pelvis: 'J_Bip_C_Hips', spine_01: 'J_Bip_C_Spine', spine_02: 'J_Bip_C_Chest', spine_03: 'J_Bip_C_UpperChest', neck_01: 'J_Bip_C_Neck', Head: 'J_Bip_C_Head' };
@@ -114,5 +115,15 @@ export async function loadHero(base = 'assets/models/') {
   sword.position.set(-0.07, -0.02, 0.02); sword.rotation.set(Math.PI / 2, 0, 0);
   hand.add(sword);
   const mixer = new THREE.AnimationMixer(root);
-  return { root, model, clips, mixer, sword, head: root.getObjectByName('J_Bip_C_Head') };
+  // saç ve palto eteği için yay kemikleri (VRM secondaryAnimation)
+  const byIndex = new Map();
+  model.traverse((o) => { const a = vrm.parser.associations.get(o); if (a && a.nodes !== undefined) byIndex.set(a.nodes, o); });
+  const legCols = [];
+  for (const S of ['L', 'R']) for (const [bn, r, n] of [[`J_Bip_${S}_UpperLeg`, 0.08, 3], [`J_Bip_${S}_LowerLeg`, 0.06, 3]]) {
+    const b = root.getObjectByName(bn), c = b?.children.find((k) => k.isBone); if (!c) continue;
+    for (let i = 0; i < n; i++) legCols.push({ node: b, offset: c.position.clone().multiplyScalar(i / (n - 1)), radius: r });
+  }
+  const springs = new SpringBones(vrm.parser.json, (i) => byIndex.get(i), legCols);
+  springs.setCenter(root, 0.3);
+  return { root, model, clips, mixer, sword, springs, head: root.getObjectByName('J_Bip_C_Head') };
 }

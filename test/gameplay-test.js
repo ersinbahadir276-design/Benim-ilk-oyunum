@@ -2,6 +2,7 @@
 // Kullanım: test/run-tests.mjs (Playwright) ya da konsolda:  await runGameplayTests()
 window.runGameplayTests = async function () {
   const G = window.GAME, P = G.player, out = [];
+  const THREE_V = P.hero.root.position.constructor;
   const real = G.running; G.running = false; // gerçek zamanlı döngüyü durdur, elle ilerlet
   const sim = (sec, each) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { if (each && each(i) === false) break; G.update(1 / 30); } };
   const ok = (name, cond, extra = '') => out.push({ name, pass: !!cond, extra: String(extra) });
@@ -18,6 +19,24 @@ window.runGameplayTests = async function () {
   P.x = 0; P.z = 6; sim(0.5); ok('oyuncu: bekleme klibi', P.cur._clip.name === 'Idle_Loop', P.cur._clip.name);
   G.keys.w = true; sim(1); ok('oyuncu: koşu (jog) klibi', P.cur._clip.name === 'Jog_Fwd_Loop' && P.speed > 3, P.cur._clip.name + ' ' + P.speed.toFixed(1));
   G.keys.run = true; sim(1); ok('oyuncu: depar klibi', P.cur._clip.name === 'Sprint_Loop', P.cur._clip.name); G.keys.run = false;
+  // 1b) saç/palto yay kemikleri: depar sırasında dinlenme pozundan sapar, uzunluk korunur, NaN yok
+  { const SB = P.hero.springs, J = SB.joints, head = new THREE_V();
+    const dev = () => J.reduce((m, j) => Math.max(m, 2 * Math.acos(Math.min(1, Math.abs(j.bone.quaternion.dot(j.restQ))))), 0);
+    const lenErr = () => J.reduce((m, j) => Math.max(m, Math.abs(head.setFromMatrixPosition(j.bone.matrixWorld).distanceTo(j.tail) - j.len)), 0);
+    const finite = J.every((j) => Number.isFinite(j.tail.x + j.tail.y + j.tail.z) && Number.isFinite(j.bone.quaternion.w));
+    const hair = J.filter((j) => /Hair/.test(j.bone.name)).length, coat = J.filter((j) => /Coat/.test(j.bone.name)).length;
+    ok('yay kemikleri: saç ve palto zincirleri kuruldu', hair >= 10 && coat >= 10 && SB.colliders.length >= 20, `saç=${hair} palto=${coat} çarpıştırıcı=${SB.colliders.length}`);
+    const d1 = dev(); ok('yay kemikleri: depar sırasında saç/palto sallanır', finite && d1 > 0.15, 'maks sapma=' + d1.toFixed(2) + ' rad');
+    const hairMax = J.filter((j) => /Hair/.test(j.bone.name)).reduce((m, j) => Math.max(m, 2 * Math.acos(Math.min(1, Math.abs(j.bone.quaternion.dot(j.restQ))))), 0);
+    ok('yay kemikleri: depar sırasında saç başın üstünden ters dönmez', hairMax < 2.0, 'saç maks=' + hairMax.toFixed(2) + ' rad');
+    ok('yay kemikleri: kemik uzunluğu korunur', lenErr() < 0.005, 'hata=' + lenErr().toFixed(4));
+    G.keys.run = false; G.keys.w = false; sim(4); const d2 = dev();
+    ok('yay kemikleri: durunca sakinleşir (sönüm)', d2 < d1 && J.every((j) => Number.isFinite(j.bone.quaternion.w)), d1.toFixed(2) + ' → ' + d2.toFixed(2));
+    // palto bacak çarpıştırıcılarına girmez
+    const legCols = SB.colliders.filter((c) => /Leg/.test(c.node.name)); let pen = 0;
+    for (const j of J.filter((j) => /Coat/.test(j.bone.name))) for (const c of legCols) pen = Math.max(pen, c.radius + j.p.radius - j.tail.distanceTo(c.world));
+    ok('yay kemikleri: palto bacakların içinden geçmez', legCols.length >= 6 && pen < 0.01, 'iç içe=' + pen.toFixed(3));
+    G.keys.w = true; G.keys.run = false; sim(0.5); }
   G.edge.jump = true; sim(0.4); ok('oyuncu: zıplama', P.state === 'jump' && P.y > 0.5, P.state + ' y=' + P.y.toFixed(2)); sim(1.5); ok('oyuncu: yere iniş', P.state === 'move', P.state);
   G.edge.roll = true; sim(0.2); ok('oyuncu: takla/kaçınma + dokunulmazlık', P.state === 'roll' && P.iframes > 0 && P.cur._clip.name === 'Roll', P.state); sim(1.2);
   G.keys.w = false; sim(0.5); G.edge.crouch = true; sim(0.5); ok('oyuncu: çömelme klibi', P.crouching && P.cur._clip.name === 'Crouch_Idle_Loop', P.cur._clip.name);
