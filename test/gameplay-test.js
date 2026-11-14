@@ -109,6 +109,48 @@ window.runGameplayTests = async function () {
     P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax; P.iframes = 0;
   }
 
+  // 1e) dört ayaklı ayak IK'si: düzde pozu bozmaz, yan eğimde dört ayak zemine oturur, yürürken basan ayak kaymaz
+  {
+    const gnd = P.ik.ground;
+    let bx = 0, bz = 0, bg = 0;
+    for (let x = -60; x <= 60; x += 3) for (let z = -120; z <= -40; z += 3) { const s = Math.hypot(gnd(x + 0.5, z) - gnd(x - 0.5, z), gnd(x, z + 0.5) - gnd(x, z - 0.5)); if (s > bg && s < 0.6) { bg = s; bx = x; bz = z; } }
+    const side = Math.atan2(gnd(bx + 0.5, bz) - gnd(bx - 0.5, bz), gnd(bx, bz + 0.5) - gnd(bx, bz - 0.5)) + Math.PI / 2;
+    const moved = G.animals.filter((x) => Math.hypot(x.x - bx, x.z - bz) < 30 || Math.hypot(x.x, x.z) < 20).map((x) => [x, x.x, x.z]); moved.forEach(([x]) => { x.x += 300; });
+    const ankle = (l) => l.ft.getWorldPosition(new THREE_V());
+    const clr = (a) => a.c.legs.map((l) => { const v = ankle(l); return v.y - gnd(v.x, v.z) - l.restH; });
+    const stand = (a, x, z, yaw, en) => { a.c.ikEnabled = en; P.x = x + 8; P.z = z + 8; P.state = 'move'; P.hp = P.hpMax; sim(1.5, () => { a.x = x; a.z = z; a.yaw = yaw; freeze(a); a.hp = a.hpMax; a.dead = false; }); };
+    for (const kind of ['wolf', 'horse']) {
+      const a = find(kind), keep = [a.x, a.z, a.yaw];
+      stand(a, 2, 1, 0.7, true);
+      const dev = Math.max(...a.c.legs.map((l) => Math.abs(l.up.rotation.x - l.au) + Math.abs(l.lo.rotation.x - l.al) + Math.abs(l.ft.rotation.x - l.af)));
+      ok(`hayvan IK (${kind}): düz zeminde animasyon pozu değişmez`, dev < 0.02 && a.c.ikW > 0.9, 'açı farkı=' + dev.toFixed(4));
+      stand(a, bx, bz, side, false); const off = clr(a);
+      stand(a, bx, bz, side, true); const on = clr(a);
+      const mo = Math.max(...off.map(Math.abs)), mn = Math.max(...on.map(Math.abs));
+      ok(`hayvan IK (${kind}): yan eğimde dört ayak zemine oturur`, mn < 0.025 && mn < mo * 0.5,
+        `eğim=${(Math.atan(bg) * 57.3).toFixed(0)}° IK yok=${off.map((c) => c.toFixed(3))} IK=${on.map((c) => c.toFixed(3))}`);
+      const finite = a.c.legs.every((l) => [l.up, l.lo, l.ft].every((j) => Number.isFinite(j.rotation.x)));
+      const lens = a.c.legs.map((l) => l.lo.getWorldPosition(new THREE_V()).distanceTo(ankle(l)) / l.L1);
+      ok(`hayvan IK (${kind}): NaN yok, kemik boyları korunur`, finite && lens.every((r) => Math.abs(r - 1) < 1e-3), lens.map((r) => r.toFixed(4)).join('/'));
+      // yürüyüş: basan ayağın dünyadaki kayması (animasyon pozu ile IK sonrası karşılaştırılır)
+      a.c.ikEnabled = true; a.x = 2; a.z = 1; a.yaw = 0; freeze(a); a.home = { x: a.x + 60, z: a.z + 5 }; a.set('return', 99);
+      let prev = null, slipIK = 0, slipAnim = 0, n = 0, replant = 0, steps = 0; const rel0 = a.c.ikReleases;
+      sim(4, () => {
+        a.calmT = 999; a.target = null; if (a.state !== 'return') a.set('return', 99);
+        P.x = a.x - 6; P.z = a.z; const cur = a.c.legs.map((l) => ({ p: ankle(l), q: l.anim.clone(), lk: l.locked && l.lockW > 0.95, lp: l.lockP.clone() }));
+        if (prev) cur.forEach((c, i) => { const o = prev[i]; if (c.lk && !o.lk) steps++; if (c.lk && o.lk) { if (c.lp.distanceToSquared(o.lp) > 1e-8) { replant++; return; } slipIK += Math.hypot(c.p.x - o.p.x, c.p.z - o.p.z); slipAnim += Math.hypot(c.q.x - o.q.x, c.q.z - o.q.z); n++; } });
+        prev = cur;
+      });
+      const rel = a.c.ikReleases - rel0;
+      ok(`hayvan IK (${kind}): yürürken basan ayak kaymaz (ayak kilidi)`, n > 30 && replant === 0 && slipIK / n < 0.003 && slipAnim / n > slipIK / n * 3 && rel <= steps,
+        `kare=${n} kayma IK=${(slipIK / n * 1000).toFixed(1)} mm/kare, animasyon=${(slipAnim / n * 1000).toFixed(1)} mm/kare, yeniden basma=${replant}, basış=${steps}, erken bırakma=${rel}, hız=${a.speed.toFixed(1)}`);
+      a.dead = true; a.deadT = 0; sim(0.1); ok(`hayvan IK (${kind}): ölünce devre dışı`, a.c.ikW === 0); a.dead = false; a.hp = a.hpMax; a.c.reset();
+      a.x = keep[0]; a.z = keep[1]; a.yaw = keep[2]; a.home = { x: keep[0], z: keep[1] }; freeze(a); a.calmT = 0; a.stT = 0;
+    }
+    moved.forEach(([x, ox, oz]) => { x.x = ox; x.z = oz; });
+    P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax;
+  }
+
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
   a = find('rabbit'); freeze(a); put(a, 1.2); P.crouching = false; ok('tavşan: çömelmeden evcilleşmez', a.tryTame() === false);

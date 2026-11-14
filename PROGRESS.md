@@ -7,7 +7,7 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 | # | Özellik | Durum | Not |
 | --- | --- | --- | --- |
 | 1 | Yüksek kaliteli erkek kahraman | ✅ Tamamlandı | VRoid avatar, toon gölgeleme, kılıç, saç/kumaş yay kemikleri (Tur 2), yüz ifadeleri + göz kırpma + baş/göz bakışı (Tur 3). Kalan küçük eksik: dudak senkronu (oyunda diyalog olmadığı için gerekmiyor). |
-| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Kısmen | Kahraman: 17 retarget klip, eğimde iki kemikli ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4). **Eksik:** prosedürel hayvanlarda ayak kilidi/IK (ayak kayması, eğimde ayaklar havada/gömülü), kahramanda yürürken (yalnızca duruşta değil) ayak kilidi yok — hareket halinde IK yalnızca yüksekliği düzeltir. |
+| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Büyük ölçüde | Kahraman: 17 retarget klip, eğimde ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4). Dört ayaklılar (9 tür): eğimde ayak IK'si, basma kilidi, adım boyu–hız eşlemesi (Tur 5). **Eksik:** tilki/ejderha (GLB) ve Mağara Devi'nde ayak IK'si; kahramanda yürürken ayak kilidi; dörtnalda (koşu) ayak kilidi çoğu adımda erken bırakılıyor. |
 | 3 | Gönderilen GLB modellerin entegrasyonu | 🟡 Kısmen | Gönderilen tek dosya (ejderha) ve tilki bağlı. Ejderhanın `fly2` klibi kullanılmıyor (ejderha uçmuyor). Yeni GLB gelirse `GLBCreature` ile bağlanacak. |
 | 4 | Çok sayıda hayvan ve yaratık | ✅ İşlevsel olarak tamam | 14 tür. 12 tür kodla üretilmiş düşük poligonlu model; görsel kalite ejderha ve kahramanın altında. |
 | 5 | Evcilleştirme ve yapay zekâ | ✅ İşlevsel olarak tamam | Türe özgü yöntemler, 5 yoldaş, takip/savaş/açlık. Testler geçiyor; tek kararsız test aşağıda. |
@@ -54,14 +54,31 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
   - Hafif geri itilme (saldırı sırasında daha az). Oyuncu hızını değiştirmez; at/yılan evcilleştirmesindeki "kıpırdama" kontrolü etkilenmez. Taklada katmanlı klip oynamaz.
 - 8 yeni test (eğimde ayak yükseklikleri, kalça alçalması, NaN/baldır boyu, havada IK kapalı, katmanlı klip, savrulma yönü, geri itilme, toparlanma). **73/73 test geçiyor (2 ardışık koşuda).**
 
+### Tur 5 (2026-11-14): dört ayaklı hayvanlarda ayak IK'si ve ayak kilidi (özellik 2)
+- Not: Bu tur `ccr-70a30f22-slper5` dalının (Tur 4) üstüne kuruldu. Zamanlanmış çalışmaların çoğu `main`'den başlayıp aynı işi tekrarlamış: yay kemiği fiziği 6 ayrı dalda (`0d0k0c`, `27dapk`, `4x6ipn`, `mhpa06`, `e13i80`, `kuus2y`), ilerleme/kayıt sistemi 2 ayrı dalda (`tidu6t`, `vsejd2`) yapılmış. Hiçbiri `main`'e birleşmedi.
+- `src/creatures.js` → `Quadruped._footIK` (kurt, ayı, geyik, at, aslan, kaplan, tavşan, timsah, Gölge Pençe için):
+  - Animasyon kökten geçen ve gövde eğimine eşit tek bir düzlem varsayar. Her ayağın altındaki gerçek zeminin bu düzlemden farkı (yan eğim, tümsek, çukur) ayak bileği hedefine eklenir.
+  - Düzlemsel iki kemikli IK (uyluk + baldır, kalçanın yerel düzleminde): diz bükülme yönü korunur, ayak tabanının mutlak açısı korunur. Hedef bacak düzleminin dışındaysa kalça eklemi yana döner (en çok 0.35 rad).
+  - Erişilemeyen hedefte gövde gerektiği kadar alçalır (en çok boyunun %30'u). Yalnızca animasyondakinden uzak hedefler alçaltır, böylece düz zeminde poz hiç değişmez.
+  - Basma kilidi: basma evresinde ayak dünyada sabitlenir. Bacak fazla gerilirse kilit o basışta bırakılır ve ayak yumuşakça animasyona döner (sıçrama yok).
+  - Basan ayağın tabanı yerel zemin eğimine yatırılır (±0.4 rad).
+  - Her kare önce saf animasyon pozu geri yüklenir, düzeltme birikmez. Ölüm ve havadayken kapalı. Performans için yalnızca oyuncuya 45 m içinde ya da evcilse çalışır.
+- Bulunan ve düzeltilen kök neden: bacak eklemleri genel yumuşatmadan (τ≈83 ms) geçiyordu. Bu, yürüyüş döngüsünü süzüp adımı ~%35 kısaltıyor ve kaldırma evresinden ~50° kaydırıyordu; ayaklar bu yüzden kayıyordu. Bacaklar artık hızlı izliyor (hedefleri zaten sürekli).
+- Adım boyu–hız eşlemesi (yürüyüş): salınım genliği gövde hızına göre en çok 1.4× büyür, yetmezse adım sıklığı artar (en çok 1.8×).
+- Ölçümler (31° yan eğim, dinlenme): kurtta ayak bilekleri zeminden ±0.05 m sapıyordu, şimdi ≤0.006 m; atta ±0.09 m sapıyordu, şimdi ≤0.011 m. Yürürken (2.7–2.9 m/s) kilitli ayakta kayma 0 mm/kare (animasyon tek başına 32–40 mm/kare). Erken bırakma adımların %35–50'sinde oluyor (önce %100'dü).
+- 10 yeni test (kurt ve at için: düzde poz değişmez, yan eğimde dört ayak zeminde, NaN yok/kemik boyu, yürürken kayma yok, ölünce kapalı). **83/83 test geçti (3 koşudan 2'sinde).** Diğer koşuda kartal evcilleştirme testi bir kez başarısız oldu (`trust=1`). Kartal bu IK'yi kullanmıyor; vahşi hayvanların rastgeleliğine bağlı ve hâlâ ara sıra başarısız oluyor.
+
 ## Bilinen sorunlar
 - Dudak senkronu yok (oyunda seslendirme yok).
-- Prosedürel hayvanlarda ayak kayması ve eğimde ayak IK'si yok (özellik 2).
+- Dört ayaklılarda koşuda (dörtnal) ayak kilidi çoğu adımda erken bırakılıyor; yürüyüşte de adımların %35–50'sinde erken bırakılıyor.
+- Tilki, ejderha (GLB iskeletleri) ve Mağara Devi'nde ayak IK'si yok.
+- Kartal evcilleştirme testi ara sıra başarısız oluyor (vahşi hayvan rastgeleliği).
 - Arkadan gelen darbede katmanlı `Hit_Chest` klibi (önden vuruş klibi) yarı ağırlıkla yine geriye doğru oynar; yönlü savrulma bunu baskın şekilde öne çevirir ama ayrı bir "arkadan darbe" klibi yok.
 - Önceki turların dalları (`0d0k0c`, `27dapk`, `zpp74x`, bu dal) `main`'e birleşmedi; birleştirme kullanıcının kararı.
 
 ## Sonraki öncelikler
-1. Özellik 2 (gerçekçi animasyonlar): prosedürel dört ayaklılarda ayak IK'si (eğimde bacak boyu/zemin) ve basma evresinde ayak kilidi; `src/ik.js` içindeki `solveTwoBone` yeniden kullanılabilir. Ardından özellik 2 tamamlanmış sayılabilir.
-2. Özellik 6: XP/seviye ilerlemesi ve localStorage ile kayıt sistemi.
-3. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme.
-4. Özellik 3: ejderha için uçuş (`fly2` klibinden kök hareketini ayıklayarak).
+1. **Dalları birleştirme (kullanıcı kararı):** Bu dal (`ccr-70a30f22-24awvj`) Tur 2–5'i içeriyor. `tidu6t` dalındaki ilerleme/kayıt sistemi (özellik 6) buraya taşınabilir; yeniden yazılmamalı.
+2. Özellik 2'yi bitirmek: tilki ve ejderha GLB iskeletleri için ayak IK'si (`solveTwoBone` kullanılabilir), Mağara Devi için iki ayaklı IK, kahramanda yürürken ayak kilidi. Ardından özellik 2 tamamlanmış sayılabilir.
+3. Özellik 6: `tidu6t` dalındaki XP/seviye ve localStorage kaydını bu dala taşımak. Ardından görevler.
+4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme.
+5. Özellik 3: ejderha için uçuş (`fly2` klibinden kök hareketini ayıklayarak).

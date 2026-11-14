@@ -158,7 +158,8 @@ export class Animal {
     const slope = this.alt > 0.5 || this.dead ? 0 : -Math.atan2(floorY(this.x + fx, this.z + fz, fd) - floorY(this.x - fx, this.z - fz, fd), L * 2);
     if (anim === 'walk' || anim === 'run') rate = Math.max(0.5, this.speed / (anim === 'run' ? sp.run : sp.walk));
     c.root.scale.setScalar(this.flash > 0 ? 1.06 : 1);
-    c.animate(dt, anim, g.time, { slope, rate, air: this.alt > 0.5, glide: this.state === 'wander' || this.state === 'idle', happy: this.tamed && dP < 4 });
+    if (!this._gfn) this._gfn = (x, z) => floorY(x, z, fd);
+    c.animate(dt, anim, g.time, { slope, rate, speed: this.speed, ground: this._gfn, ik: dP < 45 || this.tamed, air: this.alt > 0.5, glide: this.state === 'wander' || this.state === 'idle', happy: this.tamed && dP < 4 });
     this.anim = anim;
   }
 

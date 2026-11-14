@@ -12,6 +12,7 @@ const C = (h) => new THREE.Color(h);
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const ease = (x) => x * x * (3 - 2 * x);
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
 
 /* ------------------------------------------------------------------ TÜR TABLOSU */
 // tame.steps: evcilleştirme için gereken başarılı adım sayısı. Yöntemler taming.js içinde uygulanır.
@@ -178,20 +179,42 @@ class Quadruped extends Creature {
       ft.add(mesh(fparts));
       this.legs.push({ hip, up, lo, ft, rest, front, side, sprawl: sp.sprawl || 0 });
     };
-    mk(true, 1); mk(true, -1); mk(false, 1); mk(false, -1);
-    this.legs.forEach((l) => { l.up.rotation.x = l.rest[0]; l.lo.rotation.x = l.rest[1]; l.ft.rotation.x = l.rest[2]; });
+    mk(true, 1); mk(true, -1); mk(false, 1); mk(false, -1); this.legReach = reach; this.strideK = 1; this.cadK = 1;
+    this.legs.forEach((l) => {
+      l.up.rotation.x = l.rest[0]; l.lo.rotation.x = l.rest[1]; l.ft.rotation.x = l.rest[2];
+      // ayak IK'si durumu: animasyon açıları (au/al/af), zemin farkı, basma kilidi
+      Object.assign(l, { L0: -l.lo.position.y, L1: -l.ft.position.y, au: 0, al: 0, af: 0, off: 0, lift: 0, locked: false, lockW: 0, lockP: new THREE.Vector3(), tgt: new THREE.Vector3(), anim: new THREE.Vector3(), bend: Math.sign(l.rest[1]) || 1, slip: 0, spent: false, hz: l.hip.rotation.z });
+    });
     neck.rotation.x = -sp.neckAng; head.rotation.x = sp.neckAng + (sp.headDown ?? 0.3);
+    // düz zeminde, dinlenme pozunda ayak bileğinin köke göre yüksekliği (IK testleri ve ölçüm için)
+    body.position.y = sp.h; this.root.updateMatrixWorld(true);
+    this.legs.forEach((l) => { l.restH = l.ft.getWorldPosition(_v1).y; l.sweepR = _v1.distanceTo(l.hip.getWorldPosition(_v2)); });
+    this.sweepR = this.legs.reduce((m, l) => m + l.sweepR, 0) / 4;
+    this.ikW = 0; this.ikDrop = 0; this.ikEnabled = true; this.ikReleases = 0; this._ikOn = false;
   }
   animate(dt, anim, t, o = {}) {
+    // önceki karenin IK düzeltmesini geri al: yumuşatma (r) saf animasyon pozundan devam etsin, düzeltme birikmesin
+    if (this._ikOn) { this.body.position.y = this._aby; for (const l of this.legs) { l.up.rotation.x = l.au; l.lo.rotation.x = l.al; l.ft.rotation.x = l.af; l.hip.rotation.z = l.hz; } this._ikOn = false; }
     this._begin(dt, anim); const sp = this.spec, k = this.k, at_ = this.at, sd = this.seed;
     const moving = anim === 'walk' || anim === 'run', run = anim === 'run';
     this.amp += ((moving ? (run ? 1 : 0.55) : 0) - this.amp) * k;
     const gaitName = run ? (sp.runGait || sp.gait) : (sp.gait === 'hop' ? 'hop' : sp.gait === 'gallop' ? 'walk' : sp.gait);
     const offs = GAITS[gaitName], hop = gaitName === 'hop', gal = gaitName === 'gallop';
-    if (moving) this.phase += dt * TAU * (run ? 2.3 : 1.25) * sp.cadence * (o.rate || 1);
+    // adım boyu – hız eşlemesi (yürüyüş/tırıs): basan ayak bileği yarım döngüde 2·R·sin(salınım) kadar geri süpürür
+    // (R = kalça–bilek uzaklığı). Bu, gövdenin aynı sürede aldığı yola eşit olmalı, yoksa ayak zeminde kayar.
+    // Önce salınım genliği büyütülür (en çok 1.4×), yetmezse adım sıklığı artırılır.
+    const base = (sp.sprawl ? 0.5 : 0.62) * 0.55;
+    let sk = 1, fk = 1;
+    if (moving && !run && !hop && !gal && o.speed > 0.05) {
+      const f = 1.25 * sp.cadence * (o.rate || 1), need = Math.asin(Math.min(0.9, o.speed / f / (4 * this.sweepR)));
+      sk = THREE.MathUtils.clamp(need / base, 0.6, 1.4);
+      if (need > base * 1.4) fk = Math.min(1.8, Math.sin(need) / Math.sin(base * 1.4));
+    }
+    const ks = Math.min(1, dt * 4); this.strideK += (sk - this.strideK) * ks; this.cadK += (fk - this.cadK) * ks;
+    if (moving) this.phase += dt * TAU * (run ? 2.3 : 1.25 * this.cadK) * sp.cadence * (o.rate || 1);
     const A = this.amp, ph = this.phase;
     let pitch = 0, by = 0, bz = 0, roll = 0, py = 0, neckX = -sp.neckAng, headX = sp.neckAng + (sp.headDown ?? 0.3), headY = 0, jaw = 0, yaw = 0;
-    const swing = (sp.sprawl ? 0.5 : 0.62) * A, lift = [0, 0, 0, 0], sw = [0, 0, 0, 0];
+    const swing = (sp.sprawl ? 0.5 : 0.62) * A * this.strideK, lift = [0, 0, 0, 0], sw = [0, 0, 0, 0];
     for (let i = 0; i < 4; i++) { const p = ph + offs[i] * TAU; sw[i] = Math.sin(p) * swing; lift[i] = Math.max(0, -Math.cos(p)) * A; }
     by = -Math.abs(Math.sin(ph * (gal || hop ? 0.5 : 1) + 0.6)) * sp.h * 0.05 * A;
     if (gal || hop) { pitch = Math.sin(ph + 1.2) * (hop ? 0.22 : 0.09) * A; by += Math.max(0, Math.sin(ph + 2.2)) * sp.h * (hop ? 0.5 : 0.12) * A; }
@@ -225,9 +248,80 @@ class Quadruped extends Creature {
       else { lo += lf * 0.6; f -= lf * 0.55; u -= lf * 0.2; if (rear) { u += rear * 0.8; lo -= rear * 0.25; f -= rear * 0.3; } }
       if (death) { u = lerp(u, l.rest[0] + (l.front ? -0.5 : 0.4), death); lo = lerp(lo, l.rest[1] * 0.4, death); }
       u -= (pitch + (o.slope || 0)) * 0.9;
-      this.r(l.up, u, 0, 0); this.r(l.lo, lo, 0, 0); this.r(l.ft, f, 0, 0);
+      // bacak hedefleri zaten sürekli (genlik, kaldırma, ölüm/şahlanma yumuşak eğrilerle geçiyor); genel yumuşatma (τ≈83 ms)
+      // yürüyüş döngüsünü süzüp adımı kısaltıyor ve kaldırma evresinden kaydırıyordu → bacaklarda çok daha hızlı izleme
+      const kl = 1 - Math.exp(-dt * 60);
+      l.up.rotation.x += (u - l.up.rotation.x) * kl; l.lo.rotation.x += (lo - l.lo.rotation.x) * kl; l.ft.rotation.x += (f - l.ft.rotation.x) * kl;
     });
     if (this['ear1']) for (const s of [-1, 1]) this.r(this['ear' + s], -0.25 - A * 0.9 + Math.sin(t * 3 + sd) * 0.05, 0, -s * 0.2);
+    this.legs.forEach((l, i) => { l.lift = lift[i]; });
+    this._footIK(dt, o, anim, A, rear);
+  }
+
+  // Dört ayaklı ayak IK'si (animasyon pozunun üstüne, her kare):
+  //  1) Animasyon, kökten geçen ve gövde eğimine (o.slope) eşit tek bir düzlem varsayar. Her ayağın altındaki gerçek
+  //     zeminin bu düzlemden farkı (yan eğim, tümsek, çukur) ayak hedefine eklenir.
+  //  2) Basma evresinde ayak dünyada kilitlenir (kayma olmaz); kilit fazla gerilirse ayak yeniden basar.
+  //  3) Erişilemeyen hedef varsa gövde gerektiği kadar alçalır; uyluk + baldır düzlemsel iki kemikli IK ile çözülür.
+  //  4) Basan ayağın tabanı yerel zemin eğimine yatırılır.
+  _footIK(dt, o, anim, A, rear) {
+    const sp = this.spec, G = o.ground, legs = this.legs;
+    for (const l of legs) { l.au = l.up.rotation.x; l.al = l.lo.rotation.x; l.af = l.ft.rotation.x; }
+    this._aby = this.body.position.y;
+    const want = G && o.ik !== false && this.ikEnabled && anim !== 'die' && !o.air ? 1 : 0;
+    this.ikW = want ? this.ikW + (1 - this.ikW) * Math.min(1, dt * 6) : 0;
+    const w = this.ikW;
+    if (w < 0.002) { for (const l of legs) { l.locked = false; l.lockW = 0; l.off = 0; } this.ikDrop = 0; return; }
+    this._ikOn = true;
+    const root = this.root, k = Math.min(1, dt * 14), rx = root.position.x, rz = root.position.z, rootY = root.position.y;
+    root.updateMatrixWorld(true);
+    const fx = Math.sin(root.rotation.y), fz = Math.cos(root.rotation.y), grad = -Math.tan(o.slope || 0);
+    const maxUp = sp.h * 0.45, maxDn = sp.h * 0.35, slipMax = Math.max(0.12, sp.len * 0.28), moving = A > 0.25;
+    let need = 0;
+    for (const l of legs) {
+      l.ft.getWorldPosition(l.anim); l.tgt.copy(l.anim);
+      // basma kilidi
+      const stance = moving && l.lift < 0.03;
+      if (stance && !l.spent) {
+        l.hip.getWorldPosition(_v1);
+        if (!l.locked) { l.locked = true; l.lockP.copy(l.anim); }
+        else if (Math.hypot(l.lockP.x - l.anim.x, l.lockP.z - l.anim.z) > slipMax || _v1.distanceTo(l.lockP) > (l.L0 + l.L1) * 0.995) {
+          // bacak fazla gerildi (adım boyu hızdan kısa): kilidi bu basışta bırak, ayak yumuşakça animasyona döner
+          l.locked = false; l.spent = true; this.ikReleases++;
+        }
+      } else { l.locked = false; if (!stance) l.spent = false; }
+      l.lockW += ((l.locked ? 1 : 0) - l.lockW) * Math.min(1, dt * (l.locked ? 30 : 9));
+      l.tgt.x += (l.lockP.x - l.tgt.x) * l.lockW; l.tgt.z += (l.lockP.z - l.tgt.z) * l.lockW;
+      // zemin farkı: gerçek zemin − animasyonun varsaydığı düzlem
+      const fwd = (l.tgt.x - rx) * fx + (l.tgt.z - rz) * fz;
+      const off = THREE.MathUtils.clamp(G(l.tgt.x, l.tgt.z) - (rootY + fwd * grad), -maxDn, maxUp);
+      l.off += (off - l.off) * k; l.tgt.y += l.off;
+      l.w = w * (rear > 0.05 && l.front ? 1 - rear : 1);
+      l.tgt.lerpVectors(l.anim, l.tgt, l.w);
+      // yalnızca animasyondakinden daha uzak ve erişimin sınırındaki hedefler gövdeyi alçaltır
+      l.hip.getWorldPosition(_v1);
+      need = Math.max(need, _v1.distanceTo(l.tgt) - Math.max(_v1.distanceTo(l.anim), (l.L0 + l.L1) * 0.97));
+    }
+    // gövdeyi alçalt (aşağıdaki ayağa uzanabilsin)
+    this.ikDrop += (Math.min(need, sp.h * 0.3) - this.ikDrop) * k;
+    if (this.ikDrop > 1e-4) { this.body.position.y -= this.ikDrop; this.body.updateMatrixWorld(true); }
+    const e = 0.2;
+    for (const l of legs) {
+      if (l.w < 1e-3) continue;
+      // yana açılma: hedef bacak düzleminin dışındaysa (dönüş, yan eğim) kalça eklemi yana döner
+      l.hip.worldToLocal(_v2.copy(l.tgt));
+      const ab = THREE.MathUtils.clamp(Math.atan2(_v2.x, -_v2.y), -0.35, 0.35);
+      if (Math.abs(ab) > 1e-4) { l.hip.rotation.z = l.hz + ab; l.hip.updateMatrixWorld(true); l.hip.worldToLocal(_v2.copy(l.tgt)); }
+      const L0 = l.L0, L1 = l.L1, d = THREE.MathUtils.clamp(Math.hypot(_v2.y, _v2.z), Math.abs(L0 - L1) + 1e-3, (L0 + L1) * 0.999);
+      const phi = Math.atan2(-_v2.z, -_v2.y);
+      const sb = Math.sign(l.al) || l.bend, b = sb * Math.acos(THREE.MathUtils.clamp((d * d - L0 * L0 - L1 * L1) / (2 * L0 * L1), -1, 1));
+      const u = phi - Math.atan2(L1 * Math.sin(b), L0 + L1 * Math.cos(b));
+      // ayak tabanının animasyondaki mutlak açısını koru, basarken yerel zemin eğimine yatır
+      const gp = -Math.atan2(G(l.tgt.x + fx * e, l.tgt.z + fz * e) - G(l.tgt.x - fx * e, l.tgt.z - fz * e), 2 * e);
+      const tilt = THREE.MathUtils.clamp(gp - (o.slope || 0), -0.4, 0.4) * l.lockW * Math.cos(l.sprawl);
+      l.up.rotation.x = u; l.lo.rotation.x = b; l.ft.rotation.x = l.au + l.al + l.af - u - b + tilt * l.w;
+      l.slip = l.locked ? Math.hypot(l.lockP.x - l.anim.x, l.lockP.z - l.anim.z) : 0;
+    }
   }
 }
 
