@@ -78,5 +78,18 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) kahraman: saç ve palto eteği yay kemiği fiziği
+  { const S = P.hero.spring; ok('kahraman: yay kemikleri yüklendi (saç + etek)', S && S.count >= 20 && S.joints.some((x) => /Skirt/.test(x.j.bone.name)) && S.joints.some((x) => /Hair/.test(x.j.bone.name)), S && S.count);
+    const hair = S.joints.find((x) => /Hair/.test(x.j.bone.name)).j.bone;
+    P.x = 0; P.z = 6; P.alive = true; P.hp = P.hpMax; P.state = 'move'; P.crouching = false; G.keys = {}; sim(1.5); const q0 = hair.quaternion.clone();
+    G.keys.w = true; G.keys.run = true; sim(0.6); const q1 = hair.quaternion.clone(); G.keys = {};
+    ok('kahraman: koşarken saç ataletle salınır', q0.angleTo(q1) > 0.02, q0.angleTo(q1).toFixed(3) + ' rad');
+    let nan = false; const before = S.joints.map((x) => x.j.cur.clone());
+    sim(3); for (const { j } of S.joints) if (!isFinite(j.cur.x + j.cur.y + j.cur.z) || !isFinite(j.bone.quaternion.w)) nan = true;
+    ok('kahraman: yay fiziği kararlı (NaN yok, kemik boyları korunur)', !nan && S.joints.every(({ j }) => Math.abs(j.cur.distanceTo(j.bone.getWorldPosition(new j.cur.constructor())) - j.length) < 1e-3));
+    // etek bacak çarpıştırıcılarının içine girmez
+    const legs = S.extra; let inside = 0; for (const { j } of S.joints) if (/Skirt/.test(j.bone.name)) for (const c of legs) if (j.cur.distanceTo(c.p) < c.r + j.g.radius - 0.005) inside++;
+    ok('kahraman: palto eteği bacaklara gömülmez', legs.length > 0 && inside === 0, 'ihlal=' + inside);
+    P.x = 50; P.z = 50; sim(0.1); ok('kahraman: ışınlanınca yay fiziği sıfırlanır', S.joints.every(({ j }) => j.cur.distanceTo(j.prev) < 0.5)); P.x = 0; P.z = 6; sim(0.2); }
   G.running = real; return out;
 };

@@ -2,6 +2,7 @@
 // Klipler kaynak iskeletten (UE tarzı manken) kahramanın iskeletine çalışma anında aktarılır (retarget).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SpringBones } from './springbone.js';
 
 const SIDE = (l, r) => (s) => (s === 'l' ? l : r);
 const MAP = { pelvis: 'J_Bip_C_Hips', spine_01: 'J_Bip_C_Spine', spine_02: 'J_Bip_C_Chest', spine_03: 'J_Bip_C_UpperChest', neck_01: 'J_Bip_C_Neck', Head: 'J_Bip_C_Head' };
@@ -101,6 +102,24 @@ function makeSword() {
   return g;
 }
 
+// Saç ve palto eteği fiziği. Palto eteği grubunun modelde çarpıştırıcısı yok; bacaklar içinden geçmesin diye
+// uyluk ve baldır boyunca kapsül benzeri küreler eklenir.
+function makeSpring(gltf, model, root) {
+  const json = gltf.parser.json, ext = json.extensions?.VRM;
+  if (!ext?.secondaryAnimation) return null;
+  const nodeOf = (i) => { const n = json.nodes[i]?.name; return n != null ? model.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(n)) : null; };
+  const sa = { ...ext.secondaryAnimation, boneGroups: ext.secondaryAnimation.boneGroups.map((g) => ({
+    ...g, useExtraColliders: (g.bones || []).some((b) => /Skirt/i.test(json.nodes[b]?.name || '')),
+  })) };
+  const B = (n) => root.getObjectByName(n), extra = [];
+  for (const S of ['L', 'R']) {
+    extra.push({ a: B(`J_Bip_${S}_UpperLeg`), b: B(`J_Bip_${S}_LowerLeg`), r: 0.085, n: 4 });
+    extra.push({ a: B(`J_Bip_${S}_LowerLeg`), b: B(`J_Bip_${S}_Foot`), r: 0.06, n: 3 });
+  }
+  extra.push({ a: B('J_Bip_C_Hips'), b: B('J_Bip_C_Spine'), r: 0.13, n: 1 });
+  return new SpringBones(root, { secondaryAnimation: sa }, nodeOf, extra.filter((e) => e.a && e.b));
+}
+
 export async function loadHero(base = 'assets/models/') {
   const [vrm, a1, a2] = await Promise.all([load(base + 'hero.glb'), load(base + 'hero_anims1.glb'), load(base + 'hero_anims2.glb')]);
   const root = new THREE.Group(); root.name = 'hero';
@@ -114,5 +133,6 @@ export async function loadHero(base = 'assets/models/') {
   sword.position.set(-0.07, -0.02, 0.02); sword.rotation.set(Math.PI / 2, 0, 0);
   hand.add(sword);
   const mixer = new THREE.AnimationMixer(root);
-  return { root, model, clips, mixer, sword, head: root.getObjectByName('J_Bip_C_Head') };
+  const spring = makeSpring(vrm, model, root);
+  return { root, model, clips, mixer, sword, spring, head: root.getObjectByName('J_Bip_C_Head') };
 }
