@@ -78,5 +78,26 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) ilerleme: deneyim, seviye, yoldaş bağ seviyesi, kayıt
+  const PR = G.prog;
+  ok('ilerleme: evcilleştirme/avlanma deneyim verdi', PR.level > 1 || PR.xp > 0, `sv=${PR.level} dp=${PR.xp}`);
+  PR.level = 1; PR.xp = 0; PR.apply(); P.hp = P.hpMax;
+  let x0 = PR.xp; a = find('wolf'); a.damage(999, P); ok('ilerleme: kurt öldürünce deneyim', PR.xp > x0, `${x0}→${PR.xp}`);
+  const hp1 = P.hpMax; PR.gain(500); ok('ilerleme: seviye atlayınca can ve güç artar', PR.level > 1 && P.hpMax > hp1 && P.dmgMul > 1 && P.hp === P.hpMax, `sv=${PR.level} can=${P.hpMax} güç=${P.dmgMul.toFixed(2)}`);
+  release(); a = find('wolf'); put(a, 2); a.becomePet(); P.hp = P.hpMax;
+  ok('yoldaş: evcilleşince bağ seviyesi 1', a.lvl === 1 && a.dmgMul === 1);
+  const petHp0 = a.hpMax; for (let i = 0; i < 40; i++) PR.onFeedPet(a); PR.petGain(a, 200);
+  ok('yoldaş: bağ seviyesi atlar, can ve güç artar', a.lvl > 1 && a.hpMax > petHp0 && a.dmgMul > 1, `sv=${a.lvl} can=${a.hpMax}`);
+  const pk = find('rabbit'); const pxp = a.xp, plv = a.lvl; pk.damage(999, a); ok('yoldaş: öldürdüğü avdan bağ deneyimi alır', a.lvl > plv || a.xp > pxp);
+  G.inv.add('honey', 3); P.x = 5; P.z = 7;
+  const snap = PR.serialize(), json = JSON.parse(JSON.stringify(snap));
+  ok('kayıt: oyun durumu JSON olarak serileşir', json.v === 1 && json.pets.length === 1 && json.pets[0].lvl === a.lvl && json.inv.honey >= 3);
+  const lv = PR.level, hon = G.inv.count('honey');
+  PR.level = 1; PR.xp = 0; G.inv.items = { flute: 1 }; release(); P.x = 40; P.z = -40;
+  PR.restore(json); const rp = G.pets[0];
+  ok('kayıt: yükleme seviyeyi, envanteri ve konumu geri getirir', PR.level === lv && G.inv.count('honey') === hon && Math.hypot(P.x - 5, P.z - 7) < 0.1 && P.hpMax > 100, `sv=${PR.level}`);
+  ok('kayıt: yoldaş türü, adı ve bağ seviyesiyle geri gelir', G.pets.length === 1 && rp.kind === 'wolf' && rp.tamed && rp.petName === json.pets[0].name && rp.lvl === json.pets[0].lvl, rp && rp.petName);
+  sim(3); ok('kayıt: yüklenen yoldaş takip eder', rp.dist(P) < 6, rp.dist(P).toFixed(1));
+  release(); ok('yoldaş: serbest bırakılınca bağ güçlendirmesi sıfırlanır', rp.dmgMul === 1 && rp.hpMax === rp.spec.hp);
   G.running = real; return out;
 };

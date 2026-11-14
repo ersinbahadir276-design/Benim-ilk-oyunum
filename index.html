@@ -10,7 +10,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div id="stats"><div class="bar hp"><i id="hp"></i><span>CAN</span></div><div class="bar st"><i id="st"></i><span>DAYANIKLILIK</span></div></div>
+  <div id="stats"><div class="bar hp"><i id="hp"></i><span>CAN</span></div><div class="bar st"><i id="st"></i><span>DAYANIKLILIK</span></div><div id="level"><b id="lvl">1</b><div class="bar xp"><i id="xp"></i><span id="xptxt">0 DP</span></div></div></div>
   <div id="focus" hidden><b id="fname"></b><div class="bar hp small"><i id="fhp"></i></div><div id="fhint"></div></div>
   <div id="pets"><h4>Evcil Yoldaşlar <span id="petcount">0/5</span></h4><div id="petlist"></div></div>
   <div id="prompt" hidden></div><div id="hold" hidden><i></i></div>
@@ -38,7 +38,7 @@
       <p><b>1–9:</b> eşya seç · <b>H:</b> seçili yiyeceği ye (can) · <b>T:</b> yoldaşlar bekle/takip et</p>
       <p>Her türün evcilleştirme yöntemi farklıdır: hayvana yaklaşınca üstte ipucu görünür. En fazla 5 yoldaş.</p>
     </div>
-    <button id="start" hidden>Oyuna Başla</button>
+    <button id="start" hidden>Oyuna Başla</button> <button id="newgame" hidden>Yeni Oyun</button>
   </div>
 </div>
 <script type="module" src="src/main.js"></script>

@@ -24,6 +24,12 @@ GitHub Pages açılırsa (Settings → Pages → dal kökü) doğrudan internett
 | Yoldaşlar bekle ↔ takip et | T |
 | Kamera | Fareyi sürükle, tekerlek |
 
+## İlerleme ve kayıt
+
+- **Oyuncu seviyesi (1–30):** avlanma, evcilleştirme ve toplama deneyim puanı (DP) verir. Her seviye +12 can, +%7 saldırı gücü ve daha hızlı dayanıklılık yenilenmesi sağlar; seviye atlayınca can dolar. Sol üstte seviye rozeti ve DP çubuğu görünür.
+- **Yoldaş bağ seviyesi (1–10):** yoldaşlar besledikçe ve savaştıkça bağ deneyimi kazanır; her bağ seviyesi +%12 can, +%10 saldırı gücü verir. Serbest bırakılan yoldaşın bağı sıfırlanır.
+- **Kayıt:** oyun her 20 sn'de, seviye atlayınca, evcilleştirince ve sekme kapanınca/arka plana geçince tarayıcıya (localStorage) kaydedilir: seviye, DP, envanter, konum, can ve yoldaşlar (tür, ad, açlık, bağ seviyesi). Açılışta **Devam Et** kaydı yükler, **Yeni Oyun** kaydı siler. Vahşi hayvanların durumu ve kaynak zamanlayıcıları kaydedilmez.
+
 ## Türler ve evcilleştirme yöntemleri
 
 | Tür | Bölge | Yöntem |
@@ -59,18 +65,18 @@ Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oy
 - Gönderilen arşivde **yalnızca ejderha** vardı. Diğer 12 tür el yapımı sanatçı modeli değil, kodla üretilmiş düşük poligonlu modellerdir; görsel kaliteleri ejderha ve kahramanın altındadır. Bu türler için GLB gönderilirse aynı `GLBCreature` sınıfıyla (ejderha/tilki gibi) bağlanır.
 - Ejderhanın `fly2` klibi sabit bir sinematik uçuş yolu içerdiği için oyunda kullanılmıyor; ejderha yerde yürür ve savaşır. Özgün 46 MB dosya, oyunda kullanılmayan 21 klip çıkarılarak 11 MB'a indirildi (`tools/build-assets.mjs`); ağ ve dokulara dokunulmadı, yalnızca malzeme tanımı three.js'in okuyabildiği PBR biçimine çevrildi.
 - Prosedürel hayvanlarda ayak–zemin kilidi (IK) yok; hızlı dönüşlerde ayaklar hafif kayabilir.
-- Kahramanın saç/giysi fiziği (VRM yay kemikleri) çalışmıyor; ata binme ve kayıt (save) sistemi henüz yok.
+- Kahramanın saç/giysi fiziği (VRM yay kemikleri) çalışmıyor; ata binme henüz yok.
 - Depoda daha önce bir oyun ya da kız karakter bulunmuyordu (depo boştu); oyun sıfırdan kuruldu, kaldırılacak bir karakter yoktu.
 
 ## Test
 
 - `test/model-viewer.html?m=wolf` — her modeli ve animasyonunu tek tek oynatır (`m=hero`, `dragon`, `fox`, `rabbit`, `deer`, `horse`, `bear`, `lion`, `tiger`, `crocodile`, `snake`, `eagle`, `shadowbeast`, `ogre`).
-- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 51 oynanış testi: oyuncu animasyon durumları, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama.
+- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 62 oynanış testi: oyuncu animasyon durumları, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama, deneyim/seviye, yoldaş bağ seviyesi, kaydet/yükle.
 
 ## Geliştirme planı
 
-1. **Tamamlandı:** dünya ve bölgeler, erkek kahraman + animasyonlar, 14 tür, yapay zekâ, türe özgü evcilleştirme, yoldaş sistemi (takip/savaş/açlık/can), envanter ve toplama, dokunmatik kontroller, testler.
+1. **Tamamlandı:** dünya ve bölgeler, erkek kahraman + animasyonlar, 14 tür, yapay zekâ, türe özgü evcilleştirme, yoldaş sistemi (takip/savaş/açlık/can), envanter ve toplama, dokunmatik kontroller, seviye/deneyim, yoldaş bağ seviyeleri, kayıt sistemi, testler.
 2. **Sıradaki:** gönderilecek yeni GLB'lerle prosedürel türlerin değiştirilmesi, ejderha için uçuş, ata binme.
-3. **Sonra:** kayıt sistemi, görevler, gece/gündüz, ses.
+3. **Sonra:** görevler, gece/gündüz, ses, Android performans ayarları.
 
 Lisanslar ve atıflar: [CREDITS.md](CREDITS.md)
