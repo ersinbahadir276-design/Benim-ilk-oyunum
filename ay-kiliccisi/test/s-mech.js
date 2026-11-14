@@ -6,3 +6,4 @@ module.exports = async ({ page, G, log }) => {
   const res = await page.evaluate(() => window.runMech());
   for (const r of res) log(r.name, r.pass, r.extra);
 };
+module.exports.pauseAtStart = true;

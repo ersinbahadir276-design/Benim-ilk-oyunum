@@ -8,3 +8,4 @@ module.exports = async ({ page, log }) => {
   const res = await page.evaluate(() => window.runLoop());
   for (const r of res) log(r.name, r.pass, r.extra);
 };
+module.exports.pauseAtStart = true;

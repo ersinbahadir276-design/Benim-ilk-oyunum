@@ -1409,7 +1409,7 @@ function makeItem(baseKey,lv,rar,uniq){const id=itemSeq++;if(uniq){const U=UNIQ[
 function randomDrop(lv,tier){const r=rollRarity(tier),pool=lv<5?['rusty','iron','plate','charm','ring']:lv<10?['iron','cleaver','plate','wolfhide','charm','ring']:lv<15?['cleaver','fang','wolfhide','bone','charm','ring']:['fang','shadow','bone','ash','charm','ring'];
  return makeItem(pool[Math.floor(Math.random()*pool.length)],lv,r)}
 // ---------- inventory state lives in SYS (saved)
-function invInit(){if(!SYS.inv){SYS.inv=[];SYS.eq={weapon:null,armor:null,charm:null,ring:null};const w=makeItem('rusty',1,0),a=makeItem('plate',1,0);SYS.inv.push(w,a);SYS.eq.weapon=w.id;SYS.eq.armor=a.id}
+function invInit(){if(!SYS.inv){SYS.inv=[];SYS.eq={weapon:null,armor:null,charm:null,ring:null};const w=makeItem('rusty',1,0),a=makeItem('plate',1,0);w.mods={};a.mods={};SYS.inv.push(w,a);SYS.eq.weapon=w.id;SYS.eq.armor=a.id}
  SYS.flaskMax=SYS.flaskMax||3;if(SYS.flasks===undefined)SYS.flasks=SYS.flaskMax;SYS.shards=SYS.shards||0;itemSeq=Math.max(itemSeq,...SYS.inv.map(i=>i.id+1),1)}
 const eqItem=(slot)=>SYS.inv.find(i=>i.id===SYS.eq[slot])||null;
 // total of an affix over equipped items (+5% per upgrade level on the item's numbers)

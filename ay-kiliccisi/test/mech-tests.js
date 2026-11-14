@@ -85,6 +85,7 @@ window.runMech = function () {
       if (P.st === 'down' || P.st === 'getup') { minLow = Math.min(minLow, lowestBody()); if (nanPM()) nan = true; }
       if (mode === 'hit' && P.pinBy && Math.floor(t * 10) !== Math.floor((t - DT) * 10)) IN.mash = 1; // mash a button 10 times a second
       if (pounceT > 0 && t > pounceT + 4) return false;
+      if (mode !== 'hit' && pounceT > 0 && t > pounceT + 0.6 && (w.st === 'recover' || w.st === 'circle' || w.st === 'chase')) return false; // judge the first leap only
     });
     res = { hazırlık: +(pounceT - windT).toFixed(2), sonDurum: P.st, kurt: w.st, en_alçak_vücut_noktası: +minLow.toFixed(3), can_kaybı: Math.round(hp0 - P.hp), işaret: sawMark };
     clearIn(); return [w, res, nan, minLow];
