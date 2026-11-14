@@ -1,6 +1,7 @@
 // Oynanış testleri: tarayıcıda gerçek oyun döngüsünü hızlandırarak çalıştırır.
 // Kullanım: test/run-tests.mjs (Playwright) ya da konsolda:  await runGameplayTests()
 window.runGameplayTests = async function () {
+  const THREE_V = window.GAME.player.hero.root.position.constructor;
   const G = window.GAME, P = G.player, out = [];
   const real = G.running; G.running = false; // gerçek zamanlı döngüyü durdur, elle ilerlet
   const sim = (sec, each) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { if (each && each(i) === false) break; G.update(1 / 30); } };
@@ -78,5 +79,17 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) kahraman: saç/ceket yay kemikleri ve yüz ifadeleri
+  { const H = P.hero, S = H.springs, F = H.face; P.respawn(); sim(1);
+    ok('kahraman: yay kemikleri yüklendi', S && S.joints.length >= 10 && S.colliders.length > 0, S && S.joints.length + ' eklem');
+    const j = S.joints.find((x) => x.bone.name.startsWith('HairJoint')) || S.joints[0];
+    const q0 = j.bone.quaternion.clone(); G.keys.w = true; G.keys.run = true; sim(0.5);
+    const swing = q0.angleTo(j.bone.quaternion); G.keys.w = G.keys.run = false; sim(2);
+    ok('kahraman: koşarken saç/ceket sallanır', swing > 0.01, 'açı=' + swing.toFixed(3));
+    ok('kahraman: yay kemikleri kararlı (NaN yok, uzunluk korunur)', S.joints.every((x) => Number.isFinite(x.bone.quaternion.x) && Math.abs(x.bone.getWorldPosition(new THREE_V()).distanceTo(x.child.getWorldPosition(new THREE_V())) - x.length) < 0.01));
+    ok('kahraman: ifade grupları (göz kırpma, öfke, acı, sevinç)', ['blink', 'angry', 'sorrow', 'joy'].every((n) => F.has(n) && F.groups[n][0].meshes.length > 0));
+    let blinked = false; sim(8, () => { if ((F.weights.blink || 0) > 0.9) blinked = true; }); ok('kahraman: kendiliğinden göz kırpar', blinked);
+    P.state = 'move'; sim(0.5); G.edge.attack = true; sim(0.3); ok('kahraman: saldırırken öfkeli ifade', (F.weights.angry || 0) > 0.5, (F.weights.angry || 0).toFixed(2) + ' ' + P.state + ' ' + P.y.toFixed(2) + ' ' + F.moodT.toFixed(2)); sim(2);
+    P.hp = 20; sim(0.5); ok('kahraman: canı azken acılı ifade', (F.weights.sorrow || 0) > 0.5, (F.weights.sorrow || 0).toFixed(2)); P.hp = P.hpMax; sim(0.5); }
   G.running = real; return out;
 };

@@ -87,7 +87,7 @@ export class Animal {
   }
   becomePet() {
     const g = this.g;
-    this.tamed = true; this.target = null; this.cowerT = 0; this.calmT = 0; this.stay = false; this.hunger = 70; this.hp = Math.max(this.hp, this.hpMax * 0.5);
+    this.tamed = true; this.g.player?.hero.face?.say('joy', 2.5); this.target = null; this.cowerT = 0; this.calmT = 0; this.stay = false; this.hunger = 70; this.hp = Math.max(this.hp, this.hpMax * 0.5);
     const no = g.petCounter[this.kind] = (g.petCounter[this.kind] || 0) + 1; this.petName = this.spec.name + (no > 1 ? ' ' + no : '');
     this.altGoal = this.spec.kind === 'bird' ? 4 : 0; g.pets.push(this); this.set('follow');
     g.msg(`✨ ${this.petName} evcilleştirildi! (${g.pets.length}/5)`); g.floatText('❤❤❤', this, '#ff6f9c');
