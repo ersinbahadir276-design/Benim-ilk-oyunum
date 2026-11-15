@@ -59,7 +59,7 @@ function veyraInit(){VEYM=veyraModel();if(MODEL.veyra){const def=VEYM.def;VEYM={
   rad:.32,lv:1,trust:SYS.trust||0};VEYRA.R=rigObj(VEYM,{out:.01,outCol:[.12,.02,.04],cull:160});VEYRA.R.ob.tex=tex;rigHide(VEYRA.R);
  if(SYS.veyraFate==='freed'){VEYRA.on=true;VEYRA.st='follow';VEYRA.x=P.x-2;VEYRA.z=P.z-2}}
 const VLINES={kill:['Bir tane daha.','Yavaş kalıyorsun, Kara Zırh.','Bu kadar mı?'],low:['Geri çekil! Seni ben korurum.','Kanın akıyor, dikkat et!'],boss:['Bu güçlü. Hazırlığını izle!','Saldırmadan önce kıpırdıyor, gördün mü?'],
- night:['Gece yaratıkları uyanıyor...','Babamın gölgeleri geceyi sever.'],idle:['Babam... bu dünyayı yakacak. Üç yıl içinde.','Mühür hâlâ göğsümde yanıyor.','Neden beni kurtardın?','Zırhın sana fısıldıyor, duyuyorum.'],
+ night:['Gece yaratıkları uyanıyor...','Annemin gölgeleri geceyi sever.'],idle:['Annem... bu dünyayı yakacak. Üç yıl içinde.','Mühür hâlâ göğsümde yanıyor.','Neden beni kurtardın?','Zırhın sana fısıldıyor, duyuyorum.'],
  parry:['İyi savuşturma!','Kılıcın konuşuyor.'],revive:['Kalk! Daha bitmedi.'],down:['Ah— beni bırakma...']};
 function vSay(kind,force){const V=VEYRA;if(!V||!V.on)return;if(!force&&GT.clock-V.lastSay<22)return;V.lastSay=GT.clock;const L=VLINES[kind];note('Veyra: "'+L[Math.floor(Math.random()*L.length)]+'"','gold')}
 function vTarget(){let best=null,bs=-1e9;for(const f of foes()){if(!foeHostile(f)&&f!==P.lock)continue;const d=Math.hypot(f.x-VEYRA.x,f.z-VEYRA.z),dp=Math.hypot(f.x-P.x,f.z-P.z);if(d>20)continue;

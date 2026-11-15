@@ -21,7 +21,7 @@ const limbG=(len,r0,r1,col,seg=8)=>tint(tube([[0,.02,0],[0,-len*.5,0],[0,-len,0]
 // painted faces for the sculpted humans (front projection: u=.5+x/(2.4hr), v=.5-y/(2.4hr) around the head centre)
 const FACES={villager:{iris:'#5a3a1c',brow:'#3a2414',lip:'#a0594c'},villager2:{iris:'#3f7a4a',brow:'#7a4a22',lip:'#c2606a',lash:1,blush:1},merchant:{iris:'#4a3020',brow:'#2c2018',lip:'#9a5448',stache:'#2c2018'},
  guard:{iris:'#4a6080',brow:'#2a2018',lip:'#94564a',stern:1},elder:{iris:'#6a7a8a',brow:'#d8d8d4',lip:'#9a6a60',old:1},smith:{iris:'#3a2a1a',brow:'#1c1410',lip:'#8a4c40',stern:1},
- hunter:{iris:'#4a7a3a',brow:'#7a3a14',lip:'#b86058',lash:1,freckle:1},veyra:{iris:'#d4201c',brow:'#5a0c12',lip:'#a83848',lash:1,slit:1,fang:1},priest:{iris:'#4a6aa0',brow:'#a08050',lip:'#c07068',lash:1,blush:1}};
+ hunter:{iris:'#4a7a3a',brow:'#7a3a14',lip:'#b86058',lash:1,freckle:1},king:{iris:'#e8b020',brow:'#1a0c14',lip:'#5a1024',lash:1,slit:1},veyra:{iris:'#d4201c',brow:'#5a0c12',lip:'#a83848',lash:1,slit:1,fang:1},priest:{iris:'#4a6aa0',brow:'#a08050',lip:'#c07068',lash:1,blush:1}};
 function faceTex(kind){const F=FACES[kind];if(!F)return null;const c=cnv(256,256),g=c.getContext('2d');g.clearRect(0,0,256,256);
  const ex=36,ey=127;g.lineCap='round';
  for(const s of[-1,1]){const x=128+s*ex;// sclera, iris, pupil, highlight, upper lid + lashes, lower lid
@@ -55,7 +55,7 @@ function humanGeoOld(kind,onlyK){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.2
   smith:{H:1.0,torso:.44,ua:.29,fa:.27,th:.4,sh2:.39,sh:.21,hw:.1,skin:[.82,.6,.48],c1:[.32,.22,.16],c2:[.24,.2,.17],hair:[.14,.1,.08],belly:1,apron:1,hammer:1,beard:1},
   hunter:{H:1.0,torso:.41,ua:.27,fa:.25,th:.41,sh2:.4,sh:.17,hw:.09,skin:[.93,.77,.66],c1:[.24,.34,.2],c2:[.3,.24,.16],hair:[.5,.27,.1],hood:1,bow:1},
   priest:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.16,hw:.085,skin:[.96,.84,.76],c1:[.9,.88,.84],c2:[.82,.8,.74],hair:[.75,.62,.4],dress:1,hood:1},
-  king:{H:1.0,torso:.66,ua:.5,fa:.46,th:.52,sh2:.5,sh:.38,hw:.18,skin:[.14,.08,.14],c1:[.07,.04,.07],c2:[.1,.05,.09],hair:[.05,.03,.05],big:1,king:1,dress:1},
+  king:{H:1.0,torso:.54,ua:.3,fa:.26,th:.5,sh2:.5,sh:.17,hw:.1,skin:[.14,.08,.14],c1:[.07,.04,.07],c2:[.1,.05,.09],hair:[.05,.03,.05],big:1,king:1,dress:1},
   bigGoblin:{H:1.0,torso:.62,ua:.48,fa:.44,th:.5,sh2:.48,sh:.36,hw:.17,skin:[.36,.47,.25],c1:[.32,.24,.16],c2:[.26,.2,.14],gob:1,big:1,club:1}}[kind];
  if(onlyK)return K;const def=humanDef(K),P=[],sk=K.skin,c1=K.c1,c2=K.c2,big=K.big?1:0,gob=K.gob?1:0;
  // hips + lower clothing

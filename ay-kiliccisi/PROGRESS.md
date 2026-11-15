@@ -82,6 +82,8 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [x] Veyra (20 kemik: saç, etek ön/arka, kuyruk, saç2; kızıl göz, yarık göz bebeği, diş), timsah (16 kemik)
 - [x] Kılıç heykeli (siper, oluk, mücevher, sargı); boy/genişlik eşyaya göre, bıçak rengi `tintM`
 - [x] 30 m ötesinde dış çizgi çizilmiyor (telefon performansı)
+- [x] Şeytan Kral artık kadın hükümdar (kullanıcı isteği, manhwa havası): Aldrich oranları, yılan kuyruğu, boynuz taç, uzun elbise; hikâyede 'annem'
+- [ ] Sıradaki (kullanıcı istedi): kahraman zırhını yeniden tasarla; Arknights tarzı kız (Kawaiope iskeleti); köylüleri yeni iskelet/görünüşe geçir; kurtları wolf_puppy iskeletine geçir
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
 - [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse
 - [ ] Şeytan Kral'ın kolları ince; aşama 3 boss dövüşünde iyileştirilecek

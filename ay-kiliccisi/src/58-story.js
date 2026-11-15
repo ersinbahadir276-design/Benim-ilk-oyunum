@@ -84,7 +84,7 @@ const PANELS={
   {h:.8,st:{eye:[2.4,1.0,27],at:[0,4.5,12.5],env:RED,hero:{x:0,z:21,yaw:PI,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=0;KING.z=12;KING.yaw=0;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
    say:[{who:'Azgal',txt:'Kara Zırh... Sonuncusu sendin.',x:58,y:12}]},
   {h:.7,st:{eye:[4.6,1.7,19.6],at:[2.2,1.45,17],fov:40,env:RED,noHero:true,setup:()=>{Object.assign(VEYRA,{x:2.2,z:17,y:hAt(2.2,17),yaw:PI*.85,forceShow:true,hidden:false,forcePose:{RsX:-1.6,ReX:-.4,LsX:-.3,hdP:-.05}});fires(true,[[-6,6,2.6],[7,5,2.2]])},teardown:()=>{VEYRA.forceShow=false;VEYRA.forcePose=null;fires(false);if(!SYS.veyraFate&&SHRINE){VEYRA.x=SHRINE.x;VEYRA.z=SHRINE.z;VEYRA.yaw=0}}},
-   nar:'Babasının yanında boynuzlu bir kız. Kılıcı kor gibiydi.',say:[{who:'Kael',txt:'...Sen.',x:12,y:70}]},
+   nar:'Annesinin yanında boynuzlu bir kız. Kılıcı kor gibiydi.',say:[{who:'Kael',txt:'...Sen.',x:12,y:70}]},
   {h:.45,black:true,sys:['Ölüm algılandı.','Koşul sağlandı: «Pişmanlık»','Geri dönüş başlatılıyor...']},
   {h:.72,st:{eye:[SPAWN[0]+1.5,3.2,SPAWN[2]+2.4],at:[SPAWN[0],.5,SPAWN[2]],env:{fogC:[.8,.82,.78],sun:[1.1,1.05,.95],fog:[60,260]},hero:{x:SPAWN[0],z:SPAWN[2],yaw:PI,lie:1.45,pose:{LaZ:.5,RaZ:.6,hdX:-.2}}},
    nar:'Sabah. Orman.',say:[{who:'Kael',txt:'Üç yıl önce mi?.. Krallık hâlâ ayakta.',x:46,y:14}]},
@@ -96,7 +96,7 @@ const PANELS={
  ch2:()=>[{h:.7,st:{eye:[ROLES.elder.x+2.2,1.8,ROLES.elder.z+2.6],at:[ROLES.elder.x,1.4,ROLES.elder.z],fov:42},say:[{who:'Doran',txt:'Goblinler köylülerimizi kaçırdı. Doğudaki kampın şefi Kırık Diş...',x:8,y:8}]},
   {h:.55,st:{eye:[CAMPSITES[0].x+20,8,CAMPSITES[0].z+20],at:[CAMPSITES[0].x,2,CAMPSITES[0].z],env:DUSK,noHero:true},nar:'Doğu kampı. Davullar.'}],
  cages:()=>[{h:.7,st:{eye:[CAGES[0].x+2.4,1.6,CAGES[0].z+2.4],at:[CAGES[0].x,1,CAGES[0].z],fov:42},say:[{who:'Köylü',txt:'Bataklıktaki tapınakta... zincirli bir iblis kız var. Boynuzları...',x:6,y:10},{who:'Kael',txt:'Boynuzları.',x:58,y:66}]}],
- princess:()=>[{h:.7,st:{eye:[SHRINE.x+.6,1.4,SHRINE.z+3.4],at:[SHRINE.x,.9,SHRINE.z],fov:40,env:DUSK,noHero:true},nar:'Zincirler. Kızıl saç. O gözler.',say:[{who:'Veyra',txt:'...Sen kimsin? Babam mı yolladı?',x:52,y:10}]},
+ princess:()=>[{h:.7,st:{eye:[SHRINE.x+.6,1.4,SHRINE.z+3.4],at:[SHRINE.x,.9,SHRINE.z],fov:40,env:DUSK,noHero:true},nar:'Zincirler. Kızıl saç. O gözler.',say:[{who:'Veyra',txt:'...Sen kimsin? Annem mi yolladı?',x:52,y:10}]},
   {h:.75,st:{eye:[SHRINE.x+3,2.2,SHRINE.z+4.5],at:[SHRINE.x,1.2,SHRINE.z+1],env:DUSK,hero:{x:SHRINE.x,z:SHRINE.z+2,yaw:PI,pose:{two:1,RaZ:-1.4,RaX:-1.0,Rel:.6,RaY:.2,chX:-.2}}},
    whisper:'Bu o. Seni öldüren. Kes.',say:[{who:'Kael',txt:'İlk hayatımda... beni sen öldürdün.',x:6,y:70}],choice:true}],
  dragon:()=>[{h:.65,st:{eye:[LAIR[0]+20,14,LAIR[1]+40],at:[LAIR[0],4,LAIR[1]-60],env:DUSK,noHero:true},nar:'Kül Kanat düştü. Kuzey geçidi açık.',sys:['Ana görev: Kül Kale (yakında)']}]};
