@@ -90,7 +90,7 @@ export class Player {
     const a = this.cur; if (a) a.reset().play();
   }
   swing() {
-    const dmg = this.combo === 2 ? 30 : 18; let hit = false;
+    const dmg = (this.combo === 2 ? 30 : 18) * (this.dmgMul || 1); let hit = false;
     for (const a of this.g.animals) {
       if (a.dead || a.tamed || a.alt > 2.5) continue; const dx = a.x - this.x, dz = a.z - this.z, d = Math.hypot(dx, dz);
       if (d > 2.1 + a.radius) continue; const dot = (Math.sin(this.yaw) * dx + Math.cos(this.yaw) * dz) / (d || 1);
