@@ -20,7 +20,7 @@ function storyInit(){SYS.main=SYS.main||0;
  for(const[k,kind,x,z,yaw,name]of[['elder','elder',-6,47,0,'İhtiyar Doran'],['smith','smith',22,-44,PI,'Demirci Hask'],['hunter','hunter',44,66,-PI/2,'Avcı Lena'],['priest','priest',-3,40,0,'Rahibe Mira']]){
   if(!NPCM[kind])NPCM[kind]=humanGeo(kind);const p=collide(x,z,.5),n=mkNpc(kind,p[0],p[1],{yaw,post:[p[0],p[1],yaw]});n.role=k;n.name=name;n.R=rigObj(NPCM[kind],{out:.012,cull:130,outCol:[.12,.1,.1]});ROLES[k]=n}
  // the Demon King (prologue panels; the final battle comes in phase 3)
- const km=humanGeo('king');KING={x:0,z:-1300,y:0,yaw:0,R:rigObj(km,{out:.02,cull:300,outCol:[.25,.02,.03]}),sc:2.4,K:km.K,vis:false};rigHide(KING.R);
+ const km=humanGeo('king');KING={x:0,z:-1300,y:0,yaw:0,R:rigObj(km,{out:.02,cull:300,outCol:[.25,.02,.03]}),sc:2.4,K:km.K,vis:false};KING.sc=1.0;rigHide(KING.R);
  // cages at the eastern goblin camp
  const c=CAMPSITES[0];for(let i=0;i<2;i++){const a=c.gate+PI+(i?.5:-.5),x=c.x+Math.cos(a)*9,z=c.z+Math.sin(a)*9,y=hAt(x,z),g=G();
   for(let k=0;k<10;k++){const b=k/10*2*PI;box(g,Math.cos(b)*.8-.04,0,Math.sin(b)*.8-.04,Math.cos(b)*.8+.04,1.8,Math.sin(b)*.8+.04,[.3,.24,.16])}box(g,-.9,1.8,-.9,.9,1.9,.9,[.28,.2,.14]);
@@ -81,7 +81,7 @@ const RED={fogC:[.32,.07,.06],sun:[1.1,.55,.45],fog:[25,160]},DUSK={fogC:[.25,.2
 const PANELS={
  prologue:()=>[
   {h:.62,st:{eye:[52,26,92],at:[0,10,0],env:RED,noHero:true,setup:()=>fires(true,[[-30,-34,9],[34,-30,8],[30,34,10],[-34,30,7],[0,0,12],[-14,40,6],[16,55,7]]),teardown:()=>fires(false)},nar:'Krallık düştü.',nar2:'Gökyüzü yanıyordu.'},
-  {h:.8,st:{eye:[2.4,1.0,27],at:[0,4.5,12.5],env:RED,hero:{x:0,z:21,yaw:PI,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=0;KING.z=12;KING.yaw=0;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
+  {h:.8,st:{eye:[1.9,1.15,17.4],at:[0,1.25,12.7],fov:44,env:RED,hero:{x:0,z:14.6,yaw:PI,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=0;KING.z=12;KING.yaw=0;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
    say:[{who:'Azgal',txt:'Kara Zırh... Sonuncusu sendin.',x:58,y:12}]},
   {h:.7,st:{eye:[4.6,1.7,19.6],at:[2.2,1.45,17],fov:40,env:RED,noHero:true,setup:()=>{Object.assign(VEYRA,{x:2.2,z:17,y:hAt(2.2,17),yaw:PI*.85,forceShow:true,hidden:false,forcePose:{RsX:-1.6,ReX:-.4,LsX:-.3,hdP:-.05}});fires(true,[[-6,6,2.6],[7,5,2.2]])},teardown:()=>{VEYRA.forceShow=false;VEYRA.forcePose=null;fires(false);if(!SYS.veyraFate&&SHRINE){VEYRA.x=SHRINE.x;VEYRA.z=SHRINE.z;VEYRA.yaw=0}}},
    nar:'Annesinin yanında boynuzlu bir kız. Kılıcı kor gibiydi.',say:[{who:'Kael',txt:'...Sen.',x:12,y:70}]},

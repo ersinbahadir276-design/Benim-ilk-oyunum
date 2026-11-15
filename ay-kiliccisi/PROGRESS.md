@@ -82,7 +82,8 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [x] Veyra (20 kemik: saç, etek ön/arka, kuyruk, saç2; kızıl göz, yarık göz bebeği, diş), timsah (16 kemik)
 - [x] Kılıç heykeli (siper, oluk, mücevher, sargı); boy/genişlik eşyaya göre, bıçak rengi `tintM`
 - [x] 30 m ötesinde dış çizgi çizilmiyor (telefon performansı)
-- [x] Şeytan Kral artık kadın hükümdar (kullanıcı isteği, manhwa havası): Aldrich oranları, yılan kuyruğu, boynuz taç, uzun elbise; hikâyede 'annem'
+- [x] Şeytan Kral = kadın hükümdar. Kullanıcı isteği: elf modelinin kendisi (body_base_low_poly_elf, Yamato, CC BY 4.0) + sadece boynuz, saç, sade elbise; normal boy (KING.sc=1).
+      `tools/sculpt/import_elf.mjs <elf.glb>` eklemleri ölçer, 16 kemiğe oturtur, cache/king.bin + king_rig.json yazar (K ve BINDS.king oyuna elle kopyalandı).
 - [ ] Sıradaki (kullanıcı istedi): kahraman zırhını yeniden tasarla; Arknights tarzı kız (Kawaiope iskeleti); köylüleri yeni iskelet/görünüşe geçir; kurtları wolf_puppy iskeletine geçir
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
 - [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse

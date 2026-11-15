@@ -44,7 +44,7 @@ function faceTex(kind){const F=FACES[kind];if(!F)return null;const c=cnv(256,256
  if(F.stache){g.fillStyle=F.stache;g.beginPath();g.moveTo(108,176);g.quadraticCurveTo(128,160,148,176);g.quadraticCurveTo(128,170,108,176);g.fill()}
  if(F.old){g.strokeStyle='rgba(70,40,30,.3)';g.lineWidth=1.4;for(const s of[-1,1]){g.beginPath();g.moveTo(128+s*12,160);g.quadraticCurveTo(128+s*20,172,128+s*18,184);g.stroke()}g.beginPath();g.moveTo(108,96);g.lineTo(148,96);g.moveTo(112,90);g.lineTo(144,90);g.stroke()}
  return texture(c)}
-function humanGeo(kind){const sg=sculptGeo(kind);if(sg){const K0=humanGeoK(kind),def=humanDef(K0);return{def,geo:sg,K:K0,binv:bindInv(def,HBIND),tex:faceTex(kind)}}return humanGeoOld(kind)}
+function humanGeo(kind){const sg=sculptGeo(kind);if(sg){const K0=humanGeoK(kind),def=humanDef(K0);return{def,geo:sg,K:K0,binv:bindInv(def,BINDS[kind]||HBIND),tex:faceTex(kind)}}return humanGeoOld(kind)}
 function humanGeoK(kind){return humanGeoOld(kind,true)}
 function humanGeoOld(kind,onlyK){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,sh2:.39,sh:.18,hw:.09,skin:[.92,.75,.62],c1:[.55,.36,.22],c2:[.33,.3,.26],hair:[.3,.2,.12]},
   villager2:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.17,hw:.09,skin:[.95,.8,.68],c1:[.36,.45,.32],c2:[.5,.42,.3],hair:[.55,.38,.2],dress:1},
@@ -55,7 +55,7 @@ function humanGeoOld(kind,onlyK){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.2
   smith:{H:1.0,torso:.44,ua:.29,fa:.27,th:.4,sh2:.39,sh:.21,hw:.1,skin:[.82,.6,.48],c1:[.32,.22,.16],c2:[.24,.2,.17],hair:[.14,.1,.08],belly:1,apron:1,hammer:1,beard:1},
   hunter:{H:1.0,torso:.41,ua:.27,fa:.25,th:.41,sh2:.4,sh:.17,hw:.09,skin:[.93,.77,.66],c1:[.24,.34,.2],c2:[.3,.24,.16],hair:[.5,.27,.1],hood:1,bow:1},
   priest:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.16,hw:.085,skin:[.96,.84,.76],c1:[.9,.88,.84],c2:[.82,.8,.74],hair:[.75,.62,.4],dress:1,hood:1},
-  king:{H:1.0,torso:.54,ua:.3,fa:.26,th:.5,sh2:.5,sh:.17,hw:.1,skin:[.14,.08,.14],c1:[.07,.04,.07],c2:[.1,.05,.09],hair:[.05,.03,.05],big:1,king:1,dress:1},
+  king:{H:1.0,torso:0.534,ua:0.323,fa:0.289,th:0.396,sh2:0.444,sh:0.160,hw:0.097,skin:[.14,.08,.14],c1:[.07,.04,.07],c2:[.1,.05,.09],hair:[.05,.03,.05],big:1,king:1,dress:1},
   bigGoblin:{H:1.0,torso:.62,ua:.48,fa:.44,th:.5,sh2:.48,sh:.36,hw:.17,skin:[.36,.47,.25],c1:[.32,.24,.16],c2:[.26,.2,.14],gob:1,big:1,club:1}}[kind];
  if(onlyK)return K;const def=humanDef(K),P=[],sk=K.skin,c1=K.c1,c2=K.c2,big=K.big?1:0,gob=K.gob?1:0;
  // hips + lower clothing
@@ -125,6 +125,8 @@ function crocGeo(){const skin=[.27,.35,.2],bel=[.66,.65,.48],dk=[.17,.22,.13],P=
 // ---------- per-character render object (one skinned draw + blob shadow)
 // sculpted models are bound in an A-pose (arms out, legs apart): skin matrix = bone world x inverse bind
 const HBIND={3:[0,0,.55],6:[0,0,-.55],9:[0,0,.06],12:[0,0,-.06]};
+// the Demon Queen is the imported elf body: bound in its own A-pose (measured by tools/sculpt/import_elf.mjs)
+const BINDS={king:{3:[0,0,0.365],6:[0,0,-0.365],9:[0,0,-0.032],12:[0,0,0.032]}};
 function bindInv(def,bind){const WR=[],WP=[],out=new Float32Array(def.length*12);for(let i=0;i<def.length;i++){const b=def[i],e=bind&&bind[i],R=e?eul(e[0],e[1],e[2]):R3I;
   if(b.p<0){WR[i]=R;WP[i]=[0,0,0]}else{WR[i]=r3m(WR[b.p],R);WP[i]=vadd(WP[b.p],r3v(WR[b.p],b.o))}const m=WR[i],q=i*12;
   out[q]=m[0];out[q+1]=m[3];out[q+2]=m[6];out[q+4]=m[1];out[q+5]=m[4];out[q+6]=m[7];out[q+8]=m[2];out[q+9]=m[5];out[q+10]=m[8];
