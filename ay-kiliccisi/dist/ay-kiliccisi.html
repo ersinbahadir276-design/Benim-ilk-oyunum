@@ -883,26 +883,27 @@ const limbG=(len,r0,r1,col,seg=8)=>tint(tube([[0,.02,0],[0,-len*.5,0],[0,-len,0]
 // painted faces for the sculpted humans (front projection: u=.5+x/(2.4hr), v=.5-y/(2.4hr) around the head centre)
 const FACES={villager:{iris:'#5a3a1c',brow:'#3a2414',lip:'#a0594c'},villager2:{iris:'#3f7a4a',brow:'#7a4a22',lip:'#c2606a',lash:1,blush:1},merchant:{iris:'#4a3020',brow:'#2c2018',lip:'#9a5448',stache:'#2c2018'},
  guard:{iris:'#4a6080',brow:'#2a2018',lip:'#94564a',stern:1},elder:{iris:'#6a7a8a',brow:'#d8d8d4',lip:'#9a6a60',old:1},smith:{iris:'#3a2a1a',brow:'#1c1410',lip:'#8a4c40',stern:1},
- hunter:{iris:'#4a7a3a',brow:'#7a3a14',lip:'#b86058',lash:1,freckle:1},king:{iris:'#e8b020',brow:'#1a0c14',lip:'#5a1024',lash:1,slit:1},veyra:{iris:'#d4201c',brow:'#5a0c12',lip:'#a83848',lash:1,slit:1,fang:1},priest:{iris:'#4a6aa0',brow:'#a08050',lip:'#c07068',lash:1,blush:1}};
+ hunter:{iris:'#4a7a3a',brow:'#7a3a14',lip:'#b86058',lash:1,freckle:1},king:{iris:'#e8b020',brow:'#1a0c14',lip:'#a01838',lash:1,slit:1,ex:42,ey:140,es:1.25,by:121,ny:190,my:214,mw:.72},veyra:{iris:'#d4201c',brow:'#5a0c12',lip:'#a83848',lash:1,slit:1,fang:1},priest:{iris:'#4a6aa0',brow:'#a08050',lip:'#c07068',lash:1,blush:1}};
 function faceTex(kind){const F=FACES[kind];if(!F)return null;const c=cnv(256,256),g=c.getContext('2d');g.clearRect(0,0,256,256);
- const ex=36,ey=127;g.lineCap='round';
+ const ex=F.ex||36,ey=F.ey||127,es=F.es||1,dy=(F.by||108)-108,ny=F.ny||151,my=F.my||178,mw=F.mw||1;g.lineCap='round';
  for(const s of[-1,1]){const x=128+s*ex;// sclera, iris, pupil, highlight, upper lid + lashes, lower lid
-  g.fillStyle='#f4efe8';g.beginPath();g.ellipse(x,ey,13,7.5,0,0,7);g.fill();
+  g.save();g.translate(x,ey);g.scale(es,es);g.translate(-x,-ey);g.fillStyle='#f4efe8';g.beginPath();g.ellipse(x,ey,13,7.5,0,0,7);g.fill();
   g.fillStyle=F.iris;g.beginPath();g.arc(x,ey+.5,6.6,0,7);g.fill();g.fillStyle='#0c0806';g.beginPath();if(F.slit)g.ellipse(x,ey+.5,1.4,5.6,0,0,7);else g.arc(x,ey+.5,3,0,7);g.fill();
   g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.arc(x-2.4,ey-2.2,1.7,0,7);g.fill();
   g.strokeStyle='#241612';g.lineWidth=F.lash?3.2:2.4;g.beginPath();g.ellipse(x,ey+1.5,13.5,9,0,PI*1.06,PI*1.94);g.stroke();
   if(F.lash){g.lineWidth=1.6;g.beginPath();g.moveTo(x+s*12,ey-4);g.lineTo(x+s*16,ey-7.5);g.stroke()}
-  g.strokeStyle='rgba(60,30,20,.35)';g.lineWidth=1.2;g.beginPath();g.ellipse(x,ey-.5,12,7,0,PI*.15,PI*.85);g.stroke();
+  g.strokeStyle='rgba(60,30,20,.35)';g.lineWidth=1.2;g.beginPath();g.ellipse(x,ey-.5,12,7,0,PI*.15,PI*.85);g.stroke();g.restore();
   // brow
-  g.strokeStyle=F.brow;g.lineWidth=F.stern?5.5:4.2;g.beginPath();g.moveTo(x-s*13,108+(F.stern?3:0));g.quadraticCurveTo(x,101,x+s*14,108-(F.stern?2:0));g.stroke();
+  g.strokeStyle=F.brow;g.lineWidth=F.stern?5.5:4.2;g.beginPath();g.moveTo(x-s*13,108+dy+(F.stern?3:0));g.quadraticCurveTo(x,101+dy,x+s*14,108+dy-(F.stern?2:0));g.stroke();
   if(F.old){g.strokeStyle='rgba(70,40,30,.35)';g.lineWidth=1.2;for(let k=0;k<3;k++){g.beginPath();g.moveTo(x+s*15,ey+2+k*3);g.lineTo(x+s*21,ey+k*4);g.stroke()}}
   if(F.blush){g.fillStyle='rgba(220,90,90,.22)';g.beginPath();g.ellipse(x+s*4,ey+22,11,6,0,0,7);g.fill()}
   if(F.freckle){g.fillStyle='rgba(120,60,30,.45)';for(let k=0;k<6;k++){g.beginPath();g.arc(x+s*(k%3)*4-s*2,ey+17+(k>>1)*3,1,0,7);g.fill()}}}
  // nose shading and nostrils, lips, chin line
- g.fillStyle='rgba(90,45,30,.28)';g.beginPath();g.ellipse(128,152,7,3,0,0,7);g.fill();g.fillStyle='rgba(60,25,20,.5)';for(const s of[-1,1]){g.beginPath();g.ellipse(128+s*4.5,151,2,1.3,0,0,7);g.fill()}
+ g.fillStyle='rgba(90,45,30,.22)';g.beginPath();g.ellipse(128,ny+1,6,2.6,0,0,7);g.fill();g.fillStyle='rgba(60,25,20,.4)';for(const s of[-1,1]){g.beginPath();g.ellipse(128+s*4,ny,1.7,1.1,0,0,7);g.fill()}
+ g.save();g.translate(128,my);g.scale(mw,mw);g.translate(-128,-178);
  g.fillStyle=F.lip;g.beginPath();g.moveTo(113,178);g.quadraticCurveTo(128,172,143,178);g.quadraticCurveTo(128,186,113,178);g.fill();
- g.strokeStyle='rgba(60,20,20,.75)';g.lineWidth=1.6;g.beginPath();g.moveTo(112,178);g.quadraticCurveTo(128,(F.stern?179:181),144,178);g.stroke();
- if(F.fang){g.fillStyle='#fffaf0';g.beginPath();g.moveTo(133,179);g.lineTo(137,179);g.lineTo(135,185);g.fill()}
+ g.strokeStyle='rgba(60,20,20,.75)';g.lineWidth=1.6;g.beginPath();g.moveTo(112,178);g.quadraticCurveTo(128,(F.stern?179:181),144,178);g.stroke();g.restore();
+ if(F.fang){g.fillStyle='#fffaf0';g.beginPath();g.moveTo(133,my+1);g.lineTo(137,my+1);g.lineTo(135,my+7);g.fill()}
  if(F.stache){g.fillStyle=F.stache;g.beginPath();g.moveTo(108,176);g.quadraticCurveTo(128,160,148,176);g.quadraticCurveTo(128,170,108,176);g.fill()}
  if(F.old){g.strokeStyle='rgba(70,40,30,.3)';g.lineWidth=1.4;for(const s of[-1,1]){g.beginPath();g.moveTo(128+s*12,160);g.quadraticCurveTo(128+s*20,172,128+s*18,184);g.stroke()}g.beginPath();g.moveTo(108,96);g.lineTo(148,96);g.moveTo(112,90);g.lineTo(144,90);g.stroke()}
  return texture(c)}
@@ -2267,7 +2268,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
-   dbg:{get PLD(){return PLD},humanGeo,crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
+   dbg:{get PLD(){return PLD},humanGeo,faceTex,crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
    openWin,renderWin,uiTick,maxHP,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}
