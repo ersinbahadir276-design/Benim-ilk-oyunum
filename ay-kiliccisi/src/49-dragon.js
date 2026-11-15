@@ -60,12 +60,16 @@ function updateDragon(d,dt){if(!d)return;d.t+=dt;d.flash=Math.max(0,d.flash-dt*4
  case'return':{dFace(d,d.spawn[0],d.spawn[1],dt,1.2);const dd=Math.hypot(d.spawn[0]-d.x,d.spawn[1]-d.z);if(dd>2){d.x+=Math.sin(d.yaw)*3*dt;d.z+=Math.cos(d.yaw)*3*dt}else{d.st='sleep';d.t=0;d.hp=Math.min(d.max,d.hp+400);d.aware=0;dPlay(d,'stand',.4,.6)}break}
  case'roar':if(d.t>2.2){d.st='approach';d.t=0;d.claws=0;dPlay(d,'walk',.4,1.1)}break;
  case'approach':{dFace(d,P.x,P.z,dt,1.1);const fa=Math.abs(angd(Math.atan2(P.x-d.x,P.z-d.z),d.yaw));if(dist>7.5){const p=collide(d.x+Math.sin(d.yaw)*3.6*dt,d.z+Math.cos(d.yaw)*3.6*dt,2.2);d.x=p[0];d.z=p[1]}
-  if(d.clip!=='walk')dPlay(d,'walk',.3,1.1);if(dist<9.5&&fa<.45&&d.t>.6){d.st='claw';d.t=0;d.hitDone=false;dPlay(d,'attack01',.25,1);sfx.roar(.7)}
+  if(d.clip!=='walk')dPlay(d,'walk',.3,1.1);if(dist<4.6&&d.t>.4&&!(d.stompCd>GT.clock)){d.st='stomp';d.t=0;d.hitDone=false;d.stompCd=GT.clock+4;dangerRing(d.x,d.z,6.2,1.15);dPlay(d,'taitou',.25);sfx.roar(.8);break}
+  if(dist<9.5&&fa<.45&&d.t>.6){d.st='claw';d.t=0;d.hitDone=false;dPlay(d,'attack01',.25,1);sfx.roar(.7)}
   if(d.t>9&&d.claws<2){d.st='claw';d.t=0;d.hitDone=false;dPlay(d,'attack01',.25,1)}break}
+ // standing under the dragon is not safe: it rears and stamps (red ring, jump to avoid)
+ case'stomp':{if(!d.hitDone&&d.t>1.15){d.hitDone=true;CAM.shake=Math.max(CAM.shake,.8);sfx.thud();spawnSparks(d.x,d.y+.3,d.z,30,[.6,.55,.45],7);if(dist<6.2&&!P.air){const k=dist||1;hitPlayer({src:d,dmg:26,guard:60,dir:[(P.x-d.x)/k,(P.z-d.z)/k],knock:'down',power:1.5,parryable:false})}}
+  if(d.t>2.1){d.st='approach';d.t=0;dPlay(d,'walk',.3,1.1)}break}
  case'claw':{if(d.ct<1.9)dFace(d,P.x,P.z,dt,.9);
   if(!d.hitDone&&d.ct>2.65&&d.ct<3.6){const c=dBone(d,DRG.rHand),hit=Math.hypot(c[0]-P.x,c[2]-P.z)<2.3&&c[1]<P.y+2.2;
    if(hit){d.hitDone=true;const k=Math.hypot(P.x-d.x,P.z-d.z)||1;hitPlayer({src:d,dmg:32,guard:70,dir:[(P.x-d.x)/k,(P.z-d.z)/k],knock:'down',power:1.7})}}
-  if(d.ct>2.7&&d.ct<2.75+dt){CAM.shake=Math.max(CAM.shake,dist<14?.45:.15);sfx.thud()}
+  if(d.ct>2.7&&d.ct<2.75+dt){CAM.shake=Math.max(CAM.shake,dist<14?.45:.15);sfx.thud();if(!d.hitDone&&dist<3.6&&!P.air){d.hitDone=true;hitPlayer({src:d,dmg:16,guard:35,dir:[P.x-d.x,P.z-d.z],knock:'flinch',parryable:false})}}
   if(d.ct>5.2){d.claws++;if(d.claws>=2){d.st='takeoff';d.t=0;dPlay(d,'up',.3,1);sfx.wings()}else{d.st='approach';d.t=0;dPlay(d,'walk',.4,1.1)}}break}
  case'stagger':if(d.t>1.8){d.st='approach';d.t=0;dPlay(d,'walk',.4,1.1)}break;
  case'takeoff':if(d.ct>.7&&d.ct<.75+dt){CAM.shake=Math.max(CAM.shake,.35);sfx.wings()}if(d.ct>=1.45){d.st='hover';d.t=0;d.breaths=0;dPlay(d,'skill08',.3,1)}break;

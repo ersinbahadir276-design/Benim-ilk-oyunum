@@ -86,11 +86,14 @@ function buildWorld(){
   obj(geo(g),{shade:.55,pos:[-WS+(i0+NC/2)*HS,0,-WS+(j0+NC/2)*HS],cull:620,ds:0})}
  // ---------- ground overlays: village dirt, courtyard stone, roads (four roads to the edge of the old forest, north road up to the mountains)
  const ov=G(),dirt=[.46,.40,.29],road=[.55,.47,.33],stone=[.52,.52,.55];
- {const o=ov.P.length/3;ov.P.push(0,.1,0);ov.N.push(0,1,0);ov.C.push(...dirt);ov.U.push(0,0);ov.W.push(0);
-  for(let k=0;k<=48;k++){const a=k/48*2*PI,r=118+6*Math.sin(k*1.7);ov.P.push(Math.cos(a)*r,.1,Math.sin(a)*r);ov.N.push(0,1,0);const f=.8+.2*Math.sin(k*2.3);ov.C.push(dirt[0]*f,dirt[1]*f*1.08,dirt[2]*f);ov.U.push(0,0);ov.W.push(0);if(k)ov.I.push(o,o+k+1,o+k)}}
- quad(ov,[-36,.18,36],[36,.18,36],[36,.18,-36],[-36,.18,-36],stone);
- for(const[dx,dz]of[[0,1],[0,-1],[1,0],[-1,0]]){let prev=null;const end=dz<0?690:720;for(let s=30;s<=end;s+=4){const x=dx*s,z=dz*s,w=s<120?3.2:2.4,px=dz*w,pz=dx*w;if(depthAt(x,z)>0){prev=null;continue}
-   const a=[x-px,hAt(x-px,z-pz)+.24,z-pz],b=[x+px,hAt(x+px,z+pz)+.24,z+pz];if(prev){const f=.9+.1*Math.sin(s*.9);quad(ov,prev[0],prev[1],b,a,[road[0]*f,road[1]*f,road[2]*f])}prev=[a,b]}}
+ // overlays follow the terrain closely (fine grid sampled from hAt) so feet never sink into or float over them
+ const H=(x,z)=>hAt(x,z)+.045;
+ for(let ri=0;ri<20;ri++){const r0=ri*6,r1=r0+6;for(let k=0;k<72;k++){const a0=k/72*2*PI,a1=(k+1)/72*2*PI,e=(r)=>r>=118?118+6*Math.sin(a0*3):r,P=(r,a)=>{const rr=Math.min(r,118+6*Math.sin(a*48/(2*PI)*1.7));return[Math.cos(a)*rr,H(Math.cos(a)*rr,Math.sin(a)*rr),Math.sin(a)*rr]};
+  const f=.8+.2*Math.sin(k*2.3+ri);quad(ov,P(r0,a1),P(r1,a1),P(r1,a0),P(r0,a0),[dirt[0]*f,dirt[1]*f*1.08,dirt[2]*f])}}
+ for(let gx=-36;gx<36;gx+=4)for(let gz=-36;gz<36;gz+=4){const q=(x,z)=>[x,H(x,z)+.02,z];quad(ov,q(gx,gz+4),q(gx+4,gz+4),q(gx+4,gz),q(gx,gz),stone)}
+ for(const[dx,dz]of[[0,1],[0,-1],[1,0],[-1,0]]){let prev=null;const end=dz<0?690:720;for(let s=30;s<=end;s+=1){const x=dx*s,z=dz*s,w=s<120?3.2:2.4,px=dz*w,pz=dx*w;if(depthAt(x,z)>0){prev=null;continue}
+   const row=[0,1,2,3,4].map(k=>{const t=k/4*2-1,xx=x+px*t,zz=z+pz*t;return[xx,H(xx,zz)+.01,zz]});
+   if(prev){const f=.9+.1*Math.sin(s*.22);for(let k=0;k<4;k++)quad(ov,prev[k],prev[k+1],row[k+1],row[k],[road[0]*f,road[1]*f,road[2]*f])}prev=row}}
  for(let i=0;i<ov.N.length;i+=3){ov.N[i]=0;ov.N[i+1]=1;ov.N[i+2]=0}
  obj(geo(ov),{shade:.4,pos:[0,0,0],cull:900});
  // ---------- the original forest (same random sequence, so the village and castle keep their exact layout)
