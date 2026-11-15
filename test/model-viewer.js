@@ -19,7 +19,8 @@ if (name === 'hero') {
   let cur; const play = (n) => { cur?.stop(); cur = h.mixer.clipAction(h.clips[n]); cur.reset().play(); };
   Object.keys(h.clips).forEach((n) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => play(n); ui.appendChild(b); });
   if (P.get('a')) play(P.get('a'));
-  update = (dt) => h.mixer.update(dt); window.T = { setTime: (t) => { h.mixer.setTime(t); } };
+  window.HERO = h; if (P.has('nospring')) h.springs.enabled = false;
+  update = (dt) => h.update(dt); window.T = { setTime: (t) => { h.mixer.setTime(t); h.springs.reset(); } };
 } else {
   await loadGLBCreatures('../assets/models/');
   const c = makeCreature(name); scene.add(c.root); size = c.spec.viewSize || c.spec.len || 2;

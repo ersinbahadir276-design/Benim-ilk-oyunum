@@ -78,5 +78,21 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) kahraman saç/etek yay kemikleri
+  const S = G.player.hero.springs, hair = S.joints.filter((j) => /^HairJoint/.test(j.bone.name) || /Hair/.test(j.bone.parent.name)), coat = S.joints.filter((j) => /CoatSkirt/.test(j.bone.name));
+  ok('yay kemikleri: saç ve etek zincirleri kuruldu', hair.length >= 7 && coat.length >= 6 && S.colliders.length >= 20, `saç=${hair.length} etek=${coat.length} çarp=${S.colliders.length}`);
+  const tipDir = () => coat.map((j) => j.cur.clone().sub(j.bone.getWorldPosition(new j.cur.constructor())).normalize());
+  P.x = 0; P.z = 6; P.alive = true; P.hp = P.hpMax; P.state = 'move'; G.keys = {}; sim(2); const rest = tipDir();
+  G.keys.w = true; G.keys.run = true; sim(1.2); const moving = tipDir(); G.keys = {};
+  const swing = Math.max(...rest.map((d, i) => d.angleTo(moving[i])));
+  ok('yay kemikleri: koşarken etek savrulur', swing > 0.05, 'açı=' + swing.toFixed(2));
+  const sane = S.joints.every((j) => Number.isFinite(j.cur.x) && Math.abs(j.bone.getWorldPosition(new j.cur.constructor()).distanceTo(j.cur) - j.length) < 1e-3);
+  ok('yay kemikleri: uzunluk korunur, NaN yok', sane);
+  sim(3); const settled = tipDir(); const back = Math.max(...rest.map((d, i) => d.angleTo(settled[i])));
+  ok('yay kemikleri: durunca dinlenmeye döner', back < 0.15, 'açı=' + back.toFixed(2));
+  const head = G.player.hero.head.getWorldPosition(new j0Vec()); function j0Vec() { return new S.joints[0].cur.constructor(); }
+  const r0 = S.colliders.find((c) => c.node.name === 'J_Bip_C_Head'); const hc = S._centers[S.colliders.indexOf(r0)];
+  ok('yay kemikleri: saç uçları kafa çarpıştırıcısının içine girmez', hair.every((j) => j.cur.distanceTo(hc) >= r0.worldRadius + j.group.hitRadius - 1e-3), 'kafa y=' + head.y.toFixed(2));
+  P.x = 40; P.z = 40; sim(0.1); P.x = 0; P.z = 6; sim(0.1); ok('yay kemikleri: ışınlanınca sıfırlanır (patlama yok)', S.joints.every((j) => j.cur.distanceTo(j.prev) < 0.2));
   G.running = real; return out;
 };
