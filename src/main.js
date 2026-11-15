@@ -6,6 +6,7 @@ import { World, height, zone, rng, floorY, LAKE, PEAK, HALF } from './world.js';
 import { Animal, ITEMS, eats } from './animal.js';
 import { Player } from './player.js';
 import { Progress, xpNeed } from './progress.js';
+import { QUESTS, questText, rewardText } from './quests.js';
 
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -49,7 +50,7 @@ class Game {
     const saved = this.prog.enabled ? Progress.read() : null;
     if (saved && this.prog.restore(saved, (kind, x, z) => { const a = new Animal(this, kind, x, z); this.animals.push(a); return a; })) this.restored = true; this.bindInput(); this.buildHotbar();
     $('loadtxt').textContent = 'Hazır!'; $('loadbar').parentElement.hidden = true; $('start').hidden = false;
-    $('start').onclick = () => this.start(); $('helpbtn').onclick = () => this.pause();
+    $('start').onclick = () => this.start(); $('questhead').onclick = () => $('quests').classList.toggle('open'); $('helpbtn').onclick = () => this.pause();
     if (this.restored) { $('start').textContent = 'Devam Et'; $('newgame').hidden = false; }
     $('newgame').onclick = () => { if (confirm('Kayıtlı ilerleme silinsin ve yeni oyun başlasın mı?')) { this.prog.enabled = false; Progress.clear(); location.reload(); } };
     const flush = () => { if (this.running || this.restored || this.prog.level > 1) this.prog.save(); };
@@ -117,6 +118,20 @@ class Game {
     }
     this.pets.forEach((p, i) => { const d = list.children[i]; if (!d) return; d.querySelector('b').textContent = `${p.petName} · Sv ${p.level || 1}`; d.querySelector('.mood').textContent = p.mood(); const b = d.querySelectorAll('.bar i'); b[0].style.transform = `scaleX(${Math.max(0, p.frac)})`; b[1].style.transform = `scaleX(${p.hunger / 100})`; if (b[2]) b[2].style.transform = `scaleX(${(p.level || 1) >= 20 ? 1 : (p.xp || 0) / xpNeed(p.level || 1)})`; });
   }
+  buildQuests() {
+    const Qs = this.prog.quests, el = $('questlist'); if (!el) return;
+    const act = Qs.active, key = act.map((q) => `${q.id}:${Qs.progress(q)}`).join('|');
+    if (!Qs.dirty && key === this.questKey) return; Qs.dirty = false; this.questKey = key;
+    $('questcount').textContent = `${Qs.done.size}/${QUESTS.length}`;
+    el.innerHTML = '';
+    if (Qs.allDone) { el.innerHTML = '<div class="quest done">🏆 Bütün görevler tamamlandı</div>'; return; }
+    for (const q of act) {
+      const d = document.createElement('div'), p = Qs.progress(q); d.className = 'quest';
+      d.innerHTML = '<b></b><div class="row"><span></span><em></em></div><div class="bar small"><i></i></div><small></small>';
+      d.querySelector('b').textContent = q.title; d.querySelector('span').textContent = questText(q); d.querySelector('em').textContent = `${p}/${q.n}`;
+      d.querySelector('i').style.transform = `scaleX(${p / q.n})`; d.querySelector('small').textContent = 'Ödül: ' + rewardText(q); el.appendChild(d);
+    }
+  }
   removePet(p, dead) { const i = this.pets.indexOf(p); if (i >= 0) this.pets.splice(i, 1); this.prog.resetPet(p); p.tamed = false; p.trust = 0; p.fed = false; p.stay = false; p.home = { x: p.x, z: p.z }; p.calmT = 40; p.target = null; if (!dead) { p.altGoal = p.spec.kind === 'bird' ? 14 : 0; p.set('idle', 2); } $('petlist').innerHTML = ''; }
   removeBait(b) { const i = this.baits.indexOf(b); if (i >= 0) this.baits.splice(i, 1); this.scene.remove(b.mesh); }
   dropBait() {
@@ -144,7 +159,7 @@ class Game {
   }
   interact() {
     const P = this.player, n = this.near; if (!n || !P.alive || (P.state !== 'move')) return;
-    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.msg(`+${cnt} ${ITEMS[item].name}`); this.prog.onGather(n.node); return; }
+    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.msg(`+${cnt} ${ITEMS[item].name}`); this.prog.onGather(n.node, item, cnt); return; }
     const a = n.animal; P.yaw = Math.atan2(a.x - P.x, a.z - P.z);
     if (a.tamed) { a.feedPet(); P.interactAnim(false); } else if (a.tryTame()) P.interactAnim(false);
   }
@@ -187,7 +202,7 @@ class Game {
     if (this.inv.dirty) this.buildHotbar();
     this.hudT = (this.hudT || 0) - dt;
     if (this.hudT <= 0) {
-      this.hudT = 0.12; this.buildPets(); $('lvl').textContent = `SEVİYE ${this.prog.level}` + (this.prog.level < 30 ? ` · ${Math.floor(this.prog.xp)}/${xpNeed(this.prog.level)} XP` : ' · MAKS');
+      this.hudT = 0.12; this.buildPets(); this.buildQuests(); $('lvl').textContent = `SEVİYE ${this.prog.level}` + (this.prog.level < 30 ? ` · ${Math.floor(this.prog.xp)}/${xpNeed(this.prog.level)} XP` : ' · MAKS');
       // odak: en yakın canlı hayvan
       let f = null, fd = 16; for (const a of this.animals) { if (a.dead) continue; const d = a.dist(P) - a.radius; if (d < fd) { fd = d; f = a; } }
       const fo = $('focus'); fo.hidden = !f;

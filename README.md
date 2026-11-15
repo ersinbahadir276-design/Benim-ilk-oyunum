@@ -49,7 +49,8 @@ Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oy
 
 - **Oyuncu seviyesi (1–30):** av öldürmek (türün canına göre), evcilleştirmek ve kaynak toplamak XP verir. Her seviye +12 can ve +%8 kılıç hasarı verir, seviye atlayınca can dolar. HUD'da mavi XP çubuğu.
 - **Yoldaş seviyesi (1–20):** yoldaşlar vurdukları ve öldürdükleri düşmanlardan XP alır (oyuncunun yakınındaki yoldaşlar da oyuncunun avlarından pay alır). Her seviye türün temel canına ve hasarına +%10 ekler. Serbest bırakılan yoldaşın seviyesi sıfırlanır.
-- **Kayıt:** ilerleme tarayıcıda (localStorage) 20 saniyede bir, duraklatınca ve sekme kapanırken otomatik kaydedilir: konum, can, seviye/XP, envanter ve yoldaşlar (tür, ad, seviye, açlık, can). Açılış ekranındaki **Yeni Oyun** kaydı siler. `?nosave` kaydı kapatır; test modunda (`?test`) kayıt yalnızca `?save` ile açılır.
+- **Görevler:** 14 görevlik bir zincir (evcilleştir, avla, topla, seviyeye ulaş, yoldaş sayısı/seviyesi; ilk görev tavşan, son görev ejderha). Aynı anda sıradaki 3 görev etkindir ve sol üstteki panelde ilerleme çubuğu ve ödülüyle görünür; biten görev XP ve eşya verir, yerine sıradaki gelir. Telefonda panel tek satırdır, başlığa dokununca açılır. Kod: `src/quests.js`.
+- **Kayıt:** ilerleme tarayıcıda (localStorage) 20 saniyede bir, duraklatınca ve sekme kapanırken otomatik kaydedilir: konum, can, seviye/XP, envanter, yoldaşlar (tür, ad, seviye, açlık, can) ve görev durumu. Açılış ekranındaki **Yeni Oyun** kaydı siler. `?nosave` kaydı kapatır; test modunda (`?test`) kayıt yalnızca `?save` ile açılır.
 
 ## Modeller ve animasyonlar — neyin ne olduğu
 
@@ -71,12 +72,12 @@ Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oy
 ## Test
 
 - `test/model-viewer.html?m=wolf` — her modeli ve animasyonunu tek tek oynatır (kahramanda `&f=joy` ifade, `&look=1` kameraya bakış) (`m=hero`, `dragon`, `fox`, `rabbit`, `deer`, `horse`, `bear`, `lion`, `tiger`, `crocodile`, `snake`, `eagle`, `shadowbeast`, `ogre`).
-- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 117 oynanış testi: oyuncu animasyon durumları, kahramanda hız–adım eşlemesi ve ayak kilidi, saç/kumaş yay kemikleri, yüz ifadeleri ve bakış, eğimde ayak IK'si (kahraman, dört ayaklılar, tilki, ejderha, Mağara Devi), dört ayaklılarda, tilki, ejderha ve Mağara Devi'nde ayak kilidi, darbe tepkisi, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama, XP/seviye, yoldaş seviyesi, kayıt/yükleme.
+- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 127 oynanış testi: oyuncu animasyon durumları, kahramanda hız–adım eşlemesi ve ayak kilidi, saç/kumaş yay kemikleri, yüz ifadeleri ve bakış, eğimde ayak IK'si (kahraman, dört ayaklılar, tilki, ejderha, Mağara Devi), dört ayaklılarda, tilki, ejderha ve Mağara Devi'nde ayak kilidi, darbe tepkisi, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama, XP/seviye, yoldaş seviyesi, kayıt/yükleme, görevler.
 
 ## Geliştirme planı
 
 1. **Tamamlandı:** dünya ve bölgeler, erkek kahraman + animasyonlar, 14 tür, yapay zekâ, türe özgü evcilleştirme, yoldaş sistemi (takip/savaş/açlık/can), envanter ve toplama, dokunmatik kontroller, testler.
 2. **Sıradaki:** gönderilecek yeni GLB'lerle prosedürel türlerin değiştirilmesi, ejderha için uçuş, ata binme.
-3. **Sonra:** görevler, gece/gündüz, ses. (Kayıt ve seviye sistemi eklendi.)
+3. **Sonra:** gece/gündüz, ses. (Kayıt, seviye ve görev sistemi eklendi.)
 
 Lisanslar ve atıflar: [CREDITS.md](CREDITS.md)

@@ -1,6 +1,7 @@
 // İlerleme sistemi: oyuncu ve yoldaş deneyim puanı (XP) / seviye, seviye bonusları ve kayıt (localStorage).
 import { ITEMS } from './animal.js';
 import { SPECIES } from './creatures.js';
+import { Quests } from './quests.js';
 
 export const SAVE_KEY = 'yaban-yoldaslari-save-v1';
 export const PLAYER_MAX = 30, PET_MAX = 20;
@@ -21,7 +22,7 @@ export const tameXP = (spec) => Math.round(25 + spec.hp * 0.3);
 export const GATHER_XP = 2;
 
 export class Progress {
-  constructor(game) { this.g = game; this.level = 1; this.xp = 0; this.saveT = 20; this.enabled = true; }
+  constructor(game) { this.g = game; this.level = 1; this.xp = 0; this.saveT = 20; this.enabled = true; this.quests = new Quests(game); this.qT = 0; }
 
   /* ---------------- oyuncu */
   applyPlayer(heal = false) {
@@ -67,10 +68,11 @@ export class Progress {
     const xp = killXP(victim.spec), P = this.g.player;
     if (from === P) { this.gain(xp, victim); for (const p of this.g.pets) if (!p.dead && p.dist(P) < 30) this.petGain(p, Math.round(xp * 0.3)); }
     else if (from?.tamed) { this.petGain(from, xp); this.gain(Math.round(xp * 0.5), victim); }
+    this.quests.onKill(victim);
   }
   onPetHit(pet, dmg) { this.petGain(pet, Math.max(1, Math.round(dmg * 0.25))); }
-  onTame(a) { this.gain(tameXP(a.spec), a); }
-  onGather(node) { this.gain(GATHER_XP); }
+  onTame(a) { this.gain(tameXP(a.spec), a); this.quests.onTame(a); }
+  onGather(node, item, n = 1) { this.gain(GATHER_XP); if (item) this.quests.onGather(item, n); }
 
   /* ---------------- kayıt */
   snapshot() {
@@ -79,7 +81,7 @@ export class Progress {
       v: 1, time: Date.now(),
       player: { x: +P.x.toFixed(2), z: +P.z.toFixed(2), hp: Math.round(P.alive ? P.hp : P.hpMax), level: this.level, xp: this.xp },
       inv: { items: { ...g.inv.items }, sel: g.inv.sel },
-      petCounter: { ...g.petCounter },
+      petCounter: { ...g.petCounter }, quests: this.quests.snapshot(),
       pets: g.pets.filter((p) => !p.dead).map((p) => ({ kind: p.kind, name: p.petName, level: p.level || 1, xp: p.xp || 0, hunger: Math.round(p.hunger), hp: +(p.hp / p.hpMax).toFixed(3), stay: !!p.stay })),
     };
   }
@@ -98,7 +100,7 @@ export class Progress {
     if (Number.isFinite(d.player?.x) && Number.isFinite(d.player?.z)) { P.x = d.player.x; P.z = d.player.z; }
     this.applyPlayer(true); if (Number.isFinite(d.player?.hp)) P.hp = Math.min(P.hpMax, Math.max(1, d.player.hp));
     if (d.inv?.items) { const items = {}; for (const [k, v] of Object.entries(d.inv.items)) if (ITEMS[k] && v > 0) items[k] = v | 0; items.flute = 1; g.inv.items = items; if (ITEMS[d.inv.sel]) g.inv.sel = d.inv.sel; g.inv.dirty = true; }
-    g.petCounter = { ...(d.petCounter || {}) };
+    g.petCounter = { ...(d.petCounter || {}) }; this.quests.restore(d.quests);
     let i = 0;
     for (const s of (d.pets || []).slice(0, 5)) {
       if (!SPECIES[s.kind]?.tame) continue;
@@ -115,6 +117,7 @@ export class Progress {
     return true;
   }
   update(dt) {
+    this.qT -= dt; if (this.qT <= 0) { this.qT = 0.5; this.quests.update(); }
     this.saveT -= dt;
     if (this.saveT <= 0) { this.saveT = 20; this.save(); }
   }

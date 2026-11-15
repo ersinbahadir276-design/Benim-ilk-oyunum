@@ -11,7 +11,7 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 | 3 | Gönderilen GLB modellerin entegrasyonu | 🟡 Kısmen | Gönderilen tek dosya (ejderha) ve tilki bağlı. Ejderhanın `fly2` klibi kullanılmıyor (ejderha uçmuyor). Yeni GLB gelirse `GLBCreature` ile bağlanacak. |
 | 4 | Çok sayıda hayvan ve yaratık | ✅ İşlevsel olarak tamam | 14 tür. 12 tür kodla üretilmiş düşük poligonlu model; görsel kalite ejderha ve kahramanın altında. |
 | 5 | Evcilleştirme ve yapay zekâ | ✅ İşlevsel olarak tamam | Türe özgü yöntemler, 5 yoldaş, takip/savaş/açlık. Testler geçiyor; tek kararsız test aşağıda. |
-| 6 | Açık dünya, savaş, envanter, ilerleme | 🟡 Kısmen | Dünya, bölgeler, savaş ve envanter var. **İlerleme (XP/seviye), kayıt (save), görevler yok.** |
+| 6 | Açık dünya, savaş, envanter, ilerleme | 🟡 Büyük ölçüde | Dünya, bölgeler, savaş, envanter; XP/seviye, yoldaş seviyesi, localStorage kaydı (Tur 9'da bu zincire taşındı); 14 görevlik görev zinciri (Tur 9). **Eksik:** ekipman/üretim (kılıç yükseltme), ata binme, gece/gündüz. |
 | 7 | Android performansı ve mobil kontroller | 🟡 Kısmen | Dokunmatik joystick ve düğmeler var. Performans ayarı yok: kahraman 13 MB, ejderha 11 MB, sıkıştırılmamış dokular, kalite ayarı ya da LOD yok. |
 
 ## Tamamlanan işler
@@ -125,6 +125,18 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
   Tilki ve ejderha koşusunda kilit çoğunlukla bırakılıyor; aşağıdaki "Bilinen sorunlar"a bakın.
 - 3 yeni test (her tür için yürürken basan ayak kayması, yeniden basma, erken bırakma oranı). **106/106 test geçti (2 ardışık koşuda), konsol hatası yok.** Görsel kontrol: devin yan görünüşte yürüme/koşu adımı doğal, basan ayak düz.
 
+### Tur 9 (2026-11-15): ilerleme/kayıt sistemi zincire taşındı + görev sistemi (özellik 6)
+- Not: Bu turun dalı (`ccr-70a30f22-5gqvtf`) `main`'deydi; önce Tur 8 dalına (`7iohle`) ileri sarıldı (fast-forward), iş tekrar edilmedi.
+- **Taşıma:** XP/seviye + yoldaş seviyesi + localStorage kaydı, `main`'den başlayan dallarda 6 kez ayrı ayrı yazılmıştı (`tidu6t`, `vsejd2`, `5rl9w2`, `tyye3p`, `amrfjw`, `yimt6c`). En yenisi (`yimt6c`, `2e0c2f4`) cherry-pick edildi. Çakışmalar yalnızca README ve PROGRESS'teydi; kod otomatik birleşti. Ayrı commit: "Port progression and save system onto the Tur 2-8 chain". Taşıma sonrası 117/117 test geçti.
+- **Yeni modül `src/quests.js`:** 14 görevlik sıralı zincir. Türler: evcilleştir, yen (oyuncu ya da yoldaşın öldürmesi sayılır), topla (E ile toplanan eşya adedi), seviyeye ulaş, aynı anda N yoldaş, yoldaşı N. seviyeye çıkar. Görevler tavşandan başlar, ejderhada biter.
+  - Aynı anda sıradaki 3 tamamlanmamış görev etkin. Sayaçlar yalnızca etkin görevlerde artar. Bitince ödül verilir (XP + eşya), sıradaki görev etkinleşir. O görev zaten sağlanmışsa (ör. seviye) aynı anda tamamlanır.
+  - Olaylar `Progress` kancalarından gelir (`onKill`, `onTame`, `onGather(node, item, n)`). Durum görevleri (seviye, yoldaş sayısı/seviyesi) 2 Hz'de denetlenir.
+  - Kayda `quests: {done, count}` eklendi. Yüklemede bilinmeyen görev kimlikleri atılır, sayaçlar hedefle sınırlanır. Eski kayıtlarda bu alan yok, sorunsuz açılıyor.
+- **Arayüz:** sol üstte görev paneli (başlık, açıklama, ilerleme çubuğu, ödül, `n/14` sayacı); yalnızca değişince yeniden çizilir. Küçük/yatay telefon ekranında (≤760 px genişlik ya da ≤500 px yükseklik) panel tek satır olur, başlığa dokununca açılır. Mesaj günlüğü de üst ortaya alındı: 780×360'ta günlük daha önce can/dayanıklılık çubuklarının, görev paneli de joystick'in üstüne biniyordu (ekran görüntüsüyle kontrol edildi).
+- **Test düzeltmesi:** taşınan "seviye bonusu: kılıç hasarı artar" testi bir koşuda `hasar=5.0` ile başarısız oldu. Neden oyun hatası değil: önceki testlerdeki rastgele dövüşte canı 5'e düşmüş bir kurt seçilmişti, `die()` canı 0'a sabitlediği için ölçülen hasar kalan canla sınırlı kalıyordu. Test artık kurdun canını önce dolduruyor.
+- 10 yeni test (başlangıç görevleri, tavşan görevinin ödülü, E ile toplamanın sayılması, böğürtlen görevinin bitmesi, ilgisiz toplamanın sayılmaması, yoldaş + oyuncu kurt öldürmeleri, seviye görevinin kendiliğinden bitmesi, panelin DOM'da etkin görevleri göstermesi, kayıt/yükleme, bozuk kaydın temizlenmesi). **127/127 test geçti (son 2 ardışık koşu), konsol hatası yok.**
+- Ortam notu: bu turda yerel `python3 -m http.server` başlatma izni verilmedi. Testler, dosyaları Playwright istek yakalama (`context.route`) ile diskten sunan geçici bir çalıştırıcıyla koşuldu; `test/gameplay-test.js` aynen kullanıldı. Depodaki `test/run-tests.mjs` değişmedi.
+
 ## Bilinen sorunlar
 - Dudak senkronu yok (oyunda seslendirme yok).
 - Dört ayaklılarda koşuda (dörtnal) ayak kilidi çoğu adımda erken bırakılıyor; yürüyüşte de adımların %35–50'sinde erken bırakılıyor.
@@ -132,12 +144,12 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 - Mağara Devi'nde ayak tabanı eğime yatmıyor (ayrı bilek eklemi yok).
 - Kartal evcilleştirme testi ara sıra başarısız oluyor (vahşi hayvan rastgeleliği).
 - Arkadan gelen darbede katmanlı `Hit_Chest` klibi (önden vuruş klibi) yarı ağırlıkla yine geriye doğru oynar; yönlü savrulma bunu baskın şekilde öne çevirir ama ayrı bir "arkadan darbe" klibi yok.
-- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-7iohle` (Tur 2–8). Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
+- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-5gqvtf` (Tur 2–9). Tur 9'dan sonra da yay kemiği fiziği `main`'den başlayan 4 dalda daha tekrar yazılmış (`3blqpr`, `znc4u0`, `gtq3z2`, `i6tc9k`); bunlar artık gereksiz. Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
 - Kahramanda yürüme ↔ koşu karışımında (≈1.2–4.6 m/sn) iki ayağın basışı biraz asimetrik. Bir ayak basışın sonunda (topuk kalkarken) erken bırakılabiliyor; ayakta kayma görünmüyor.
 
 ## Sonraki öncelikler
-1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-7iohle` dalı Tur 2–8'i içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz.
-2. **Özellik 6 (sıradaki en büyük eksik):** XP/seviye, yoldaş bağ seviyesi ve localStorage kaydı başka dallarda dört kez yazılmış (`tidu6t`, `vsejd2`, `5rl9w2`, `tyye3p`; en yenisi `tyye3p`). Yeniden yazılmamalı, bu zincire taşınmalı (cherry-pick + çakışma çözümü + testler). Ardından görevler.
+1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-5gqvtf` dalı Tur 2–9'u içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz. Birleştirilmezse her tur önce bu dala ileri sarılmalı.
+2. **Özellik 6'nın kalanı:** ekipman/üretim (kılıç seviyesi, malzeme), ata binme (at evcilleştirilebiliyor ama binilemiyor), gece/gündüz.
 3. Özellik 2'de kalanlar (küçük): dört ayaklılarda dörtnal kilidi (aynı "gövde hızının yarısıyla süpürme" giriş ölçütü), kahramanda dönüş/yan adım klipleri. Koşu kilidinin geri kalanı yeni GLB kliplerine ya da oynanış kararına bağlı.
 4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme. Yüklemede `analyzeGait` (kahraman) ve `clipGroundSpeed` (tilki/ejderha, tür başına bir kez) çalışıyor; mobilde süreleri ölçülmeli.
 5. Özellik 3: ejderha için uçuş (`fly2` klibinden kök hareketini ayıklayarak).

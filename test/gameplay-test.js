@@ -300,7 +300,7 @@ window.runGameplayTests = async function () {
   PR.level = 1; PR.xp = 0; PR.applyPlayer(true);
   a = find('rabbit'); const xpK = Math.max(4, Math.round(a.spec.hp * 0.35)); a.damage(999, P); ok('XP: av öldürünce XP kazanılır', PR.xp === xpK, `xp=${PR.xp} beklenen=${xpK}`);
   PR.gain(500); ok('seviye atlama: can ve saldırı artar, can dolar', PR.level > 1 && P.hpMax === 100 + 12 * (PR.level - 1) && P.hp === P.hpMax && P.dmgMul > 1, `sv=${PR.level} hpMax=${P.hpMax}`);
-  a = find('wolf'); put(a, 1.6); const hpW = a.hp; P.state = 'attack'; P.combo = 0; P.yaw = Math.atan2(a.x - P.x, a.z - P.z); P.swing(); P.state = 'move'; ok('seviye bonusu: kılıç hasarı artar', Math.abs((hpW - a.hp) - 18 * P.dmgMul) < 0.01, `hasar=${(hpW - a.hp).toFixed(1)}`); a.calmT = 999; a.target = null;
+  a = find('wolf'); a.hp = a.hpMax; put(a, 1.6); const hpW = a.hp; P.state = 'attack'; P.combo = 0; P.yaw = Math.atan2(a.x - P.x, a.z - P.z); P.swing(); P.state = 'move'; ok('seviye bonusu: kılıç hasarı artar', Math.abs((hpW - a.hp) - 18 * P.dmgMul) < 0.01, `hasar=${(hpW - a.hp).toFixed(1)}`); a.calmT = 999; a.target = null;
   const lv0 = PR.level, x0 = PR.xp; a = find('deer'); freeze(a); put(a, 1.5); P.crouching = true; a.tryTame(); a.tryTame(); a.tryTame(); P.crouching = false;
   ok('evcilleştirme XP verir, yoldaş Sv 1 başlar', a.tamed && (PR.level > lv0 || PR.xp > x0) && a.level === 1 && a.hpMax === a.spec.hp);
   const pet1 = a; PR.petGain(pet1, 200); ok('yoldaş seviye atlar: can ve hasar çarpanı artar', pet1.level > 1 && pet1.hpMax > pet1.spec.hp && pet1.dmgMul > 1 && pet1.hp === pet1.hpMax, `sv=${pet1.level} hpMax=${pet1.hpMax}`);
@@ -314,5 +314,24 @@ window.runGameplayTests = async function () {
   const en = PR.enabled; PR.enabled = true; const wrote = PR.save(); const back = PR.constructor.read(); PR.constructor.clear(); PR.enabled = en;
   ok('localStorage kayıt/okuma', wrote && back && back.player.level === savedLv && !PR.constructor.read());
   const rp = G.pets[0]; release(); ok('serbest bırakılan yoldaşın seviyesi sıfırlanır', G.pets.length === 0 && rp.level === 1 && rp.hpMax === rp.spec.hp && rp.dmgMul === 1, `sv=${rp.level}`);
+  // 22) görevler
+  { const QS = PR.quests; QS.reset(); release(); PR.level = 1; PR.xp = 0; PR.applyPlayer(true); calmAll();
+    ok('görev: başlangıçta 3 etkin görev', QS.active.map((q) => q.id).join() === 'rabbit,berries,deer', QS.active.map((q) => q.id).join());
+    const c0 = G.inv.count('carrot'); let r = find('rabbit'); freeze(r); put(r, 1.5); P.crouching = true; r.tryTame(); P.crouching = false;
+    ok('görev: tavşan evcilleştirince tamamlanır, ödül verilir', r.tamed && QS.done.has('rabbit') && G.inv.count('carrot') >= c0 - 1 + 3 && QS.active.map((q) => q.id).join() === 'berries,deer,wolves', `aktif=${QS.active.map((q) => q.id).join()} havuç ${c0}->${G.inv.count('carrot')}`);
+    const n = G.world.nodes.find((x) => x.type === 'berry' && x.ready); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; sim(0.1); G.edge.interact = true; sim(0.2);
+    ok('görev: toplama sayılır (E ile böğürtlen)', QS.progress(QS.active[0]) === 2, `ilerleme=${QS.progress(QS.active[0])}`);
+    PR.onGather(null, 'berry', 2); const ap0 = G.inv.count('apple'); PR.onGather(null, 'berry', 2); ok('görev: 6 böğürtlenle tamamlanır, elma ödülü', QS.done.has('berries') && G.inv.count('apple') === ap0 + 2);
+    PR.onGather(null, 'carrot', 5); ok('görev: ilgisiz toplama sayılmaz', !Object.keys(QS.count).some((k) => k !== 'deer' && k !== 'wolves' && QS.count[k]));
+    const pet = G.pets[0]; let w = find('wolf'); w.damage(999, pet); w = find('wolf'); w.damage(999, P);
+    ok('görev: yoldaşın ve oyuncunun öldürdüğü kurtlar sayılır', QS.done.has('wolves'), `sayaç=${QS.count.wolves || 0}`);
+    ['deer', 'pack', 'honey', 'horse'].forEach((id) => QS.done.add(id)); QS.dirty = true; const lv = PR.level; PR.gain(5000); sim(1);
+    ok('görev: seviye görevi kendiliğinden tamamlanır', QS.done.has('lvl5') && PR.level > lv, `sv=${PR.level} aktif=${QS.active.map((q) => q.id).join()}`);
+    sim(0.3); const items = [...document.querySelectorAll('#questlist .quest b')].map((b) => b.textContent);
+    ok('görev paneli etkin görevleri gösterir', items.length === 3 && items[0] === QS.active[0].title && document.getElementById('questcount').textContent.startsWith(QS.done.size + '/'), items.join(','));
+    QS.count.croc = 0; PR.onGather(null, 'moonstone', 1); const snap = JSON.parse(JSON.stringify(PR.snapshot())); const doneN = QS.done.size;
+    QS.reset(); PR.quests.restore(snap.quests); ok('görev: kayıt/yükleme', QS.done.size === doneN && QS.count.moon === 1 && QS.done.has('lvl5'), `done=${QS.done.size}/${doneN} moon=${QS.count.moon}`);
+    QS.restore({ done: ['yok', 'rabbit'], count: { rabbit: 5, berries: 99, x: 3 } }); ok('görev: bozuk kayıt temizlenir', QS.done.size === 1 && QS.count.berries === 6 && !('x' in QS.count));
+    QS.reset(); release(); }
   G.running = real; return out;
 };
