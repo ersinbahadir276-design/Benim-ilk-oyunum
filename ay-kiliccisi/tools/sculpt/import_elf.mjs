@@ -51,32 +51,53 @@ const segs = [[0, WP[0], WP[1]], [1, WP[1], v3.add(WP[2], [0, -0.02, 0])], [2, W
   [6, WP[6], WP[7]], [7, WP[7], WP[8]], [8, WP[8], v3.add(WP[8], v3.mul(v3.norm(v3.sub(WP[8], WP[7])), 0.18))], [9, WP[9], WP[10]], [10, WP[10], WP[11]], [11, WP[11], v3.add(WP[11], [0, -0.06, 0.15])], [12, WP[12], WP[13]], [13, WP[13], WP[14]], [14, WP[14], v3.add(WP[14], [0, -0.06, 0.15])]];
 const segD = (p, a, c) => { const ab = v3.sub(c, a), t = Math.max(0, Math.min(1, v3.dot(v3.sub(p, a), ab) / v3.dot(ab, ab))); return v3.len(v3.sub(p, v3.add(a, v3.mul(ab, t)))); };
 const Jb = new Uint8Array(nv * 4), Wb = new Float32Array(nv * 4), C = new Float32Array(nv * 3), M = new Float32Array(nv * 4), UV = new Float32Array(nv * 2), MASK = new Float32Array(nv);
-const hc = [0, 1.665 - rootY, 0.014], hr = 0.095, skin = [0.86, 0.78, 0.84];
+const hc = [0, 1.665 - rootY, 0.014], hr = 0.095, skin = [0.95, 0.84, 0.8];
 for (let i = 0; i < nv; i++) { const p = [V[i * 3], V[i * 3 + 1], V[i * 3 + 2]];
   const ds = segs.map(([b, a, c]) => { let d = segD(p, a, c); if ((b >= 3 && b <= 8) && Math.abs(p[0]) < 0.15) d += 0.2; if ((b === 9 || b === 10) && p[0] < -0.01) d += 0.2; if ((b === 12 || b === 13) && p[0] > 0.01) d += 0.2; return [b, d]; }).sort((x, y) => x[1] - y[1]);
   const d0 = ds[0][1], w = ds.slice(0, 4).map(([b, d]) => [b, Math.exp(-Math.pow((d - d0) / 0.035, 2))]), tot = w.reduce((a, q) => a + q[1], 0);
   w.forEach(([b2, ww], k) => { Jb[i * 4 + k] = b2; Wb[i * 4 + k] = ww / tot; });
-  C.set(skin, i * 3); M.set([0.25, 0, 0, 0], i * 4);
+  // outfit painted on the body: long gloves, thigh boots, leggings, corset with a V neckline, collar
+  const [px, py, pz] = p, shX = WP[3][0] - 0.025, kneeY = WP[10][1], chestY = WP[1][1] + torso * 0.62, waistY = WP[1][1] + 0.02;
+  let leather = false, armor = false;
+  if (Math.abs(px) > shX && py < WP[3][1] + 0.02) leather = true;                        // arms + hands
+  if (py < WP[9][1] - 0.02) leather = py < kneeY + 0.2 || pz < 0.0 || Math.abs(px) < 0.05; // boots to mid-thigh, leggings behind
+  if (py >= WP[9][1] - 0.02 && py < chestY + 0.11) { const v = pz > 0.02 && py > chestY - 0.04 && Math.abs(px) < 0.012 + (py - (chestY - 0.04)) * 0.5; leather = !v; armor = py > waistY && py < chestY - 0.02 && pz > 0.0 && !v; }
+  if (py > WP[2][1] - 0.07 && py < WP[2][1] + 0.03) leather = true;                        // collar band
+  if (leather) { C.set(armor ? [0.11, 0.11, 0.13] : [0.06, 0.055, 0.065], i * 3); M.set(armor ? [0.6, 0.7, 0, 0] : [0.5, 0, 0, 0], i * 4); } else { C.set(skin, i * 3); M.set([0.25, 0, 0, 0], i * 4); }
   if (v3.len(v3.sub(p, hc)) < hr * 1.8) { UV[i * 2] = 0.5 + (p[0] - hc[0]) / (2.4 * hr); UV[i * 2 + 1] = 0.5 - (p[1] - hc[1]) / (2.4 * hr); MASK[i] = Math.max(0, Math.min(1, (p[2] - hc[2] - hr * 0.3) / (hr * 0.3))); } }
 // ---------- extras sculpted on the same bones: horns, long black hair, simple dark dress
 const BN = ['root', 'spine', 'head', 'lSh', 'lEl', 'lWr', 'rSh', 'rEl', 'rWr', 'lHip', 'lKnee', 'lFoot', 'rHip', 'rKnee', 'rFoot', 'jaw'];
 const Hh = (q) => v3.add(hc, q), y0 = WP[1][1] + torso * 0.82, legLen = -WP[11][1];
+const shL = WP[3], chestY2 = WP[1][1] + torso * 0.62, hipY = WP[9][1] + 0.06, kneeY2 = WP[10][1];
+const skirtEdge = (x, y, z) => { const a = Math.atan2(x, z), jag = 0.05 * Math.abs(Math.sin(a * 6)); return (kneeY2 + 0.12 - jag - (Math.abs(a) > 2.2 ? 0.12 : 0)) - y; };
 const parts = [
-  { name: 'horns', mat: 'horn', bone: 'head', rigid: true, k: 0.01, sdf: symX(horn([Hh([0.05, 0.09, 0.03]), Hh([0.1, 0.15, -0.02]), Hh([0.14, 0.21, 0.0]), Hh([0.15, 0.28, 0.05])], 0.022, 0.003)) },
+  // ram horns curling around the ears
+  { name: 'horns', mat: 'horn', bone: 'head', rigid: true, k: 0.01, sdf: symX(disp(horn([Hh([0.06, 0.085, 0.02]), Hh([0.11, 0.115, -0.04]), Hh([0.16, 0.085, -0.085]), Hh([0.185, 0.02, -0.06]), Hh([0.17, -0.03, 0.0]), Hh([0.13, -0.025, 0.05]), Hh([0.11, 0.01, 0.06])], 0.03, 0.006),
+    (x, y, z) => 0.0025 * Math.sin(Math.hypot(x, y - hc[1], z) * 220), 0.003)) },
+  // long straight crimson hair, bangs, front locks
   { name: 'hair', mat: 'hair', bone: 'head', rigid: true, k: 0.02, sdf: disp(U(0.02, I(0.01, ellipsoid(Hh([0, 0.025, -0.02]), [0.1, 0.13, 0.125]), plane(Hh([0, 0.07, 0.07]), [0, -0.55, 0.83])), symX(ellipsoid(Hh([0.075, -0.04, -0.01]), [0.035, 0.1, 0.07]))), (x, y, z) => 0.004 * fbm(x * 70, y * 12, z * 70, 2), 0.005) },
-  // Korean-style see-through bangs: thin locks falling over the forehead to the brows, parted slightly in the middle
-  { name: 'bangs', mat: 'hair', bone: 'head', rigid: true, k: 0.012, sdf: disp(U(0.008, ...[-0.06, -0.035, -0.012, 0.012, 0.035, 0.06].map((x) => horn([Hh([x * 0.8, 0.105, 0.075]), Hh([x * 1.05, 0.075, 0.1]), Hh([x * 1.2 + Math.sign(x) * 0.006, 0.035, 0.105])], 0.017, 0.003)),
-    symX(horn([Hh([0.07, 0.07, 0.07]), Hh([0.088, 0.0, 0.08]), Hh([0.09, -0.07, 0.07])], 0.02, 0.004))), (x, y, z) => 0.002 * fbm(x * 90, y * 20, z * 90, 2), 0.003) },
-  { name: 'hairFall', mat: 'hair', tau: 0.04, k: 0.03, sdf: disp(U(0.04, ellipsoid(Hh([0, -0.08, -0.09]), [0.1, 0.16, 0.06]), cone(Hh([0, -0.18, -0.11]), [0, WP[1][1] - 0.05, -0.15], 0.095, 0.075)), (x, y, z) => 0.004 * fbm(x * 70, y * 8, z * 70, 2), 0.005),
+  { name: 'bangs', mat: 'hair', bone: 'head', rigid: true, k: 0.012, sdf: disp(U(0.008, ...[-0.06, -0.035, -0.012, 0.012, 0.035, 0.06].map((x) => horn([Hh([x * 0.8, 0.105, 0.075]), Hh([x * 1.05, 0.07, 0.1]), Hh([x * 1.15 + Math.sign(x) * 0.008, 0.05, 0.108])], 0.013, 0.003))), (x, y, z) => 0.002 * fbm(x * 90, y * 20, z * 90, 2), 0.003) },
+  { name: 'locks', mat: 'hair', tau: 0.04, k: 0.02, sdf: symX(disp(horn([Hh([0.085, 0.03, 0.06]), Hh([0.1, -0.12, 0.06]), [0.13, chestY2, 0.07], [0.13, chestY2 - 0.22, 0.05]], 0.03, 0.008), (x, y, z) => 0.003 * fbm(x * 80, y * 10, z * 80, 2), 0.004)), boneFn: (x, y) => y > WP[2][1] ? [['head', 1]] : [['head', 0.3], ['spine', 0.7]] },
+  { name: 'hairFall', mat: 'hair', tau: 0.04, k: 0.03, sdf: disp(U(0.04, ellipsoid(Hh([0, -0.08, -0.09]), [0.11, 0.16, 0.06]), cone(Hh([0, -0.18, -0.11]), [0, WP[1][1] - 0.12, -0.15], 0.11, 0.09)), (x, y, z) => 0.004 * fbm(x * 70, y * 8, z * 70, 2), 0.005),
     boneFn: (x, y) => y > WP[2][1] ? [['head', 1]] : [['spine', 1]] },
-  { name: 'dress', mat: 'dress', tau: 0.03, k: 0.006, sdf: I(0.004, shell(disp(cone([0, y0, 0.005], [0, -legLen + 0.03, 0.0], 0.14, 0.27), (x, y, z) => Math.max(0, -y) * 0.04 * Math.sin(Math.atan2(x, z) * 9), 0.02), 0.006), plane([0, y0, 0], [0, 1, 0]), plane([0, -legLen + 0.03, 0], [0, -1, 0])),
-    boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.08) / 0.16)); if (y > WP[1][1]) return [['spine', 1]]; const d = Math.max(0, Math.min(1, -y / (legLen * 0.6))); return [['root', 1 - d * 0.6], ['lHip', d * 0.6 * t], ['rHip', d * 0.6 * (1 - t)]]; } },
-  { name: 'bodice', mat: 'dress', bone: 'spine', tau: 0.03, k: 0.006, sdf: I(0.004, shell(ellipsoid([0, y0 - 0.12, 0.035], [0.15, 0.2, 0.15]), 0.007), plane([0, y0 + 0.01, 0], [0, 1, 0]), plane([0, y0 - 0.28, 0], [0, -1, 0])) },
-  { name: 'straps', mat: 'dress', bone: 'spine', tau: 0.02, k: 0.004, sdf: symX(tube([[0.06, y0 - 0.02, 0.09], [0.08, WP[3][1] + 0.02, 0.0], [0.06, y0 - 0.02, -0.08]], () => 0.009)) },
+  // high collar with a red gem, layered shoulder plates
+  { name: 'collar', mat: 'leather', bone: 'spine', tau: 0.02, k: 0.006, sdf: I(0.004, shell(cone(v3.add(WP[2], [0, -0.06, 0.01]), v3.add(WP[2], [0, 0.07, 0.0]), 0.06, 0.07), 0.006), plane(v3.add(WP[2], [0, 0.08, 0]), [0, 1, 0]), plane(v3.add(WP[2], [0, -0.07, 0]), [0, -1, 0])) },
+  { name: 'gem', mat: 'gem', bone: 'spine', rigid: true, k: 0.003, sdf: ellipsoid(v3.add(WP[2], [0, -0.075, 0.075]), [0.016, 0.022, 0.01]) },
+  { name: 'pauld', mat: 'armor', tau: 0.02, k: 0.004, sdf: symX(U(0.004, ...[0, 1].map((k) => I(0.004, shell(ellipsoid(v3.add(shL, [0.02 + k * 0.012, -0.01 - k * 0.04, 0]), [0.07 + k * 0.008, 0.05, 0.065 + k * 0.008], rot.z(-0.5)), 0.006), plane(v3.add(shL, [0, -0.03 - k * 0.04, 0]), [-0.5, -1, 0]))))),
+    boneFn: (x) => [[x > 0 ? 'lSh' : 'rSh', 0.7], ['spine', 0.3]] },
+  // open-front layered skirt with pointed armoured plates
+  { name: 'skirt', mat: 'leather', tau: 0.03, k: 0.006, sdf: I(0.004, shell(disp(cone([0, hipY, 0.0], [0, kneeY2 - 0.05, 0.0], 0.16, 0.25), (x, y, z) => Math.max(0, hipY - y) * 0.05 * Math.sin(Math.atan2(x, z) * 8), 0.02), 0.006), plane([0, hipY, 0], [0, 1, 0]),
+      { d: skirtEdge, bb: [-2, -2, -2, 2, 2, 2] }, { d: (x, y, z) => -(Math.abs(x) - 0.03 - Math.max(0, hipY - 0.05 - y) * 0.5) * (z > 0 ? 1 : -1) * (z > 0 ? 1 : 0) - (z > 0 ? 0 : 1), bb: [-2, -2, -2, 2, 2, 2] }),
+    boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.08) / 0.16)), d = Math.max(0, Math.min(1, (hipY - y) / 0.4)); return [['root', 1 - d * 0.65], ['lHip', d * 0.65 * t], ['rHip', d * 0.65 * (1 - t)]]; } },
+  { name: 'tassets', mat: 'armor', tau: 0.03, k: 0.004, sdf: symX(U(0, ...[0, 1].map((k) => I(0.004, shell(ellipsoid([0.1, hipY - 0.1 - k * 0.07, 0.02], [0.12 + k * 0.01, 0.16, 0.13 + k * 0.01]), 0.006), plane([0, hipY - 0.02 - k * 0.07, 0], [0, 1, 0]), { d: (x, y, z) => (hipY - 0.15 - k * 0.07 - 0.04 * Math.abs(Math.sin(x * 40))) - y, bb: [-2, -2, -2, 2, 2, 2] }, plane([0, 0, -0.02], [0, 0, -1]))))),
+    boneFn: (x, y) => [[x > 0 ? 'lHip' : 'rHip', 0.6], ['root', 0.4]] },
+  { name: 'belt', mat: 'armor', bone: 'root', rigid: true, k: 0.004, sdf: I(0.003, shell(ellipsoid([0, hipY, 0.0], [0.15, 0.08, 0.12]), 0.008), plane([0, hipY + 0.02, 0], [0, 1, 0]), plane([0, hipY - 0.015, 0], [0, -1, 0])) },
+  // boot tops
+  { name: 'bootTop', mat: 'armor', tau: 0.02, k: 0.004, sdf: symX(I(0.003, shell(cone([WP[9][0], kneeY2 + 0.26, 0.0], [WP[10][0], kneeY2 + 0.12, 0.0], 0.072, 0.065), 0.006), plane([0, kneeY2 + 0.22, 0], [0, 1, 0]), plane([0, kneeY2 + 0.19, 0], [0, -1, 0]))), boneFn: (x) => [[x > 0 ? 'lHip' : 'rHip', 1]] },
 ];
-const extra = await sculpt({ name: 'kingExtras', voxel: 0.005, tris: 4500, err: 0.0015, bones: BN, parts, decals: [],
-  mats: { horn: { col: [0.08, 0.05, 0.07], col2: [0.4, 0.06, 0.06], freq2: 12, var: 0.15, gloss: 0.7 }, hair: { col: [0.07, 0.05, 0.09], col2: [0.04, 0.03, 0.05], freq2: 30, var: 0.25, freq: 80, gloss: 0.4 },
-    dress: { col: [0.12, 0.03, 0.07], col2: [0.28, 0.03, 0.06], freq2: 4, var: 0.12, gloss: 0.35, grad: [-1.0, 0.0, [0.55, 0.55, 0.55]] } } });
+const extra = await sculpt({ name: 'kingExtras', voxel: 0.0045, tris: 7000, err: 0.0012, bones: BN, parts, decals: [],
+  mats: { horn: { col: [0.13, 0.12, 0.13], col2: [0.24, 0.22, 0.22], freq2: 16, var: 0.15, gloss: 0.5, dirt: 0.6 }, hair: { col: [0.5, 0.07, 0.07], col2: [0.3, 0.035, 0.04], freq2: 30, var: 0.25, freq: 80, gloss: 0.45 },
+    leather: { col: [0.06, 0.055, 0.065], var: 0.12, freq: 60, gloss: 0.5 }, armor: { col: [0.12, 0.12, 0.14], gloss: 0.65, metal: 0.8, wear: 0.5, edge: [0.6, 0.6, 0.65], var: 0.1 }, gem: { col: [1.4, 0.12, 0.1], em: 0.8, gloss: 0.9 } } });
 // ---------- merge and write
 const off = nv, n2 = extra.nv, cat = (a, b2) => { const r = new a.constructor(a.length + b2.length); r.set(a); r.set(b2, a.length); return r; };
 const merged = { nv: nv + n2, P: cat(new Float32Array(V), extra.P), N: cat(N, extra.N), C: cat(C, extra.C), M: cat(M, extra.M), J: cat(Jb, extra.J), W: cat(Wb, extra.W), UV: cat(UV, extra.UV), MASK: cat(MASK, extra.MASK), I: cat(new Uint16Array(IX), Uint16Array.from(extra.I, (q) => q + off)) };
