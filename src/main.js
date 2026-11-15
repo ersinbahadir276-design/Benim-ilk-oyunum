@@ -5,6 +5,7 @@ import { loadGLBCreatures, SPECIES } from './creatures.js';
 import { World, height, zone, rng, floorY, LAKE, PEAK, HALF } from './world.js';
 import { Animal, ITEMS, eats } from './animal.js';
 import { Player } from './player.js';
+import { Progression, xpNeed, bondNeed, MAX_LEVEL, MAX_BOND } from './progression.js';
 
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -24,7 +25,7 @@ class Game {
     this.time = 0; this.animals = []; this.pets = []; this.baits = []; this.floats = []; this.petCounter = {};
     this.camYaw = 0; this.camPitch = 0.32; this.camDist = 6.5;
     this.keys = {}; this.edge = {}; this.touch = { mx: 0, mz: 0, run: false };
-    this.ui = { hurtFlash: () => { const h = $('hurt'); h.style.transition = 'none'; h.style.opacity = 0.7; requestAnimationFrame(() => { h.style.transition = 'opacity .5s'; h.style.opacity = 0; }); } };
+    this.ui = { levelDirty: true, hurtFlash: () => { const h = $('hurt'); h.style.transition = 'none'; h.style.opacity = 0.7; requestAnimationFrame(() => { h.style.transition = 'opacity .5s'; h.style.opacity = 0; }); } };
   }
   async init() {
     const canvas = $('c');
@@ -41,16 +42,29 @@ class Game {
     step('Dünya kuruluyor…'); this.world = new World(scene);
     const hero = await loadHero(); step('Kahraman hazır…');
     await loadGLBCreatures('assets/models/', () => step('Yaratıklar yükleniyor…'));
-    this.inv = new Inventory(); this.player = new Player(this, hero);
+    this.inv = new Inventory(); this.player = new Player(this, hero); this.prog = new Progression(this);
     this.spawnAll(); this.bindInput(); this.buildHotbar();
     $('loadtxt').textContent = 'Hazır!'; $('loadbar').parentElement.hidden = true; $('start').hidden = false;
     $('start').onclick = () => this.start(); $('helpbtn').onclick = () => this.pause();
+    // kayıt: test modunda (?test) ve ?new ile yüklenmez/yazılmaz
+    this.saving = !Q.has('test');
+    if (this.saving && !Q.has('new') && Progression.hasSave()) { $('start').textContent = 'Kayıttan Devam Et'; $('newgame').hidden = false; }
+    $('newgame').onclick = () => { Progression.clear(); this.skipLoad = true; this.start(); };
+    const flush = () => { if (this.running && this.saving) this.prog.save(); };
+    addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
     if (Q.has('test')) this.start();
     this.last = performance.now(); r.setAnimationLoop(() => this.frame());
     window.GAME = this;
   }
-  start() { $('overlay').style.display = 'none'; $('hud').hidden = false; this.running = true; if ('ontouchstart' in window || Q.has('touch')) { $('touch').hidden = false; $('log').style.bottom = '240px'; } this.msg('Kamptasın. Çevredeki hayvanlara yaklaş; üstte evcilleştirme ipucunu göreceksin.'); }
-  pause() { this.running = false; const o = $('overlay'); o.style.display = 'flex'; o.classList.add('pause'); $('loadtxt').textContent = 'Duraklatıldı'; $('start').textContent = 'Devam Et'; }
+  start() {
+    $('newgame').hidden = true;
+    if (!this.started) {
+      this.started = true;
+      const n = this.saving && !this.skipLoad && !Q.has('new') ? this.prog.load() : -1;
+      if (n >= 0) setTimeout(() => this.msg(`💾 Kayıt yüklendi: seviye ${this.prog.level}, ${n} yoldaş.`), 50);
+    }
+    $('overlay').style.display = 'none'; $('hud').hidden = false; this.running = true; if ('ontouchstart' in window || Q.has('touch')) { $('touch').hidden = false; $('log').style.bottom = '240px'; } this.msg('Kamptasın. Çevredeki hayvanlara yaklaş; üstte evcilleştirme ipucunu göreceksin.'); }
+  pause() { if (this.running && this.saving) this.prog.save(); this.running = false; const o = $('overlay'); o.style.display = 'flex'; o.classList.add('pause'); $('loadtxt').textContent = 'Duraklatıldı'; $('start').textContent = 'Devam Et'; }
 
   spawnAll() {
     const R = rng(777), put = (kind, n, ok) => { let k = 0, tries = 0; while (k < n && tries++ < 5000) { const x = (R() - 0.5) * 2 * (HALF - 12), z = (R() - 0.5) * 2 * (HALF - 12), h = height(x, z); if (Math.hypot(x, z) < 16 || !ok(zone(x, z), h, x, z)) continue; this.animals.push(new Animal(this, kind, x, z)); k++; } };
@@ -103,12 +117,12 @@ class Game {
     const list = $('petlist'); $('petcount').textContent = `${this.pets.length}/5`;
     if (list.children.length !== this.pets.length) {
       list.innerHTML = '';
-      this.pets.forEach((p) => { const d = document.createElement('div'); d.className = 'pet'; d.innerHTML = '<div class="row"><b></b><span class="mood"></span><button title="Serbest bırak">Bırak</button></div><div class="bar hp"><i></i></div><div class="bar hunger"><i></i></div>'; d.querySelector('button').onclick = () => { this.msg(`${p.petName} serbest bırakıldı.`); this.removePet(p, false); }; list.appendChild(d); });
+      this.pets.forEach((p) => { const d = document.createElement('div'); d.className = 'pet'; d.innerHTML = '<div class="row"><b></b><span class="mood"></span><button title="Serbest bırak">Bırak</button></div><div class="bond"></div><div class="bar hp"><i></i></div><div class="bar hunger"><i></i></div>'; d.querySelector('button').onclick = () => { this.msg(`${p.petName} serbest bırakıldı.`); this.removePet(p, false); }; list.appendChild(d); });
       if (!this.pets.length) list.innerHTML = '';
     }
-    this.pets.forEach((p, i) => { const d = list.children[i]; if (!d) return; d.querySelector('b').textContent = p.petName; d.querySelector('.mood').textContent = p.mood(); const b = d.querySelectorAll('.bar i'); b[0].style.transform = `scaleX(${Math.max(0, p.frac)})`; b[1].style.transform = `scaleX(${p.hunger / 100})`; });
+    this.pets.forEach((p, i) => { const d = list.children[i]; if (!d) return; d.querySelector('b').textContent = p.petName; const bd = p.bond || 1; d.querySelector('.bond').textContent = `Bağ ${bd}` + (bd >= MAX_BOND ? ' ★' : ` · ${Math.floor(p.bondXP || 0)}/${bondNeed(bd)}`); d.querySelector('.mood').textContent = p.mood(); const b = d.querySelectorAll('.bar i'); b[0].style.transform = `scaleX(${Math.max(0, p.frac)})`; b[1].style.transform = `scaleX(${p.hunger / 100})`; });
   }
-  removePet(p, dead) { const i = this.pets.indexOf(p); if (i >= 0) this.pets.splice(i, 1); p.tamed = false; p.trust = 0; p.fed = false; p.stay = false; p.home = { x: p.x, z: p.z }; p.calmT = 40; p.target = null; if (!dead) { p.altGoal = p.spec.kind === 'bird' ? 14 : 0; p.set('idle', 2); } $('petlist').innerHTML = ''; }
+  removePet(p, dead) { const i = this.pets.indexOf(p); if (i >= 0) this.pets.splice(i, 1); p.tamed = false; p.trust = 0; p.fed = false; p.stay = false; p.home = { x: p.x, z: p.z }; p.calmT = 40; p.target = null; p.bond = 1; p.bondXP = 0; p.dmgMul = 1; p.hpMax = p.spec.hp; p.hp = Math.min(p.hp, p.hpMax); if (!dead) { p.altGoal = p.spec.kind === 'bird' ? 14 : 0; p.set('idle', 2); } $('petlist').innerHTML = ''; }
   removeBait(b) { const i = this.baits.indexOf(b); if (i >= 0) this.baits.splice(i, 1); this.scene.remove(b.mesh); }
   dropBait() {
     const P = this.player, k = this.inv.sel; if (!P.alive) return;
@@ -135,7 +149,7 @@ class Game {
   }
   interact() {
     const P = this.player, n = this.near; if (!n || !P.alive || (P.state !== 'move')) return;
-    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.msg(`+${cnt} ${ITEMS[item].name}`); return; }
+    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.prog.onGather(); this.msg(`+${cnt} ${ITEMS[item].name}`); return; }
     const a = n.animal; P.yaw = Math.atan2(a.x - P.x, a.z - P.z);
     if (a.tamed) { a.feedPet(); P.interactAnim(false); } else if (a.tryTame()) P.interactAnim(false);
   }
@@ -161,6 +175,7 @@ class Game {
     this.world.update(dt, this.time);
     for (const b of this.baits) { b.t += dt; b.mesh.rotation.y += dt; } if (this.baits[0]?.t > 150) this.removeBait(this.baits[0]);
     this.edge = {};
+    if (this.saving) { this.saveT = (this.saveT || 0) + dt; if (this.saveT > 30) { this.saveT = 0; this.prog.save(); } }
     this.updateHud(dt);
   }
   updateCamera(dt) {
@@ -173,7 +188,8 @@ class Game {
   }
   updateHud(dt) {
     const P = this.player;
-    $('hp').style.transform = `scaleX(${P.hp / P.hpMax})`; $('st').style.transform = `scaleX(${P.stamina / 100})`;
+    $('hp').style.transform = `scaleX(${P.hp / P.hpMax})`; $('st').style.transform = `scaleX(${P.stamina / P.staminaMax})`;
+    if (this.ui.levelDirty) { this.ui.levelDirty = false; const pr = this.prog, max = pr.level >= MAX_LEVEL; $('lvl').textContent = pr.level; $('xp').style.transform = `scaleX(${max ? 1 : pr.xp / xpNeed(pr.level)})`; $('xptxt').textContent = max ? 'EN YÜKSEK SEVİYE' : `XP ${Math.floor(pr.xp)}/${xpNeed(pr.level)}`; }
     if (this.inv.dirty) this.buildHotbar();
     this.hudT = (this.hudT || 0) - dt;
     if (this.hudT <= 0) {

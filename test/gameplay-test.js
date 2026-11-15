@@ -78,5 +78,27 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) ilerleme: XP, seviye atlama, nitelikler
+  const PR = G.prog; ok('ilerleme: evcilleştirme/av XP kazandırdı', PR.total > 100 && PR.level > 1 && Object.keys(PR.tamedKinds).length >= 10, 'lv=' + PR.level + ' total=' + PR.total);
+  const lv0 = PR.level, hpA = P.hpMax, dm0 = P.dmgMul; PR.gain(5000); ok('ilerleme: seviye atlayınca can/saldırı artar ve can dolar', PR.level > lv0 && P.hpMax > hpA && P.dmgMul > dm0 && P.hp === P.hpMax, `lv ${lv0}->${PR.level} hp ${hpA}->${P.hpMax}`);
+  a = find('wolf'); a.hp = a.hpMax; const hpW = a.hp; put(a, 1.2); P.yaw = Math.atan2(a.x - P.x, a.z - P.z); P.combo = 0; P.swing(); ok('ilerleme: saldırı hasarı seviyeyle ölçeklenir', Math.abs((hpW - a.hp) - 18 * P.dmgMul) < 0.01, (hpW - a.hp).toFixed(1));
+  const xp0 = PR.total; a.damage(9999, P); ok('ilerleme: av öldürmek XP verir', PR.total > xp0);
+  // 22) yoldaş bağı
+  release(); a = find('rabbit'); put(a, 2); P.crouching = true; G.inv.sel = 'carrot'; a.tryTame(); P.crouching = false;
+  ok('bağ: yeni yoldaş bağ 1 ile başlar', a.tamed && a.bond === 1 && a.hpMax === a.spec.hp);
+  PR.bond(a, 200); ok('bağ: bağ seviyesi canı ve hasarı artırır', a.bond > 1 && a.hpMax > a.spec.hp && a.dmgMul > 1, 'bond=' + a.bond + ' hpMax=' + a.hpMax);
+  const bx = a.bondXP; a.hunger = 10; a.feedPet(); ok('bağ: beslemek bağ puanı verir', a.bondXP > bx || a.bond > 1);
+  // 23) kayıt / yükleme (bellek içi depo)
+  const mem = { d: {}, setItem(k, v) { this.d[k] = v; }, getItem(k) { return this.d[k] ?? null; }, removeItem(k) { delete this.d[k]; } };
+  const b2 = find('bear'); put(b2, 2); G.inv.add('honey', 2); b2.tryTame(); b2.tryTame();
+  a.petName = 'Pamuk'; const snap = { lv: PR.level, xp: PR.xp, honey: G.inv.count('honey'), pets: G.pets.map((p) => p.kind + ':' + p.bond).sort().join(','), x: P.x, z: P.z };
+  ok('kayıt: kaydedilir', PR.save(mem) && mem.getItem('yaban-yoldaslari-save-v1').length > 50);
+  release(); G.inv.items = { flute: 1 }; PR.level = 1; PR.xp = 0; P.x = 0; P.z = 4;
+  const nr = PR.load(mem), now = G.pets.map((p) => p.kind + ':' + p.bond).sort().join(',');
+  ok('kayıt: seviye, envanter, konum geri gelir', PR.level === snap.lv && PR.xp === snap.xp && G.inv.count('honey') === snap.honey && Math.abs(P.x - snap.x) < 0.01 && P.hpMax === 100 + 12 * (PR.level - 1), `lv=${PR.level} honey=${G.inv.count('honey')}`);
+  ok('kayıt: yoldaşlar bağ seviyeleri ve adlarıyla geri gelir', nr === 2 && now === snap.pets && G.pets.some((p) => p.petName === 'Pamuk'), now + ' / ' + snap.pets);
+  sim(3); ok('kayıt: geri gelen yoldaşlar takip eder', G.pets.every((p) => p.dist(P) < 8), G.pets.map((p) => p.dist(P).toFixed(1)).join(','));
+  ok('kayıt: bozuk/eski kayıt reddedilir', PR.apply({ v: 99 }) === -1 && PR.apply(null) === -1);
+  release();
   G.running = real; return out;
 };

@@ -43,6 +43,12 @@ GitHub Pages açılırsa (Settings → Pages → dal kökü) doğrudan internett
 | Ejderha | Dağın zirvesi | Canını %20 altına düşür, ejder mücevheri sun |
 | Mağara Devi (fantastik) | Karanlık vadi | Evcilleştirilemez; ejder mücevheri düşürür |
 
+## İlerleme ve kayıt
+
+- **Oyuncu seviyesi (1–20):** av öldürmek, evcilleştirme adımları, evcilleştirme (bir türü ilk kez evcilleştirince ×2), kaynak toplamak ve yoldaşların avladıkları XP kazandırır. Her seviye +12 can, +5 dayanıklılık, +%7 saldırı ve daha hızlı can yenilenmesi verir; seviye atlayınca can dolar. Sol üstte seviye rozeti ve XP çubuğu.
+- **Yoldaş bağı (1–10):** yoldaş beslendikçe ve avladıkça bağ puanı kazanır; her bağ seviyesi +%8 can, +%6 hasar. Panelde her yoldaşın bağ seviyesi görünür. Serbest bırakılan yoldaşın bağı sıfırlanır.
+- **Kayıt:** oyun her 30 sn'de, duraklatınca ve sekme/uygulama arka plana geçince (Android dahil) tarayıcıya (`localStorage`) kaydedilir: seviye/XP, can, konum, envanter, toplanmış kaynakların yeniden çıkma süreleri, yoldaşlar (tür, ad, bağ, açlık, can). Açılışta *Kayıttan Devam Et* / *Yeni Oyun* seçilir. `?new` kaydı yok sayar; `?test` kayıt okumaz/yazmaz. Kod: `src/progression.js`.
+
 Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oyuncunun vurduğu hedefleri algılayıp savaşır. Her yoldaşın canı ve açlığı vardır: açken zayıf vurur, açlık sıfırlanınca can kaybeder ve sonunda terk eder. Yanına gidip E ile beslenir (etçil: et/balık, otçul: havuç/böğürtlen/elma).
 
 ## Modeller ve animasyonlar — neyin ne olduğu
@@ -59,18 +65,20 @@ Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oy
 - Gönderilen arşivde **yalnızca ejderha** vardı. Diğer 12 tür el yapımı sanatçı modeli değil, kodla üretilmiş düşük poligonlu modellerdir; görsel kaliteleri ejderha ve kahramanın altındadır. Bu türler için GLB gönderilirse aynı `GLBCreature` sınıfıyla (ejderha/tilki gibi) bağlanır.
 - Ejderhanın `fly2` klibi sabit bir sinematik uçuş yolu içerdiği için oyunda kullanılmıyor; ejderha yerde yürür ve savaşır. Özgün 46 MB dosya, oyunda kullanılmayan 21 klip çıkarılarak 11 MB'a indirildi (`tools/build-assets.mjs`); ağ ve dokulara dokunulmadı, yalnızca malzeme tanımı three.js'in okuyabildiği PBR biçimine çevrildi.
 - Prosedürel hayvanlarda ayak–zemin kilidi (IK) yok; hızlı dönüşlerde ayaklar hafif kayabilir.
-- Kahramanın saç/giysi fiziği (VRM yay kemikleri) çalışmıyor; ata binme ve kayıt (save) sistemi henüz yok.
+- Kahramanın saç/giysi fiziği (VRM yay kemikleri) çalışmıyor; ata binme henüz yok.
 - Depoda daha önce bir oyun ya da kız karakter bulunmuyordu (depo boştu); oyun sıfırdan kuruldu, kaldırılacak bir karakter yoktu.
 
 ## Test
 
 - `test/model-viewer.html?m=wolf` — her modeli ve animasyonunu tek tek oynatır (`m=hero`, `dragon`, `fox`, `rabbit`, `deer`, `horse`, `bear`, `lion`, `tiger`, `crocodile`, `snake`, `eagle`, `shadowbeast`, `ogre`).
-- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 51 oynanış testi: oyuncu animasyon durumları, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama.
+- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 63 oynanış testi: oyuncu animasyon durumları, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama, XP/seviye, yoldaş bağı, kayıt/yükleme.
 
 ## Geliştirme planı
 
-1. **Tamamlandı:** dünya ve bölgeler, erkek kahraman + animasyonlar, 14 tür, yapay zekâ, türe özgü evcilleştirme, yoldaş sistemi (takip/savaş/açlık/can), envanter ve toplama, dokunmatik kontroller, testler.
-2. **Sıradaki:** gönderilecek yeni GLB'lerle prosedürel türlerin değiştirilmesi, ejderha için uçuş, ata binme.
-3. **Sonra:** kayıt sistemi, görevler, gece/gündüz, ses.
+1. **Tamamlandı:** dünya ve bölgeler, erkek kahraman + animasyonlar, 14 tür, yapay zekâ, türe özgü evcilleştirme, yoldaş sistemi (takip/savaş/açlık/can), envanter ve toplama, dokunmatik kontroller, XP/seviye, yoldaş bağı, kayıt sistemi, testler.
+2. **Sıradaki:** Android performans ayarları (kalite seviyeleri), gönderilecek yeni GLB'lerle prosedürel türlerin değiştirilmesi, ejderha için uçuş, ata binme.
+3. **Sonra:** görevler, gece/gündüz, ses.
+
+Ayrıntılı ilerleme günlüğü: [PROGRESS.md](PROGRESS.md)
 
 Lisanslar ve atıflar: [CREDITS.md](CREDITS.md)

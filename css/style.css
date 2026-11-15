@@ -39,3 +39,11 @@
 #tbtns button{width:54px;height:54px;border-radius:50%;border:1px solid #fff5;background:#0008;color:#fff;font-size:20px}
 #tbtns button.on{background:#ffd75e;color:#000}
 @media (max-width:760px){#pets{width:150px;font-size:11px}.bar{width:150px}#focus{top:64px}.slot{width:44px;height:54px;font-size:20px}#log{bottom:230px}#prompt{bottom:84px}#hold{bottom:74px}}
+#level{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+#lvl{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:radial-gradient(#ffe68a,#d99a12);color:#2a1d00;font-size:14px;box-shadow:0 0 0 2px #0008}
+#level .bar{width:186px;height:12px;margin:0}#level .bar span{line-height:11px;font-size:9px}
+.bar.xp i{background:linear-gradient(#8fd6ff,#3c8fd8)}
+.pet .bond{font-size:10px;color:#ffb3dc;margin-top:2px}
+#newgame{margin:10px 0 0 8px;font-size:14px;padding:8px 16px;border-radius:20px;border:1px solid #fff5;background:#0006;color:#fff;cursor:pointer}
+#helpbtn{top:94px}
+@media (max-width:760px){#level .bar{width:116px}}

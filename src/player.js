@@ -6,7 +6,7 @@ const COMBO = ['Sword_Regular_A', 'Sword_Regular_B', 'Sword_Regular_C'];
 export class Player {
   constructor(game, hero) {
     this.g = game; this.hero = hero; this.x = 0; this.z = 4; this.y = floorY(0, 4, 0.95); this.vy = 0; this.yaw = Math.PI; this.speed = 0;
-    this.hpMax = 100; this.hp = 100; this.stamina = 100; this.alive = true; this.crouching = false; this.radius = 0.4; this.alt = 0;
+    this.hpMax = 100; this.hp = 100; this.stamina = 100; this.staminaMax = 100; this.dmgMul = 1; this.regen = 1.2; this.alive = true; this.crouching = false; this.radius = 0.4; this.alt = 0;
     this.state = 'move'; this.stT = 0; this.combo = 0; this.queued = false; this.hitDone = false; this.iframes = 0; this.cur = null; this.hurt = 0;
     game.scene.add(hero.root); this.play('Idle_Loop');
   }
@@ -23,7 +23,7 @@ export class Player {
     this.hp -= n; this.hurt = 0.35; this.g.floatText(`-${Math.round(n)}`, this, '#ff5a5a'); this.g.ui.hurtFlash();
     if (this.hp <= 0) { this.hp = 0; this.alive = false; this.state = 'dead'; this.stT = 4.5; this.crouching = false; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Death01', { once: true, fade: 0 }); this.g.msg('Yenildin... Kampta yeniden doğacaksın.'); }
   }
-  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); for (const a of this.g.animals) if (a.target === this) a.target = null; }
+  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = this.staminaMax; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); for (const a of this.g.animals) if (a.target === this) a.target = null; }
   busy(name, time) { this.state = name; this.stT = time; }
   interactAnim(kneel) { if (this.state !== 'move') return; this.crouching && !kneel ? 0 : this.busy('interact', this.play(kneel ? 'PickUp_Kneeling' : 'Interact', { once: true, ts: 1.6 }) * 0.9); }
 
@@ -49,7 +49,7 @@ export class Player {
       const wade = waterDepth(this.x, this.z) > 0.35;
       const run = inp.run && mag > 0.1 && this.stamina > 1 && !this.crouching;
       target = mag * (this.crouching ? 1.9 : run ? 7.6 : 4.4) * (wade ? 0.55 : 1);
-      if (run) this.stamina -= dt * 11; else this.stamina = Math.min(100, this.stamina + dt * (mag > 0.1 ? 9 : 16));
+      if (run) this.stamina -= dt * 11; else this.stamina = Math.min(this.staminaMax, this.stamina + dt * (mag > 0.1 ? 9 : 16));
       if (mag > 0.1) this.turn(Math.atan2(mvx, mvz), dt, 12);
       if (inp.jump && onGround && this.state === 'move') { this.vy = 7.2; this.state = 'jump'; this.crouching = false; this.play('Jump_Start', { once: true, ts: 1.6 }); this.airT = 0; }
       else if (inp.roll && onGround && this.state === 'move' && this.stamina >= 22) { this.stamina -= 22; this.crouching = false; if (mag > 0.1) this.yaw = Math.atan2(mvx, mvz); const d = this.play('Roll', { once: true, ts: 1.5 }); this.busy('roll', d * 0.82); this.iframes = d * 0.7; }
@@ -76,7 +76,7 @@ export class Player {
       else if (s < 5.6) this.play('Jog_Fwd_Loop', { ts: s / 4.2 });
       else this.play('Sprint_Loop', { ts: s / 7.2 });
     }
-    this.hp = Math.min(this.hpMax, this.hp + (this.alive && this.hurt < -6 ? dt * 1.2 : 0));
+    this.hp = Math.min(this.hpMax, this.hp + (this.alive && this.hurt < -6 ? dt * this.regen : 0));
     this.hero.mixer.update(dt);
     const r = this.hero.root; r.position.set(this.x, this.y, this.z); r.rotation.y = this.yaw;
   }
@@ -90,7 +90,7 @@ export class Player {
     const a = this.cur; if (a) a.reset().play();
   }
   swing() {
-    const dmg = this.combo === 2 ? 30 : 18; let hit = false;
+    const dmg = (this.combo === 2 ? 30 : 18) * this.dmgMul; let hit = false;
     for (const a of this.g.animals) {
       if (a.dead || a.tamed || a.alt > 2.5) continue; const dx = a.x - this.x, dz = a.z - this.z, d = Math.hypot(dx, dz);
       if (d > 2.1 + a.radius) continue; const dot = (Math.sin(this.yaw) * dx + Math.cos(this.yaw) * dz) / (d || 1);
