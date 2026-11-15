@@ -78,5 +78,16 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) kahraman: saç ve ceket eteği yay kemiği fiziği
+  const S = P.hero.springs, J = S ? S.joints : [];
+  ok('kahraman: VRM yay kemikleri yüklendi (saç + ceket)', J.length >= 20 && J.some((j) => /Hair/.test(j.bone.name)) && J.some((j) => /CoatSkirt/.test(j.bone.name)), J.length + ' eklem');
+  const dev = () => Math.max(...J.map((j) => 2 * Math.acos(Math.min(1, Math.abs(j.bone.quaternion.dot(j.restQ))))));
+  const finite = () => J.every((j) => Number.isFinite(j.tail.x + j.tail.y + j.tail.z) && Number.isFinite(j.bone.quaternion.w));
+  P.x = 0; P.z = 6; P.state = 'move'; G.keys = {}; sim(3); const still = dev();
+  G.keys.w = true; G.keys.run = true; let peak = 0; sim(1.5, () => { peak = Math.max(peak, dev()); }); G.keys = {};
+  ok('kahraman: koşarken saç/etek savrulur ama ters dönmez', peak > 0.15 && peak > still && peak < 2.2, 'durgun=' + still.toFixed(2) + ' koşu=' + peak.toFixed(2) + ' rad');
+  sim(4); ok('kahraman: durunca saç yerine oturur (kararlı, NaN yok)', finite() && dev() < peak, dev().toFixed(2));
+  const tailOk = () => J.every((j) => j.tail.distanceTo(j.bone.getWorldPosition(j.tail.clone())) < j.len * 1.05 + 0.01);
+  P.x = 60; P.z = 60; sim(0.1); P.x = 0; P.z = 6; sim(0.1); ok('kahraman: ışınlanınca yay zinciri sıfırlanır', finite() && tailOk());
   G.running = real; return out;
 };
