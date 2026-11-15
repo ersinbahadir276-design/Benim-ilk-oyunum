@@ -36,7 +36,7 @@ function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                 
   const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
-const hostileSt=w=>w.st==='howl'||w.st==='chase'||w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='circle'||w.st==='recover'||w.st==='hurt';
+const hostileSt=w=>w.st==='howl'||w.st==='chase'||w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='circle'||w.st==='recover'||w.st==='hurt'||w.st==='evade';
 const tokenBusy=()=>wolves.some(w=>!w.tame&&(w.st==='windup'||w.st==='pounce'||w.st==='pin'));
 // can this wolf see the player right now? only a cone in front, blocked by trees
 function wolfSees(w,P){if(!P.alive||w.calm>0)return false;const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz),R=(P.crouch?13:27)*(w.alpha?1.15:1);
@@ -47,7 +47,12 @@ function wolfMove(w,tx,tz,speed,dt,turn=7){const dx=tx-w.x,dz=tz-w.z,d=Math.hypo
 function wolfFace(w,tx,tz,dt,rate=8){w.yaw+=angd(Math.atan2(tx-w.x,tz-w.z),w.yaw)*Math.min(1,dt*rate)}
 function wolfHurt(w,dmg,dirx,dirz,P){if(w.dead)return false;w.hp-=dmg;w.flash=1;w.kx=dirx*5.5;w.kz=dirz*5.5;w.aware=1;w.calm=0;
  if(w.hp<=0){w.dead=.001;w.st='dead';w.t=0;w.air=0;w.pitch=0;if(P.pinBy===w)P.pinBy=null;return true}
- if(w.st==='pin'){P.pinBy=null}if(!w.tame){w.st='hurt';w.t=0;w.air=0;w.pitch=0}
+ if(w.st==='pin'){P.pinBy=null}
+ // no stun-lock: a wolf already committed to an attack shrugs the hit off; the second hit in a row makes it leap away and counter
+ if(!w.tame){w.combo=GT.clock-(w.lastHit||-9)<2.5?(w.combo||0)+1:1;w.lastHit=GT.clock;
+  if((w.st==='windup'||w.st==='pounce')&&w.combo<4){w.kx*=.2;w.kz*=.2}
+  else if(w.combo>=2&&w.st!=='pin'){w.st='evade';w.t=0;w.air=0;w.pitch=0;w.kx=dirx*9;w.kz=dirz*9;w.combo=0}
+  else{w.st='hurt';w.t=0;w.air=0;w.pitch=0}}
  for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&Math.hypot(o.x-w.x,o.z-w.z)<16&&!hostileSt(o)){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.6)}
  return false}
 function updateWolf(w,P,dt,GS){
@@ -103,7 +108,9 @@ function updateWolf(w,P,dt,GS){
   if(P.pinBy!==w||P.st!=='down'){w.st='recover';w.t=0;w.pitch=0;w.cd=rr(1.5,2.5);break}
   if(w.bt<=0){w.bt=.62;w.bites++;w.jaw=1;GS.onBite(w);if(w.bites>=4){P.pinBy=null;w.st='recover';w.t=.3;w.pitch=0;w.cd=rr(2,3);w.kx=-Math.sin(w.yaw)*5;w.kz=-Math.cos(w.yaw)*5}}break;
  case'recover':w.spd=lp(w.spd,0,.2);w.crouch=lp(w.crouch,.35,.2);w.pitch=lp(w.pitch,0,.3);w.jaw=lp(w.jaw,.3,.2);w.hyaw=Math.sin(w.t*14)*.25*(1-w.t);if(w.t>1.05){w.st='chase';w.t=0;w.hyaw=0}break;
- case'hurt':w.spd=0;w.crouch=lp(w.crouch,.4,.4);w.jaw=.6;if(w.t>.32){w.st='chase';w.t=0;w.unseen=0;w.ls=[P.x,P.z];if(w.cd<.5)w.cd=.5}break;
+ case'evade':{w.spd=0;w.air=Math.max(0,Math.sin(Math.min(1,w.t/.4)*PI)*.45);w.crouch=lp(w.crouch,.3,.3);wolfFace(w,P.x,P.z,dt,10);
+  if(w.t>.5){w.air=0;w.st='windup';w.t=.35;w.dodged=false;w.resolved=false;GS.onWindup(w)}break}
+ case'hurt':w.spd=0;w.crouch=lp(w.crouch,.4,.4);w.jaw=.6;if(w.t>.24){w.st='chase';w.t=0;w.unseen=0;w.ls=[P.x,P.z];if(w.cd<.5)w.cd=.5}break;
  case'search':w.crouch=lp(w.crouch,.1,.1);if(w.aware>=1){w.st='chase';w.t=0}else if(wolfMove(w,w.ls[0],w.ls[1],3.2,dt,4)<1.5){w.spd=lp(w.spd,0,.3);w.hyaw=Math.sin(w.t*1.8)*.9;if(w.t>6){w.st='return';w.t=0;w.aware=0}}else if(w.t>14){w.st='return';w.t=0}break;
  case'return':w.hyaw=lp(w.hyaw,0,.1);w.crouch=lp(w.crouch,0,.1);w.jaw=lp(w.jaw,0,.1);if(w.aware>.3&&!safe){w.st='alert';w.t=0}else if(wolfMove(w,w.hx,w.hz,2.6,dt,3)<2||w.t>40){w.st='idle';w.t=0}break}
  // keep wolves out of the kingdom and apart from each other

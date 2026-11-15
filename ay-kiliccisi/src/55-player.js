@@ -125,6 +125,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
   else if(P.sprinting&&P.spd>4&&(atkEdge||take('atk'))){IN.atkUsed=true;startRunAtk()}else if(atkHold){IN.atkUsed=true;startCharge()}else if(take('atk'))startLight(0);
   else if(take('inter'))interact();break}
  case'exec':{slide(10);if(!P.hitDone&&P.t>.45){P.hitDone=true;execHit()}if(P.t>1.05){P.st='move';P.t=0}break}
+ case'shoot':updateShoot(dt);break;
  case'drink':{const sp=1.2*il;moveFree(sp,6);const heal=maxHP()*.45;if(P.t<.9)P.hp=Math.min(maxHP(),P.hp+heal*dt/.9);if(P.t>1.05){P.st='move';P.t=0}break}
  case'skill':updateSkill(dt);break;
  case'attack':{const T=.46,u=P.t/T;slide(10);if(u>.22&&u<.6){P.vx=Math.sin(P.yaw)*3.4;P.vz=Math.cos(P.yaw)*3.4}
@@ -195,6 +196,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   if(P.st==='parry'){const k=1-P.t/.32;q.RaX-=.6*k;q.chX=-.2*k;q.hdX=-.3*k}break}
  case'gbreak':{rate=12;const k=Math.sin(P.t*9)*(1-P.t/1.4);q.RaZ=.2;q.RaX=-1.6;q.Rel=.3;q.LaZ=.5;q.LaX=-1.2;q.spX=-.35+k*.1;q.chX=-.2;q.hdX=-.4;q.pel=-.2;q.LthX=.3;q.Lkn=.5;q.RthX=-.3;q.Rkn=.6;break}
  case'exec':{rate=26;const u=P.t,k=sst(.2,.45,u)-sst(.7,1,u)*.6;q.two=1;q.RaZ=.4;q.RaX=lp(-1.4,-.2,k);q.RaY=-.2;q.Rel=lp(1.3,.1,k);q.RwX=lp(-.9,-.2,k);q.spX=lp(-.1,.45,k);q.pel=.25*k;q.LthX=-.9*k;q.Lkn=1.0*k;q.RthX=.5*k;q.Rkn=.3;q.hipY=-.1*k;break}
+ case'shoot':{rate=18;q.LaZ=.3;q.LaX=-1.35;q.Lel=.05;q.RaZ=.55;q.RaX=-1.25;q.Rel=1.7;q.spY=-.3;break}
  case'drink':{rate=16;const k=sst(0,.25,P.t)-sst(.85,1.05,P.t);q.LaZ=lp(1.22,.3,k);q.LaX=lp(.05,-1.3,k);q.Lel=lp(.25,2.1,k);q.hdX=-.3*k;q.chX=-.1*k;break}
  case'skill':{rate=30;const k2=P.skill;if(k2==='spin'){q.two=1;q.RaZ=-.1;q.RaX=-.15;q.RaY=1.6;q.Rel=.1;q.spY=-.4;q.pel=.15;q.LthX=-.5;q.Lkn=.7;q.RthX=-.2;q.Rkn=.5}
   else if(k2==='roar'){const k=sst(0,.35,P.t)-sst(.75,1,P.t);q.chX=-.45*k;q.hdX=-.6*k;q.LaZ=lp(1.22,.5,k);q.LaX=-.4*k;q.Lel=.8;q.RaZ=lp(1.12,.6,k);q.spX=-.2*k;q.LthX=-.4*k;q.Lkn=.6*k;q.RthX=.3*k}

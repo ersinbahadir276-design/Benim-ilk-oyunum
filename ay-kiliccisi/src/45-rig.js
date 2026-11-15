@@ -39,15 +39,18 @@ function faceTex(kind){const F=FACES[kind];if(!F)return null;const c=cnv(256,256
   if(F.lash){g.lineWidth=1.6;g.beginPath();g.moveTo(x+s*12,ey-4);g.lineTo(x+s*16,ey-7.5);g.stroke()}
   g.strokeStyle='rgba(60,30,20,.35)';g.lineWidth=1.2;g.beginPath();g.ellipse(x,ey-.5,12,7,0,PI*.15,PI*.85);g.stroke();g.restore();}
   // brow
-  g.strokeStyle=F.brow;g.lineWidth=F.stern?5.5:4.2;g.beginPath();g.moveTo(x-s*13,108+dy+(F.stern?3:0));g.quadraticCurveTo(x,101+dy,x+s*14,108+dy-(F.stern?2:0));g.stroke();
+  g.strokeStyle=F.brow;g.lineWidth=F.stern?5.5:4.2;if(F.manhwa){g.lineWidth=2.2;g.beginPath();g.moveTo(x-s*15,108+dy+1);g.quadraticCurveTo(x+s*2,99+dy,x+s*21,106+dy);g.stroke()}else{g.beginPath();g.moveTo(x-s*13,108+dy+(F.stern?3:0));g.quadraticCurveTo(x,101+dy,x+s*14,108+dy-(F.stern?2:0));g.stroke();}
   if(F.old){g.strokeStyle='rgba(70,40,30,.35)';g.lineWidth=1.2;for(let k=0;k<3;k++){g.beginPath();g.moveTo(x+s*15,ey+2+k*3);g.lineTo(x+s*21,ey+k*4);g.stroke()}}
   if(F.blush){g.fillStyle='rgba(220,90,90,.22)';g.beginPath();g.ellipse(x+s*4,ey+22,11,6,0,0,7);g.fill()}
   if(F.freckle){g.fillStyle='rgba(120,60,30,.45)';for(let k=0;k<6;k++){g.beginPath();g.arc(x+s*(k%3)*4-s*2,ey+17+(k>>1)*3,1,0,7);g.fill()}}}
  // nose shading and nostrils, lips, chin line
  g.fillStyle='rgba(90,45,30,.22)';g.beginPath();g.ellipse(128,ny+1,6,2.6,0,0,7);g.fill();g.fillStyle='rgba(60,25,20,.4)';for(const s of[-1,1]){g.beginPath();g.ellipse(128+s*4,ny,1.7,1.1,0,0,7);g.fill()}
+ if(F.manhwa){g.strokeStyle='rgba(120,60,60,.35)';g.lineWidth=1.4;g.beginPath();g.moveTo(124,ey+10);g.quadraticCurveTo(121,ny-8,124,ny);g.stroke();g.fillStyle='rgba(110,50,50,.35)';g.beginPath();g.ellipse(126,ny+1,6,2.2,0,0,7);g.fill();
+  g.fillStyle=F.lip;g.beginPath();g.moveTo(119,my);g.quadraticCurveTo(124,my-3.2,128,my-1.6);g.quadraticCurveTo(132,my-3.2,137,my);g.quadraticCurveTo(128,my+1.2,119,my);g.fill();
+  g.fillStyle='rgba(170,70,85,.75)';g.beginPath();g.moveTo(121,my+.6);g.quadraticCurveTo(128,my+6,135,my+.6);g.quadraticCurveTo(128,my+2,121,my+.6);g.fill();g.strokeStyle='rgba(60,15,20,.85)';g.lineWidth=1.1;g.beginPath();g.moveTo(118,my);g.quadraticCurveTo(128,my+1.4,138,my);g.stroke()}else{
  g.save();g.translate(128,my);g.scale(mw,mw);g.translate(-128,-178);
  g.fillStyle=F.lip;g.beginPath();g.moveTo(113,178);g.quadraticCurveTo(128,172,143,178);g.quadraticCurveTo(128,186,113,178);g.fill();
- g.strokeStyle='rgba(60,20,20,.75)';g.lineWidth=1.6;g.beginPath();g.moveTo(112,178);g.quadraticCurveTo(128,(F.stern?179:181),144,178);g.stroke();g.restore();
+ g.strokeStyle='rgba(60,20,20,.75)';g.lineWidth=1.6;g.beginPath();g.moveTo(112,178);g.quadraticCurveTo(128,(F.stern?179:181),144,178);g.stroke();g.restore();}
  if(F.scar){g.strokeStyle='rgba(150,30,35,.85)';g.lineWidth=2.4;const x0=128-(F.ex||36);g.beginPath();g.moveTo(x0-12,(F.ey||127)-24);g.lineTo(x0+8,(F.ey||127)+28);g.moveTo(x0-16,(F.ey||127)+6);g.lineTo(x0+2,(F.ey||127)-6);g.moveTo(x0+4,(F.ey||127)+18);g.lineTo(x0+16,(F.ey||127)+12);g.stroke()}
  if(F.fang){g.fillStyle='#fffaf0';g.beginPath();g.moveTo(133,my+1);g.lineTo(137,my+1);g.lineTo(135,my+7);g.fill()}
  if(F.stache){g.fillStyle=F.stache;g.beginPath();g.moveTo(108,176);g.quadraticCurveTo(128,160,148,176);g.quadraticCurveTo(128,170,108,176);g.fill()}

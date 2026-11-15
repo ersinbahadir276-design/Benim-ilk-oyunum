@@ -85,6 +85,8 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [x] Şeytan Kral = kadın hükümdar. Kullanıcı isteği: elf modelinin kendisi (body_base_low_poly_elf, Yamato, CC BY 4.0) + sadece boynuz, saç, sade elbise; normal boy (KING.sc=1).
       `tools/sculpt/import_elf.mjs <elf.glb>` eklemleri ölçer, 16 kemiğe oturtur, cache/king.bin + king_rig.json yazar (K ve BINDS.king oyuna elle kopyalandı).
 - [ ] Sıradaki (kullanıcı istedi): kahraman zırhını yeniden tasarla; Arknights tarzı kız (Kawaiope iskeleti); köylüleri yeni iskelet/görünüşe geçir; kurtları wolf_puppy iskeletine geçir
+- [x] Oturum 5: kurtlar sersemletme kilidine girmiyor (saldırırken vurulsa da sürdürür, 2. vuruşta geri sıçrayıp karşı saldırı); ok sistemi (59-arrows.js): goblin okçular (her kampta 1 + yol devriyelerinde 2), kahramanın yayı (YAY / B), 3 yol devriyesi köy yakınında; kraliçe saçı/perçemi/yüzü (manhwa göz, kaş, burun, ağız)
+- [ ] SIRADAKİ (kullanıcı istedi): haritayı büyüt + farklı bölgeler; mağara; büyük zindan + uzun zindan kulesi (katlar, boss); daha çok yaratık türü ve olay (manhwa RPG: iskelet, hortlak, örümcek, golem, gece baskını)
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
 - [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse
 - [ ] Şeytan Kral'ın kolları ince; aşama 3 boss dövüşünde iyileştirilecek
