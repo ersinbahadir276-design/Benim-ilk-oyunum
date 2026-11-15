@@ -54,6 +54,7 @@ export class Animal {
   die(from) {
     this.dead = true; this.deadT = 0; this.hp = 0; this.target = null; this.altGoal = 0;
     if (this.tamed) { this.g.msg(`💀 ${this.petName} öldü.`); return; }
+    this.g.prog?.onKill(this, from);
     if (from === this.g.player || from?.tamed) {
       const got = []; for (const [k, v] of Object.entries(this.spec.drops || {})) { this.g.inv.add(k, v); got.push(`${v} ${ITEMS[k].name}`); }
       if (got.length) this.g.msg(`Ganimet: ${got.join(', ')}`);
@@ -85,11 +86,13 @@ export class Animal {
     if (this.trust >= need) return this.becomePet();
     this.g.msg(`${this.spec.name} sana güvenmeye başladı (${this.trust}/${need}).`); this.g.floatText('❤', this, '#ff6f9c');
   }
-  becomePet() {
+  becomePet({ silent = false, name = '' } = {}) {
     const g = this.g;
     this.tamed = true; this.target = null; this.cowerT = 0; this.calmT = 0; this.stay = false; this.hunger = 70; this.hp = Math.max(this.hp, this.hpMax * 0.5);
-    const no = g.petCounter[this.kind] = (g.petCounter[this.kind] || 0) + 1; this.petName = this.spec.name + (no > 1 ? ' ' + no : '');
+    const no = g.petCounter[this.kind] = (g.petCounter[this.kind] || 0) + 1; this.petName = name || this.spec.name + (no > 1 ? ' ' + no : '');
     this.altGoal = this.spec.kind === 'bird' ? 4 : 0; g.pets.push(this); this.set('follow');
+    if (silent) { this.alt = this.altGoal; g.prog?.applyPet(this); return; }
+    g.prog?.onTame(this);
     g.msg(`✨ ${this.petName} evcilleştirildi! (${g.pets.length}/5)`); g.floatText('❤❤❤', this, '#ff6f9c');
   }
   // E tuşu: bir evcilleştirme adımı dene. Başarılıysa true.
@@ -128,7 +131,7 @@ export class Animal {
     const g = this.g, item = Object.keys(ITEMS).find((i) => g.inv.count(i) > 0 && eats(this.spec, i));
     if (!item) { g.msg(`${this.petName} için uygun yiyecek yok (${this.spec.diet === 'carn' ? 'et / balık' : this.spec.diet === 'herb' ? 'havuç / böğürtlen / elma' : 'her yiyecek'}).`); return; }
     g.inv.take(item); this.hunger = Math.min(100, this.hunger + 50); this.hp = Math.min(this.hpMax, this.hp + this.hpMax * 0.3);
-    this.set('eat', 1.6); g.msg(`${this.petName} ${ITEMS[item].name.toLowerCase()} yedi.`); g.floatText('❤', this, '#ff6f9c');
+    this.set('eat', 1.6); g.prog?.onPetFed(this); g.msg(`${this.petName} ${ITEMS[item].name.toLowerCase()} yedi.`); g.floatText('❤', this, '#ff6f9c');
   }
   mood() {
     if (this.dead) return 'Öldü'; if (this.state === 'attack' || this.state === 'chase') return 'Savaşıyor';
@@ -168,7 +171,7 @@ export class Animal {
     if (this.spec.kind === 'bird') this.altGoal = d < 9 ? 0.7 : 5;
     if (this.state === 'attack') {
       this.atkT += dt; this.face(tgt, dt);
-      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed && this.hunger < 25 ? 0.5 : 1), this); }
+      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) { const dmg = this.spec.dmg * (this.tamed ? (this.dmgMul || 1) * (this.hunger < 25 ? 0.5 : 1) : 1); tgt.damage(dmg, this); if (this.tamed) this.g.prog?.onPetHit(this, dmg); } }
       if (this.atkT >= this.c.attackTime) { this.cool = 0.5 + Math.random() * 0.5; this.set('chase'); }
       return 'attack';
     }

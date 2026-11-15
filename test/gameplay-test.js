@@ -78,5 +78,20 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) ilerleme: deneyim, seviye, yoldaş bağı, kayıt
+  const pr = G.prog; ok('ilerleme: av/evcilleştirme/toplama XP kazandırır', pr.level > 1 || pr.xp > 0, `sv=${pr.level} xp=${pr.xp} ${JSON.stringify(pr.stats)}`);
+  ok('ilerleme: sayaçlar', pr.stats.tamed >= 10 && pr.stats.kills >= 1 && pr.stats.gathered >= 1, JSON.stringify(pr.stats));
+  const L0 = pr.level, hm0 = P.hpMax, dm0 = P.dmgMul; pr.gain(pr.need - pr.xp); ok('ilerleme: seviye atlayınca can ve güç artar', pr.level === L0 + 1 && P.hpMax === hm0 + 10 && P.dmgMul > dm0 && P.hp === P.hpMax, `sv ${L0}->${pr.level} can ${hm0}->${P.hpMax}`);
+  let pp = G.pets.find((x) => !x.dead); const bh = pp.hpMax; pr.petGain(pp, 200); ok('yoldaş: bağ seviyesi can/güç artırır', pp.level > 1 && pp.hpMax > bh && pp.dmgMul > 1, `bağ=${pp.level} can ${bh}->${pp.hpMax}`);
+  const mem = { d: {}, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = String(v); }, removeItem(k) { delete this.d[k]; } };
+  const nPets = G.pets.filter((x) => !x.dead).length, pl = pp.level, pk = pp.kind, lv = pr.level, meat = G.inv.count('meat');
+  ok('kayıt: yazılır', pr.save(mem) && Object.keys(mem.d).length === 1);
+  const sv = window.GAME.prog.constructor.read(mem); ok('kayıt: okunur ve doğrulanır', sv && sv.level === lv && sv.pets.length === nPets);
+  release(); ok('serbest bırakınca bağ sıfırlanır', pp.level === 1 && pp.hpMax === pp.spec.hp);
+  pr.level = 1; pr.xp = 0; G.inv.items = { flute: 1 };
+  G.loadSave(sv); const rp = G.pets.find((x) => x.kind === pk);
+  ok('kayıt: yükleme seviye/envanter/yoldaşları geri getirir', pr.level === lv && G.inv.count('meat') === meat && G.pets.length === nPets && rp && rp.level === pl && rp.hpMax > rp.spec.hp, `sv=${pr.level} et=${G.inv.count('meat')} yoldaş=${G.pets.length} bağ=${rp?.level}`);
+  sim(3); ok('kayıt: yüklenen yoldaşlar takip eder', G.pets.every((x) => x.tamed && x.dist(P) < 14));
+  ok('kayıt: bozuk kayıt reddedilir', (mem.d[Object.keys(mem.d)[0]] = '{"v":1}', window.GAME.prog.constructor.read(mem) === null));
   G.running = real; return out;
 };
