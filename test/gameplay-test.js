@@ -78,5 +78,21 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) saç / ceket eteği yay kemikleri (VRM secondaryAnimation)
+  const S = P.hero.spring, hairJ = S.joints.filter((j) => j.bone.name.startsWith('HairJoint')), coatJ = S.joints.filter((j) => j.bone.name.startsWith('J_Sec_'));
+  ok('yay kemikleri: saç ve etek eklemleri yüklendi', hairJ.length >= 15 && coatJ.length >= 10, `saç=${hairJ.length} etek=${coatJ.length}`);
+  P.x = 0; P.z = 6; P.y = 0; P.state = 'move'; P.alive = true; G.keys = {}; sim(3);
+  const rest = S.deflection();
+  const maxAng = (js) => Math.max(...js.map((j) => j.restQ.angleTo(j.bone.quaternion)));
+  G.keys.w = true; G.keys.run = true; let peak = 0, hairAng = 0; sim(1.5, () => { peak = Math.max(peak, S.deflection()); hairAng = Math.max(hairAng, maxAng(hairJ)); }); G.keys.w = false; G.keys.run = false;
+  ok('yay kemikleri: koşarken saç/etek savrulur', peak > rest + 0.004, `durgun=${rest.toFixed(4)} tepe=${peak.toFixed(4)}`);
+  ok('yay kemikleri: depar sırasında saç yüze katlanmaz (< 70°)', hairAng < 1.22, `maks açı=${(hairAng * 57.3).toFixed(0)}°`);
+  sim(4); const settled = S.deflection();
+  ok('yay kemikleri: durunca yerine oturur', settled < peak * 0.6, `son=${settled.toFixed(4)}`);
+  const finite = S.joints.every((j) => Number.isFinite(j.bone.quaternion.x) && Number.isFinite(j.tail.x));
+  const head = P.hero.head.getWorldPosition(new P.hero.head.position.constructor()), maxD = Math.max(...hairJ.map((j) => j.tail.clone().applyMatrix4(S.center.matrixWorld).distanceTo(head)));
+  ok('yay kemikleri: sayısal kararlılık, saç kafadan kopmaz', finite && maxD < 0.35, `maks uzaklık=${maxD.toFixed(2)} m`);
+  P.x = 40; P.z = 40; sim(0.1); ok('yay kemikleri: ışınlanmada sıfırlanır', S.joints.every((j) => j.tail.distanceTo(j.prev) < 0.05));
+  P.x = 0; P.z = 6; sim(0.2);
   G.running = real; return out;
 };
