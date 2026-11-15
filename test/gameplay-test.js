@@ -109,6 +109,46 @@ window.runGameplayTests = async function () {
     P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax; P.iframes = 0;
   }
 
+  // 1d2) kahraman yürüme döngüsü: klip yer hızları ölçülür, hız–adım eşlemesi, faz senkronlu karışım, basan ayak kilidi
+  {
+    const L = P.loco, IK = P.ik, R = P.hero.root;
+    const sp = L.g.map((x) => x.speed), st = L.g.map((x) => [x.stride, ...(x.next || [])]);
+    ok('yürüme döngüsü: klip yer hızları ölçüldü (yürüme < koşu)', sp.every((v) => v > 0.3 && v < 12) && sp[0] < sp[1] && P.crouchLoco.g[0].speed > 0.3, L.g.map((x) => `${x.name}=${x.speed.toFixed(2)} m/sn`).join(' '));
+    // hizalı karışımda adım boyu iki klibin arasında, çökme yok
+    const mono = [0, 1].every((i) => { const a = [L.g[i].stride, ...L.g[i].next, L.g[i + 1].stride]; return a.every((v, k) => k === 0 || v > a[k - 1] * 0.9); });
+    ok('yürüme döngüsü: faz hizalı karışımda adım boyu çökmez', mono, st.map((a) => a.map((v) => v.toFixed(2)).join('/')).join(' | '));
+    const moved = G.animals.filter((x) => Math.hypot(x.x, x.z - 20) < 40).map((x) => [x, x.x, x.z]); moved.forEach(([x]) => { x.x += 300; });
+    const V = THREE_V;
+    // kayma yalnızca art arda iki karede de kilitli (basışta) olan ayak için ölçülür; karşılaştırma için aynı basış
+    // tespiti kilit uygulanmadan (lockApply=false) çalıştırılır: o zaman ayak klipteki gibi kayar
+    const walk = (mz, run, crouch, apply) => {
+      IK.lockApply = apply; G.keys = {}; G.edge = {}; P.x = 0; P.z = 2; P.yaw = 0; G.camYaw = 0; P.speed = 0; P.stamina = 100; P.hp = P.hpMax; P.state = 'move'; P.crouching = crouch; P.iframes = 99;
+      G.touch.mz = mz; G.keys.run = run; sim(1.5);
+      IK.stats = { locks: 0, releases: 0 }; const prev = IK.legs.map((l) => l.foot.getWorldPosition(new V())), was = IK.legs.map(() => false);
+      let slip = 0, n = 0, bad = false;
+      sim(5, () => { IK.legs.forEach((l, k) => { const v = l.foot.getWorldPosition(new V()), on = l.locked && l.lockW > 0.95;
+        if (!Number.isFinite(v.x)) bad = true;
+        if (on && was[k]) { slip += Math.hypot(v.x - prev[k].x, v.z - prev[k].z); n++; } prev[k].copy(v); was[k] = on; }); });
+      const r = { v: P.speed, clip: P.cur?._clip.name, slip: slip / Math.max(1, n), n, st: IK.stats, bad };
+      G.touch.mz = 0; G.keys.run = false; P.crouching = false; IK.lockApply = true; return r;
+    };
+    for (const [name, mz, run, cr] of [['yürüme', 0.5, false, false], ['koşu', 1, false, false], ['depar', 1, true, false], ['çömelerek', 1, false, true]]) {
+      const off = walk(mz, run, cr, false), on = walk(mz, run, cr, true);
+      ok(`ayak kilidi (${name}): basan ayak kaymaz, basışlar erken bırakılmaz`, !on.bad && on.n > 20 && on.st.locks >= 6 && on.slip < 0.0005 && off.slip > 0.002 && (on.st.early || 0) <= on.st.locks * 0.1,
+        `hız=${on.v.toFixed(1)} ${on.clip} basışta kayma: kilitsiz=${(off.slip * 1000).toFixed(1)} kilitli=${(on.slip * 1000).toFixed(2)} mm/kare (${on.n} kare), basış=${on.st.locks} erken bırakma=${on.st.early || 0}`);
+    }
+    // durunca karışım söner, bekleme klibine geçilir; kilit kalkar
+    G.touch.mz = 0.5; sim(1); G.touch.mz = 0; sim(1.2);
+    const lingering = L.g.filter((x) => x.act.isRunning() && x.act.getEffectiveWeight() > 0.01).map((x) => x.name);
+    ok('yürüme döngüsü: durunca karışım söner, bekleme klibi oynar', P.cur._clip.name === 'Idle_Loop' && !L.on && lingering.length === 0 && IK.legs.every((l) => l.lockW < 0.05), P.cur._clip.name + ' ' + lingering.join(','));
+    // yürürken saldırı: karışım söner, kılıç klibi oynar; sonra yürüme döngüsüne dönülür
+    G.touch.mz = 0.5; sim(0.8); G.edge.attack = true; sim(0.2); const atk = P.cur._clip.name; sim(1.6);
+    ok('yürüme döngüsü: saldırıya geçiş ve geri dönüş', atk === 'Sword_Regular_A' && P.state === 'move' && L.on && /Walk|Jog/.test(P.cur._clip.name), atk + ' → ' + P.cur._clip.name);
+    G.touch.mz = 0; sim(1); G.keys = {}; G.edge = {};
+    moved.forEach(([x, ox, oz]) => { x.x = ox; x.z = oz; });
+    P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax; P.iframes = 0;
+  }
+
   // 1e) dört ayaklı ayak IK'si: düzde pozu bozmaz, yan eğimde dört ayak zemine oturur, yürürken basan ayak kaymaz
   {
     const gnd = P.ik.ground;

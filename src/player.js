@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { floorY, waterDepth } from './world.js';
 import { FootIK } from './ik.js';
+import { analyzeGait, Locomotion } from './gait.js';
 
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
 
@@ -14,21 +15,33 @@ export class Player {
     this.kbx = 0; this.kbz = 0; this.hitT = 9; this.hitAmp = 0; this.hitDir = new THREE.Vector3(0, 0, 1);
     this.ik = new FootIK(hero.root, (x, z) => floorY(x, z, 0.95));
     this.spineB = ['J_Bip_C_Spine', 'J_Bip_C_Chest', 'J_Bip_C_UpperChest'].map((n) => hero.root.getObjectByName(n)).filter(Boolean);
+    // hız–adım eşlemesi: kliplerin yer hızı yüklemede ölçülür, yürüme/koşu/depar faz senkronlu karışır
+    const gait = (n) => ({ name: n, ...analyzeGait(hero.root, hero.clips[n]) });
+    this.loco = new Locomotion(hero.mixer, hero.clips, ['Walk_Loop', 'Jog_Fwd_Loop', 'Sprint_Loop'].map(gait), hero.root);
+    this.crouchLoco = new Locomotion(hero.mixer, hero.clips, [gait('Crouch_Fwd_Loop')]);
     game.scene.add(hero.root); this.play('Idle_Loop');
   }
   play(name, { fade = 0.18, once = false, ts = 1 } = {}) {
     const clip = this.hero.clips[name]; if (!clip) return 0;
     const a = this.hero.mixer.clipAction(clip); a.timeScale = ts;
-    if (a === this.cur) return clip.duration / ts;
+    if (a === this.cur && !this.locoOn()) return clip.duration / ts;
     a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); a.clampWhenFinished = true; a.enabled = true; a.setEffectiveWeight(1);
+    if (this.locoOn()) { this.loco.stop(fade); this.crouchLoco.stop(fade); this.cur = null; a.fadeIn(fade); }
     if (this.cur) a.crossFadeFrom(this.cur, fade, false); a.play(); this.cur = a;
     return clip.duration / ts;
+  }
+  locoOn() { return this.loco.on || this.crouchLoco.on; }
+  // yürüme döngüsü: L (Locomotion) karışımını başlat/güncelle; diğer karışım ve tekil klip söner
+  runLoco(L, other, dt, s, fade = 0.2) {
+    if (other.on) other.stop(fade);
+    if (!L.on) { if (this.cur && !this.locoOn()) this.cur.fadeOut(fade); L.start(fade); }
+    this.cur = L.update(dt, s);
   }
   damage(n, from) {
     if (!this.alive || this.iframes > 0) return;
     this.hp -= n; this.hurt = 0.35; this.g.floatText(`-${Math.round(n)}`, this, '#ff5a5a'); this.g.ui.hurtFlash();
     if (this.hp > 0) this.hitReact(n, from);
-    if (this.hp <= 0) { this.hp = 0; this.alive = false; this.state = 'dead'; this.stT = 4.5; this.crouching = false; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Death01', { once: true, fade: 0 }); this.g.msg('Yenildin... Kampta yeniden doğacaksın.'); }
+    if (this.hp <= 0) { this.hp = 0; this.alive = false; this.state = 'dead'; this.stT = 4.5; this.crouching = false; this.cur = null; this.hero.mixer.stopAllAction(); this.loco.kill(); this.crouchLoco.kill(); this.play('Death01', { once: true, fade: 0 }); this.g.msg('Yenildin... Kampta yeniden doğacaksın.'); }
   }
   // Darbe tepkisi: üst gövdeye katmanlı Hit_Chest klibi + saldırganın tersine yönlü gövde savrulması + hafif geri itilme.
   hitReact(n, from) {
@@ -58,7 +71,7 @@ export class Player {
       b.parent.getWorldQuaternion(_q).invert(); b.quaternion.copy(_q.multiply(_q2)); b.updateMatrixWorld(true);
     });
   }
-  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.play('Idle_Loop', { fade: 0 }); this.hero.spring?.reset(); this.hero.face?.reset(); this.ik.reset(); this.kbx = this.kbz = 0; this.hitT = 9; for (const a of this.g.animals) if (a.target === this) a.target = null; }
+  respawn() { this.alive = true; this.hp = this.hpMax; this.stamina = 100; this.x = 0; this.z = 4; this.vy = 0; this.state = 'move'; this.cur = null; this.hero.mixer.stopAllAction(); this.loco.kill(); this.crouchLoco.kill(); this.play('Idle_Loop', { fade: 0 }); this.hero.spring?.reset(); this.hero.face?.reset(); this.ik.reset(); this.kbx = this.kbz = 0; this.hitT = 9; for (const a of this.g.animals) if (a.target === this) a.target = null; }
   busy(name, time) { this.state = name; this.stT = time; }
   interactAnim(kneel) { if (this.state !== 'move') return; this.crouching && !kneel ? 0 : this.busy('interact', this.play(kneel ? 'PickUp_Kneeling' : 'Interact', { once: true, ts: 1.6 }) * 0.9); }
 
@@ -83,7 +96,7 @@ export class Player {
       if (inp.crouch && onGround) this.crouching = !this.crouching;
       const wade = waterDepth(this.x, this.z) > 0.35;
       const run = inp.run && mag > 0.1 && this.stamina > 1 && !this.crouching;
-      target = mag * (this.crouching ? 1.9 : run ? 7.6 : 4.4) * (wade ? 0.55 : 1);
+      target = mag * (this.crouching ? 1.25 : run ? 7.6 : 4.4) * (wade ? 0.55 : 1);
       if (run) this.stamina -= dt * 11; else this.stamina = Math.min(100, this.stamina + dt * (mag > 0.1 ? 9 : 16));
       if (mag > 0.1) this.turn(Math.atan2(mvx, mvz), dt, 12);
       if (inp.jump && onGround && this.state === 'move') { this.vy = 7.2; this.state = 'jump'; this.crouching = false; this.play('Jump_Start', { once: true, ts: 1.6 }); this.airT = 0; }
@@ -111,18 +124,17 @@ export class Player {
     // hareket animasyonları
     if (this.state === 'move') {
       const s = this.speed;
-      if (this.crouching) s > 0.3 ? this.play('Crouch_Fwd_Loop', { ts: Math.max(0.6, s / 1.5) }) : this.play('Crouch_Idle_Loop');
+      if (this.crouching) s > 0.3 ? this.runLoco(this.crouchLoco, this.loco, dt, s) : this.play('Crouch_Idle_Loop');
       else if (s < 0.3) this.play('Idle_Loop', { fade: 0.25 });
-      else if (s < 2.8) this.play('Walk_Loop', { ts: Math.max(0.7, s / 1.6) });
-      else if (s < 5.6) this.play('Jog_Fwd_Loop', { ts: s / 4.2 });
-      else this.play('Sprint_Loop', { ts: s / 7.2 });
+      else this.runLoco(this.loco, this.crouchLoco, dt, s);
     }
     this.hp = Math.min(this.hpMax, this.hp + (this.alive && this.hurt < -6 ? dt * 1.2 : 0));
     this.hero.mixer.update(dt);
     const r = this.hero.root; r.position.set(this.x, this.y, this.z); r.rotation.y = this.yaw;
     r.updateMatrixWorld(true);
     this.applyFlinch(dt);
-    this.ik.update(dt, this.alive && (this.state === 'move' || this.state === 'attack' || this.state === 'interact' || this.state === 'land') && this.y <= gr + 0.02);
+    // ayak kilidi yalnızca yürüme döngüsünde (saldırı/etkileşimde bacaklar klipteki gibi kalır)
+    this.ik.update(dt, this.alive && (this.state === 'move' || this.state === 'attack' || this.state === 'interact' || this.state === 'land') && this.y <= gr + 0.02, this.state === 'move' && this.locoOn() && this.speed > 0.3, this.speed);
     if (this.hero.face) this.updateFace(dt);
     if (this.hero.spring) this.hero.spring.update(dt);
   }

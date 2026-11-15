@@ -7,7 +7,7 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 | # | Özellik | Durum | Not |
 | --- | --- | --- | --- |
 | 1 | Yüksek kaliteli erkek kahraman | ✅ Tamamlandı | VRoid avatar, toon gölgeleme, kılıç, saç/kumaş yay kemikleri (Tur 2), yüz ifadeleri + göz kırpma + baş/göz bakışı (Tur 3). Kalan küçük eksik: dudak senkronu (oyunda diyalog olmadığı için gerekmiyor). |
-| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Büyük ölçüde | Kahraman: 17 retarget klip, eğimde ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4). Dört ayaklılar (9 tür): eğimde ayak IK'si, basma kilidi, adım boyu–hız eşlemesi (Tur 5). Tilki, ejderha (GLB iskeletleri) ve Mağara Devi: eğimde ayak IK'si (Tur 6). **Eksik:** kahramanda yürürken ayak kilidi; GLB türlerinde ve devde basma kilidi; dörtnalda (koşu) ayak kilidi çoğu adımda erken bırakılıyor. |
+| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Büyük ölçüde | Kahraman: 17 retarget klip, eğimde ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4); yüklemede ölçülen klip yer hızlarıyla faz senkronlu yürüme/koşu/depar karışımı ve basan ayak kilidi (Tur 7). Dört ayaklılar (9 tür): eğimde ayak IK'si, basma kilidi, adım boyu–hız eşlemesi (Tur 5). Tilki, ejderha (GLB iskeletleri) ve Mağara Devi: eğimde ayak IK'si (Tur 6). **Eksik:** tilki/ejderha/devde basma kilidi; dört ayaklılarda dörtnalda (koşu) ayak kilidi çoğu adımda erken bırakılıyor; kahramanda dönüşlerde/yan adımda (strafe) özel klip yok. |
 | 3 | Gönderilen GLB modellerin entegrasyonu | 🟡 Kısmen | Gönderilen tek dosya (ejderha) ve tilki bağlı. Ejderhanın `fly2` klibi kullanılmıyor (ejderha uçmuyor). Yeni GLB gelirse `GLBCreature` ile bağlanacak. |
 | 4 | Çok sayıda hayvan ve yaratık | ✅ İşlevsel olarak tamam | 14 tür. 12 tür kodla üretilmiş düşük poligonlu model; görsel kalite ejderha ve kahramanın altında. |
 | 5 | Evcilleştirme ve yapay zekâ | ✅ İşlevsel olarak tamam | Türe özgü yöntemler, 5 yoldaş, takip/savaş/açlık. Testler geçiyor; tek kararsız test aşağıda. |
@@ -79,6 +79,24 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 - Ölçümler (31° yan eğim, aynı klip karesinde, düz zemindeki bacak ucu yüksekliğine göre en büyük sapma): tilki 0.048 → 0.000 m; ejderha 0.754 → 0.001 m; Mağara Devi 0.216 → 0.021 m (aşağıdaki ayak kalça alçalma sınırına takılıyor). Düz zeminde poz değişmiyor (fark ≤ 0.0012 m).
 - 12 yeni test (her üç tür için: düz zeminde poz değişmez, yan eğimde bacak uçları zemine oturur, NaN yok, ölünce kapalı). Testte klip zamanı dondurulup tüm ölçümler aynı pozda alınıyor. **95/95 test geçti (2 ardışık koşuda).**
 
+### Tur 7 (2026-11-15): kahramanda hız–adım eşlemesi ve ayak kilidi (özellik 2)
+- Not: Bu tur `ccr-70a30f22-5zh2te` dalının (Tur 6) üstüne, `ccr-70a30f22-rorf10` dalında kuruldu.
+- Ölçülen sorun: kahramanın yürüme klibi ~0.93 m/sn'lik adım için yapılmış ama 2.8 m/sn'ye kadar oynatılıyordu; koşu klibi ~5.4 m/sn için yapılmış ama 4.4 m/sn'de oynatılıyordu. Basan ayak yürürken ~19 mm/kare (60 fps) kayıyordu.
+- Yeni modül `src/gait.js`:
+  - `sampleBlend` / `analyzeGait`: klipleri (ya da faz senkronlu karışımlarını) ayrı bir mixer'la örnekler. Kök uzayında, yere yakın ve geriye giden ayağın süpürme hızlarının ortancasını alır. Ortanca kullanılır, çünkü depar klibinin yavaş iniş kareleri ortalamayı 7.97'den 5.2 m/sn'ye düşürüyordu. Ölçülen değerler: yürüme 0.93, koşu 5.43, depar 7.97, çömelerek yürüme 0.71 m/sn.
+  - `Locomotion`: yürüme ↔ koşu ↔ depar faz senkronlu karışımı. Kliplerin zamanı doğrudan ortak faza göre ayarlanır. Döngü süresi adım boyu / hız formülüyle bulunur, kadans en fazla 1.8 kat hızlanır, en fazla 0.55 kata yavaşlar.
+  - Faz hizalama: "en öndeki sol ayak" her klipte aynı faza denk gelmiyordu. Koşu–depar karışımında ayaklar birbirini götürüyor, adım boyu 5.1'den 2.0 m'ye çöküyordu. Klipler artık iki ayağın ileri–geri ve yükseklik izlerinin çapraz ilintisiyle hizalanıyor; karışım adım boyları 5.07/4.89/5.05/5.10/5.31 m.
+  - Karışımın adım boyu doğrusal değil (koşuda basış döngünün daha küçük bir bölümü). Bu yüzden her komşu çift için 0.25/0.5/0.75 oranlarında ölçülüyor; ara değerler doğrusal tamamlanıyor.
+- `src/ik.js` → `FootIK` basma kilidi:
+  - Basış animasyon pozundan tespit edilir: ayak bileği kendi en alçak yüksekliğine yakındır ve köke göre en az gövde hızının yarısıyla geriye gider. Böylece depar klibinin iniş kareleri kilitlenmiyor; bunlar önceden 1–2 kare sonra kaymayla bırakılıyordu.
+  - Basış boyunca ayağın yatay konumu dünyada sabit kalır. Yükseklik animasyondan gelir, bu sayede topuk kalkışı korunur.
+  - Kilit noktası bacak boyunun ötesine düşerse kalça en çok 6 cm alçalır. Bu da yetmezse ya da 16 cm'den fazla kayma birikirse kilit bırakılır ve ayak yumuşakça animasyona döner.
+  - Ayak kilidi yalnızca yürüme döngüsünde çalışır. Saldırı, etkileşim, zıplama ve takla etkilenmez.
+- `src/player.js`: yürüme, koşu, depar ve çömelerek yürüme `Locomotion` ile oynatılıyor. Başka bir klibe (saldırı, bekleme vb.) geçişte karışım söner. Ölüm ve yeniden doğmada sıfırlanır.
+- Oynanış değişikliği: çömelerek yürüme hızı 1.9'dan 1.25 m/sn'ye düşürüldü. Klip en fazla 1.8 kat hızlandırılabildiği için 1.9 m/sn'de ayak kaçınılmaz olarak kayıyordu. Evcilleştirme kuralları değişmedi.
+- Ölçümler (30 fps test, basışta ayağın dünyadaki kayması, kilit uygulanmadan → kilitli): yürüme 19.5 → 0.00, koşu 7.2 → 0.00, depar 10.9 → 0.03, çömelerek 10.1 → 0.00 mm/kare. Topuk kalkmadan bırakılan basış: 0.
+- 8 yeni test: klip yer hızları, faz hizalı karışımda adım boyunun çökmemesi, dört hızda basan ayağın kaymaması ve erken bırakılmaması, durunca karışımın sönmesi, saldırıya geçip geri dönme. **103/103 test geçti.**
+
 ## Bilinen sorunlar
 - Dudak senkronu yok (oyunda seslendirme yok).
 - Dört ayaklılarda koşuda (dörtnal) ayak kilidi çoğu adımda erken bırakılıyor; yürüyüşte de adımların %35–50'sinde erken bırakılıyor.
@@ -86,11 +104,12 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 - Mağara Devi'nde dik yan eğimde aşağıdaki ayak 2 cm havada kalabiliyor (kalça alçalma sınırı); ayak tabanı eğime yatmıyor (ayrı bilek eklemi yok).
 - Kartal evcilleştirme testi ara sıra başarısız oluyor (vahşi hayvan rastgeleliği).
 - Arkadan gelen darbede katmanlı `Hit_Chest` klibi (önden vuruş klibi) yarı ağırlıkla yine geriye doğru oynar; yönlü savrulma bunu baskın şekilde öne çevirir ama ayrı bir "arkadan darbe" klibi yok.
-- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir: `ccr-70a30f22-5zh2te` (Tur 2–6).
+- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir: `ccr-70a30f22-rorf10` (Tur 2–7).
+- Kahramanda yürüme ↔ koşu karışımında (≈1.2–4.6 m/sn) iki ayağın basışı biraz asimetrik. Bir ayak basışın sonunda (topuk kalkarken) erken bırakılabiliyor; ayakta kayma görünmüyor.
 
 ## Sonraki öncelikler
-1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-5zh2te` dalı Tur 2–6'yı içeriyor. `tidu6t` dalındaki ilerleme/kayıt sistemi (özellik 6) buraya taşınabilir; yeniden yazılmamalı.
-2. Özellik 2'yi bitirmek: kahramanda yürürken ayak kilidi (`FootIK` içine basma evresi tespiti), tilki/ejderha/dev için basma kilidi. Ardından özellik 2 tamamlanmış sayılabilir.
+1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-rorf10` dalı Tur 2–7'yi içeriyor. `tidu6t` dalındaki ilerleme/kayıt sistemi (özellik 6) buraya taşınabilir; yeniden yazılmamalı.
+2. Özellik 2'yi bitirmek: tilki, ejderha ve dev için basma kilidi (`FootIK._stance` mantığı `GLBCreature._footIK` ve `Biped._footIK` içine). Dört ayaklılarda dörtnal kilidi için aynı "gövde hızının yarısıyla süpürme" giriş ölçütü denenmeli. Bunlar bitince özellik 2 tamamlanmış sayılabilir.
 3. Özellik 6: `tidu6t` dalındaki XP/seviye ve localStorage kaydını bu dala taşımak. Ardından görevler.
-4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme.
+4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme. `analyzeGait` yüklemede ~8 karışım örnekliyor; mobilde süresi ölçülmeli.
 5. Özellik 3: ejderha için uçuş (`fly2` klibinden kök hareketini ayıklayarak).

@@ -1,5 +1,5 @@
 // Kahraman için ayak IK'si: eğimli arazide ayaklar zemine oturur, kalça gerektiği kadar alçalır,
-// ayak tabanı zemin eğimine yatırılır. Animasyon (mixer) her karede bacakları yeniden yazdığı için
+// ayak tabanı zemin eğimine yatırılır. Yürüme döngüsünde basan ayak dünyada kilitlenir (ayak kaymaz). Animasyon (mixer) her karede bacakları yeniden yazdığı için
 // düzeltme birikmez; her kare animasyon pozunun üstüne uygulanır.
 import * as THREE from 'three';
 
@@ -45,22 +45,63 @@ export class FootIK {
     this.root = root; this.ground = ground; this.maxDrop = maxDrop; this.maxRaise = maxRaise; this.maxTilt = maxTilt;
     const g = (n) => root.getObjectByName(n);
     this.hips = g('J_Bip_C_Hips');
-    this.legs = ['L', 'R'].map((S) => ({ up: g(`J_Bip_${S}_UpperLeg`), knee: g(`J_Bip_${S}_LowerLeg`), foot: g(`J_Bip_${S}_Foot`), off: 0, tilt: new THREE.Quaternion() }));
+    this.legs = ['L', 'R'].map((S) => ({ up: g(`J_Bip_${S}_UpperLeg`), knee: g(`J_Bip_${S}_LowerLeg`), foot: g(`J_Bip_${S}_Foot`), off: 0, tilt: new THREE.Quaternion(),
+      locked: false, lockW: 0, lockP: new THREE.Vector3(), prevZ: null, hMin: 0.12, spent: false, slip: 0 }));
+    // bacak boyu (uyluk + baldır), aşırı gerilme sınırı için
+    root.updateMatrixWorld(true);
+    this.legs.forEach((L) => { L.up.getWorldPosition(_a); L.knee.getWorldPosition(_b); L.foot.getWorldPosition(_c); L.len = _a.distanceTo(_b) + _b.distanceTo(_c); });
+    this.lockEnabled = true; this.lockApply = true; this.slipMax = 0.16; this.maxLockDrop = 0.06; this.lockDrop = 0; this.stats = { locks: 0, releases: 0 };
     this.pelvis = 0; this.weight = 0; this.enabled = true;
-    this.debug = { offsets: [0, 0], pelvis: 0 };
+    this.debug = { offsets: [0, 0], pelvis: 0, lockDrop: 0 };
   }
-  reset() { this.pelvis = 0; this.weight = 0; for (const L of this.legs) { L.off = 0; L.tilt.identity(); } }
+  reset() { this.pelvis = 0; this.weight = 0; this.lockDrop = 0; for (const L of this.legs) { L.off = 0; L.tilt.identity(); L.locked = false; L.lockW = 0; L.prevZ = null; L.spent = false; } }
   normal(x, z, out) {
     const e = 0.25, G = this.ground;
     return out.set(G(x - e, z) - G(x + e, z), 2 * e, G(x, z - e) - G(x, z + e)).normalize();
   }
-  // active: ayak IK'si uygulanmalı mı (yerde, takla/zıplama/ölüm değil). Mixer'dan ve kök konumlandıktan sonra çağrılır.
-  update(dt, active) {
+  // Basma tespiti (animasyon pozundan, kök uzayında): ayak bileği kendi en alçak yüksekliğine yakın ve köke göre
+  // geriye gidiyorsa ayak yerdedir. Kilit: basışın başında ayağın dünya konumu saklanır ve basış boyunca IK hedefi
+  // olur. Bacak aşırı gerilirse ya da animasyondan çok uzaklaşırsa kilit o basış için bırakılır ve ayak yumuşakça
+  // animasyona döner.
+  _stance(L, dt, lockable, speed) {
+    L.foot.getWorldPosition(_c); _a.copy(_c); this.root.worldToLocal(_a);
+    const h = _a.y, vz = L.prevZ == null ? 0 : (_a.z - L.prevZ) / Math.max(dt, 1e-4); L.prevZ = _a.z;
+    L.hMin = Math.min(h, L.hMin + dt * 0.02);
+    // giriş: ayak alçakta ve köke göre en az gövde hızının yarısıyla geriye süpürüyor (klibin yavaş iniş kareleri
+    // kilitlenmez); devam: biraz daha yüksekte ve hâlâ geriye gidiyor
+    const down = L.locked ? h < L.hMin + 0.11 && vz < 0.25 : h < L.hMin + 0.05 && vz < -Math.max(0.05, speed * 0.5);
+    L.need = 0;
+    if (lockable && this.lockEnabled && down && !L.spent) {
+      if (!L.locked) { L.locked = true; L.lockP.copy(_c); this.stats.locks++; }
+      else {
+        L.slip = Math.hypot(L.lockP.x - _c.x, L.lockP.z - _c.z);
+        // erişim: kilit noktası bacak boyunun ötesindeyse kalça birkaç cm alçalır (gerçek yürüyüşte de olur);
+        // bu da yetmiyorsa kilit bırakılır
+        L.up.getWorldPosition(_b);
+        const reach = L.len * 0.995, hd = Math.hypot(L.lockP.x - _b.x, L.lockP.z - _b.z), dv = _b.y - _c.y;
+        L.need = hd < reach ? Math.max(0, dv - Math.sqrt(reach * reach - hd * hd)) : 1;
+        const why = L.slip > this.slipMax ? 'slip' : L.need > this.maxLockDrop ? 'stretch' : null;
+        if (why) {
+          L.locked = false; L.spent = true; L.need = 0; this.stats.releases++; this.stats[why] = (this.stats[why] || 0) + 1;
+          if (h < L.hMin + 0.08) this.stats.early = (this.stats.early || 0) + 1; // topuk kalkmadan bırakıldı
+        }
+      }
+    } else { L.locked = false; if (!down) L.spent = false; }
+    L.lockW += ((L.locked ? 1 : 0) - L.lockW) * Math.min(1, dt * (L.locked ? 40 : 12));
+    if (!lockable || !this.lockEnabled) { L.lockW = 0; L.spent = false; }
+  }
+  // active: ayak IK'si uygulanmalı mı (yerde, takla/zıplama/ölüm değil); lockable: yürüme döngüsü (ayak kilidi);
+  // speed: gövde hızı (m/sn).
+  // Mixer'dan ve kök konumlandıktan sonra çağrılır.
+  update(dt, active, lockable = false, speed = 0) {
     const k = Math.min(1, dt * 14);
     this.weight += ((active && this.enabled ? 1 : 0) - this.weight) * Math.min(1, dt * 8);
     const rootY = this.root.position.y, w = this.weight;
-    if (w < 0.001) { this.pelvis = 0; return; }
+    if (w < 0.001) { this.pelvis = 0; for (const L of this.legs) { L.locked = false; L.lockW = 0; L.prevZ = null; } return; }
     this.root.updateMatrixWorld(true);
+    let need = 0;
+    for (const L of this.legs) { this._stance(L, dt, lockable && active, speed); need = Math.max(need, L.need * L.lockW); }
+    this.lockDrop += (need - this.lockDrop) * Math.min(1, dt * (need > this.lockDrop ? 30 : 8));
     // her ayağın altındaki zeminin kök zeminine göre farkı
     let lo = 0;
     for (const L of this.legs) {
@@ -70,7 +111,7 @@ export class FootIK {
     }
     // kalça: aşağıdaki ayağa uzanabilsin diye alçalır
     this.pelvis += (lo - this.pelvis) * k;
-    const drop = this.pelvis * w;
+    const drop = (this.pelvis - this.lockDrop) * w;
     if (Math.abs(drop) > 1e-5) {
       this.hips.getWorldPosition(_t); _t.y += drop;
       this.hips.parent.worldToLocal(_t); this.hips.position.copy(_t); this.hips.updateMatrixWorld(true);
@@ -81,6 +122,9 @@ export class FootIK {
       L.foot.getWorldPosition(_t);
       // kalça indiği için ayak da indi: animasyondaki yüksekliğe zemin farkını ekle
       _t.y += (L.off * w) - drop;
+      // kilitli ayak: yatay konum dünyada sabit (yükseklik animasyondan: topuk kalkışı korunur)
+      const lw = this.lockApply ? L.lockW * w : 0; // lockApply=false: basış tespiti çalışır ama kilit uygulanmaz (ölçüm için)
+      if (lw > 1e-3) { _t.x += (L.lockP.x - _t.x) * lw; _t.z += (L.lockP.z - _t.z) * lw; }
       solveTwoBone(L.up, L.knee, L.foot, _t, _fwd);
       // ayak tabanını zemin eğimine yatır (sınırlı açı)
       this.normal(_t.x, _t.z, _n);
@@ -92,6 +136,6 @@ export class FootIK {
       setWorldQuat(L.foot, _qf.premultiply(_q));
       this.debug.offsets[i] = L.off;
     });
-    this.debug.pelvis = drop;
+    this.debug.pelvis = drop; this.debug.lockDrop = this.lockDrop;
   }
 }
