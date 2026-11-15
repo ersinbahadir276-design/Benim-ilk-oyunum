@@ -139,3 +139,34 @@ export class FootIK {
     this.debug.pelvis = drop; this.debug.lockDrop = this.lockDrop;
   }
 }
+
+// Yaratıklar (tilki, ejderha, Mağara Devi) için ortak basma kilidi. Basış animasyon pozundan, gövde (pivot) uzayında
+// tespit edilir: bacak ucu kendi en alçak yüksekliğine yakın ve gövdeye göre en az gövde hızının yarısıyla geriye
+// gidiyorsa ayak yerdedir. Basış boyunca ucun yatay dünya konumu sabit tutulur (yükseklik animasyondan gelir).
+// Bacak aşırı gerilirse ya da kayma birikirse kilit o basışta bırakılır, ayak yumuşakça animasyona döner.
+//  l: bacak durumu (locked, lockW, lockP, hMin, prevZ, spent, slip alanları burada tutulur)
+//  local: ucun gövde uzayındaki animasyon konumu, world: dünya konumu, hip: bacak kökünün dünya konumu
+//  reach: bacak boyu, can: yürüyüş döngüsünde mi, stats: { locks, releases, early }
+export function stanceLock(l, local, world, hip, reach, dt, speed, can, stats) {
+  const h = local.y, vz = l.prevZ == null ? 0 : (local.z - l.prevZ) / Math.max(dt, 1e-4); l.prevZ = local.z;
+  l.hMin = l.hMin == null ? h : Math.min(h, l.hMin + dt * reach * 0.02);
+  const down = l.locked ? h < l.hMin + reach * 0.13 && vz < speed * 0.15 : h < l.hMin + reach * 0.06 && vz < -Math.max(0.05, speed * 0.5);
+  l.slip = 0;
+  if (can && down && !l.spent) {
+    if (!l.locked) { l.locked = true; l.lockP.copy(world); stats.locks++; }
+    else {
+      l.slip = Math.hypot(l.lockP.x - world.x, l.lockP.z - world.z);
+      // erişim: kilit noktası bacak boyunun ötesindeyse gövde biraz alçalabilir (en çok boyun %6'sı; düz bacaklı
+      // yürüyüşte basışın başında olağan). Bu da yetmiyorsa ya da ayak animasyondan çok uzaklaştıysa kilit bırakılır.
+      const hd = Math.hypot(l.lockP.x - hip.x, l.lockP.z - hip.z), dv = hip.y - world.y;
+      const need = hd < reach ? Math.max(0, dv - Math.sqrt(reach * reach - hd * hd)) : Infinity;
+      if (l.slip > reach * 0.4 || need > reach * 0.06) {
+        l.locked = false; l.spent = true; stats.releases++;
+        if (h < l.hMin + reach * 0.04) stats.early++;
+      }
+    }
+  } else { l.locked = false; if (!down) l.spent = false; }
+  if (!can) { l.spent = false; l.prevZ = null; }
+  l.lockW += ((l.locked ? 1 : 0) - l.lockW) * Math.min(1, dt * (l.locked ? 40 : 12));
+  if (!can && l.lockW < 1e-3) l.lockW = 0;
+}

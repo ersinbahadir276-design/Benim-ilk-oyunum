@@ -215,6 +215,18 @@ window.runGameplayTests = async function () {
       const fin = a.c.legs.every((l) => (l.A ? [l.A, l.B, l.C].every((j) => [j.quaternion.x, j.quaternion.w].every(Number.isFinite)) : Number.isFinite(l.th.rotation.x + l.kn.rotation.x)));
       ok(`yaratık IK (${kind}): NaN yok`, fin);
       if (a.c.mixer) a.c.mixer.timeScale = 1;
+      // yürüyüş: basma kilidi — kilitli ayak dünyada kaymaz, animasyon tek başına kayardı; basışlar erken bırakılmaz
+      a.c.ikEnabled = true; a.x = 2; a.z = 1; a.yaw = 0; freeze(a); a.c.reset(); a.home = { x: a.x + 80, z: a.z }; a.set('return', 99);
+      let prev = null, sIK = 0, sA = 0, n = 0, rep = 0; const st0 = { ...a.c.ikStats };
+      sim(4, () => {
+        a.calmT = 999; a.target = null; if (a.state !== 'return') a.set('return', 99); P.x = a.x - 9; P.z = a.z;
+        const cur = a.c.legs.map((l) => ({ p: tip(a, l), q: l.p.clone(), lk: l.locked && l.lockW > 0.95, lp: l.lockP.clone() }));
+        if (prev) cur.forEach((c, i) => { const o = prev[i]; if (c.lk && o.lk) { if (c.lp.distanceToSquared(o.lp) > 1e-8) { rep++; return; } sIK += Math.hypot(c.p.x - o.p.x, c.p.z - o.p.z); sA += Math.hypot(c.q.x - o.q.x, c.q.z - o.q.z); n++; } });
+        prev = cur;
+      });
+      const st = a.c.ikStats, locks = st.locks - st0.locks, rel = st.releases - st0.releases;
+      ok(`yaratık IK (${kind}): yürürken basan ayak kaymaz (basma kilidi)`, n > 40 && rep === 0 && sIK / n < 0.002 && sA / n > (sIK / n) * 5 && locks >= 6 && rel <= locks * 0.25,
+        `hız=${a.speed.toFixed(1)} kare=${n} kayma IK=${(sIK / n * 1000).toFixed(2)} animasyon=${(sA / n * 1000).toFixed(1)} mm/kare, basış=${locks}, erken bırakma=${rel}` + (a.c.groundSpeed ? ' klip yer hızı=' + JSON.stringify(a.c.groundSpeed, (k, v) => (typeof v === 'number' ? +v.toFixed(2) : v)) : ` adım açısı=${a.c.stride.toFixed(2)} kadans=${a.c.omega.toFixed(1)}`));
       a.dead = true; a.deadT = 0; sim(0.1); ok(`yaratık IK (${kind}): ölünce devre dışı`, a.c.ikW === 0); a.dead = false; a.hp = a.hpMax; a.c.reset();
       a.x = keep[0]; a.z = keep[1]; a.yaw = keep[2]; a.home = { x: keep[0], z: keep[1] }; freeze(a); a.calmT = 0; a.stT = 0;
     }

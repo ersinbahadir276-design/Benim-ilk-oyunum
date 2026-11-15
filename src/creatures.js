@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as skeletonClone } from 'three/addons/utils/SkeletonUtils.js';
-import { solveTwoBone, setWorldQuat } from './ik.js';
+import { solveTwoBone, setWorldQuat, stanceLock } from './ik.js';
 
 const PI = Math.PI, TAU = PI * 2;
 const C = (h) => new THREE.Color(h);
@@ -98,7 +98,9 @@ class Creature {
   _begin(dt, anim) { if (anim !== this.anim) { this.anim = anim; this.at = 0; } this.at += dt; this.k = 1 - Math.exp(-dt * 12); }
   // eklemi hedef açıya yumuşakça götür: animasyonlar arası geçişler buradan gelir
   r(j, x = 0, y = 0, z = 0) { const k = this.k, e = j.rotation; e.x += (x - e.x) * k; e.y += (y - e.y) * k; e.z += (z - e.z) * k; }
-  reset() { this.at = 0; this.anim = ''; }
+  reset() { this.at = 0; this.anim = ''; if (this.legs) for (const l of this.legs) if (l.lockP) { l.locked = false; l.lockW = 0; l.prevZ = null; l.hMin = null; l.spent = false; } }
+  // basma kilidi durumu (stanceLock için) — tilki, ejderha, Mağara Devi
+  static lockState() { return { locked: false, lockW: 0, lockP: new THREE.Vector3(), loc: new THREE.Vector3(), hMin: null, prevZ: null, spent: false, slip: 0 }; }
 }
 
 /* ------------------------------------------------------------------ DÖRT AYAKLI */
@@ -421,25 +423,47 @@ class Biped extends Creature {
       const el = J(sh, 0, -0.62 * S, 0); const ap = [limb(0.18 * S, 0.15 * S, 0.58 * S, skin), at(ball(0.2 * S, skin, 1, 1.1, 1), 0, -0.68 * S, 0)];
       if (s === 1) { ap.push(at(limb(0.07 * S, 0.19 * S, 1.25 * S, 0x5b3d22, 8), 0, -0.68 * S, -0.25 * S, -PI / 2)); for (let i = 0; i < 6; i++) ap.push(at(cone(0.04 * S, 0.13 * S, 0xcfcfcf, 4), 0, -0.68 * S, (0.75 + (i % 3) * 0.13) * S, 0, 0, i * 1.05).applyMatrix4(new THREE.Matrix4())); }
       el.add(mesh(ap)); this.arms.push({ sh, el, s });
-      const th = J(hips, s * 0.3 * S, -0.1 * S, 0); th.add(mesh([limb(0.25 * S, 0.19 * S, 0.5 * S, skin)]));
+      const th = J(hips, s * 0.3 * S, -0.1 * S, 0); th.rotation.order = 'ZXY'; th.add(mesh([limb(0.25 * S, 0.19 * S, 0.5 * S, skin)]));
       const kn = J(th, 0, -0.5 * S, 0); kn.add(mesh([limb(0.19 * S, 0.15 * S, 0.48 * S, skin), at(ball(0.2 * S, skin, 1, 0.55, 1.7), 0, -0.56 * S, 0.12 * S)]));
       // ayak IK'si: uyluk 0.5·S, baldır (diz → ayak bileği) 0.48·S
-      this.legs.push({ th, kn, s, L0: 0.5 * S, L1: 0.48 * S, ank: new THREE.Vector3(0, -0.48 * S, 0), off: 0, ax: 0, kx: 0, p: new THREE.Vector3(), tgt: new THREE.Vector3() });
+      this.legs.push({ th, kn, s, L0: 0.5 * S, L1: 0.48 * S, ank: new THREE.Vector3(0, -0.48 * S, 0), off: 0, ax: 0, kx: 0, p: new THREE.Vector3(), tgt: new THREE.Vector3(), ...Creature.lockState() });
     }
-    this.hipH = hipH; this.ikW = 0; this.ikDrop = 0; this.ikEnabled = true; this._ikOn = false;
+    this.ikStats = { locks: 0, releases: 0, early: 0 };
+    this.hipH = hipH; this.stride = 0; this.omega = 0; this.ikW = 0; this.ikDrop = 0; this.ikEnabled = true; this._ikOn = false;
   }
   animate(dt, anim, t, o = {}) {
     // önceki karenin IK düzeltmesini geri al: yumuşatma (r) saf animasyon açılarından devam etsin, düzeltme birikmesin
-    if (this._ikOn) { this.hips.position.y = this._ahy; for (const l of this.legs) { l.th.rotation.x = l.ax; l.kn.rotation.x = l.kx; } this._ikOn = false; }
+    if (this._ikOn) { this.hips.position.y = this._ahy; for (const l of this.legs) { l.th.rotation.x = l.ax; l.th.rotation.z = l.az; l.kn.rotation.x = l.kx; } this._ikOn = false; }
     this._begin(dt, anim); const k = this.k, moving = anim === 'walk' || anim === 'run';
-    this.amp += ((moving ? (anim === 'run' ? 1 : 0.6) : 0) - this.amp) * k; if (moving) this.phase += dt * (anim === 'run' ? 7.5 : 4.2);
-    const A = this.amp, ph = this.phase, death = anim === 'die' ? ease(clamp01(this.at / 1.1)) : 0;
+    this.amp += ((moving ? (anim === 'run' ? 1 : 0.6) : 0) - this.amp) * k;
+    // adım boyu–hız eşlemesi: basışta (yarım döngü, π/ω) ayak 2·L·sin(a) kadar geriye süpürülür. Gövde hızına eşit olsun
+    // diye önce uyluk salınım açısı (a) büyür; sınıra gelince kadans (ω) artar (en çok 2 kat).
+    const run = anim === 'run', L = this.legs[0].L0 + this.legs[0].L1, base = run ? 7.5 : 4.2, aMax = run ? 0.75 : 0.6, v = o.speed || 0;
+    let sa = run ? 0.6 : 0.36, om = base;
+    if (moving && v > 0.05) {
+      const D = v * PI / base;
+      if (D < 2 * L * Math.sin(aMax)) sa = Math.max(0.12, Math.asin(D / (2 * L)));
+      else { sa = aMax; om = Math.min(base * 2, v * PI / (2 * L * Math.sin(aMax))); }
+    }
+    this.stride += ((moving ? sa : 0) - this.stride) * k; this.omega = om; this.cadence = om;
+    if (moving) this.phase += dt * om;
+    const A = this.amp, ph = this.phase, death = anim === 'die' ? ease(clamp01(this.at / 1.1)) : 0, sw = this.stride;
     const p = anim === 'attack' ? clamp01(this.at / this.attackTime) : 0, wind = p < 0.45 ? p / 0.45 : 0, smash = p >= 0.45 ? 1 - (p - 0.45) / 0.55 : 0;
-    this.hips.position.y += (this.hipH - Math.abs(Math.sin(ph)) * 0.06 * A - smash * 0.15 - this.hips.position.y) * k;
+    const kl = 1 - Math.exp(-dt * 60);
     this.r(this.hips, 0.05 + A * 0.08, Math.sin(ph) * 0.1 * A, Math.sin(ph) * 0.04 * A);
     this.r(this.chest, 0.12 + Math.sin(t * 1.5) * 0.02 - wind * 0.35 + smash * 0.55, -Math.sin(ph) * 0.14 * A + wind * 0.3, 0);
     this.r(this.head, -0.05 + smash * -0.2, anim === 'idle' ? Math.sin(t * 0.5 + this.seed) * 0.5 : 0, 0);
-    this.legs.forEach((l) => { const s = Math.sin(ph + (l.s > 0 ? 0 : PI)); this.r(l.th, -s * 0.6 * A - 0.05 + smash * -0.2, 0, l.s * 0.06); this.r(l.kn, Math.max(0, Math.cos(ph + (l.s > 0 ? 0 : PI))) * 0.9 * A + 0.1 + smash * 0.3, 0, 0); });
+    // bacak hedefleri sürekli; genel yumuşatma (τ≈83 ms) yürüyüş döngüsünü süzüp adımı kısaltacağı için bacaklar hızlı izler
+    this.legs.forEach((l) => {
+      const s = Math.sin(ph + (l.s > 0 ? 0 : PI)), th = l.th.rotation, kn = l.kn.rotation;
+      th.x += (-s * sw - 0.05 + smash * -0.2 - th.x) * kl; th.y += (0 - th.y) * k; th.z += (l.s * 0.06 - th.z) * k;
+      kn.x += (Math.max(0, Math.cos(ph + (l.s > 0 ? 0 : PI))) * 0.9 * A + 0.1 + smash * 0.3 - kn.x) * kl;
+    });
+    // ters sarkaç: kalça, en uzun (basan) bacağın gerçek dikey boyuna göre iner/kalkar → basan ayak basış boyunca aynı
+    // yükseklikte kalır (kalça eğimi ve diz bükümü de hesaba katılır; bekleme pozunda düşüş 0)
+    const hp = this.hips.rotation.x, ext = (l) => l.L0 * Math.cos(l.th.rotation.x + hp) + l.L1 * Math.cos(l.th.rotation.x + hp + l.kn.rotation.x);
+    const ref = this.legs[0].L0 + this.legs[0].L1 * Math.cos(0.1), vault = (ref - Math.max(...this.legs.map(ext))) * clamp01(A / 0.6);
+    this.hips.position.y += (this.hipH - vault - smash * 0.15 - this.hips.position.y) * kl;
     this.arms.forEach((a) => {
       const s = Math.sin(ph + (a.s > 0 ? PI : 0));
       if (a.s === 1 && p > 0) { this.r(a.sh, -(wind * 2.9 + smash * 1.0), 0, 0.15); this.r(a.el, -(wind * 0.5 + smash * 0.2), 0, 0); }
@@ -452,32 +476,40 @@ class Biped extends Creature {
   // zeminine göre farkı hedefe eklenir; erişilemeyen hedefte kalça alçalır; uyluk + baldır düzlemsel iki kemikli IK ile çözülür.
   _footIK(dt, o, anim) {
     const G = o.ground, sp = this.spec, legs = this.legs;
-    for (const l of legs) { l.ax = l.th.rotation.x; l.kx = l.kn.rotation.x; }
+    for (const l of legs) { l.ax = l.th.rotation.x; l.az = l.th.rotation.z; l.kx = l.kn.rotation.x; }
     this._ahy = this.hips.position.y;
     const want = G && o.ik !== false && this.ikEnabled && anim !== 'die' && !o.air;
     this.ikW = want ? this.ikW + (1 - this.ikW) * Math.min(1, dt * 6) : 0;
     const w = this.ikW;
-    if (w < 0.002) { for (const l of legs) l.off = 0; this.ikDrop = 0; return; }
+    if (w < 0.002) { for (const l of legs) { l.off = 0; l.locked = false; l.lockW = 0; l.prevZ = null; } this.ikDrop = 0; return; }
     this._ikOn = true;
     const root = this.root, k = Math.min(1, dt * 14), rootY = root.position.y, maxUp = sp.h * 0.2, maxDn = sp.h * 0.16;
+    const speed = o.speed || 0, can = (anim === 'walk' || anim === 'run') && speed > 0.2;
     root.updateMatrixWorld(true);
     let need = 0;
     for (const l of legs) {
       l.kn.localToWorld(l.p.copy(l.ank));
-      const off = THREE.MathUtils.clamp(G(l.p.x, l.p.z) - rootY, -maxDn, maxUp);
+      // basma kilidi: basan ayağın yatay konumu dünyada sabit
+      l.th.getWorldPosition(_v1); this.pivot.worldToLocal(l.loc.copy(l.p));
+      stanceLock(l, l.loc, l.p, _v1, l.L0 + l.L1, dt, speed, can, this.ikStats);
+      l.tgt.copy(l.p); const lw = l.lockW * w; l.tgt.x += (l.lockP.x - l.p.x) * lw; l.tgt.z += (l.lockP.z - l.p.z) * lw;
+      const off = THREE.MathUtils.clamp(G(l.tgt.x, l.tgt.z) - rootY, -maxDn, maxUp);
       l.off += (off - l.off) * k;
-      l.tgt.copy(l.p); l.tgt.y += l.off * w;
-      l.th.getWorldPosition(_v1);
+      l.tgt.y += l.off * w;
       need = Math.max(need, _v1.distanceTo(l.tgt) - Math.max(_v1.distanceTo(l.p), (l.L0 + l.L1) * 0.97));
     }
-    this.ikDrop += (Math.min(need, sp.h * 0.15) - this.ikDrop) * k;
+    const dn = Math.min(need, sp.h * 0.15); this.ikDrop += (dn - this.ikDrop) * Math.min(1, dt * (dn > this.ikDrop ? 40 : 14)); // alçalma hızlı (kilitli ayak düz bacakla erişilemez kalmasın), kalkış yumuşak
     if (this.ikDrop > 1e-4) this.hips.position.y -= this.ikDrop;
     this.hips.updateMatrixWorld(true);
     for (const l of legs) {
       this.hips.worldToLocal(_v2.copy(l.tgt)).sub(l.th.position);
-      const L0 = l.L0, L1 = l.L1, d = THREE.MathUtils.clamp(_v2.length(), Math.abs(L0 - L1) + 1e-3, (L0 + L1) * 0.999);
+      // yana açılma (uyluk z, 'ZXY' sırası: önce bacak düzleminde salınım, sonra düzlem yana döner): kalça yalpaladığında
+      // ya da dönüşte kilitli ayak bacak düzleminin dışında kalır; düzlem hedefe çevrilir, ardından düzlemsel çözüm
+      const ab = THREE.MathUtils.clamp(Math.atan2(_v2.x, -_v2.y), -0.4, 0.4), cy = -_v2.x * Math.sin(ab) + _v2.y * Math.cos(ab);
+      l.th.rotation.z = ab;
+      const L0 = l.L0, L1 = l.L1, d = THREE.MathUtils.clamp(Math.hypot(cy, _v2.z), Math.abs(L0 - L1) + 1e-3, (L0 + L1) * 0.999);
       const b = Math.acos(THREE.MathUtils.clamp((d * d - L0 * L0 - L1 * L1) / (2 * L0 * L1), -1, 1));
-      l.th.rotation.x = Math.atan2(-_v2.z, -_v2.y) - Math.atan2(L1 * Math.sin(b), L0 + L1 * Math.cos(b));
+      l.th.rotation.x = Math.atan2(-_v2.z, -cy) - Math.atan2(L1 * Math.sin(b), L0 + L1 * Math.cos(b));
       l.kn.rotation.x = b;
     }
     this.root.updateMatrixWorld(true);
@@ -505,9 +537,13 @@ class GLBCreature extends Creature {
     // ayak IK'si: modelin kendi bacak zincirleri
     this.legs = (sp.ikLegs || []).map(([a, b, c]) => {
       const f = (n) => { let r = null; model.traverse((x) => { if (!r && x.isBone && x.name.startsWith(n)) r = x; }); if (!r) throw new Error(kind + ': kemik yok ' + n); return r; };
-      return { A: f(a), B: f(b), C: f(c), off: 0, p: new THREE.Vector3(), tgt: new THREE.Vector3(), qa: new THREE.Quaternion(), qb: new THREE.Quaternion() };
+      return { A: f(a), B: f(b), C: f(c), off: 0, p: new THREE.Vector3(), tgt: new THREE.Vector3(), qa: new THREE.Quaternion(), qb: new THREE.Quaternion(), ...Creature.lockState() };
     });
+    this.ikStats = { locks: 0, releases: 0, early: 0 };
     this.ikW = 0; this.ikDrop = 0; this.ikEnabled = this.legs.length > 0; this._ikOn = false;
+    // klip yer hızları (ayak süpürme hızı, m/sn): oynatma hızı gövde hızına göre ayarlanır, ayak kaymaz
+    this.groundSpeed = {};
+    if (this.legs.length) for (const n of new Set([sp.clips.walk, sp.clips.run])) if (this.actions[n]) this.groundSpeed[n] = clipGroundSpeed(this, n);
   }
   animate(dt, anim, t, o = {}) {
     // önceki karenin IK düzeltmesini geri al (klipte izi olmayan kemiklerde birikmesin)
@@ -521,7 +557,9 @@ class GLBCreature extends Creature {
       a.reset(); a.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); a.clampWhenFinished = true; a.enabled = true;
       if (this.cur) a.crossFadeFrom(this.cur, 0.3, false); a.play(); this.cur = a;
     } else if (a && this.at === dt && (anim === 'attack') && !procAttack) { a.reset().play(); }
-    if (a) a.timeScale = procDie ? 0 : anim === 'run' && sp.runScale ? sp.runScale : (anim === 'walk' || anim === 'run' ? (o.rate || 1) : 1);
+    // yürüme/koşu: klip, ölçülen yer hızına göre gövde hızıyla eşlenir (ölçüm yoksa eski oran)
+    const gs = a && this.groundSpeed[a._clip.name], loco = anim === 'walk' || anim === 'run';
+    if (a) a.timeScale = procDie ? 0 : loco && gs && o.speed > 0.05 ? THREE.MathUtils.clamp(o.speed / gs, 0.5, 2.2) : anim === 'run' && sp.runScale ? sp.runScale : (loco ? (o.rate || 1) : 1);
     this.mixer.update(dt);
     // klibi olmayan hareketler için prosedürel tamamlayıcı (tilki: saldırı/ölüm/yeme)
     const lunge = procAttack ? Math.sin(PI * clamp01(this.at / this.attackTime)) : 0, death = procDie ? ease(clamp01(this.at / 0.8)) : 0;
@@ -540,20 +578,25 @@ class GLBCreature extends Creature {
     const want = G && o.ik !== false && this.ikEnabled && !proc && anim !== 'die' && !o.air;
     this.ikW = want ? this.ikW + (1 - this.ikW) * Math.min(1, dt * 6) : 0;
     const w = this.ikW;
-    if (w < 0.002) { for (const l of legs) l.off = 0; this.ikDrop = 0; return; }
+    if (w < 0.002) { for (const l of legs) { l.off = 0; l.locked = false; l.lockW = 0; l.prevZ = null; } this.ikDrop = 0; return; }
     this._ikOn = true;
     const root = this.root, k = Math.min(1, dt * 14), rx = root.position.x, rz = root.position.z, rootY = root.position.y;
+    const speed = o.speed || 0, can = (anim === 'walk' || anim === 'run') && speed > 0.2;
     const fx = Math.sin(root.rotation.y), fz = Math.cos(root.rotation.y), grad = -Math.tan(o.slope || 0), maxUp = sp.h * 0.45, maxDn = sp.h * 0.35;
     root.updateMatrixWorld(true); _fw.set(fx, 0, fz);
     let need = 0;
     for (const l of legs) {
       l.qa.copy(l.A.quaternion); l.qb.copy(l.B.quaternion);
       l.C.getWorldPosition(l.p);
-      const fwd = (l.p.x - rx) * fx + (l.p.z - rz) * fz;
-      const off = THREE.MathUtils.clamp(G(l.p.x, l.p.z) - (rootY + fwd * grad), -maxDn, maxUp);
-      l.off += (off - l.off) * k;
-      l.tgt.copy(l.p); l.tgt.y += l.off * w;
       l.A.getWorldPosition(_v1); l.B.getWorldPosition(_v2); const reach = _v1.distanceTo(_v2) + _v2.distanceTo(l.p);
+      // basma kilidi (gövde uzayında tespit, pivot eğimle döndüğü için yükseklik eğimden bağımsız)
+      this.pivot.worldToLocal(l.loc.copy(l.p));
+      stanceLock(l, l.loc, l.p, _v1, reach, dt, speed, can, this.ikStats);
+      l.tgt.copy(l.p); const lw = l.lockW * w; l.tgt.x += (l.lockP.x - l.p.x) * lw; l.tgt.z += (l.lockP.z - l.p.z) * lw;
+      const fwd = (l.tgt.x - rx) * fx + (l.tgt.z - rz) * fz;
+      const off = THREE.MathUtils.clamp(G(l.tgt.x, l.tgt.z) - (rootY + fwd * grad), -maxDn, maxUp);
+      l.off += (off - l.off) * k;
+      l.tgt.y = l.p.y + l.off * w;
       need = Math.max(need, _v1.distanceTo(l.tgt) - Math.max(_v1.distanceTo(l.p), reach * 0.97));
     }
     this.ikDrop += (Math.min(need, sp.h * 0.3) - this.ikDrop) * k;
@@ -566,6 +609,30 @@ class GLBCreature extends Creature {
       setWorldQuat(l.C, _qc);
     }
   }
+}
+
+// Klibin doğal yer hızı: klip ayrı örneklenir, her bacak ucunun gövde (pivot) uzayındaki izi çıkarılır; yere yakın ve geriye
+// giden karelerdeki süpürme hızlarının ortancası alınır (ortanca: yavaş iniş/kalkış kareleri ortalamayı bozmasın).
+// Sonuç türe göre önbelleğe alınır (her hayvan kopyası yeniden ölçmez).
+const GS_CACHE = {};
+function clipGroundSpeed(cr, name) {
+  const key = cr.kind + '/' + name; if (key in GS_CACHE) return GS_CACHE[key];
+  const act = cr.actions[name], clip = act._clip, N = 90, dt = clip.duration / N, tracks = cr.legs.map(() => []);
+  act.reset(); act.setLoop(THREE.LoopRepeat, Infinity); act.timeScale = 1; act.weight = 1; act.play();
+  const p = new THREE.Vector3();
+  cr.root.updateMatrixWorld(true);
+  for (let i = 0; i <= N; i++) {
+    cr.mixer.setTime(i * dt); cr.model.updateMatrixWorld(true);
+    cr.legs.forEach((l, j) => { l.C.getWorldPosition(p); cr.pivot.worldToLocal(p); tracks[j].push([p.y, p.z]); });
+  }
+  act.stop(); cr.mixer.setTime(0);
+  const v = [];
+  for (const tr of tracks) {
+    const lo = Math.min(...tr.map((q) => q[0])), hi = Math.max(...tr.map((q) => q[0])), band = lo + Math.max(0.02 * cr.spec.h, (hi - lo) * 0.2);
+    for (let i = 1; i < tr.length; i++) { const vz = (tr[i][1] - tr[i - 1][1]) / dt; if (tr[i][0] < band && vz < 0) v.push(-vz); }
+  }
+  v.sort((a, b) => a - b);
+  return (GS_CACHE[key] = v.length ? v[v.length >> 1] : 0);
 }
 
 export function makeCreature(kind) {

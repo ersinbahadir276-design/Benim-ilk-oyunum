@@ -37,7 +37,8 @@ if (name === 'hero') {
   let speed = 0; c.debugAnim = P.get('a') || 'idle';
   anims.forEach((n) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => { c.reset?.(); c.debugAnim = n; }; ui.appendChild(b); });
   Object.keys(SPECIES).forEach((n) => { const a = document.createElement('a'); a.href = '?m=' + n; a.textContent = ' ' + n; a.style.color = '#fd8'; ui.appendChild(a); });
-  let tt = 0; update = (dt) => { tt += dt; c.animate(dt, c.debugAnim, tt); };
+  // gövde hızı türün yürüme/koşu hızı: oynatma hızı ve adım boyu oyundaki gibi eşlenir
+  let tt = 0; update = (dt) => { tt += dt; c.animate(dt, c.debugAnim, tt, { speed: c.debugAnim === 'walk' ? c.spec.walk : c.debugAnim === 'run' ? c.spec.run : 0 }); };
   window.T = { setTime: (t) => { const n = Math.round(t * 60); for (let i = 0; i < n; i++) update(1 / 60); } };
 }
 const ang = +(P.get('ang') ?? 0.6), el = +(P.get('el') ?? 0.25), dist = +(P.get('d') ?? 2.6) * size;
