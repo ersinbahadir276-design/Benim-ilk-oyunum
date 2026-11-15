@@ -64,6 +64,9 @@ const Hh = (q) => v3.add(hc, q), y0 = WP[1][1] + torso * 0.82, legLen = -WP[11][
 const parts = [
   { name: 'horns', mat: 'horn', bone: 'head', rigid: true, k: 0.01, sdf: symX(horn([Hh([0.05, 0.09, 0.03]), Hh([0.1, 0.15, -0.02]), Hh([0.14, 0.21, 0.0]), Hh([0.15, 0.28, 0.05])], 0.022, 0.003)) },
   { name: 'hair', mat: 'hair', bone: 'head', rigid: true, k: 0.02, sdf: disp(U(0.02, I(0.01, ellipsoid(Hh([0, 0.025, -0.02]), [0.1, 0.13, 0.125]), plane(Hh([0, 0.07, 0.07]), [0, -0.55, 0.83])), symX(ellipsoid(Hh([0.075, -0.04, -0.01]), [0.035, 0.1, 0.07]))), (x, y, z) => 0.004 * fbm(x * 70, y * 12, z * 70, 2), 0.005) },
+  // Korean-style see-through bangs: thin locks falling over the forehead to the brows, parted slightly in the middle
+  { name: 'bangs', mat: 'hair', bone: 'head', rigid: true, k: 0.012, sdf: disp(U(0.008, ...[-0.06, -0.035, -0.012, 0.012, 0.035, 0.06].map((x) => horn([Hh([x * 0.8, 0.105, 0.075]), Hh([x * 1.05, 0.075, 0.1]), Hh([x * 1.2 + Math.sign(x) * 0.006, 0.035, 0.105])], 0.017, 0.003)),
+    symX(horn([Hh([0.07, 0.07, 0.07]), Hh([0.088, 0.0, 0.08]), Hh([0.09, -0.07, 0.07])], 0.02, 0.004))), (x, y, z) => 0.002 * fbm(x * 90, y * 20, z * 90, 2), 0.003) },
   { name: 'hairFall', mat: 'hair', tau: 0.04, k: 0.03, sdf: disp(U(0.04, ellipsoid(Hh([0, -0.08, -0.09]), [0.1, 0.16, 0.06]), cone(Hh([0, -0.18, -0.11]), [0, WP[1][1] - 0.05, -0.15], 0.095, 0.075)), (x, y, z) => 0.004 * fbm(x * 70, y * 8, z * 70, 2), 0.005),
     boneFn: (x, y) => y > WP[2][1] ? [['head', 1]] : [['spine', 1]] },
   { name: 'dress', mat: 'dress', tau: 0.03, k: 0.006, sdf: I(0.004, shell(disp(cone([0, y0, 0.005], [0, -legLen + 0.03, 0.0], 0.14, 0.27), (x, y, z) => Math.max(0, -y) * 0.04 * Math.sin(Math.atan2(x, z) * 9), 0.02), 0.006), plane([0, y0, 0], [0, 1, 0]), plane([0, -legLen + 0.03, 0], [0, -1, 0])),

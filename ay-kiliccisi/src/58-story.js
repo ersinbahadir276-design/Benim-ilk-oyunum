@@ -20,7 +20,7 @@ function storyInit(){SYS.main=SYS.main||0;
  for(const[k,kind,x,z,yaw,name]of[['elder','elder',-6,47,0,'İhtiyar Doran'],['smith','smith',22,-44,PI,'Demirci Hask'],['hunter','hunter',44,66,-PI/2,'Avcı Lena'],['priest','priest',-3,40,0,'Rahibe Mira']]){
   if(!NPCM[kind])NPCM[kind]=humanGeo(kind);const p=collide(x,z,.5),n=mkNpc(kind,p[0],p[1],{yaw,post:[p[0],p[1],yaw]});n.role=k;n.name=name;n.R=rigObj(NPCM[kind],{out:.012,cull:130,outCol:[.12,.1,.1]});ROLES[k]=n}
  // the Demon King (prologue panels; the final battle comes in phase 3)
- const km=humanGeo('king');KING={x:0,z:-1300,y:0,yaw:0,R:rigObj(km,{out:.02,cull:300,outCol:[.25,.02,.03]}),sc:2.4,K:km.K,vis:false};KING.sc=1.0;rigHide(KING.R);
+ const km=humanGeo('king');KING={x:0,z:-1300,y:0,yaw:0,R:rigObj(km,{out:.02,cull:300,outCol:[.03,.02,.04]}),sc:2.4,K:km.K,vis:false};KING.sc=1.0;rigHide(KING.R);
  // cages at the eastern goblin camp
  const c=CAMPSITES[0];for(let i=0;i<2;i++){const a=c.gate+PI+(i?.5:-.5),x=c.x+Math.cos(a)*9,z=c.z+Math.sin(a)*9,y=hAt(x,z),g=G();
   for(let k=0;k<10;k++){const b=k/10*2*PI;box(g,Math.cos(b)*.8-.04,0,Math.sin(b)*.8-.04,Math.cos(b)*.8+.04,1.8,Math.sin(b)*.8+.04,[.3,.24,.16])}box(g,-.9,1.8,-.9,.9,1.9,.9,[.28,.2,.14]);
