@@ -78,5 +78,21 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) kahraman: saç ve palto eteği yay kemikleri
+  { const S = P.hero.springs, J = S.joints, fin = () => J.every((j) => Number.isFinite(j.tail.x + j.tail.y + j.tail.z) && Number.isFinite(j.bone.quaternion.w));
+    ok('kahraman: yay kemikleri yüklendi (saç + etek)', J.length >= 20 && J.some((j) => /Hair/.test(j.bone.name)) && J.some((j) => /Skirt/.test(j.bone.name)), J.length + ' eklem');
+    P.x = 0; P.z = 6; P.yaw = 0; P.state = 'move'; G.keys = {}; G.edge = {}; S.reset(); sim(2);
+    const skirt = J.filter((j) => /Skirt/.test(j.bone.name));
+    const swing = () => skirt.reduce((m, j) => Math.max(m, j.bone.quaternion.angleTo(j.initQ)), 0);
+    const idleSwing = swing(); G.keys.w = true; G.keys.run = true; let runSwing = 0, inLeg = 0;
+    sim(2, () => { runSwing = Math.max(runSwing, swing()); for (const j of skirt) for (const c of S.extra) if (j.tail.distanceTo(c.w) < (c.rWorld ?? c.r) * 0.6) inLeg++; });
+    G.keys.run = false; G.keys.w = false;
+    const lag = runSwing > idleSwing + 0.05;
+    ok('kahraman: koşarken etek savrulur, bacağa gömülmez', lag && inLeg === 0 && fin(), `salınım ${idleSwing.toFixed(2)}→${runSwing.toFixed(2)} rad, gömülü=${inLeg}`);
+    const hair = J.filter((j) => /Hair/.test(j.bone.name)); const q0 = hair.map((j) => j.bone.quaternion.clone());
+    P.yaw += 2.5; sim(0.2); const moved = hair.some((j, i) => j.bone.quaternion.angleTo(q0[i]) > 0.02);
+    ok('kahraman: ani dönüşte saç tepki verir', moved && fin());
+    P.x = 300; P.z = 300; sim(0.1); ok('kahraman: ışınlanmada saç sıfırlanır (savrulma yok)', fin() && hair.every((j) => j.tail.distanceTo(j.bone.getWorldPosition(new j.tail.constructor())) < 0.5));
+    P.x = 0; P.z = 6; sim(0.2); }
   G.running = real; return out;
 };
