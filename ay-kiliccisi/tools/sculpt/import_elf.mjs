@@ -51,7 +51,7 @@ const segs = [[0, WP[0], WP[1]], [1, WP[1], v3.add(WP[2], [0, -0.02, 0])], [2, W
   [6, WP[6], WP[7]], [7, WP[7], WP[8]], [8, WP[8], v3.add(WP[8], v3.mul(v3.norm(v3.sub(WP[8], WP[7])), 0.18))], [9, WP[9], WP[10]], [10, WP[10], WP[11]], [11, WP[11], v3.add(WP[11], [0, -0.06, 0.15])], [12, WP[12], WP[13]], [13, WP[13], WP[14]], [14, WP[14], v3.add(WP[14], [0, -0.06, 0.15])]];
 const segD = (p, a, c) => { const ab = v3.sub(c, a), t = Math.max(0, Math.min(1, v3.dot(v3.sub(p, a), ab) / v3.dot(ab, ab))); return v3.len(v3.sub(p, v3.add(a, v3.mul(ab, t)))); };
 const Jb = new Uint8Array(nv * 4), Wb = new Float32Array(nv * 4), C = new Float32Array(nv * 3), M = new Float32Array(nv * 4), UV = new Float32Array(nv * 2), MASK = new Float32Array(nv);
-const hc = v3.add(WP[2], [0, 0.11, 0.0]), hr = 0.1, skin = [0.86, 0.78, 0.84];
+const hc = [0, 1.665 - rootY, 0.014], hr = 0.095, skin = [0.86, 0.78, 0.84];
 for (let i = 0; i < nv; i++) { const p = [V[i * 3], V[i * 3 + 1], V[i * 3 + 2]];
   const ds = segs.map(([b, a, c]) => { let d = segD(p, a, c); if ((b >= 3 && b <= 8) && Math.abs(p[0]) < 0.15) d += 0.2; if ((b === 9 || b === 10) && p[0] < -0.01) d += 0.2; if ((b === 12 || b === 13) && p[0] > 0.01) d += 0.2; return [b, d]; }).sort((x, y) => x[1] - y[1]);
   const d0 = ds[0][1], w = ds.slice(0, 4).map(([b, d]) => [b, Math.exp(-Math.pow((d - d0) / 0.035, 2))]), tot = w.reduce((a, q) => a + q[1], 0);
@@ -62,12 +62,13 @@ for (let i = 0; i < nv; i++) { const p = [V[i * 3], V[i * 3 + 1], V[i * 3 + 2]];
 const BN = ['root', 'spine', 'head', 'lSh', 'lEl', 'lWr', 'rSh', 'rEl', 'rWr', 'lHip', 'lKnee', 'lFoot', 'rHip', 'rKnee', 'rFoot', 'jaw'];
 const Hh = (q) => v3.add(hc, q), y0 = WP[1][1] + torso * 0.82, legLen = -WP[11][1];
 const parts = [
-  { name: 'horns', mat: 'horn', bone: 'head', rigid: true, k: 0.01, sdf: symX(horn([Hh([0.045, 0.07, 0.03]), Hh([0.09, 0.13, -0.02]), Hh([0.13, 0.19, 0.0]), Hh([0.14, 0.26, 0.05])], 0.022, 0.003)) },
-  { name: 'hair', mat: 'hair', bone: 'head', rigid: true, k: 0.02, sdf: disp(U(0.02, I(0.01, ellipsoid(Hh([0, 0.02, -0.015]), [0.1, 0.115, 0.115]), plane(Hh([0, 0.06, 0.05]), [0, -0.6, 0.8]))), (x, y, z) => 0.004 * fbm(x * 70, y * 12, z * 70, 2), 0.005) },
-  { name: 'hairFall', mat: 'hair', tau: 0.04, k: 0.03, sdf: disp(U(0.04, ellipsoid(Hh([0, -0.12, -0.08]), [0.095, 0.16, 0.05]), cone(Hh([0, -0.2, -0.1]), [0, WP[1][1] - 0.05, -0.14], 0.09, 0.07)), (x, y, z) => 0.004 * fbm(x * 70, y * 8, z * 70, 2), 0.005),
+  { name: 'horns', mat: 'horn', bone: 'head', rigid: true, k: 0.01, sdf: symX(horn([Hh([0.05, 0.09, 0.03]), Hh([0.1, 0.15, -0.02]), Hh([0.14, 0.21, 0.0]), Hh([0.15, 0.28, 0.05])], 0.022, 0.003)) },
+  { name: 'hair', mat: 'hair', bone: 'head', rigid: true, k: 0.02, sdf: disp(U(0.02, I(0.01, ellipsoid(Hh([0, 0.025, -0.02]), [0.1, 0.13, 0.125]), plane(Hh([0, 0.07, 0.07]), [0, -0.55, 0.83])), symX(ellipsoid(Hh([0.075, -0.04, -0.01]), [0.035, 0.1, 0.07]))), (x, y, z) => 0.004 * fbm(x * 70, y * 12, z * 70, 2), 0.005) },
+  { name: 'hairFall', mat: 'hair', tau: 0.04, k: 0.03, sdf: disp(U(0.04, ellipsoid(Hh([0, -0.08, -0.09]), [0.1, 0.16, 0.06]), cone(Hh([0, -0.18, -0.11]), [0, WP[1][1] - 0.05, -0.15], 0.095, 0.075)), (x, y, z) => 0.004 * fbm(x * 70, y * 8, z * 70, 2), 0.005),
     boneFn: (x, y) => y > WP[2][1] ? [['head', 1]] : [['spine', 1]] },
   { name: 'dress', mat: 'dress', tau: 0.03, k: 0.006, sdf: I(0.004, shell(disp(cone([0, y0, 0.005], [0, -legLen + 0.03, 0.0], 0.14, 0.27), (x, y, z) => Math.max(0, -y) * 0.04 * Math.sin(Math.atan2(x, z) * 9), 0.02), 0.006), plane([0, y0, 0], [0, 1, 0]), plane([0, -legLen + 0.03, 0], [0, -1, 0])),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.08) / 0.16)); if (y > WP[1][1]) return [['spine', 1]]; const d = Math.max(0, Math.min(1, -y / (legLen * 0.6))); return [['root', 1 - d * 0.6], ['lHip', d * 0.6 * t], ['rHip', d * 0.6 * (1 - t)]]; } },
+  { name: 'bodice', mat: 'dress', bone: 'spine', tau: 0.03, k: 0.006, sdf: I(0.004, shell(ellipsoid([0, y0 - 0.12, 0.035], [0.15, 0.2, 0.15]), 0.007), plane([0, y0 + 0.01, 0], [0, 1, 0]), plane([0, y0 - 0.28, 0], [0, -1, 0])) },
   { name: 'straps', mat: 'dress', bone: 'spine', tau: 0.02, k: 0.004, sdf: symX(tube([[0.06, y0 - 0.02, 0.09], [0.08, WP[3][1] + 0.02, 0.0], [0.06, y0 - 0.02, -0.08]], () => 0.009)) },
 ];
 const extra = await sculpt({ name: 'kingExtras', voxel: 0.005, tris: 4500, err: 0.0015, bones: BN, parts, decals: [],
