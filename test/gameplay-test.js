@@ -295,5 +295,24 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) ilerleme: XP, seviye, yoldaş seviyesi, kayıt/yükleme
+  const PR = G.prog; release(); P.x = 0; P.z = 6; P.state = 'move'; P.alive = true; calmAll();
+  PR.level = 1; PR.xp = 0; PR.applyPlayer(true);
+  a = find('rabbit'); const xpK = Math.max(4, Math.round(a.spec.hp * 0.35)); a.damage(999, P); ok('XP: av öldürünce XP kazanılır', PR.xp === xpK, `xp=${PR.xp} beklenen=${xpK}`);
+  PR.gain(500); ok('seviye atlama: can ve saldırı artar, can dolar', PR.level > 1 && P.hpMax === 100 + 12 * (PR.level - 1) && P.hp === P.hpMax && P.dmgMul > 1, `sv=${PR.level} hpMax=${P.hpMax}`);
+  a = find('wolf'); put(a, 1.6); const hpW = a.hp; P.state = 'attack'; P.combo = 0; P.yaw = Math.atan2(a.x - P.x, a.z - P.z); P.swing(); P.state = 'move'; ok('seviye bonusu: kılıç hasarı artar', Math.abs((hpW - a.hp) - 18 * P.dmgMul) < 0.01, `hasar=${(hpW - a.hp).toFixed(1)}`); a.calmT = 999; a.target = null;
+  const lv0 = PR.level, x0 = PR.xp; a = find('deer'); freeze(a); put(a, 1.5); P.crouching = true; a.tryTame(); a.tryTame(); a.tryTame(); P.crouching = false;
+  ok('evcilleştirme XP verir, yoldaş Sv 1 başlar', a.tamed && (PR.level > lv0 || PR.xp > x0) && a.level === 1 && a.hpMax === a.spec.hp);
+  const pet1 = a; PR.petGain(pet1, 200); ok('yoldaş seviye atlar: can ve hasar çarpanı artar', pet1.level > 1 && pet1.hpMax > pet1.spec.hp && pet1.dmgMul > 1 && pet1.hp === pet1.hpMax, `sv=${pet1.level} hpMax=${pet1.hpMax}`);
+  const pxp = pet1.xp, plv = pet1.level, vic = find('rabbit'); vic.damage(999, pet1); ok('yoldaşın öldürdüğü avdan yoldaş ve oyuncu XP alır', pet1.level > plv || pet1.xp > pxp);
+  const snap = JSON.parse(JSON.stringify(PR.snapshot())); const savedLv = PR.level, savedPetLv = pet1.level, nAnim = G.animals.length;
+  ok('kayıt anlık görüntüsü', snap.v === 1 && snap.player.level === savedLv && snap.pets.length === 1 && snap.pets[0].kind === 'deer' && snap.inv.items.meat > 0);
+  release(); PR.level = 1; PR.xp = 0; PR.applyPlayer(true); G.inv.items = { flute: 1 };
+  PR.restore(snap, (kind, x, z) => { const n = new window.GAME.animals[0].constructor(G, kind, x, z); G.animals.push(n); return n; });
+  ok('kayıt yükleme: seviye, envanter ve yoldaş geri gelir', PR.level === savedLv && G.inv.count('meat') === snap.inv.items.meat && G.pets.length === 1 && G.pets[0].level === savedPetLv && G.pets[0].tamed && G.animals.length === nAnim, `sv=${PR.level} pets=${G.pets.length} hayvan ${nAnim}->${G.animals.length}`);
+  sim(3); ok('yüklenen yoldaş takip eder', G.pets[0].dist(P) < 10 && !G.pets[0].dead);
+  const en = PR.enabled; PR.enabled = true; const wrote = PR.save(); const back = PR.constructor.read(); PR.constructor.clear(); PR.enabled = en;
+  ok('localStorage kayıt/okuma', wrote && back && back.player.level === savedLv && !PR.constructor.read());
+  const rp = G.pets[0]; release(); ok('serbest bırakılan yoldaşın seviyesi sıfırlanır', G.pets.length === 0 && rp.level === 1 && rp.hpMax === rp.spec.hp && rp.dmgMul === 1, `sv=${rp.level}`);
   G.running = real; return out;
 };
