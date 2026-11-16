@@ -105,7 +105,7 @@ function updateWolf(w,P,dt,GS){
    if(r==='iframe'){if(!w.dodged){w.dodged=true;w.resolved=true;GS.onDodged(w)}}else{w.resolved=true;if(r==='hit'&&P.alive){GS.onPin(w,h);break}if(r==='block'||r==='guardbreak'){w.st='recover';w.t=0;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*6;w.kz=-Math.cos(w.yaw)*6;w.cd=rr(1.4,2);break}if(r==='parry')break}}
   if(u>=1){const p=collide(w.x,w.z,.42);w.x=p[0];w.z=p[1];w.air=0;w.pitch=0;w.st='recover';w.t=0;w.cd=rr(1.4,2.4);w.kx=Math.sin(w.yaw)*4;w.kz=Math.cos(w.yaw)*4;if(!w.dodged&&hd>1.05){w.dodged=true;GS.onMiss(w)}}break}
  case'pin':w.spd=0;w.air=0;w.crouch=lp(w.crouch,.45,.2);w.pitch=lp(w.pitch,.35,.2);w.bt-=dt;w.jaw=lp(w.jaw,.15,.3);
-  if(P.pinBy!==w||P.st!=='down'){w.st='recover';w.t=0;w.pitch=0;w.cd=rr(1.5,2.5);break}
+  if(P.pinBy!==w||P.st!=='down'){if(P.pinBy===w)P.pinBy=null;w.st='recover';w.t=0;w.pitch=0;w.cd=rr(1.5,2.5);break}
   if(w.bt<=0){w.bt=.62;w.bites++;w.jaw=1;GS.onBite(w);if(w.bites>=4){P.pinBy=null;w.st='recover';w.t=.3;w.pitch=0;w.cd=rr(2,3);w.kx=-Math.sin(w.yaw)*5;w.kz=-Math.cos(w.yaw)*5}}break;
  case'recover':w.spd=lp(w.spd,0,.2);w.crouch=lp(w.crouch,.35,.2);w.pitch=lp(w.pitch,0,.3);w.jaw=lp(w.jaw,.3,.2);w.hyaw=Math.sin(w.t*14)*.25*(1-w.t);if(w.t>1.05){w.st='chase';w.t=0;w.hyaw=0}break;
  case'evade':{w.spd=0;w.air=Math.max(0,Math.sin(Math.min(1,w.t/.4)*PI)*.45);w.crouch=lp(w.crouch,.3,.3);wolfFace(w,P.x,P.z,dt,10);

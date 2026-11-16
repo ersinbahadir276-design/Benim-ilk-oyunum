@@ -12,7 +12,7 @@ function shootArrow(from,to,speed,owner,dmg,lead){arrowGeom();const T=Math.hypot
 function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;continue}a.life-=dt;if(a.life<=0){a.on=false;continue}
   if(!a.stuck){a.vy-=9.8*dt;a.x+=a.vx*dt;a.y+=a.vy*dt;a.z+=a.vz*dt;
    if(a.y<hAt(a.x,a.z)+.05){a.stuck=1;a.life=Math.min(a.life,3);a.y=hAt(a.x,a.z)+.08}
-   else if(a.owner==='foe'){if(P.alive&&Math.hypot(P.x-a.x,P.z-a.z)<.45&&a.y>P.y+.1&&a.y<P.y+1.8){const r=hitPlayer({src:{x:a.x-a.vx*.05,z:a.z-a.vz*.05,lv:a.lv},dmg:a.dmg,guard:a.dmg*1.6,dir:[a.vx,a.vz],knock:'flinch'});if(r!=='iframe'){a.on=false;if(r==='block'||r==='parry')spawnSparks(a.x,a.y,a.z,6,[1,.9,.6],3)}}}
+   else if(a.owner==='foe'){if(P.alive&&Math.hypot(P.x-a.x,P.z-a.z)<.45&&a.y>P.y+.1&&a.y<P.y+1.8){const r=hitPlayer({src:{x:a.x-a.vx*.05,z:a.z-a.vz*.05,lv:a.lv},dmg:a.dmg,guard:a.dmg*1.6,dir:[a.vx/24,a.vz/24],knock:'flinch',noPush:1});if(r!=='iframe'){a.on=false;if(r==='block'||r==='parry')spawnSparks(a.x,a.y,a.z,6,[1,.9,.6],3)}}}
    else{for(const f of foes()){const big=f===DRAGON?3:f.big||f.boss?1.0:isWolf(f)?.65:.5,fy=f===DRAGON?f.y+2:(f.y||0)+(f.big?1.4:.8);if(Math.hypot(f.x-a.x,f.z-a.z)<big&&Math.abs(a.y-fy)<(f===DRAGON?3:1)){
      const k=Math.hypot(a.vx,a.vz)||1,dead=foeHurt(f,a.dmg,a.vx/k,a.vz/k,'arrow');addPosture(f,6);floatText(f.x,fy+.6,f.z,''+a.dmg,'');spawnSparks(a.x,a.y,a.z,5,[.9,.2,.15],2);if(dead)onFoeKilled(f,false);else{f.aware=1;if(f.ls)f.ls=[P.x,P.z]}a.on=false;break}}}}
   const yaw=Math.atan2(a.vx,a.vz),pit=-Math.atan2(a.vy,Math.hypot(a.vx,a.vz));a.ob.M=mtrs([a.x,a.y,a.z],[pit,yaw,0]);a.ob.pos=[a.x,0,a.z]}}

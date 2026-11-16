@@ -59,14 +59,14 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-actio
 #boss{position:fixed;left:50%;bottom:calc(88px + var(--sb));transform:translateX(-50%);width:min(70vw,420px);display:none;pointer-events:none;font:800 11px system-ui;letter-spacing:2px;text-align:center;text-shadow:0 1px 2px #000}#boss .bar{height:9px;margin-top:2px}#bossf{background:linear-gradient(90deg,#a11,#f52)}
 #compass small{opacity:.8;font-weight:600}
 @media (orientation:portrait){.btn{transform:scale(.86);transform-origin:bottom right}#boss{bottom:calc(310px + var(--sb))}#prompt{bottom:calc(292px + var(--sb))}#quest{top:calc(96px + var(--st))}
- #bFlask{right:calc(186px + var(--sr))!important;bottom:calc(218px + var(--sb))!important}#bLock{right:calc(24px + var(--sr))!important;bottom:calc(196px + var(--sb))!important}#bRage{right:calc(96px + var(--sr))!important;bottom:calc(232px + var(--sb))!important}#bBow{right:calc(24px + var(--sr))!important;bottom:calc(256px + var(--sb))!important}}
-#bFlask,#bSkill{flex-direction:column;line-height:1.15}#bFlask b,#bSkill b{font-size:12px}
+ #bFlask{right:calc(186px + var(--sr))!important;bottom:calc(218px + var(--sb))!important}#bLock{right:calc(24px + var(--sr))!important;bottom:calc(196px + var(--sb))!important}#bRage{right:calc(96px + var(--sr))!important;bottom:calc(232px + var(--sb))!important}#bBow{right:calc(24px + var(--sr))!important;bottom:calc(256px + var(--sb))!important}#bStance{right:calc(96px + var(--sr))!important;bottom:calc(300px + var(--sb))!important}#stance{top:calc(148px + var(--st))}}
+#bFlask,#bSkill,#bStance{flex-direction:column;line-height:1.15}#stance{position:fixed;left:calc(12px + var(--sl));top:calc(134px + var(--st));font:800 11px system-ui;text-shadow:0 1px 2px #000;pointer-events:none;letter-spacing:1px}#bFlask b,#bSkill b{font-size:12px}
 #meat{position:fixed;left:calc(126px + var(--sl));top:calc(66px + var(--st));font:600 11px system-ui;text-shadow:0 1px 2px #000;pointer-events:none}
 </style></head><body>
 <canvas id="c"></canvas>
 <div id="hudp"><div class="bar"><i id="hpf"></i><span id="hpt"></span></div><div class="bar s"><i id="stf"></i></div><div class="bar s" title="Savunma canı"><i id="gdf"></i></div><div class="bar s" title="Öfke"><i id="rgf"></i></div><div class="bar s"><i id="xpf"></i></div><span id="lvt"></span></div>
 <div id="prompt"></div><div id="mash"><i></i></div><div id="boss"><span id="bossn">EJDERHA</span><div class="bar"><i id="bossf"></i></div><div class="bar s"><i id="bossp" style="background:#ffd76a"></i></div></div><div id="travel"></div><div id="manhwa"></div>
-<div id="meat"></div><div id="quest"></div><canvas id="radar" width="192" height="192"></canvas><div id="compass"></div><div id="stealth"></div><div id="notes"></div><div id="marks"></div>
+<div id="meat"></div><div id="stance"></div><div id="quest"></div><canvas id="radar" width="192" height="192"></canvas><div id="compass"></div><div id="stealth"></div><div id="notes"></div><div id="marks"></div>
 <div id="kbg"><div id="kn"></div></div>
 <div class="btn" id="bAtk" style="right:calc(16px + var(--sr));bottom:calc(26px + var(--sb));width:86px;height:86px;font-size:14px">SALDIR</div>
 <div class="btn" id="bBlk" style="right:calc(112px + var(--sr));bottom:calc(14px + var(--sb));width:66px;height:66px;font-size:12px;background:rgba(120,140,190,.3)">BLOK</div>
@@ -78,6 +78,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-actio
 <div class="btn" id="bSkill" style="right:calc(172px + var(--sr));bottom:calc(150px + var(--sb));width:58px;height:58px;font-size:10px">YETENEK</div>
 <div class="btn" id="bFlask" style="right:calc(258px + var(--sr));bottom:calc(20px + var(--sb));width:54px;height:54px;font-size:10px;background:rgba(200,60,60,.3)">İKSİR</div>
 <div class="btn" id="bLock" style="right:calc(258px + var(--sr));bottom:calc(86px + var(--sb));width:50px;height:50px;font-size:10px">HEDEF</div>
+<div class="btn" id="bStance" style="right:calc(258px + var(--sr));bottom:calc(210px + var(--sb));width:54px;height:54px;font-size:9px">DURUŞ</div>
 <div class="btn" id="bBow" style="right:calc(258px + var(--sr));bottom:calc(150px + var(--sb));width:50px;height:50px;font-size:10px">YAY</div>
 <div class="btn" id="bRage" style="right:calc(160px + var(--sr));bottom:calc(222px + var(--sb));width:56px;height:56px;font-size:11px">ÖFKE</div>
 <div class="btn" id="bSys" style="right:calc(112px + var(--sr));top:calc(8px + var(--st));width:50px;height:50px;border-radius:10px;background:rgba(40,90,190,.5);border-color:#9fd0ff">SİSTEM</div>

@@ -89,7 +89,7 @@ function step(dt){GT.dt=dt;if(dt>0){GT.clock+=dt;updatePlayer(dt);
   for(const w of wolves)if(Math.hypot(w.x-P.x,w.z-P.z)<170||w.tame||w.dead)updateWolf(w,P,dt,GS);
   for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<180)updateGob(g,dt);for(const n of NPCS)updateNpc(n,dt);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<200)updateCroc(c,dt);
   updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
-  updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);updateArrows(dt);
+  updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt;
   const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
  poseTarget();applyPose(P.ps);PM=playerMatrix(dt);
@@ -156,7 +156,7 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
   if(up){const u=e=>{e.stopPropagation();up()};el.addEventListener('pointerup',u);el.addEventListener('pointercancel',u);el.addEventListener('lostpointercapture',u)}};
  const atkDown=()=>{IN.atkHeld=true;IN.atkAt=GT.clock;IN.atkEdge=true;IN.atkUsed=false;IN.mash=(IN.mash||0)+1},atkUp=()=>{if(IN.atkHeld){IN.atkHeld=false;IN.atkUp=true}};
  btn('bAtk',atkDown,atkUp);btn('bDod',()=>{press('dodge');IN.mash=(IN.mash||0)+1});btn('bJmp',()=>{press('jump');IN.mash=(IN.mash||0)+1});btn('bInt',()=>press('inter'));btn('bSys',()=>toggleWin(P));
- btn('bFlask',()=>drinkFlask());btn('bSkill',()=>useSkill());btn('bRage',()=>startRage());btn('bLock',()=>toggleLock());btn('bBow',()=>useBow());
+ btn('bFlask',()=>drinkFlask());btn('bSkill',()=>useSkill());btn('bRage',()=>startRage());btn('bLock',()=>toggleLock());btn('bBow',()=>useBow());btn('bStance',()=>cycleStance());
  btn('bBlk',()=>{IN.blockHeld=true;IN.mash=(IN.mash||0)+1},()=>{IN.blockHeld=false});btn('bSpr',()=>{P.sprintHeld=true;P.crouch=false},()=>{P.sprintHeld=false});btn('bCrc',()=>{P.crouch=!P.crouch;if(P.crouch)P.sprintHeld=false});
  let jId=null,jx=0,jy=0,lId=null,lx=0,ly=0;const kbg=$('kbg'),kn=$('kn');
  cv.addEventListener('pointerdown',e=>{sfx.on();if(e.clientX<innerWidth*.42&&jId===null){jId=e.pointerId;jx=e.clientX;jy=e.clientY;kbg.style.display='block';kbg.style.left=jx-60+'px';kbg.style.top=jy-60+'px'}else if(lId===null){lId=e.pointerId;lx=e.clientX;ly=e.clientY}});
@@ -166,13 +166,13 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
  document.addEventListener('contextmenu',e=>e.preventDefault());const K={};
  const kb=()=>{IN.kx=(K.KeyD?1:0)-(K.KeyA?1:0);IN.kz=(K.KeyW?1:0)-(K.KeyS?1:0)};
  addEventListener('keydown',e=>{if(e.repeat)return;sfx.on();K[e.code]=1;kb();if(e.code==='KeyF'||e.code==='KeyJ')atkDown();if(e.code==='Space'){press('jump');IN.mash=(IN.mash||0)+1;e.preventDefault()}if(e.code==='KeyQ'||e.code==='KeyK'){press('dodge');IN.mash=(IN.mash||0)+1}
-  if(e.code==='KeyR'||e.code==='KeyL'){IN.blockHeld=true;IN.mash=(IN.mash||0)+1}if(e.code==='KeyE')press('inter');if(e.code==='KeyH')drinkFlask();if(e.code==='KeyV')useSkill();if(e.code==='KeyG')startRage();if(e.code==='KeyT')toggleLock();if(e.code==='KeyB')useBow();if(e.code==='ShiftLeft'||e.code==='ShiftRight'){P.sprintHeld=true;P.crouch=false}
+  if(e.code==='KeyR'||e.code==='KeyL'){IN.blockHeld=true;IN.mash=(IN.mash||0)+1}if(e.code==='KeyE')press('inter');if(e.code==='KeyH')drinkFlask();if(e.code==='KeyV')useSkill();if(e.code==='KeyG')startRage();if(e.code==='KeyT')toggleLock();if(e.code==='KeyB')useBow();if(e.code==='KeyQ')cycleStance();{const i=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(i>=0)setStance(STANCE_ORDER[i])}if(e.code==='ShiftLeft'||e.code==='ShiftRight'){P.sprintHeld=true;P.crouch=false}
   if(e.code==='KeyC'){P.crouch=!P.crouch;if(P.crouch)P.sprintHeld=false}if(e.code==='Tab'||e.code==='KeyM'){toggleWin(P);e.preventDefault()}});
  addEventListener('keyup',e=>{K[e.code]=0;kb();if(e.code==='KeyF'||e.code==='KeyJ')atkUp();if(e.code==='KeyR'||e.code==='KeyL')IN.blockHeld=false;if(e.code==='ShiftLeft'||e.code==='ShiftRight')P.sprintHeld=false});
  addEventListener('blur',()=>{IN.atkHeld=false;IN.blockHeld=false;P.sprintHeld=false})}
 // ---------- boot + adaptive quality (performance: measure first, then lower resolution, grass, draw distance)
 const QUAL={QL:0};
-function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
+function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
@@ -191,6 +191,6 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
    dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
-   openWin,renderWin,uiTick,maxHP,useBow,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
+   openWin,renderWin,uiTick,maxHP,useBow,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}

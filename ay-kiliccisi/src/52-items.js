@@ -96,4 +96,4 @@ function updateLoot(dt){for(let i=LOOT.length-1;i>=0;i--){const l=LOOT[i];l.t+=d
 function lootFor(f,tier,goldBase){const lv=f.lv||1,items=[];const chance=[.16,.6,1,1][tier];if(Math.random()<chance)items.push(randomDrop(lv,Math.min(4,tier)));if(tier>=2&&Math.random()<.5)items.push(randomDrop(lv,tier));
  if(Math.random()<.25)SYS.shards+=1+tier;dropLoot(f.x,f.z,items,Math.round((goldBase||2)*(1+.15*(lv-1))*(.7+Math.random()*.6)))}
 // ---------- healing flask (refilled at altars)
-function drinkFlask(){if(P.st!=='move'||!P.alive)return;if(SYS.flasks<=0){note('İksir kalmadı — bir sunakta dinlen');return}SYS.flasks--;P.st='drink';P.t=0;sfx.drink();save(P)}
+function drinkFlask(){if(P.st!=='move'||!P.alive)return;P.healFrac=.45;if(SYS.flasks<=0){if((P.rage||0)>=40&&!(P.berserk>0)){P.rage-=40;P.healFrac=.25;P.st='drink';P.t=0;sfx.drink();note('[Azim] İksir yok: öfkenin 40 birimiyle yaralarını sardın.','gold');return}note('İksir kalmadı — bir sunakta dinlen (ya da 40 öfke biriktir)');return}SYS.flasks--;P.st='drink';P.t=0;sfx.drink();save(P)}

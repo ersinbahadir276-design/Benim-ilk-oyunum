@@ -63,7 +63,8 @@ for (let i = 0; i < nv; i++) { const p = [V[i * 3], V[i * 3 + 1], V[i * 3 + 2]];
   if (py < WP[9][1] - 0.02) leather = py < kneeY + 0.2 || pz < 0.0 || Math.abs(px) < 0.05; // boots to mid-thigh, leggings behind
   if (py >= WP[9][1] - 0.02 && py < chestY + 0.11) { const v = pz > 0.02 && py > chestY - 0.04 && Math.abs(px) < 0.012 + (py - (chestY - 0.04)) * 0.5; leather = !v; armor = py > waistY && py < chestY - 0.02 && pz > 0.0 && !v; }
   if (py > WP[2][1] - 0.07 && py < WP[2][1] + 0.03) leather = true;                        // collar band
-  if (leather) { C.set(armor ? [0.11, 0.11, 0.13] : [0.06, 0.055, 0.065], i * 3); M.set(armor ? [0.6, 0.7, 0, 0] : [0.5, 0, 0, 0], i * 4); } else { C.set(skin, i * 3); M.set([0.25, 0, 0, 0], i * 4); }
+  const hd = v3.len(v3.sub(p, hc)); if (hd < hr * 1.6 && Math.abs(px) < 0.085 && (py > hc[1] + 0.06 || (pz < hc[2] - 0.02 && py > hc[1] - 0.06))) { C.set([0.36, 0.07, 0.07], i * 3); M.set([0.3, 0, 0, 0], i * 4); leather = null; }
+  if (leather === null) { /* scalp painted in the hair colour */ } else if (leather) { C.set(armor ? [0.11, 0.11, 0.13] : [0.06, 0.055, 0.065], i * 3); M.set(armor ? [0.6, 0.7, 0, 0] : [0.5, 0, 0, 0], i * 4); } else { C.set(skin, i * 3); M.set([0.25, 0, 0, 0], i * 4); }
   if (v3.len(v3.sub(p, hc)) < hr * 1.8) { UV[i * 2] = 0.5 + (p[0] - hc[0]) / (2.4 * hr); UV[i * 2 + 1] = 0.5 - (p[1] - hc[1]) / (2.4 * hr); MASK[i] = Math.max(0, Math.min(1, (p[2] - hc[2] - hr * 0.3) / (hr * 0.3))); } }
 // ---------- extras sculpted on the same bones: horns, long black hair, simple dark dress
 const BN = ['root', 'spine', 'head', 'lSh', 'lEl', 'lWr', 'rSh', 'rEl', 'rWr', 'lHip', 'lKnee', 'lFoot', 'rHip', 'rKnee', 'rFoot', 'jaw'];

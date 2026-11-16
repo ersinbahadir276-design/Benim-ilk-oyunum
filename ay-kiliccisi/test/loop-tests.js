@@ -238,7 +238,7 @@ window.runLoop = async function () {
   // ---------------------------------------------------------------- 16. system window tabs render
   await sec('arayüz', async () => {
     const bad = []; for (const t of ['durum', 'envanter', 'yetenek', 'gorev', 'harita', 'demirci', 'ayar']) { try { X.openWin(t); const w = document.getElementById('win'); if (w.innerText.length < 40) bad.push(t + ':boş'); } catch (e) { bad.push(t + ':' + e.message); } }
-    X.openWin('envanter'); const items = document.querySelectorAll('#win .item').length;
+    for (let k = 0; k < 3; k++) X.giveItem(X.makeItem('charm', 1, 0), true); X.openWin('envanter'); const items = document.querySelectorAll('#win .item').length;
     ok('arayüz: Sistem penceresinin 7 sekmesi de açılıyor', bad.length === 0, bad.join(','));
     ok('arayüz: envanter eşyaları listeliyor', items >= 3, items);
     const w = document.getElementById('win'); ok('arayüz: lisans/kaynak bilgisi ayarlar sekmesinde', (X.openWin('ayar'), /lisans|CC/i.test(w.innerText)));
