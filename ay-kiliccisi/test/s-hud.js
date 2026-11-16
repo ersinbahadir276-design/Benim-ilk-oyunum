@@ -1,1 +1,1 @@
-module.exports = async ({ shot, G }) => { await G(() => { const g = __G; g.fastStream = 1; g.SYS.qk = 5; g.SYS.ashmane = 1; g.X.checkStances(); g.X.setStance('wind'); }); await shot('hud-stance', { wait: 1200 }); };
+module.exports = async ({ shot, G }) => { await G(() => { const g = __G; g.fastStream = 1; g.SYS.qk = 5; g.SYS.ashmane = 1; g.X.checkStances(); g.X.setStance('wind'); g.P.rage = 100; }); await shot('hud-stance', { wait: 1200 }); };

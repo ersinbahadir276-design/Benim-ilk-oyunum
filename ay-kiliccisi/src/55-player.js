@@ -5,7 +5,7 @@ const P={x:SPAWN[0],z:SPAWN[2],y:0,yaw:PI,vx:0,vz:0,vy:0,air:false,st:'move',t:0
  rag:{ang:0,av:0,fx:0,fz:-1,bounce:0,lag:0,lagv:0},td:null,hurtDir:[0,0],tiltDir:-1};
 const IN={mx:0,mz:0,kx:0,kz:0,wx:0,wz:0,atkHeld:false,atkAt:-9,atkUp:false,blockHeld:false};
 // buffered presses (game-time), consumed once when the action becomes legal (input-systems: 0.1-0.2 s window)
-const BUF={atk:-9,dodge:-9,jump:-9,inter:-9};const press=(k)=>{BUF[k]=GT.clock};const take=(k,w=.18)=>{if(GT.clock-BUF[k]<=w){BUF[k]=-9;return true}return false};
+const BUF={atk:-9,dodge:-9,jump:-9,inter:-9,hvy:-9};const press=(k)=>{BUF[k]=GT.clock};const take=(k,w=.18)=>{if(GT.clock-BUF[k]<=w){BUF[k]=-9;return true}return false};
 const COST={light:[12,13,15],heavy:24,heavyMax:14,run:18,jumpAtk:16,dodge:18,jump:10,sprint:14};
 const PARRY_WIN=.24;
 // --------------------------------------------------------------- enemies the player can hit
@@ -124,10 +124,11 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
   if(IN.blockHeld&&startBlock())break;
   if(take('dodge'))startDodge();else if(take('jump'))startJump();
   else if((atkEdge||BUF.atk>GT.clock-.2)&&execTarget()){IN.atkUsed=true;BUF.atk=-9;startExec(execTarget())}
-  else if(P.sprinting&&P.spd>4&&(atkEdge||take('atk'))){IN.atkUsed=true;startRunAtk()}else if(atkHold){IN.atkUsed=true;startCharge()}else if(take('atk'))startLight(0);
+  else if(P.sprinting&&P.spd>4&&(atkEdge||take('atk'))){IN.atkUsed=true;startRunAtk()}else if(atkHold){IN.atkUsed=true;const av=BUF.hvy>GT.clock-.35?tdTarget(2.4):null;BUF.hvy=-9;if(av)startAssassin(av);else startCharge()}else if(take('atk'))startLight(0);
   else if(take('inter'))interact();break}
  case'exec':{slide(10);if(!P.hitDone&&P.t>.45){P.hitDone=true;execHit()}if(P.t>1.05){P.st='move';P.t=0}break}
  case'shoot':updateShoot(dt);break;
+ case'assn':{const v=P.asV;P.vx=P.vz=0;if(v&&!v.dead)P.yaw=Math.atan2(v.x-P.x,v.z-P.z);if(!P.hitDone&&P.t>.26){P.hitDone=true;assassinHit(v)}if(P.t>.7){P.st='move';P.t=0;P.asV=null}break}
  case'drink':{const sp=1.2*il;moveFree(sp,6);const heal=maxHP()*(P.healFrac||.45);if(P.t<.9)P.hp=Math.min(maxHP(),P.hp+heal*dt/.9);if(P.t>1.05){P.st='move';P.t=0}break}
  case'skill':updateSkill(dt);break;
  case'attack':{const S=curStance(),T=P.atkT||.46,u=P.t/T,last=P.combo>=S.combo-1;slide(10);if(u>.22&&u<.6){const sp=S.lunge&&last?8.5:3.4;P.vx=Math.sin(P.yaw)*sp;P.vz=Math.cos(P.yaw)*sp}
@@ -199,6 +200,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   if(P.st==='parry'){const k=1-P.t/.32;q.RaX-=.6*k;q.chX=-.2*k;q.hdX=-.3*k}break}
  case'gbreak':{rate=12;const k=Math.sin(P.t*9)*(1-P.t/1.4);q.RaZ=.2;q.RaX=-1.6;q.Rel=.3;q.LaZ=.5;q.LaX=-1.2;q.spX=-.35+k*.1;q.chX=-.2;q.hdX=-.4;q.pel=-.2;q.LthX=.3;q.Lkn=.5;q.RthX=-.3;q.Rkn=.6;break}
  case'exec':{rate=26;const u=P.t,k=sst(.2,.45,u)-sst(.7,1,u)*.6;q.two=1;q.RaZ=.4;q.RaX=lp(-1.4,-.2,k);q.RaY=-.2;q.Rel=lp(1.3,.1,k);q.RwX=lp(-.9,-.2,k);q.spX=lp(-.1,.45,k);q.pel=.25*k;q.LthX=-.9*k;q.Lkn=1.0*k;q.RthX=.5*k;q.Rkn=.3;q.hipY=-.1*k;break}
+ case'assn':{rate=40;const u=P.t/.5,sl=sst(.3,.62,u);q.RaZ=.45;q.RaX=-.3;q.RaY=lp(2.3,-.9,sl);q.Rel=lp(.35,.05,sl);q.chY=lp(.8,-.7,sl);q.spY=lp(.3,-.25,sl);q.RthX=-.5;q.Rkn=.55;q.LthX=.35;q.Lkn=.25;q.hdX=.1;break}
  case'shoot':{rate=18;q.LaZ=.3;q.LaX=-1.35;q.Lel=.05;q.RaZ=.55;q.RaX=-1.25;q.Rel=1.7;q.spY=-.3;break}
  case'drink':{rate=16;const k=sst(0,.25,P.t)-sst(.85,1.05,P.t);q.LaZ=lp(1.22,.3,k);q.LaX=lp(.05,-1.3,k);q.Lel=lp(.25,2.1,k);q.hdX=-.3*k;q.chX=-.1*k;break}
  case'skill':{rate=30;const k2=P.skill;if(k2==='spin'){q.two=1;q.RaZ=-.1;q.RaX=-.15;q.RaY=1.6;q.Rel=.1;q.spY=-.4;q.pel=.15;q.LthX=-.5;q.Lkn=.7;q.RthX=-.2;q.Rkn=.5}

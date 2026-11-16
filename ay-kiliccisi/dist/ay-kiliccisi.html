@@ -59,8 +59,9 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-actio
 #boss{position:fixed;left:50%;bottom:calc(88px + var(--sb));transform:translateX(-50%);width:min(70vw,420px);display:none;pointer-events:none;font:800 11px system-ui;letter-spacing:2px;text-align:center;text-shadow:0 1px 2px #000}#boss .bar{height:9px;margin-top:2px}#bossf{background:linear-gradient(90deg,#a11,#f52)}
 #compass small{opacity:.8;font-weight:600}
 @media (orientation:portrait){.btn{transform:scale(.86);transform-origin:bottom right}#boss{bottom:calc(310px + var(--sb))}#prompt{bottom:calc(292px + var(--sb))}#quest{top:calc(96px + var(--st))}
- #bFlask{right:calc(186px + var(--sr))!important;bottom:calc(218px + var(--sb))!important}#bLock{right:calc(24px + var(--sr))!important;bottom:calc(196px + var(--sb))!important}#bRage{right:calc(96px + var(--sr))!important;bottom:calc(232px + var(--sb))!important}#bBow{right:calc(24px + var(--sr))!important;bottom:calc(256px + var(--sb))!important}#bStance{right:calc(96px + var(--sr))!important;bottom:calc(300px + var(--sb))!important}#stance{top:calc(148px + var(--st))}}
-#bFlask,#bSkill,#bStance{flex-direction:column;line-height:1.15}#stance{position:fixed;left:calc(12px + var(--sl));top:calc(134px + var(--st));font:800 11px system-ui;text-shadow:0 1px 2px #000;pointer-events:none;letter-spacing:1px}#bFlask b,#bSkill b{font-size:12px}
+ #bFlask{right:calc(8px + var(--sr))!important;bottom:calc(216px + var(--sb))!important}#bBow{right:calc(66px + var(--sr))!important;bottom:calc(216px + var(--sb))!important}#bStance{right:calc(124px + var(--sr))!important;bottom:calc(216px + var(--sb))!important}#bLock{right:calc(184px + var(--sr))!important;bottom:calc(216px + var(--sb))!important}#bCrc{right:calc(140px + var(--sr))!important;bottom:calc(150px + var(--sb))!important}#bRage{right:calc(124px + var(--sr))!important;bottom:calc(276px + var(--sb))!important}#stance{top:calc(148px + var(--st))}}
+.btn{flex-direction:column;line-height:1.1;font-size:8px;letter-spacing:.3px}.btn i{font-style:normal;font-weight:900;font-size:12px;opacity:.95}.btn.ps{background:rgba(18,20,30,.55);border:1.5px solid rgba(255,255,255,.35)}.btn.ps i{font-size:26px;line-height:1}
+.btn.cross i{color:#7aa8ff}.btn.circle i{color:#ff6b6b}.btn.square i{color:#ff8fd0}.btn.tri i{color:#5fe3a1}.btn.sh{background:rgba(18,20,30,.5);border-radius:14px;border:1px solid rgba(255,255,255,.3)}.btn.sh i{color:#cfd6e6}#stance{position:fixed;left:calc(12px + var(--sl));top:calc(134px + var(--st));font:800 11px system-ui;text-shadow:0 1px 2px #000;pointer-events:none;letter-spacing:1px}#bFlask b,#bSkill b{font-size:11px;color:#ffd76a}
 #meat{position:fixed;left:calc(126px + var(--sl));top:calc(66px + var(--st));font:600 11px system-ui;text-shadow:0 1px 2px #000;pointer-events:none}
 </style></head><body>
 <canvas id="c"></canvas>
@@ -68,19 +69,20 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-actio
 <div id="prompt"></div><div id="mash"><i></i></div><div id="boss"><span id="bossn">EJDERHA</span><div class="bar"><i id="bossf"></i></div><div class="bar s"><i id="bossp" style="background:#ffd76a"></i></div></div><div id="travel"></div><div id="manhwa"></div>
 <div id="meat"></div><div id="stance"></div><div id="quest"></div><canvas id="radar" width="192" height="192"></canvas><div id="compass"></div><div id="stealth"></div><div id="notes"></div><div id="marks"></div>
 <div id="kbg"><div id="kn"></div></div>
-<div class="btn" id="bAtk" style="right:calc(16px + var(--sr));bottom:calc(26px + var(--sb));width:86px;height:86px;font-size:14px">SALDIR</div>
-<div class="btn" id="bBlk" style="right:calc(112px + var(--sr));bottom:calc(14px + var(--sb));width:66px;height:66px;font-size:12px;background:rgba(120,140,190,.3)">BLOK</div>
-<div class="btn" id="bDod" style="right:calc(110px + var(--sr));bottom:calc(92px + var(--sb));width:62px;height:62px;font-size:12px">KAÇIN</div>
-<div class="btn" id="bJmp" style="right:calc(24px + var(--sr));bottom:calc(122px + var(--sb));width:62px;height:62px;font-size:12px">ZIPLA</div>
-<div class="btn" id="bInt" style="right:calc(186px + var(--sr));bottom:calc(84px + var(--sb));width:56px;height:56px">ETKİLEŞ</div>
-<div class="btn" id="bCrc" style="right:calc(186px + var(--sr));bottom:calc(16px + var(--sb));width:56px;height:56px">EĞİL</div>
-<div class="btn" id="bSpr" style="right:calc(98px + var(--sr));bottom:calc(164px + var(--sb));width:54px;height:54px">KOŞ</div>
-<div class="btn" id="bSkill" style="right:calc(172px + var(--sr));bottom:calc(150px + var(--sb));width:58px;height:58px;font-size:10px">YETENEK</div>
-<div class="btn" id="bFlask" style="right:calc(258px + var(--sr));bottom:calc(20px + var(--sb));width:54px;height:54px;font-size:10px;background:rgba(200,60,60,.3)">İKSİR</div>
-<div class="btn" id="bLock" style="right:calc(258px + var(--sr));bottom:calc(86px + var(--sb));width:50px;height:50px;font-size:10px">HEDEF</div>
-<div class="btn" id="bStance" style="right:calc(258px + var(--sr));bottom:calc(210px + var(--sb));width:54px;height:54px;font-size:9px">DURUŞ</div>
-<div class="btn" id="bBow" style="right:calc(258px + var(--sr));bottom:calc(150px + var(--sb));width:50px;height:50px;font-size:10px">YAY</div>
-<div class="btn" id="bRage" style="right:calc(160px + var(--sr));bottom:calc(222px + var(--sb));width:56px;height:56px;font-size:11px">ÖFKE</div>
+<div class="btn ps cross" id="bJmp" style="right:calc(70px + var(--sr));bottom:calc(20px + var(--sb));width:60px;height:60px"><i>✕</i>ZIPLA</div>
+<div class="btn ps circle" id="bDod" style="right:calc(8px + var(--sr));bottom:calc(82px + var(--sb));width:60px;height:60px"><i>○</i>KAÇIN</div>
+<div class="btn ps square" id="bAtk" style="right:calc(132px + var(--sr));bottom:calc(82px + var(--sb));width:60px;height:60px"><i>□</i>HAFİF</div>
+<div class="btn ps tri" id="bHvy" style="right:calc(70px + var(--sr));bottom:calc(144px + var(--sb));width:60px;height:60px"><i>△</i>AĞIR</div>
+<div class="btn sh" id="bBlk" style="right:calc(202px + var(--sr));bottom:calc(24px + var(--sb));width:58px;height:58px"><i>L1</i>BLOK</div>
+<div class="btn sh" id="bInt" style="right:calc(202px + var(--sr));bottom:calc(90px + var(--sb));width:50px;height:50px"><i>R1</i>ETKİLEŞ</div>
+<div class="btn sh" id="bStance" style="right:calc(264px + var(--sr));bottom:calc(24px + var(--sb));width:50px;height:50px"><i>R2</i>DURUŞ</div>
+<div class="btn sh" id="bBow" style="right:calc(264px + var(--sr));bottom:calc(82px + var(--sb));width:48px;height:48px"><i>L2</i>YAY</div>
+<div class="btn sh" id="bSkill" style="right:calc(202px + var(--sr));bottom:calc(148px + var(--sb));width:50px;height:50px"><i>▲</i>YETENEK</div>
+<div class="btn sh" id="bFlask" style="right:calc(264px + var(--sr));bottom:calc(138px + var(--sb));width:48px;height:48px"><i>▼</i>İKSİR</div>
+<div class="btn sh" id="bLock" style="right:calc(140px + var(--sr));bottom:calc(208px + var(--sb));width:46px;height:46px"><i>R3</i>HEDEF</div>
+<div class="btn sh" id="bSpr" style="right:calc(8px + var(--sr));bottom:calc(150px + var(--sb));width:48px;height:48px"><i>L3</i>KOŞ</div>
+<div class="btn sh" id="bCrc" style="right:calc(324px + var(--sr));bottom:calc(24px + var(--sb));width:46px;height:46px"><i>◀</i>EĞİL</div>
+<div class="btn sh" id="bRage" style="right:calc(202px + var(--sr));bottom:calc(206px + var(--sb));width:54px;height:54px"><i>L1+R1</i>ÖFKE</div>
 <div class="btn" id="bSys" style="right:calc(112px + var(--sr));top:calc(8px + var(--st));width:50px;height:50px;border-radius:10px;background:rgba(40,90,190,.5);border-color:#9fd0ff">SİSTEM</div>
 <div id="win"><div id="winb"></div></div>
 <div id="intro"><div id="introb2"><div class="wt">KARA ZIRH</div><p class="sys">[Sistem] Yeni bir oyuncu algılandı.</p><p>Kael Varn, krallığın son şövalyesi. Bir kez öldü. Şimdi geri döndü.</p><p style="font-size:12px;opacity:.8">Sol yarı: yürü · sağ yarı: bak · SALDIR (bas/tut) · BLOK · KAÇIN · ZIPLA · YETENEK · İKSİR · HEDEF</p><button id="introb">UYAN</button></div></div>
@@ -1426,13 +1428,19 @@ function checkStances(){SYS.stances=SYS.stances||{stone:1};const give=(k,why)=>{
  if((SYS.main||0)>=3||(SYS.qk||0)>=5)give('wind');if(SYS.ashmane)give('moon');if(SYS.chief)give('water');if(!SYS.stance||!SYS.stances[SYS.stance])SYS.stance='stone'}
 function setStance(k){if(!SYS.stances||!SYS.stances[k]||SYS.stance===k)return false;SYS.stance=k;P.stanceFx=.5;sfx.lock();floatText(P.x,P.y+2.2,P.z,STANCES[k].n+' DURUŞU','crit');stanceHud();return true}
 function cycleStance(){const have=STANCE_ORDER.filter(k=>SYS.stances&&SYS.stances[k]);if(have.length<2){note('Başka duruş yok. Yeni duruşlar: 5 kurt avla, Kül Yele, Kırık Diş.');return}setStance(have[(have.indexOf(SYS.stance)+1)%have.length])}
-function stanceHud(){const e=$('stance');if(!e)return;const S=curStance();e.textContent='◆ '+S.n;e.style.color=S.c;const b=$('bStance');if(b){b.innerHTML='DURUŞ<br><b>'+S.n+'</b>';b.style.borderColor=S.c}}
+function stanceHud(){const e=$('stance');if(!e)return;const S=curStance();e.textContent='◆ '+S.n;e.style.color=S.c;const b=$('bStance');if(b){b.innerHTML='<i>R2</i>'+S.n;b.style.borderColor=S.c;b.style.color=S.c}}
 // perfect dodge: the dodge began just before the blow would have landed -> time slows, the next hit is a counter
 function perfectDodge(o){if(P.st!=='dodge'||P.t>.2||(P.perfAt||-9)>GT.clock-.5)return;P.perfAt=GT.clock;P.counterT=1.6;GT.slow=.55;P.sta=Math.min(100,P.sta+25);gainRage(12);sfx.parry();floatText(P.x,P.y+2,P.z,'KUSURSUZ KAÇINMA','crit');SYS.perfDodges=(SYS.perfDodges||0)+1;
  // stepping INTO the attack (forward dodge) meets it: the attacker's balance is shattered
  const s=o.src;if(s&&P.dodgeKind==='fwd'&&s.hp!==undefined&&Math.hypot(s.x-P.x,s.z-P.z)<3.2){addPosture(s,POSMAX[posKind(s)]*.7);floatText(s.x,(s.y||0)+1.8,s.z,'KARŞILAMA','crit')}}
 // chain parry: every perfect parry within 3 s of the last one hits the attacker's balance harder
 function chainParry(src){P.chain=GT.clock-(P.lastParry||-9)<3?(P.chain||1)+1:1;P.lastParry=GT.clock;gainRage(6+4*P.chain);P.counterT=1.2;if(src&&src.hp!==undefined)addPosture(src,18*P.chain);if(P.chain>1)floatText(P.x,P.y+2.1,P.z,'ZİNCİR ×'+P.chain,'crit')}
+// assassination: △ (heavy) from behind an enemy that has not noticed you — a silent neck cut. Small enemies die at once,
+// big ones and bosses take a deep wound and lose their balance.
+function startAssassin(v){P.st='assn';P.t=0;P.asV=v;P.hitDone=false;P.crouch=false;P.yaw=Math.atan2(v.x-P.x,v.z-P.z);GT.slow=.35;sfx.swing()}
+function assassinHit(v){if(!v||v.dead)return;const heavy=v.big||v.boss||v===DRAGON,dmg=heavy?Math.round(weaponDmg()*5*dmgMul()):Math.ceil(v.hp)+1,k=Math.hypot(v.x-P.x,v.z-P.z)||1;
+ const hy=(v.y||hAt(v.x,v.z))+(isWolf(v)?.7:v.big?2:1.15)*(v.sc||1);spawnSparks(v.x,hy,v.z,26,[.85,.1,.1],5);floatText(v.x,hy+.5,v.z,'SUİKAST '+dmg,'crit');GT.stop=.14;CAM.shake=Math.max(CAM.shake,.6);sfx.stab();
+ const dead=foeHurt(v,dmg,(v.x-P.x)/k,(v.z-P.z)/k,'assn');SYS.assassins=(SYS.assassins||0)+1;gainRage(15);if(dead)onFoeKilled(v,false);else if(heavy)breakFoe(v)}
 // ---- 52-items.js
 // ===================== loot, equipment, inventory, blacksmith, healing flasks =====================
 // Design: every kill can drop something, stronger regions drop stronger things, rarity is visible from afar (light
@@ -1652,7 +1660,7 @@ const P={x:SPAWN[0],z:SPAWN[2],y:0,yaw:PI,vx:0,vz:0,vy:0,air:false,st:'move',t:0
  rag:{ang:0,av:0,fx:0,fz:-1,bounce:0,lag:0,lagv:0},td:null,hurtDir:[0,0],tiltDir:-1};
 const IN={mx:0,mz:0,kx:0,kz:0,wx:0,wz:0,atkHeld:false,atkAt:-9,atkUp:false,blockHeld:false};
 // buffered presses (game-time), consumed once when the action becomes legal (input-systems: 0.1-0.2 s window)
-const BUF={atk:-9,dodge:-9,jump:-9,inter:-9};const press=(k)=>{BUF[k]=GT.clock};const take=(k,w=.18)=>{if(GT.clock-BUF[k]<=w){BUF[k]=-9;return true}return false};
+const BUF={atk:-9,dodge:-9,jump:-9,inter:-9,hvy:-9};const press=(k)=>{BUF[k]=GT.clock};const take=(k,w=.18)=>{if(GT.clock-BUF[k]<=w){BUF[k]=-9;return true}return false};
 const COST={light:[12,13,15],heavy:24,heavyMax:14,run:18,jumpAtk:16,dodge:18,jump:10,sprint:14};
 const PARRY_WIN=.24;
 // --------------------------------------------------------------- enemies the player can hit
@@ -1771,10 +1779,11 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
   if(IN.blockHeld&&startBlock())break;
   if(take('dodge'))startDodge();else if(take('jump'))startJump();
   else if((atkEdge||BUF.atk>GT.clock-.2)&&execTarget()){IN.atkUsed=true;BUF.atk=-9;startExec(execTarget())}
-  else if(P.sprinting&&P.spd>4&&(atkEdge||take('atk'))){IN.atkUsed=true;startRunAtk()}else if(atkHold){IN.atkUsed=true;startCharge()}else if(take('atk'))startLight(0);
+  else if(P.sprinting&&P.spd>4&&(atkEdge||take('atk'))){IN.atkUsed=true;startRunAtk()}else if(atkHold){IN.atkUsed=true;const av=BUF.hvy>GT.clock-.35?tdTarget(2.4):null;BUF.hvy=-9;if(av)startAssassin(av);else startCharge()}else if(take('atk'))startLight(0);
   else if(take('inter'))interact();break}
  case'exec':{slide(10);if(!P.hitDone&&P.t>.45){P.hitDone=true;execHit()}if(P.t>1.05){P.st='move';P.t=0}break}
  case'shoot':updateShoot(dt);break;
+ case'assn':{const v=P.asV;P.vx=P.vz=0;if(v&&!v.dead)P.yaw=Math.atan2(v.x-P.x,v.z-P.z);if(!P.hitDone&&P.t>.26){P.hitDone=true;assassinHit(v)}if(P.t>.7){P.st='move';P.t=0;P.asV=null}break}
  case'drink':{const sp=1.2*il;moveFree(sp,6);const heal=maxHP()*(P.healFrac||.45);if(P.t<.9)P.hp=Math.min(maxHP(),P.hp+heal*dt/.9);if(P.t>1.05){P.st='move';P.t=0}break}
  case'skill':updateSkill(dt);break;
  case'attack':{const S=curStance(),T=P.atkT||.46,u=P.t/T,last=P.combo>=S.combo-1;slide(10);if(u>.22&&u<.6){const sp=S.lunge&&last?8.5:3.4;P.vx=Math.sin(P.yaw)*sp;P.vz=Math.cos(P.yaw)*sp}
@@ -1846,6 +1855,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   if(P.st==='parry'){const k=1-P.t/.32;q.RaX-=.6*k;q.chX=-.2*k;q.hdX=-.3*k}break}
  case'gbreak':{rate=12;const k=Math.sin(P.t*9)*(1-P.t/1.4);q.RaZ=.2;q.RaX=-1.6;q.Rel=.3;q.LaZ=.5;q.LaX=-1.2;q.spX=-.35+k*.1;q.chX=-.2;q.hdX=-.4;q.pel=-.2;q.LthX=.3;q.Lkn=.5;q.RthX=-.3;q.Rkn=.6;break}
  case'exec':{rate=26;const u=P.t,k=sst(.2,.45,u)-sst(.7,1,u)*.6;q.two=1;q.RaZ=.4;q.RaX=lp(-1.4,-.2,k);q.RaY=-.2;q.Rel=lp(1.3,.1,k);q.RwX=lp(-.9,-.2,k);q.spX=lp(-.1,.45,k);q.pel=.25*k;q.LthX=-.9*k;q.Lkn=1.0*k;q.RthX=.5*k;q.Rkn=.3;q.hipY=-.1*k;break}
+ case'assn':{rate=40;const u=P.t/.5,sl=sst(.3,.62,u);q.RaZ=.45;q.RaX=-.3;q.RaY=lp(2.3,-.9,sl);q.Rel=lp(.35,.05,sl);q.chY=lp(.8,-.7,sl);q.spY=lp(.3,-.25,sl);q.RthX=-.5;q.Rkn=.55;q.LthX=.35;q.Lkn=.25;q.hdX=.1;break}
  case'shoot':{rate=18;q.LaZ=.3;q.LaX=-1.35;q.Lel=.05;q.RaZ=.55;q.RaX=-1.25;q.Rel=1.7;q.spY=-.3;break}
  case'drink':{rate=16;const k=sst(0,.25,P.t)-sst(.85,1.05,P.t);q.LaZ=lp(1.22,.3,k);q.LaX=lp(.05,-1.3,k);q.Lel=lp(.25,2.1,k);q.hdX=-.3*k;q.chX=-.1*k;break}
  case'skill':{rate=30;const k2=P.skill;if(k2==='spin'){q.two=1;q.RaZ=-.1;q.RaX=-.15;q.RaY=1.6;q.Rel=.1;q.spY=-.4;q.pel=.15;q.LthX=-.5;q.Lkn=.7;q.RthX=-.2;q.Rkn=.5}
@@ -2148,7 +2158,7 @@ function shootArrow(from,to,speed,owner,dmg,lead){arrowGeom();const T=Math.hypot
 function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;continue}a.life-=dt;if(a.life<=0){a.on=false;continue}
   if(!a.stuck){a.vy-=9.8*dt;a.x+=a.vx*dt;a.y+=a.vy*dt;a.z+=a.vz*dt;
    if(a.y<hAt(a.x,a.z)+.05){a.stuck=1;a.life=Math.min(a.life,3);a.y=hAt(a.x,a.z)+.08}
-   else if(a.owner==='foe'){if(P.alive&&Math.hypot(P.x-a.x,P.z-a.z)<.45&&a.y>P.y+.1&&a.y<P.y+1.8){const r=hitPlayer({src:{x:a.x-a.vx*.05,z:a.z-a.vz*.05,lv:a.lv},dmg:a.dmg,guard:a.dmg*1.6,dir:[a.vx/24,a.vz/24],knock:'flinch',noPush:1});if(r!=='iframe'){a.on=false;if(r==='block'||r==='parry')spawnSparks(a.x,a.y,a.z,6,[1,.9,.6],3)}}}
+   else if(a.owner==='foe'){if(P.alive&&Math.hypot(P.x-a.x,P.z-a.z)<.45&&a.y>P.y+.1&&a.y<P.y+1.8){const r=hitPlayer({src:{x:a.x-a.vx*.05,z:a.z-a.vz*.05,lv:a.lv},dmg:a.dmg,guard:a.dmg*1.6,dir:[a.vx/19,a.vz/19],knock:'flinch',noPush:1});if(r!=='iframe'){a.on=false;if(r==='block'||r==='parry')spawnSparks(a.x,a.y,a.z,6,[1,.9,.6],3)}}}
    else{for(const f of foes()){const big=f===DRAGON?3:f.big||f.boss?1.0:isWolf(f)?.65:.5,fy=f===DRAGON?f.y+2:(f.y||0)+(f.big?1.4:.8);if(Math.hypot(f.x-a.x,f.z-a.z)<big&&Math.abs(a.y-fy)<(f===DRAGON?3:1)){
      const k=Math.hypot(a.vx,a.vz)||1,dead=foeHurt(f,a.dmg,a.vx/k,a.vz/k,'arrow');addPosture(f,6);floatText(f.x,fy+.6,f.z,''+a.dmg,'');spawnSparks(a.x,a.y,a.z,5,[.9,.2,.15],2);if(dead)onFoeKilled(f,false);else{f.aware=1;if(f.ls)f.ls=[P.x,P.z]}a.on=false;break}}}}
   const yaw=Math.atan2(a.vx,a.vz),pit=-Math.atan2(a.vy,Math.hypot(a.vx,a.vz));a.ob.M=mtrs([a.x,a.y,a.z],[pit,yaw,0]);a.ob.pos=[a.x,0,a.z]}}
@@ -2158,7 +2168,8 @@ function archerChase(g,d,dt){if(!g.archer)return false;if(g.unseen>1||d>22)retur
  if(g.cd<=0){g.st='aim';g.t=0;sfx.gobShout();return true}
  const a=Math.atan2(g.x-P.x,g.z-P.z)+.6*dt*(g.side||1),r=Math.min(14,Math.max(9,d));agentMove(g,P.x+Math.sin(a)*r,P.z+Math.cos(a)*r,3.2,dt,g.rad,6);agentFace(g,P.x,P.z,dt,8);return true}
 function archerAim(g,d,dt){g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
- if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z);shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],[P.x,P.y+1.1,P.z],24,'foe',Math.round(8*lvDmg(g.lv||1)),[P.vx*.6,P.vz*.6]);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
+ if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z);const sp=.55+d*.07,ra=Math.random()*6.28,rr2=Math.sqrt(Math.random())*sp,ld=Math.random()*.45;// like a skeleton archer: often close, not always on target
+  shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],[P.x+Math.cos(ra)*rr2,P.y+1.0+Math.random()*.5,P.z+Math.sin(ra)*rr2],19,'foe',Math.round(8*lvDmg(g.lv||1)),[P.vx*ld,P.vz*ld]);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
  if(g.t>1.3){g.shot=0;g.st='chase';g.t=0;g.cd=rr(1.6,2.6)}}
 function archerPose(g,q){if(!g.archer)return;const aim=g.st==='aim',k=aim?sst(0,.35,g.t):(g.hostile()?.4:0);if(!k)return;
  q.LsX=lp(q.LsX||0,-1.5,k);q.LsZ=lp(q.LsZ||0,.1,k);q.LeX=lp(q.LeX||0,-.05,k);q.RsX=lp(q.RsX||0,-1.35,k);q.RsY=lp(q.RsY||0,.5,k);q.ReX=lp(q.ReX||0,-1.9*(aim?sst(0,.8,g.t):.3),k);q.spY=lp(q.spY||0,-.35,k)}
@@ -2309,7 +2320,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
 let hudT=0,chkT=0,saveT=0;
 function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';
  if(nearAltar()>=0)return'ETKİLEŞ: sunakta dinlen'+(SYS.altars&&SYS.altars[nearAltar()]?'':' (yak)');if(nearChest()>=0)return'ETKİLEŞ: sandığı aç';const sp=storyPrompt();if(sp)return sp;
- const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return'Büyük goblin tutulamaz';if(!isWolf(v)&&d<1.9)return'ETKİLEŞ: boyun kilidi  ·  ZIPLA ×2: üstüne atla';return isWolf(v)?'ZIPLA ×2: kurdun sırtına atla':'ZIPLA ×2: goblinin üstüne atla'}
+ const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return d<2.4?'△ SUİKAST (ağır yara)':'Büyük goblin tutulamaz';if(d<2.4)return'△ SUİKAST'+(!isWolf(v)&&d<1.9?'  ·  R1: boyun kilidi':'')+'  ·  ✕✕: üstüne atla';return isWolf(v)?'✕✕: kurdun sırtına atla  ·  yaklaş: △ suikast':'✕✕: goblinin üstüne atla  ·  yaklaş: △ suikast'}
  for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<2.8)return'ETKİLEŞ: konuş';return''}
 function uiTick(dt){hudT=Math.min(hudT,.1)-dt;if(hudT<=0){hudT=.1;hud(P);drawRadar();
   const all=[...wolves.filter(w=>!w.tame&&!w.dead&&Math.hypot(w.x-P.x,w.z-P.z)<60).map(w=>[hostileSt(w),w.aware]),...GOBS.filter(g=>!g.dead&&Math.hypot(g.x-P.x,g.z-P.z)<60).map(g=>[g.hostile(),g.aware]),...CROCS.filter(c=>!c.dead&&Math.hypot(c.x-P.x,c.z-P.z)<60).map(c=>[c.hostile(),c.aware])];
@@ -2320,7 +2331,7 @@ function uiTick(dt){hudT=Math.min(hudT,.1)-dt;if(hudT<=0){hudT=.1;hud(P);drawRad
   const kd=Math.hypot(P.x,P.z),b=angd(Math.atan2(-P.x,-P.z),CAM.yaw);const tg=questTarget();if(tg){const bb2=angd(Math.atan2(tg[0]-P.x,tg[1]-P.z),CAM.yaw),dd=Math.hypot(tg[0]-P.x,tg[1]-P.z);$('compass').innerHTML='<span style="display:inline-block;color:#ffd76a;transform:rotate('+(-bb2)+'rad)">◆</span> Görev '+Math.round(dd)+' m<br><small>'+ZNAME[zoneAt(P.x,P.z)]+' · Sv.'+regionLevel(P.x,P.z)+'</small>'}else $('compass').innerHTML=(kd<120?'Krallık':'<span style="display:inline-block;transform:rotate('+(-b)+'rad)">▲</span> Krallık '+Math.round(kd)+' m')+'<br><small>'+ZNAME[zoneAt(P.x,P.z)]+'</small>';
   const bb=$('boss'),dr=bossTarget();if(dr){bb.style.display='block';$('bossn').textContent=(dr===DRAGON?'KÜL KANAT · EJDERHA':dr.title||'')+' · Sv.'+(dr.lv||18);$('bossf').style.width=cl(dr.hp/dr.max*100,0,100)+'%';$('bossp').style.width=posFrac(dr)*100+'%'}else bb.style.display='none';
   $('rgf').style.width=(P.berserk>0?P.berserk/12*100:P.rage||0)+'%';$('rgf').className=P.berserk>0?'on':(P.rage>=100?'full':'');$('bRage').style.display=(P.rage>=100||P.berserk>0)?'flex':'none';$('bRage').classList.toggle('on',P.berserk>0);
-  $('bFlask').innerHTML='İKSİR<br><b>'+SYS.flasks+'/'+SYS.flaskMax+'</b>';const sk=SYS.skill,cdl=sk&&P.cd&&P.cd[sk]?Math.max(0,P.cd[sk]-GT.clock):0;$('bSkill').innerHTML=sk?SKILLS[sk].n.split(' ').map(w=>w.slice(0,6)).join('<br>')+(cdl>0?'<br><b>'+cdl.toFixed(0)+'</b>':''):'YETENEK';$('bSkill').classList.toggle('cd',cdl>0);$('bLock').classList.toggle('on',!!P.lock);
+  $('bFlask').innerHTML='<i>▼</i>İKSİR <b>'+SYS.flasks+'</b>';const sk=SYS.skill,cdl=sk&&P.cd&&P.cd[sk]?Math.max(0,P.cd[sk]-GT.clock):0;$('bSkill').innerHTML='<i>▲</i>'+(sk?SKILLS[sk].n.split(' ')[0].slice(0,7):'YETENEK')+(cdl>0?' <b>'+cdl.toFixed(0)+'</b>':'');$('bSkill').classList.toggle('cd',cdl>0);$('bLock').classList.toggle('on',!!P.lock);
   let nw=null,nd=3.2;for(const w of wolves){if(w.dead||w.tame)continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<nd){nd=d;nw=w}}$('bInt').classList.toggle('on',!!pr&&pr.startsWith('ETKİLEŞ')||(!!nw&&!hostileSt(nw)));
   $('bBlk').classList.toggle('on',P.st==='block');$('bSpr').classList.toggle('on',P.sprinting);$('bCrc').classList.toggle('on',P.crouch)}
  chkT-=dt;if(chkT<=0){chkT=.4;checkQuests(P)}saveT-=dt;if(saveT<=0){saveT=6;save(P)}}
@@ -2338,7 +2349,7 @@ function drawRadar(){const c=$('radar'),g=c.getContext('2d'),S=c.width,R=radarR(
 function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e.stopPropagation();e.preventDefault();sfx.on();try{el.setPointerCapture(e.pointerId)}catch(_){}down()});
   if(up){const u=e=>{e.stopPropagation();up()};el.addEventListener('pointerup',u);el.addEventListener('pointercancel',u);el.addEventListener('lostpointercapture',u)}};
  const atkDown=()=>{IN.atkHeld=true;IN.atkAt=GT.clock;IN.atkEdge=true;IN.atkUsed=false;IN.mash=(IN.mash||0)+1},atkUp=()=>{if(IN.atkHeld){IN.atkHeld=false;IN.atkUp=true}};
- btn('bAtk',atkDown,atkUp);btn('bDod',()=>{press('dodge');IN.mash=(IN.mash||0)+1});btn('bJmp',()=>{press('jump');IN.mash=(IN.mash||0)+1});btn('bInt',()=>press('inter'));btn('bSys',()=>toggleWin(P));
+ btn('bAtk',atkDown,atkUp);btn('bHvy',()=>{press('hvy');IN.atkHeld=true;IN.atkAt=GT.clock-1;IN.atkEdge=false;IN.atkUsed=false;IN.mash=(IN.mash||0)+1},atkUp);btn('bDod',()=>{press('dodge');IN.mash=(IN.mash||0)+1});btn('bJmp',()=>{press('jump');IN.mash=(IN.mash||0)+1});btn('bInt',()=>press('inter'));btn('bSys',()=>toggleWin(P));
  btn('bFlask',()=>drinkFlask());btn('bSkill',()=>useSkill());btn('bRage',()=>startRage());btn('bLock',()=>toggleLock());btn('bBow',()=>useBow());btn('bStance',()=>cycleStance());
  btn('bBlk',()=>{IN.blockHeld=true;IN.mash=(IN.mash||0)+1},()=>{IN.blockHeld=false});btn('bSpr',()=>{P.sprintHeld=true;P.crouch=false},()=>{P.sprintHeld=false});btn('bCrc',()=>{P.crouch=!P.crouch;if(P.crouch)P.sprintHeld=false});
  let jId=null,jx=0,jy=0,lId=null,lx=0,ly=0;const kbg=$('kbg'),kn=$('kn');
@@ -2374,7 +2385,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
    dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
-   openWin,renderWin,uiTick,maxHP,useBow,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
+   openWin,renderWin,uiTick,maxHP,useBow,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}
 // ---- 90-loader.js
