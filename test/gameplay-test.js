@@ -149,6 +149,33 @@ window.runGameplayTests = async function () {
     P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax; P.iframes = 0;
   }
 
+  // 1d-3) yerinde dönüş ve duruşa yerleşme: dururken ayaklar dünyada sabit; gövde dönünce adım atarak yerleşir
+  {
+    const IK = P.ik, V = THREE_V, gnd = IK.ground;
+    const moved = []; G.animals.forEach((a) => { if (!a.tamed && Math.hypot(a.x, a.z - 6) < 14) { moved.push([a, a.x, a.z]); a.x += 40; } a.target = null; a.calmT = 999; });
+    const reset = () => { G.keys = {}; G.edge = {}; G.touch.mx = G.touch.mz = 0; G.camYaw = 0; P.x = 0; P.z = 6; P.y = gnd(0, 6); P.yaw = 0; P.speed = 0; P.state = 'move'; P.crouching = false; P.hp = P.hpMax; P.iframes = 99; P.kbx = P.kbz = 0; sim(1.5); IK.stepStats = { steps: 0, snaps: 0 }; };
+    const err = () => IK.legs.map((l) => Math.hypot(l.P.x - l.want.x, l.P.z - l.want.z));
+    // betikli 90° dönüş (1 sn): basan ayak kaymaz, adım atılır, sonunda ayaklar duruşa ve gövde yönüne oturur
+    reset(); { const y0 = P.yaw; let prev = null, slip = 0, n = 0, maxLift = 0;
+      sim(2.2, (i) => { if (i < 30) P.yaw = y0 + (Math.PI / 2) * (i + 1) / 30;
+        const cur = IK.legs.map((l) => ({ p: l.foot.getWorldPosition(new V()), pl: l.pw > 0.95 && !l.step })); maxLift = Math.max(maxLift, ...IK.legs.map((l) => l.lift));
+        if (prev) cur.forEach((c, k) => { if (c.pl && prev[k].pl) { slip += Math.hypot(c.p.x - prev[k].p.x, c.p.z - prev[k].p.z); n++; } }); prev = cur; });
+      const e = err(), h = IK.legs.map((l) => Math.abs(Math.atan2(Math.sin(l.H - P.yaw), Math.cos(l.H - P.yaw))));
+      ok('yerinde dönüş: 90° dönerken adım atılır, basan ayak kaymaz', IK.stepStats.steps >= 2 && n > 30 && slip / n < 0.002 && maxLift > 0.03,
+        `adım=${IK.stepStats.steps} kayma=${(slip / n * 1000).toFixed(2)} mm/kare (${n} kare) ayak kalkışı=${(maxLift * 100).toFixed(1)} cm`);
+      ok('yerinde dönüş: sonunda ayaklar duruşa ve gövde yönüne oturur', e.every((x) => x < IK.plantDist) && h.every((x) => x < IK.plantAng), `uzaklık=${e.map((x) => x.toFixed(3))} yön=${h.map((x) => x.toFixed(2))}`); }
+    // oyuncu girişiyle geri dönüş: önce yerinde döner (hız ~0), sonra yürür
+    reset(); { G.keys.s = true; let piv = 0, spd = 0; sim(0.6, () => { if (P.pivot) { piv++; spd = Math.max(spd, P.speed); } }); const yawOk = Math.abs(Math.cos(P.yaw) + 1) < 0.1, st = IK.stepStats.steps; G.keys = {}; sim(1);
+      ok('yerinde dönüş: geri yön verilince önce olduğu yerde döner, sonra yürür', piv >= 5 && spd < 0.3 && st >= 1 && yawOk, `dönüş=${(piv / 30).toFixed(2)} sn maks hız=${spd.toFixed(2)} adım=${st} yön=${P.yaw.toFixed(2)}`); }
+    // koşudan durunca ayaklar bekleme duruşuna adımla yerleşir; ışınlanmada adım atmadan yeniden yerleşir
+    reset(); { G.keys.w = true; sim(1.5); G.keys = {}; IK.stepStats = { steps: 0, snaps: 0 }; sim(2); const e = err();
+      ok('duruşa yerleşme: koşudan durunca ayaklar bekleme duruşuna oturur', P.cur._clip.name === 'Idle_Loop' && e.every((x) => x < IK.plantDist) && IK.stepStats.snaps === 0, `adım=${IK.stepStats.steps} uzaklık=${e.map((x) => x.toFixed(3))}`);
+      P.x += 5; sim(0.2); const fin = IK.legs.every((l) => Number.isFinite(l.knee.quaternion.x) && Number.isFinite(l.P.x));
+      ok('duruşa yerleşme: ışınlanmada ayaklar yeniden yerleşir, NaN yok', fin && IK.stepStats.snaps >= 1 && err().every((x) => x < 0.05), `yeniden yerleşme=${IK.stepStats.snaps} uzaklık=${err().map((x) => x.toFixed(3))}`); }
+    moved.forEach(([a, ox, oz]) => { a.x = ox; a.z = oz; });
+    reset(); calmAll(); P.yaw = Math.PI; P.iframes = 0;
+  }
+
   // 1e) dört ayaklı ayak IK'si: düzde pozu bozmaz, yan eğimde dört ayak zemine oturur, yürürken basan ayak kaymaz
   {
     const gnd = P.ik.ground;

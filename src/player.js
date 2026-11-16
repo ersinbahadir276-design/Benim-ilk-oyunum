@@ -92,13 +92,20 @@ export class Player {
       target = 0.6 * (el < dur * 0.4 ? 1 : 0); mvx = Math.sin(this.yaw); mvz = Math.cos(this.yaw);
     } else if (this.state === 'roll') { target = 8.2; mvx = Math.sin(this.yaw); mvz = Math.cos(this.yaw); if (this.stT <= 0) this.state = 'move'; }
     else if (this.state === 'interact') { if (this.stT <= 0) this.state = 'move'; }
+    if (!canMove || this.state !== 'move') this.pivot = false;
     if (canMove) {
       if (inp.crouch && onGround) this.crouching = !this.crouching;
       const wade = waterDepth(this.x, this.z) > 0.35;
       const run = inp.run && mag > 0.1 && this.stamina > 1 && !this.crouching;
       target = mag * (this.crouching ? 1.25 : run ? 7.6 : 4.4) * (wade ? 0.55 : 1);
       if (run) this.stamina -= dt * 11; else this.stamina = Math.min(100, this.stamina + dt * (mag > 0.1 ? 9 : 16));
-      if (mag > 0.1) this.turn(Math.atan2(mvx, mvz), dt, 12);
+      // yerinde dönüş: dururken geriye/yana yön verilirse önce olduğu yerde döner (ayaklar adım atar), sonra yürür
+      if (mag > 0.1) {
+        const want = Math.atan2(mvx, mvz), df = Math.abs(Math.atan2(Math.sin(want - this.yaw), Math.cos(want - this.yaw)));
+        if (this.state === 'move' && onGround && this.speed < 0.3 && df > 0.9) this.pivot = true;
+        if (this.pivot && df < 0.45) this.pivot = false;
+        if (this.pivot) { this.turn(want, dt, 12, 9); target = 0; } else this.turn(want, dt, 12);
+      } else this.pivot = false;
       if (inp.jump && onGround && this.state === 'move') { this.vy = 7.2; this.state = 'jump'; this.crouching = false; this.play('Jump_Start', { once: true, ts: 1.6 }); this.airT = 0; }
       else if (inp.roll && onGround && this.state === 'move' && this.stamina >= 22) { this.stamina -= 22; this.crouching = false; if (mag > 0.1) this.yaw = Math.atan2(mvx, mvz); const d = this.play('Roll', { once: true, ts: 1.5 }); this.busy('roll', d * 0.82); this.iframes = d * 0.7; }
       else if (inp.attack && onGround && this.state === 'move') { this.crouching = false; this.startAttack(0); }
@@ -134,7 +141,9 @@ export class Player {
     r.updateMatrixWorld(true);
     this.applyFlinch(dt);
     // ayak kilidi yalnızca yürüme döngüsünde (saldırı/etkileşimde bacaklar klipteki gibi kalır)
-    this.ik.update(dt, this.alive && (this.state === 'move' || this.state === 'attack' || this.state === 'interact' || this.state === 'land') && this.y <= gr + 0.02, this.state === 'move' && this.locoOn() && this.speed > 0.3, this.speed);
+    // yerinde duruş (bekleme/çömelme): ayaklar sabit, dönünce ya da itilince adım atılır
+    this.ik.update(dt, this.alive && (this.state === 'move' || this.state === 'attack' || this.state === 'interact' || this.state === 'land') && this.y <= gr + 0.02, this.state === 'move' && this.locoOn() && this.speed > 0.3, this.speed,
+      this.state === 'move' && this.speed < 0.3);
     if (this.hero.face) this.updateFace(dt);
     if (this.hero.spring) this.hero.spring.update(dt);
   }
@@ -161,7 +170,8 @@ export class Player {
     const dur = this.atkDur || 1, phase = this.state === 'attack' ? 1 - Math.max(0, this.stT) / dur : 0;
     F.update(dt, { state: this.state, hurt: this.hurt, hpFrac: this.hp / this.hpMax, combo: this.combo, attackPhase: phase, stamina: this.stamina, sprinting: this.speed > 5.6, crouching: this.crouching, yaw: this.yaw, eye, target: tgt });
   }
-  turn(want, dt, rate) { let d = (want - this.yaw) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; this.yaw += d * Math.min(1, dt * rate); }
+  // maxRate: en yüksek açısal hız (rad/sn); verilmezse üstel yaklaşım
+  turn(want, dt, rate, maxRate = Infinity) { let d = (want - this.yaw) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; const s = d * Math.min(1, dt * rate), m = maxRate * dt; this.yaw += Math.max(-m, Math.min(m, s)); }
   startAttack(i) {
     // en yakın düşmana hafif nişan yardımı
     let best = null, bd = 4.5; for (const a of this.g.animals) { if (a.dead || a.tamed || a.alt > 2.5) continue; const d = a.dist(this) - a.radius; if (d < bd && (a.target === this || a.byPlayerT > 0 || a.spec.temper !== 'prey')) { const ang = Math.atan2(a.x - this.x, a.z - this.z); let df = Math.abs(((ang - this.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI); if (df < 1.3) { bd = d; best = ang; } } }

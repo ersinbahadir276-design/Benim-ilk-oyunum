@@ -169,6 +169,20 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 - 6 yeni test: kurt, at, geyik, aslan, ayı koşusunda basan ayak kayması < 1 mm/kare, erken bırakma ≤ %10, ortalama gövde alçalması < %5; yürüyüşe dönünce normal döngü. **133/133 test geçti (2 ardışık koşu), konsol hatası yok.**
 - Ortam notu: bu turda yerel sunucu `npx http-server` ile çalıştırıldı; `test/run-tests.mjs` değişmedi.
 
+### Tur 11 (2026-11-16): kahramanda yerinde dönüş ve duruşa yerleşme adımları (özellik 2)
+- Not: Bu turun dalı (`ccr-70a30f22-qhhbcm`) yine `main`'deydi ve PROGRESS.md yoktu; önce Tur 2–10 zincirine (`8genbv`) ileri sarıldı (fast-forward), iş tekrar edilmedi. `8genbv`'den sonra `main`'den başlayan `348cxn` dalı yine yay kemiği fiziğini tekrarlamış; gereksiz.
+- Sorun: kahraman dururken ayaklar yalnızca bekleme klibinden geliyordu. Olduğu yerde dönünce (ör. saldırıda nişan yardımı, geri yön verince) iki ayak gövdeyle birlikte yerde dönerek kayıyordu; koşudan durunca ayaklar bekleme pozuna doğru süzülüyordu; geri itilince ayaklar yerde sürükleniyordu.
+- `src/ik.js` → `FootIK._plant` (yeni): ayakta dururken (bekleme/çömelme, hız < 0.3 m/sn) her ayağın yatay dünya konumu ve yönü sabit tutulur.
+  - Hata = en büyüğü(klibin istediği yere uzaklık / 13 cm, ayak–gövde yön farkı / 0.5 rad, kalçadan yatay uzaklık / bacak boyunun %42'si). Hata 1'i geçince **en kötü ayak** kısa bir adım atar: süre 0.20–0.36 sn (mesafeyle), yay yüksekliği 3.5–9 cm, konum ve yön smoothstep ile hedefe (hedef her karede güncellenir, gövde dönmeye devam ederken de doğru yere iner).
+  - Aynı anda tek ayak kalkar; hata çok büyükse (≥1.6, hızlı dönüş) diğer ayak ilk adımın ikinci yarısında kalkabilir.
+  - Ayak yönü: basan ayak dünyada eski yönünde kalır (gövde dönerken ayak tabanı yerde dönmez), diz ayak ile gövde yönünün ortasına bükülür.
+  - Yürüme kilidinden kesintisiz geçiş: duruşa geçerken başlangıç konumu bir önceki karede gösterilen ayak konumu. 70 cm'den büyük sapmada (ışınlanma, yeniden doğma) adım atmadan yeniden yerleşir.
+- `src/player.js`: dururken yön ile bakış arasında 0.9 rad'dan (~50°) fazla fark varsa kahraman önce olduğu yerde döner (en çok 9 rad/sn, hız 0), fark 0.45 rad'ın altına inince yürümeye başlar. 180° dönüş ≈ 0.30 sn, bu sürede 2 adım. `turn()` artık isteğe bağlı açısal hız sınırı alıyor.
+- Ölçümler (30 fps): betikli 90° dönüşte (1 sn) 3 adım, basan ayak kayması 0.04 mm/kare, ayak kalkışı 7.6 cm, sonunda ayaklar duruşa 5 cm / 0.26 rad içinde oturuyor. Geri yön girişinde 0.30 sn yerinde dönüş, 2 adım, bu sırada hız 0. Koşudan durunca 2 yerleşme adımı, son uzaklık 3 mm.
+- Görsel kontrol (oyun içi, 8 kare): dönüşte ayak kalkıyor, diz doğal bükülüyor, iniş sonrası duruş normal.
+- 5 yeni test (dönüşte adım + kaymama, dönüş sonu duruş, girişle yerinde dönüş, durunca yerleşme, ışınlanmada yeniden yerleşme/NaN). **138/138 test geçti (2 ardışık koşu), konsol hatası yok.**
+- Ortam notu: yerel sunucu başlatma izni yine verilmedi; testler dosyaları Playwright `context.route` ile diskten sunan geçici bir çalıştırıcıyla koşuldu (`test/gameplay-test.js` aynen). `test/run-tests.mjs` değişmedi.
+
 ## Bilinen sorunlar
 - Dudak senkronu yok (oyunda seslendirme yok).
 - Timsahta (yayvan bacaklar, güçlü gövde salınımı) ayak kilidi yürürken basışların ~yarısında, koşarken ~yarısında erken bırakılıyor. Tavşanın koşusunda basış 30 fps'de tek kare sürüyor, kilit pratikte görünmüyor (kayma da görünmüyor). Diğer 7 dört ayaklıda yürüyüş ve koşuda erken bırakma yok (Tur 10).
@@ -176,12 +190,13 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 - Mağara Devi'nde ayak tabanı eğime yatmıyor (ayrı bilek eklemi yok).
 - Kartal evcilleştirme testi ara sıra başarısız oluyor (vahşi hayvan rastgeleliği).
 - Arkadan gelen darbede katmanlı `Hit_Chest` klibi (önden vuruş klibi) yarı ağırlıkla yine geriye doğru oynar; yönlü savrulma bunu baskın şekilde öne çevirir ama ayrı bir "arkadan darbe" klibi yok.
-- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-8genbv` (Tur 2–10; `5gqvtf` Tur 9'a kadar). Tur 9'dan sonra da yay kemiği fiziği `main`'den başlayan 4 dalda daha tekrar yazılmış (`3blqpr`, `znc4u0`, `gtq3z2`, `i6tc9k`); bunlar artık gereksiz. Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
+- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-qhhbcm` (Tur 2–11; `8genbv` Tur 10'a kadar; `5gqvtf` Tur 9'a kadar). Tur 9'dan sonra da yay kemiği fiziği `main`'den başlayan 4 dalda daha tekrar yazılmış (`3blqpr`, `znc4u0`, `gtq3z2`, `i6tc9k`); bunlar artık gereksiz. Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
+- Yerinde dönüşte gövde/kalça ağırlık aktarımı yok (ayaklar adım atar ama kalça yana kaymaz); yerinde dönüş eşiğin altındaki küçük dönüşlerde (< ~29°) ayaklar yerinde döner gibi değil, yön farkı korunarak kalır.
 - Kahramanda yürüme ↔ koşu karışımında (≈1.2–4.6 m/sn) iki ayağın basışı biraz asimetrik. Bir ayak basışın sonunda (topuk kalkarken) erken bırakılabiliyor; ayakta kayma görünmüyor.
 
 ## Sonraki öncelikler
-1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-8genbv` dalı Tur 2–10'u içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz. Birleştirilmezse her tur önce bu dala ileri sarılmalı.
-2. Özellik 2'de kalanlar (küçük): kahramanda yerinde dönüş / yan adım (strafe) klipleri ya da prosedürel dönüş adımı; timsah için gövde salınımını telafi eden kilit. Tilki/ejderha koşu kilidi yeni GLB kliplerine ya da koşu hızının klibe göre düşürülmesine (oynanış kararı) bağlı.
+1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-qhhbcm` dalı Tur 2–11'i içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz. Birleştirilmezse her tur önce bu dala ileri sarılmalı.
+2. Özellik 2'de kalanlar (küçük): yerinde dönüşte kalça ağırlık aktarımı; timsah için gövde salınımını telafi eden kilit. Tilki/ejderha koşu kilidi yeni GLB kliplerine ya da koşu hızının klibe göre düşürülmesine (oynanış kararı) bağlı.
 3. **Özellik 6'nın kalanı:** ekipman/üretim (kılıç seviyesi, malzeme), ata binme (at evcilleştirilebiliyor ama binilemiyor; at artık koşuda doğal dörtnal atıyor), gece/gündüz.
 4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme. Yüklemede `analyzeGait` (kahraman) ve `clipGroundSpeed` (tilki/ejderha) süreleri mobilde ölçülmeli.
 5. Özellik 3: ejderha için uçuş (`fly2` klibinden kök hareketini ayıklayarak).
