@@ -57,8 +57,12 @@ export class FootIK {
     this.debug = { offsets: [0, 0], pelvis: 0, lockDrop: 0 };
     // yerinde dönüş / duruş adımları: hata eşiği (m, rad), adım süresi
     this.plantDist = 0.13; this.plantAng = 0.5; this.stepCool = 0; this.stepStats = { steps: 0, snaps: 0 };
+    // ağırlık aktarımı: adımda kalça (ve onunla üst gövde) yana, basan ayağın üstüne kayar. stepPre: ayak kalkmadan
+    // önce ağırlığın kaymaya başladığı süre; shiftFrac: kalça–basan ayak yanal uzaklığının ne kadarı; shiftMax: sınır (m)
+    this.stepPre = 0.07; this.shiftFrac = 0.6; this.shiftMax = 0.065; this.shift = new THREE.Vector3(); this.shiftV = new THREE.Vector3(); this.shiftOn = true;
+    this.debug.shift = 0;
   }
-  reset() { this.pelvis = 0; this.weight = 0; this.lockDrop = 0; this.stepCool = 0; for (const L of this.legs) { L.off = 0; L.tilt.identity(); L.locked = false; L.lockW = 0; L.prevZ = null; L.spent = false; L.pw = 0; L.pOn = false; L.step = null; L.lift = 0; L.hasLast = false; } }
+  reset() { this.shift.set(0, 0, 0); this.shiftV.set(0, 0, 0); this.pelvis = 0; this.weight = 0; this.lockDrop = 0; this.stepCool = 0; for (const L of this.legs) { L.off = 0; L.tilt.identity(); L.locked = false; L.lockW = 0; L.prevZ = null; L.spent = false; L.pw = 0; L.pOn = false; L.step = null; L.lift = 0; L.hasLast = false; } }
   // Ayakta dururken (bekleme/çömelme) ayaklar dünyada sabit durur. Gövde dönerse, itilirse ya da koşudan durulunca
   // animasyonun istediği duruştan uzaklaşan ayak, bir seferde tek ayak olmak üzere kısa bir adımla yeni yerine taşınır
   // (yerinde dönüş adımı / duruşa yerleşme). Hata: yatay uzaklık / plantDist ile yön farkı / plantAng'ın büyüğü.
@@ -75,7 +79,7 @@ export class FootIK {
         if (L.hasLast && Math.hypot(L.lastP.x - _c.x, L.lastP.z - _c.z) < 0.6) { L.P.copy(L.lastP); L.H = L.lastH; } else { L.P.copy(_c); L.H = yaw; }
       }
     }
-    if (!plant) return;
+    if (!plant) { this.shift.multiplyScalar(Math.max(0, 1 - dt * 12)); this.shiftV.set(0, 0, 0); return; }
     // aşırı uzaklaşma (ışınlanma, güçlü itilme): adım atmadan yeniden yerleş
     for (const L of this.legs) if (Math.hypot(L.P.x - L.want.x, L.P.z - L.want.z) > 0.7) { L.P.copy(L.want); L.H = yaw; L.step = null; this.stepStats.snaps++; }
     const err = (L) => {
@@ -90,16 +94,37 @@ export class FootIK {
       for (const L of this.legs) { if (L.step) continue; const e = err(L); if (e > be) { be = e; best = L; } }
       if (best) {
         const d = Math.hypot(best.P.x - best.want.x, best.P.z - best.want.z);
-        best.step = { t: 0, dur: THREE.MathUtils.clamp(0.2 + d * 0.45, 0.2, 0.36), from: best.P.clone(), H0: best.H, h: Math.min(0.09, 0.035 + d * 0.2) };
+        best.step = { t: this.shiftOn ? -this.stepPre : 0, dur: THREE.MathUtils.clamp(0.2 + d * 0.45, 0.2, 0.36), from: best.P.clone(), H0: best.H, h: Math.min(0.09, 0.035 + d * 0.2) };
         this.stepStats.steps++;
       }
     }
     for (const L of this.legs) {
       const S = L.step; L.lift = 0; if (!S) continue;
-      S.t += dt; const u = Math.min(1, S.t / S.dur), e = u * u * (3 - 2 * u);
+      S.t += dt; const u = THREE.MathUtils.clamp(S.t / S.dur, 0, 1), e = u * u * (3 - 2 * u);
       L.P.lerpVectors(S.from, L.want, e); L.H = S.H0 + wrap(yaw - S.H0) * e; L.lift = S.h * Math.sin(Math.PI * u);
       if (u >= 1) { L.step = null; L.H = yaw; this.stepCool = 0.06; }
     }
+    // ağırlık aktarımı hedefi: adım atan her ayak için karşısındaki (basan) ayağa doğru, gövdenin yan ekseninde.
+    // İki adım üst üste binerse (hızlı dönüş) katkılar toplanır; hedef yandan yana sıçramaz.
+    _t.set(0, 0, 0);
+    if (this.shiftOn) {
+      this.hips.getWorldPosition(_b);
+      const rx = Math.cos(yaw), rz = -Math.sin(yaw); // gövdenin sağ ekseni
+      let lat = 0;
+      for (const sw of this.legs) {
+        const S = sw.step; if (!S) continue; const sup = this.legs.find((L) => L !== sw);
+        // zarf: ön hazırlıkta (t<0) yükselir, adımın son %40'ında iner
+        const a = THREE.MathUtils.clamp((S.t + this.stepPre) / (this.stepPre + S.dur * 0.15), 0, 1), b = THREE.MathUtils.clamp((S.dur - S.t) / (S.dur * 0.4), 0, 1);
+        const env = Math.min(a * a * (3 - 2 * a), b * b * (3 - 2 * b));
+        lat += ((sup.P.x - _b.x) * rx + (sup.P.z - _b.z) * rz) * this.shiftFrac * env;
+      }
+      lat = THREE.MathUtils.clamp(lat, -this.shiftMax, this.shiftMax);
+      _t.set(rx * lat, 0, rz * lat);
+    }
+    // kritik sönümlü yay: kalça hızında sıçrama olmaz
+    const om = 11, h = Math.min(dt, 0.05);
+    this.shiftV.x += (om * om * (_t.x - this.shift.x) - 2 * om * this.shiftV.x) * h; this.shiftV.z += (om * om * (_t.z - this.shift.z) - 2 * om * this.shiftV.z) * h;
+    this.shift.x += this.shiftV.x * h; this.shift.z += this.shiftV.z * h;
   }
   normal(x, z, out) {
     const e = 0.25, G = this.ground;
@@ -143,7 +168,7 @@ export class FootIK {
     const k = Math.min(1, dt * 14);
     this.weight += ((active && this.enabled ? 1 : 0) - this.weight) * Math.min(1, dt * 8);
     const rootY = this.root.position.y, w = this.weight;
-    if (w < 0.001) { this.pelvis = 0; for (const L of this.legs) { L.locked = false; L.lockW = 0; L.prevZ = null; L.pw = 0; L.pOn = false; L.step = null; L.hasLast = false; } return; }
+    if (w < 0.001) { this.pelvis = 0; this.shift.set(0, 0, 0); this.shiftV.set(0, 0, 0); for (const L of this.legs) { L.locked = false; L.lockW = 0; L.prevZ = null; L.pw = 0; L.pOn = false; L.step = null; L.hasLast = false; } return; }
     this.root.updateMatrixWorld(true);
     const yaw = this.root.rotation.y;
     this._plant(dt, plant && active && this.enabled, yaw);
@@ -159,9 +184,9 @@ export class FootIK {
     }
     // kalça: aşağıdaki ayağa uzanabilsin diye alçalır
     this.pelvis += (lo - this.pelvis) * k;
-    const drop = (this.pelvis - this.lockDrop) * w;
-    if (Math.abs(drop) > 1e-5) {
-      this.hips.getWorldPosition(_t); _t.y += drop;
+    const drop = (this.pelvis - this.lockDrop) * w, sx = this.shift.x * w, sz = this.shift.z * w;
+    if (Math.abs(drop) + Math.abs(sx) + Math.abs(sz) > 1e-5) {
+      this.hips.getWorldPosition(_t); _t.y += drop; _t.x += sx; _t.z += sz;
       this.hips.parent.worldToLocal(_t); this.hips.position.copy(_t); this.hips.updateMatrixWorld(true);
     }
     _fwd.set(Math.sin(this.root.rotation.y), 0, Math.cos(this.root.rotation.y));
@@ -169,7 +194,7 @@ export class FootIK {
       L.foot.getWorldQuaternion(_qf); // animasyonun ayak yönü (dünya)
       L.foot.getWorldPosition(_t);
       // kalça indiği için ayak da indi: animasyondaki yüksekliğe zemin farkını ekle
-      _t.y += (L.off * w) - drop;
+      _t.y += (L.off * w) - drop; _t.x -= sx; _t.z -= sz; // kalça kaydırması ayağı taşımasın
       // kilitli ayak: yatay konum dünyada sabit (yükseklik animasyondan: topuk kalkışı korunur)
       const lw = this.lockApply ? L.lockW * w : 0; // lockApply=false: basış tespiti çalışır ama kilit uygulanmaz (ölçüm için)
       if (lw > 1e-3) { _t.x += (L.lockP.x - _t.x) * lw; _t.z += (L.lockP.z - _t.z) * lw; }
@@ -194,7 +219,7 @@ export class FootIK {
       L.lastP.copy(_t); L.lastH = yaw + dH; L.hasLast = true;
       this.debug.offsets[i] = L.off;
     });
-    this.debug.pelvis = drop; this.debug.lockDrop = this.lockDrop;
+    this.debug.pelvis = drop; this.debug.lockDrop = this.lockDrop; this.debug.shift = Math.hypot(sx, sz);
   }
 }
 

@@ -172,6 +172,22 @@ window.runGameplayTests = async function () {
       ok('duruşa yerleşme: koşudan durunca ayaklar bekleme duruşuna oturur', P.cur._clip.name === 'Idle_Loop' && e.every((x) => x < IK.plantDist) && IK.stepStats.snaps === 0, `adım=${IK.stepStats.steps} uzaklık=${e.map((x) => x.toFixed(3))}`);
       P.x += 5; sim(0.2); const fin = IK.legs.every((l) => Number.isFinite(l.knee.quaternion.x) && Number.isFinite(l.P.x));
       ok('duruşa yerleşme: ışınlanmada ayaklar yeniden yerleşir, NaN yok', fin && IK.stepStats.snaps >= 1 && err().every((x) => x < 0.05), `yeniden yerleşme=${IK.stepStats.snaps} uzaklık=${err().map((x) => x.toFixed(3))}`); }
+    // ağırlık aktarımı: adımda kalça basan ayağa doğru yana kayar, kalça sıçramaz, basan ayak kaymaz, sonunda sıfırlanır
+    const turnLat = (on) => { IK.shiftOn = on; reset(); const y0 = P.yaw, rx = () => [Math.cos(P.yaw), -Math.sin(P.yaw)];
+      let lat = 0, n = 0, dirOk = 0, dirN = 0, maxS = 0, jump = 0, hp = null, slip = 0, sn = 0, prev = null;
+      sim(2.2, (i) => { if (i < 24) P.yaw = y0 + Math.PI * 0.6 * (i + 1) / 24;
+        const h = IK.hips.getWorldPosition(new V()); if (hp) jump = Math.max(jump, h.distanceTo(hp)); hp = h; maxS = Math.max(maxS, IK.debug.shift);
+        const sw = IK.legs.find((l) => l.step && l.lift > 0.01);
+        if (sw) { const sp = IK.legs.find((l) => l !== sw).foot.getWorldPosition(new V()), [ax, az] = rx(), d = (sp.x - h.x) * ax + (sp.z - h.z) * az; lat += Math.abs(d); n++;
+          if (IK.debug.shift > 0.01) { dirN++; if (Math.sign(IK.shift.x * ax + IK.shift.z * az) === Math.sign(d + IK.shift.x * ax + IK.shift.z * az)) dirOk++; } }
+        const cur = IK.legs.map((l) => ({ p: l.foot.getWorldPosition(new V()), pl: l.pw > 0.95 && !l.step }));
+        if (prev) cur.forEach((c, k) => { if (c.pl && prev[k].pl) { slip += Math.hypot(c.p.x - prev[k].p.x, c.p.z - prev[k].p.z); sn++; } }); prev = cur; });
+      return { lat: lat / Math.max(1, n), n, dirOk, dirN, maxS, jump, slip: slip / Math.max(1, sn), end: IK.debug.shift }; };
+    { const off = turnLat(false), on = turnLat(true); IK.shiftOn = true;
+      ok('ağırlık aktarımı: yerinde dönüş adımında kalça basan ayağın üstüne kayar', on.n > 8 && on.maxS > 0.03 && on.maxS <= IK.shiftMax + 1e-3 && on.dirOk >= on.dirN * 0.85 && on.lat < off.lat - 0.015,
+        `kalça kayması en çok=${(on.maxS * 100).toFixed(1)} cm, yön doğru=${on.dirOk}/${on.dirN}, salınımda kalça–basan ayak yanal uzaklığı ${(off.lat * 100).toFixed(1)} → ${(on.lat * 100).toFixed(1)} cm`);
+      ok('ağırlık aktarımı: kalça sıçramaz, basan ayak kaymaz, duruşta sıfırlanır', on.jump < 0.025 && on.slip < 0.002 && on.end < 0.002,
+        `kalça en çok ${(on.jump * 100).toFixed(2)} cm/kare (kapalıyken ${(off.jump * 100).toFixed(2)}), kayma=${(on.slip * 1000).toFixed(2)} mm/kare, son kayma=${(on.end * 1000).toFixed(2)} mm`); }
     moved.forEach(([a, ox, oz]) => { a.x = ox; a.z = oz; });
     reset(); calmAll(); P.yaw = Math.PI; P.iframes = 0;
   }
