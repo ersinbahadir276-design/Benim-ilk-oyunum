@@ -57,6 +57,7 @@ export class Animal {
     if (from === this.g.player || from?.tamed) {
       const got = []; for (const [k, v] of Object.entries(this.spec.drops || {})) { this.g.inv.add(k, v); got.push(`${v} ${ITEMS[k].name}`); }
       if (got.length) this.g.msg(`Ganimet: ${got.join(', ')}`);
+      this.g.prog?.onKill(this, from);
     }
   }
   respawn() {
@@ -91,6 +92,7 @@ export class Animal {
     const no = g.petCounter[this.kind] = (g.petCounter[this.kind] || 0) + 1; this.petName = this.spec.name + (no > 1 ? ' ' + no : '');
     this.altGoal = this.spec.kind === 'bird' ? 4 : 0; g.pets.push(this); this.set('follow');
     g.msg(`✨ ${this.petName} evcilleştirildi! (${g.pets.length}/5)`); g.floatText('❤❤❤', this, '#ff6f9c');
+    g.prog?.onTame(this);
   }
   // E tuşu: bir evcilleştirme adımı dene. Başarılıysa true.
   tryTame() {
@@ -168,7 +170,7 @@ export class Animal {
     if (this.spec.kind === 'bird') this.altGoal = d < 9 ? 0.7 : 5;
     if (this.state === 'attack') {
       this.atkT += dt; this.face(tgt, dt);
-      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed && this.hunger < 25 ? 0.5 : 1), this); }
+      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed ? (this.dmgMul || 1) * (this.hunger < 25 ? 0.5 : 1) : 1), this); }
       if (this.atkT >= this.c.attackTime) { this.cool = 0.5 + Math.random() * 0.5; this.set('chase'); }
       return 'attack';
     }

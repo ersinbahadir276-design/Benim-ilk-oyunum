@@ -78,5 +78,26 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) ilerleme: XP, seviye, yoldaş seviyesi, kayıt
+  const PR = G.prog, Prog = PR.constructor;
+  ok('ilerleme: evcilleştirme ve avdan XP birikti', PR.tames >= 10 && PR.kills >= 1 && (PR.level > 1 || PR.xp > 0), `sv=${PR.level} xp=${PR.xp} tame=${PR.tames} kill=${PR.kills}`);
+  const lv0 = PR.level; PR.gain(PR.need - PR.xp); ok('ilerleme: seviye atlama can/saldırıyı artırır', PR.level === lv0 + 1 && P.hpMax === 100 + (PR.level - 1) * 10 && PR.dmgMul > 1 && P.hp === P.hpMax, `sv=${PR.level} hpMax=${P.hpMax}`);
+  release(); calmAll(); a = find('wolf'); put(a, 1.6); guard = 0; while (a.frac > 0.35 && guard++ < 20) a.damage(12, P); a.tryTame();
+  ok('yoldaş: evcilleşince seviye 1', a.tamed && a.level === 1 && a.dmgMul === 1, 'sv=' + a.level);
+  const lionV = find('lion'); lionV.x = a.x + 3; lionV.z = a.z; const k0 = PR.kills; lionV.damage(9999, a);
+  ok('yoldaş: öldürdüğü düşmandan XP alır', a.xp > 0 && PR.kills === k0 + 1, 'xp=' + a.xp);
+  const hpm = a.hpMax; PR.petGain(a, 1000); ok('yoldaş: seviye atlayınca can/saldırı artar', a.level > 1 && a.hpMax > hpm && a.dmgMul > 1, `sv=${a.level} can ${hpm}->${a.hpMax}`);
+  const mem = { d: {}, getItem(k) { return this.d[k] ?? null; }, setItem(k, v) { this.d[k] = String(v); }, removeItem(k) { delete this.d[k]; } };
+  G.inv.items.honey = 7; a.petName = 'Karabaş';
+  ok('kayıt: yazılır', PR.save(mem) && Prog.read(mem) !== null);
+  const snapLv = PR.level, petLv = a.level;
+  release(); PR.level = 1; PR.xp = 0; G.inv.items = { flute: 1 }; const n0 = G.animals.length;
+  PR.load(Prog.read(mem), (kind, x, z) => G.spawnPet(kind, x, z));
+  const lp = G.pets[0];
+  ok('kayıt: seviye ve envanter geri yüklenir', PR.level === snapLv && G.inv.count('honey') === 7 && P.hpMax === 100 + (snapLv - 1) * 10, `sv=${PR.level} bal=${G.inv.count('honey')}`);
+  ok('kayıt: yoldaş adı, türü ve seviyesi geri yüklenir', G.pets.length === 1 && lp.kind === 'wolf' && lp.petName === 'Karabaş' && lp.level === petLv && lp.tamed && G.animals.length === n0 + 1, lp && `${lp.kind} ${lp.petName} sv=${lp.level}`);
+  sim(3); ok('kayıt: yüklenen yoldaş takip eder', lp.dist(P) < 9 && !lp.dead, lp.dist(P).toFixed(1));
+  mem.d[Object.keys(mem.d)[0]] = '{"v":1,"level":"x"}'; ok('kayıt: bozuk kayıt reddedilir', Prog.read(mem) === null);
+  release();
   G.running = real; return out;
 };

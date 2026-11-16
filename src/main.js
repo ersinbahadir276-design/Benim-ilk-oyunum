@@ -5,6 +5,7 @@ import { loadGLBCreatures, SPECIES } from './creatures.js';
 import { World, height, zone, rng, floorY, LAKE, PEAK, HALF } from './world.js';
 import { Animal, ITEMS, eats } from './animal.js';
 import { Player } from './player.js';
+import { Progress, xpNeed } from './progress.js';
 
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -41,16 +42,24 @@ class Game {
     step('Dünya kuruluyor…'); this.world = new World(scene);
     const hero = await loadHero(); step('Kahraman hazır…');
     await loadGLBCreatures('assets/models/', () => step('Yaratıklar yükleniyor…'));
-    this.inv = new Inventory(); this.player = new Player(this, hero);
-    this.spawnAll(); this.bindInput(); this.buildHotbar();
+    this.inv = new Inventory(); this.player = new Player(this, hero); this.prog = new Progress(this);
+    this.spawnAll(); this.bindInput();
+    // kayıt: ?test ve ?nosave kipinde ne okunur ne yazılır
+    const useSave = !Q.has('test') && !Q.has('nosave'), save = useSave ? Progress.read() : null;
+    if (save) { this.prog.load(save, (kind, x, z) => this.spawnPet(kind, x, z)); this.loaded = save; }
+    this.prog.autosave = useSave;
+    if (useSave) { const flush = () => { if (this.running || this.loaded || this.prog.kills || this.prog.tames) this.prog.save(); }; addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); }); }
+    $('newgame').onclick = () => { if (confirm('Kayıt silinip yeni oyun başlasın mı?')) { this.prog.autosave = false; Progress.clear(); location.reload(); } };
+    $('newgame').hidden = !save;
+    this.buildHotbar();
     $('loadtxt').textContent = 'Hazır!'; $('loadbar').parentElement.hidden = true; $('start').hidden = false;
     $('start').onclick = () => this.start(); $('helpbtn').onclick = () => this.pause();
     if (Q.has('test')) this.start();
     this.last = performance.now(); r.setAnimationLoop(() => this.frame());
     window.GAME = this;
   }
-  start() { $('overlay').style.display = 'none'; $('hud').hidden = false; this.running = true; if ('ontouchstart' in window || Q.has('touch')) { $('touch').hidden = false; $('log').style.bottom = '240px'; } this.msg('Kamptasın. Çevredeki hayvanlara yaklaş; üstte evcilleştirme ipucunu göreceksin.'); }
-  pause() { this.running = false; const o = $('overlay'); o.style.display = 'flex'; o.classList.add('pause'); $('loadtxt').textContent = 'Duraklatıldı'; $('start').textContent = 'Devam Et'; }
+  start() { $('overlay').style.display = 'none'; $('hud').hidden = false; this.running = true; if ('ontouchstart' in window || Q.has('touch')) { $('touch').hidden = false; $('log').style.bottom = '240px'; } if (!this.started) this.msg(this.loaded ? `Kayıt yüklendi: seviye ${this.prog.level}, ${this.pets.length} yoldaş.` : 'Kamptasın. Çevredeki hayvanlara yaklaş; üstte evcilleştirme ipucunu göreceksin.'); this.started = true; }
+  pause() { if (this.prog.autosave) { this.prog.save(); $('newgame').hidden = false; } this.running = false; const o = $('overlay'); o.style.display = 'flex'; o.classList.add('pause'); $('loadtxt').textContent = 'Duraklatıldı'; $('start').textContent = 'Devam Et'; }
 
   spawnAll() {
     const R = rng(777), put = (kind, n, ok) => { let k = 0, tries = 0; while (k < n && tries++ < 5000) { const x = (R() - 0.5) * 2 * (HALF - 12), z = (R() - 0.5) * 2 * (HALF - 12), h = height(x, z); if (Math.hypot(x, z) < 16 || !ok(zone(x, z), h, x, z)) continue; this.animals.push(new Animal(this, kind, x, z)); k++; } };
@@ -106,9 +115,10 @@ class Game {
       this.pets.forEach((p) => { const d = document.createElement('div'); d.className = 'pet'; d.innerHTML = '<div class="row"><b></b><span class="mood"></span><button title="Serbest bırak">Bırak</button></div><div class="bar hp"><i></i></div><div class="bar hunger"><i></i></div>'; d.querySelector('button').onclick = () => { this.msg(`${p.petName} serbest bırakıldı.`); this.removePet(p, false); }; list.appendChild(d); });
       if (!this.pets.length) list.innerHTML = '';
     }
-    this.pets.forEach((p, i) => { const d = list.children[i]; if (!d) return; d.querySelector('b').textContent = p.petName; d.querySelector('.mood').textContent = p.mood(); const b = d.querySelectorAll('.bar i'); b[0].style.transform = `scaleX(${Math.max(0, p.frac)})`; b[1].style.transform = `scaleX(${p.hunger / 100})`; });
+    this.pets.forEach((p, i) => { const d = list.children[i]; if (!d) return; d.querySelector('b').textContent = `${p.petName} · Sv ${p.level || 1}`; d.querySelector('.mood').textContent = p.mood(); const b = d.querySelectorAll('.bar i'); b[0].style.transform = `scaleX(${Math.max(0, p.frac)})`; b[1].style.transform = `scaleX(${p.hunger / 100})`; });
   }
-  removePet(p, dead) { const i = this.pets.indexOf(p); if (i >= 0) this.pets.splice(i, 1); p.tamed = false; p.trust = 0; p.fed = false; p.stay = false; p.home = { x: p.x, z: p.z }; p.calmT = 40; p.target = null; if (!dead) { p.altGoal = p.spec.kind === 'bird' ? 14 : 0; p.set('idle', 2); } $('petlist').innerHTML = ''; }
+  removePet(p, dead) { const i = this.pets.indexOf(p); if (i >= 0) this.pets.splice(i, 1); p.level = 0; p.xp = 0; p.dmgMul = 1; p.hpMax = p.spec.hp; p.hp = Math.min(p.hp, p.hpMax); p.tamed = false; p.trust = 0; p.fed = false; p.stay = false; p.home = { x: p.x, z: p.z }; p.calmT = 40; p.target = null; if (!dead) { p.altGoal = p.spec.kind === 'bird' ? 14 : 0; p.set('idle', 2); } $('petlist').innerHTML = ''; }
+  spawnPet(kind, x, z) { if (!SPECIES[kind]) return null; const a = new Animal(this, kind, x, z); a.home = { x, z }; this.animals.push(a); return a; }
   removeBait(b) { const i = this.baits.indexOf(b); if (i >= 0) this.baits.splice(i, 1); this.scene.remove(b.mesh); }
   dropBait() {
     const P = this.player, k = this.inv.sel; if (!P.alive) return;
@@ -135,7 +145,7 @@ class Game {
   }
   interact() {
     const P = this.player, n = this.near; if (!n || !P.alive || (P.state !== 'move')) return;
-    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.msg(`+${cnt} ${ITEMS[item].name}`); return; }
+    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.msg(`+${cnt} ${ITEMS[item].name}`); this.prog.onGather(); return; }
     const a = n.animal; P.yaw = Math.atan2(a.x - P.x, a.z - P.z);
     if (a.tamed) { a.feedPet(); P.interactAnim(false); } else if (a.tryTame()) P.interactAnim(false);
   }
@@ -160,6 +170,7 @@ class Game {
     for (const a of this.animals) a.update(dt);
     this.world.update(dt, this.time);
     for (const b of this.baits) { b.t += dt; b.mesh.rotation.y += dt; } if (this.baits[0]?.t > 150) this.removeBait(this.baits[0]);
+    this.prog.update(dt);
     this.edge = {};
     this.updateHud(dt);
   }
@@ -173,7 +184,8 @@ class Game {
   }
   updateHud(dt) {
     const P = this.player;
-    $('hp').style.transform = `scaleX(${P.hp / P.hpMax})`; $('st').style.transform = `scaleX(${P.stamina / 100})`;
+    $('hp').style.transform = `scaleX(${P.hp / P.hpMax})`; $('st').style.transform = `scaleX(${P.stamina / P.stMax})`;
+    const pr = this.prog; if (pr.dirty || pr.shown !== pr.level) { pr.shown = pr.level; $('lvl').textContent = pr.level; $('xp').style.transform = `scaleX(${pr.xp / xpNeed(pr.level)})`; $('xptxt').textContent = `XP ${Math.floor(pr.xp)}/${xpNeed(pr.level)}`; }
     if (this.inv.dirty) this.buildHotbar();
     this.hudT = (this.hudT || 0) - dt;
     if (this.hudT <= 0) {
