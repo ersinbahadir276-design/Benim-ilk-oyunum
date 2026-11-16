@@ -96,6 +96,8 @@ const parts = [
   // boot tops
   { name: 'bootTop', mat: 'armor', tau: 0.02, k: 0.004, sdf: symX(I(0.003, shell(cone([WP[9][0], kneeY2 + 0.26, 0.0], [WP[10][0], kneeY2 + 0.12, 0.0], 0.072, 0.065), 0.006), plane([0, kneeY2 + 0.22, 0], [0, 1, 0]), plane([0, kneeY2 + 0.19, 0], [0, -1, 0]))), boneFn: (x) => [[x > 0 ? 'lHip' : 'rHip', 1]] },
 ];
+const DROP = ['hair', 'bangs', 'strands', 'locks', 'hairFall', 'skirt', 'tassets', 'belt']; // hair now comes from the hair GLB; no skirt armour
+for (let i = parts.length - 1; i >= 0; i--) if (DROP.includes(parts[i].name)) parts.splice(i, 1);
 const extra = await sculpt({ name: 'kingExtras', voxel: 0.0045, tris: 7000, err: 0.0012, bones: BN, parts, decals: [],
   mats: { horn: { col: [0.13, 0.12, 0.13], col2: [0.24, 0.22, 0.22], freq2: 16, var: 0.15, gloss: 0.5, dirt: 0.6 }, hair: { col: [0.5, 0.07, 0.07], col2: [0.3, 0.035, 0.04], freq2: 30, var: 0.25, freq: 80, gloss: 0.45 },
     leather: { col: [0.06, 0.055, 0.065], var: 0.12, freq: 60, gloss: 0.5 }, armor: { col: [0.12, 0.12, 0.14], gloss: 0.65, metal: 0.8, wear: 0.5, edge: [0.6, 0.6, 0.65], var: 0.1 }, gem: { col: [1.4, 0.12, 0.1], em: 0.8, gloss: 0.9 } } });

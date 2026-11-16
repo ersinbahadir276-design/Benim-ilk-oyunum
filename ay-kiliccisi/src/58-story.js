@@ -20,7 +20,7 @@ function storyInit(){SYS.main=SYS.main||0;
  for(const[k,kind,x,z,yaw,name]of[['elder','elder',-6,47,0,'İhtiyar Doran'],['smith','smith',22,-44,PI,'Demirci Hask'],['hunter','hunter',44,66,-PI/2,'Avcı Lena'],['priest','priest',-3,40,0,'Rahibe Mira']]){
   if(!NPCM[kind])NPCM[kind]=humanGeo(kind);const p=collide(x,z,.5),n=mkNpc(kind,p[0],p[1],{yaw,post:[p[0],p[1],yaw]});n.role=k;n.name=name;n.R=rigObj(NPCM[kind],{out:.012,cull:130,outCol:[.12,.1,.1]});ROLES[k]=n}
  // the Demon King (prologue panels; the final battle comes in phase 3)
- const km=humanGeo('king');KING={x:0,z:-1300,y:0,yaw:0,R:rigObj(km,{out:.02,cull:300,outCol:[.03,.02,.04]}),sc:2.4,K:km.K,vis:false};KING.sc=1.0;rigHide(KING.R);
+ const km=humanGeo('king');KING={x:0,z:-1300,y:0,yaw:0,R:rigObj(km,{out:.02,cull:300,outCol:[.03,.02,.04]}),sc:2.4,K:km.K,vis:false};KING.sc=1.0;KING.hair=kingHair();rigHide(KING.R);
  // cages at the eastern goblin camp
  const c=CAMPSITES[0];for(let i=0;i<2;i++){const a=c.gate+PI+(i?.5:-.5),x=c.x+Math.cos(a)*9,z=c.z+Math.sin(a)*9,y=hAt(x,z),g=G();
   for(let k=0;k<10;k++){const b=k/10*2*PI;box(g,Math.cos(b)*.8-.04,0,Math.sin(b)*.8-.04,Math.cos(b)*.8+.04,1.8,Math.sin(b)*.8+.04,[.3,.24,.16])}box(g,-.9,1.8,-.9,.9,1.9,.9,[.28,.2,.14]);
@@ -75,7 +75,13 @@ function shot(st,h){const rel=(p)=>st.abs?p:[p[0],p[1]+hAt(p[0],p[2]),p[2]],eye=
   const L=mlook(eye,at,[0,1,0]),VP=mmul(mpersp(fov,cv.width/cv.height,.25,620),L.m),env=Object.assign({fogC:[.6,.72,.85],sun:[1,1,1],fog:[60,300],focus:at},st.env||{}),light=vnorm(vadd(vadd(vmul(L.r,-.45),vmul(L.u,.62)),vmul(L.f,-.62)));
   skinAll();drawWolves(P,GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawVeyra(GT.time);drawKing();drawAll(VP,eye,light,GT.time,env);
   return cv.toDataURL('image/jpeg',.8)}finally{cv.width=CW;cv.height=CH;if(st.teardown)st.teardown();Object.assign(P,{x:save.x,z:save.z,y:save.y,yaw:save.yaw,ps:save.ps,lift:save.lift});P.rag=save.rag}}
-function drawKing(){if(!KING)return;if(!KING.vis){rigHide(KING.R);return}const q={hdP:.15,LsX:-.2,RsX:-.9,ReX:-1,LeX:-.4,...(KING.pose||{})};const K=KING.K,hipH=(K.th+K.sh2+.06)*KING.sc;rigDraw(KING.R,KING.x,hAt(KING.x,KING.z)+hipH,KING.z,KING.yaw,KING.sc,humanPose(q),1.2,null)}
+// the queen's hair (data/hair.js): a scalp cap and alpha-cut hair cards, carried by the head bone
+function kingHair(){if(typeof HAIRDATA==='undefined')return null;const d=(b,T)=>new T(Uint8Array.from(atob(b),c=>c.charCodeAt(0)).buffer),mk=(h,o)=>{const nv=h.nv,C=new Float32Array(nv*3).fill(1);return obj(geo({P:d(h.P,Float32Array),N:d(h.N,Float32Array),U:d(h.U,Float32Array),C,W:new Float32Array(nv),I:d(h.I,Uint16Array)}),o)};
+ const im=new Image();const cards=mk(HAIRDATA.cards,{shade:.9,ds:1,cut:.45,col:[1.05,.95,.95],pos:[0,0,0],cull:300}),cap=mk(HAIRDATA.cap,{shade:.9,col:[.36,.07,.07],pos:[0,0,0],cull:300});cards.vis=cap.vis=false;
+ im.onload=()=>{cards.tex=texture(im)};im.src=HAIRTEX;return{cards,cap}}
+function placeKingHair(){const H=KING.hair;if(!H)return;const on=KING.vis;H.cards.vis=on&&!!H.cards.tex;H.cap.vis=false;if(!on)return;const d=KING.R.def,R=d.WR[2],p=d.WP[2],sc=KING.sc,M=new Float32Array(16);
+ M[0]=R[0]*sc;M[1]=R[3]*sc;M[2]=R[6]*sc;M[4]=R[1]*sc;M[5]=R[4]*sc;M[6]=R[7]*sc;M[8]=R[2]*sc;M[9]=R[5]*sc;M[10]=R[8]*sc;M[12]=p[0];M[13]=p[1];M[14]=p[2];M[15]=1;H.cards.M=H.cap.M=M;H.cards.pos=H.cap.pos=[KING.x,0,KING.z]}
+function drawKing(){if(!KING)return;if(!KING.vis){rigHide(KING.R);placeKingHair();return}const q={hdP:.15,LsX:-.2,RsX:-.9,ReX:-1,LeX:-.4,...(KING.pose||{})};const K=KING.K,hipH=(K.th+K.sh2+.06)*KING.sc;rigDraw(KING.R,KING.x,hAt(KING.x,KING.z)+hipH,KING.z,KING.yaw,KING.sc,humanPose(q),1.2,null);placeKingHair()}
 const FIRE_PROPS=[];function fires(on,pts){for(const f of FIRE_PROPS)f.vis=false;if(!on)return;pts.forEach(([x,z,s],i)=>{let o=FIRE_PROPS[i];if(!o){o=obj(FIREGEO(),{unlit:1,col:[1,.5,.15],shade:0,pos:[0,0,0],cull:900});FIRE_PROPS.push(o)}o.vis=true;o.M=mtrs([x,hAt(x,z),z],[0,i,0]);for(const k of[0,5,10])o.M[k]*=s;o.pos=[x,0,z]})}
 const RED={fogC:[.32,.07,.06],sun:[1.1,.55,.45],fog:[25,160]},DUSK={fogC:[.25,.2,.35],sun:[.8,.75,.95],fog:[30,200]},NIGHT={fogC:[.06,.08,.16],sun:[.55,.6,.85],fog:[20,140]};
 const PANELS={
