@@ -7,7 +7,7 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 | # | Özellik | Durum | Not |
 | --- | --- | --- | --- |
 | 1 | Yüksek kaliteli erkek kahraman | ✅ Tamamlandı | VRoid avatar, toon gölgeleme, kılıç, saç/kumaş yay kemikleri (Tur 2), yüz ifadeleri + göz kırpma + baş/göz bakışı (Tur 3). Kalan küçük eksik: dudak senkronu (oyunda diyalog olmadığı için gerekmiyor). |
-| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Büyük ölçüde | Kahraman: 17 retarget klip, eğimde ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4); yüklemede ölçülen klip yer hızlarıyla faz senkronlu yürüme/koşu/depar karışımı ve basan ayak kilidi (Tur 7). Dört ayaklılar (9 tür): eğimde ayak IK'si, basma kilidi, adım boyu–hız eşlemesi (Tur 5). Tilki, ejderha (GLB iskeletleri) ve Mağara Devi: eğimde ayak IK'si (Tur 6), yürürken basma kilidi + hız–adım eşlemesi (Tur 8). **Eksik:** koşuda (dört ayaklıların dörtnalı, tilki ve ejderha koşusu) ayak kilidi çoğu adımda erken bırakılıyor; kahramanda dönüşlerde/yan adımda (strafe) özel klip yok. |
+| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Büyük ölçüde | Kahraman: 17 retarget klip, eğimde ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4); faz senkronlu yürüme/koşu/depar karışımı ve basan ayak kilidi (Tur 7). Dört ayaklılar (9 tür): eğimde ayak IK'si, yürürken basma kilidi, adım boyu–hız eşlemesi (Tur 5); koşuda görev oranlı dörtnal döngüsü, 7 türde koşuda erken bırakma %100 → %0 (Tur 10). Tilki, ejderha, Mağara Devi: eğimde ayak IK'si (Tur 6), yürürken basma kilidi (Tur 8). **Eksik:** timsah yürüyüş/koşusunda ve tilki/ejderha koşusunda kilit çoğu adımda bırakılıyor; tavşanın koşu basışı 30 fps'de tek kare; kahramanda dönüş/yan adım (strafe) klibi yok. |
 | 3 | Gönderilen GLB modellerin entegrasyonu | 🟡 Kısmen | Gönderilen tek dosya (ejderha) ve tilki bağlı. Ejderhanın `fly2` klibi kullanılmıyor (ejderha uçmuyor). Yeni GLB gelirse `GLBCreature` ile bağlanacak. |
 | 4 | Çok sayıda hayvan ve yaratık | ✅ İşlevsel olarak tamam | 14 tür. 12 tür kodla üretilmiş düşük poligonlu model; görsel kalite ejderha ve kahramanın altında. |
 | 5 | Evcilleştirme ve yapay zekâ | ✅ İşlevsel olarak tamam | Türe özgü yöntemler, 5 yoldaş, takip/savaş/açlık. Testler geçiyor; tek kararsız test aşağıda. |
@@ -137,19 +137,51 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 - 10 yeni test (başlangıç görevleri, tavşan görevinin ödülü, E ile toplamanın sayılması, böğürtlen görevinin bitmesi, ilgisiz toplamanın sayılmaması, yoldaş + oyuncu kurt öldürmeleri, seviye görevinin kendiliğinden bitmesi, panelin DOM'da etkin görevleri göstermesi, kayıt/yükleme, bozuk kaydın temizlenmesi). **127/127 test geçti (son 2 ardışık koşu), konsol hatası yok.**
 - Ortam notu: bu turda yerel `python3 -m http.server` başlatma izni verilmedi. Testler, dosyaları Playwright istek yakalama (`context.route`) ile diskten sunan geçici bir çalıştırıcıyla koşuldu; `test/gameplay-test.js` aynen kullanıldı. Depodaki `test/run-tests.mjs` değişmedi.
 
+### Tur 10 (2026-11-16): dört ayaklılarda koşu için görev oranlı dörtnal döngüsü (özellik 2)
+- Not: Bu turun dalı (`ccr-70a30f22-8genbv`) `main`'deydi; önce Tur 9 dalına (`5gqvtf`) ileri sarıldı (fast-forward), iş tekrar edilmedi. Tur 9'dan sonra `main`'den başlayan 3 dal (`isowws`, `yjk648`: yay kemiği fiziği; `x29z4t`: XP/kayıt) yine aynı işi tekrarlamış; bunlar gereksiz.
+- Ölçülen sorun (30 fps, düz zemin, türün koşu hızında 4 sn): koşuda 9 dört ayaklının hepsinde basışların ~%100'ü erken bırakılıyordu. Sinüs döngüsünde basış her zaman döngünün yarısıydı ve ayak bu sürede ancak gövdeden çok kısa bir mesafe süpürebiliyordu; klipte ayak yerde 150–240 mm/kare kayıyordu.
+- `src/creatures.js` → `Quadruped.animate`, görev oranlı (duty factor) döngü (koşu ve tavşanın sıçraması):
+  - Basış döngünün D kadarı (en az 0.2, en çok 0.45). Bu sürede bilek, gövde hızıyla doğrusal olarak geri süpürülür: d = v·D/f. Önce D küçülür; yetmezse adım sıklığı artar (en çok 2×). Salınımda ayak yumuşak (smoothstep) öne taşınır, kaldırma sin(π·v).
+  - Bilek dinlenme pozunda kalçanın tam altında değil. Her bacak için kalça düzlemindeki açısı (`a0`) ve uzaklığı (`sR`) yüklemede ölçülüyor; uyluk açısı z = −sR·sin(a0 + açı) bağıntısından çözülüyor, böylece süpürme zeminde gerçekten doğrusal. Ön ve arka bacak boyları farklı olduğu için her bacak kendi açısını alıyor.
+  - Gövde basışlarla eş zamanlı: ayak yerdeyken çöker, uçuşta yükselir; ön ayak basarken burun aşağı, arka ayak iterken yukarı. Önceki sinüs sıçraması basışla ilgisizdi; basış ortasında gövde kalkınca bacak kilitli ayağa yetişemiyordu.
+  - Bacak eklem süzgeci bu döngüde kapalı: 8 m/sn'de basış 30 fps'de 2–3 kare sürüyor ve süzgecin gecikmesi tek başına ~25 mm/kare kayma yaratıyordu (hedefler zaten sürekli).
+- `Quadruped._footIK` düzeltmeleri (yürüyüşü de etkiler):
+  - Kilit artık animasyona göre bir ofset olarak uygulanıyor; ayak kalkınca bu ofset sönüyor. Önceden hedef eski kilit noktasına doğru harmanlanıyordu: koşuda salınımdaki ayak geride sürükleniyor, erişemediği için gövdeyi %20–30 alçaltıyordu.
+  - Erişim denetimi kilit anındaki eski yüksekliği değil, animasyonun o anki yüksekliğini kullanıyor; gövdenin alçalabileceği kadar (%6) pay var.
+  - Gövde alçaltma artık gereken dikey mesafeyi hesaplıyor (önceden düz çizgi farkını kullanıyordu) ve hızlı iniyor, yumuşak kalkıyor.
+- Ölçümler (koşu, 30 fps, 4 sn; önce → sonra):
+
+  | Tür | Hız | Erken bırakma / basış | Klipte kayma | IK sonrası kayma | Ort. gövde alçalması |
+  | --- | --- | --- | --- | --- | --- |
+  | Kurt | 8.2 m/sn | 41/42 → 0/46 | 199 → 12 mm/kare | 0.01 mm/kare | %0.4 |
+  | At | 11.0 m/sn | 33/34 → 0/33 | 238 → 19 mm/kare | 0.01 mm/kare | %0.4 |
+  | Geyik | 9.0 m/sn | 36/36 → 0/37 | 200 → 15 mm/kare | 0.01 mm/kare | %0.4 |
+  | Ayı | 6.8 m/sn | 30/28 → 0/30 | 148 → 12 mm/kare | 0.00 mm/kare | %0.4 |
+  | Aslan | 8.6 m/sn | 35/34 → 0/36 | 197 → 14 mm/kare | 0.01 mm/kare | %0.3 |
+  | Kaplan | 9.0 m/sn | 34/35 → 0/40 | 221 → 13 mm/kare | 0.01 mm/kare | %0.3 |
+  | Gölge Pençe | 8.4 m/sn | 37/36 → 0/36 | 147 → 14 mm/kare | 0.01 mm/kare | %0.5 |
+  | Timsah | 4.6 m/sn | 41/40 → 22/44 | 124 → 40 mm/kare | — | %2 |
+  | Tavşan (yürüme/sıçrama) | 2.6 m/sn | 48/46 → 10/86 | — | — | %1.6 |
+
+  Yürüyüşte (7 tür) değerler değişmedi: erken bırakma 0–1, kayma 0.
+- Timsahta görev oranlı döngü yalnızca koşuda açık. Yürüyüşte denendi ama erken bırakma arttı (27 → 36), bu yüzden yürüyüşte eski döngü kaldı.
+- Görsel kontrol (model görüntüleyici, yandan 6 kare): at, kurt ve tavşanın dörtnal/sıçrama pozları doğal; uzanma ve toplanma evreleri görünüyor.
+- 6 yeni test: kurt, at, geyik, aslan, ayı koşusunda basan ayak kayması < 1 mm/kare, erken bırakma ≤ %10, ortalama gövde alçalması < %5; yürüyüşe dönünce normal döngü. **133/133 test geçti (2 ardışık koşu), konsol hatası yok.**
+- Ortam notu: bu turda yerel sunucu `npx http-server` ile çalıştırıldı; `test/run-tests.mjs` değişmedi.
+
 ## Bilinen sorunlar
 - Dudak senkronu yok (oyunda seslendirme yok).
-- Dört ayaklılarda koşuda (dörtnal) ayak kilidi çoğu adımda erken bırakılıyor; yürüyüşte de adımların %35–50'sinde erken bırakılıyor.
+- Timsahta (yayvan bacaklar, güçlü gövde salınımı) ayak kilidi yürürken basışların ~yarısında, koşarken ~yarısında erken bırakılıyor. Tavşanın koşusunda basış 30 fps'de tek kare sürüyor, kilit pratikte görünmüyor (kayma da görünmüyor). Diğer 7 dört ayaklıda yürüyüş ve koşuda erken bırakma yok (Tur 10).
 - Tilki ve ejderha koşusunda klipler bu hızı karşılayamıyor: tilki `Run` klibi ~1.5 m/sn, ejderhada koşu için yürüme klibi kullanılıyor (1.7 m/sn). Oynatma hızı en çok 2.2 kat (daha hızlısı doğal görünmüyor). Bu yüzden 7.5 / 6.5 m/sn'de basışların çoğu erken bırakılıyor ve ayak klipteki kadar kayıyor. Çözüm: hızlı koşu klibi olan GLB'ler ya da koşu hızının klibe göre düşürülmesi (oynanış kararı).
 - Mağara Devi'nde ayak tabanı eğime yatmıyor (ayrı bilek eklemi yok).
 - Kartal evcilleştirme testi ara sıra başarısız oluyor (vahşi hayvan rastgeleliği).
 - Arkadan gelen darbede katmanlı `Hit_Chest` klibi (önden vuruş klibi) yarı ağırlıkla yine geriye doğru oynar; yönlü savrulma bunu baskın şekilde öne çevirir ama ayrı bir "arkadan darbe" klibi yok.
-- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-5gqvtf` (Tur 2–9). Tur 9'dan sonra da yay kemiği fiziği `main`'den başlayan 4 dalda daha tekrar yazılmış (`3blqpr`, `znc4u0`, `gtq3z2`, `i6tc9k`); bunlar artık gereksiz. Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
+- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-8genbv` (Tur 2–10; `5gqvtf` Tur 9'a kadar). Tur 9'dan sonra da yay kemiği fiziği `main`'den başlayan 4 dalda daha tekrar yazılmış (`3blqpr`, `znc4u0`, `gtq3z2`, `i6tc9k`); bunlar artık gereksiz. Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
 - Kahramanda yürüme ↔ koşu karışımında (≈1.2–4.6 m/sn) iki ayağın basışı biraz asimetrik. Bir ayak basışın sonunda (topuk kalkarken) erken bırakılabiliyor; ayakta kayma görünmüyor.
 
 ## Sonraki öncelikler
-1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-5gqvtf` dalı Tur 2–9'u içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz. Birleştirilmezse her tur önce bu dala ileri sarılmalı.
-2. **Özellik 6'nın kalanı:** ekipman/üretim (kılıç seviyesi, malzeme), ata binme (at evcilleştirilebiliyor ama binilemiyor), gece/gündüz.
-3. Özellik 2'de kalanlar (küçük): dört ayaklılarda dörtnal kilidi (aynı "gövde hızının yarısıyla süpürme" giriş ölçütü), kahramanda dönüş/yan adım klipleri. Koşu kilidinin geri kalanı yeni GLB kliplerine ya da oynanış kararına bağlı.
-4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme. Yüklemede `analyzeGait` (kahraman) ve `clipGroundSpeed` (tilki/ejderha, tür başına bir kez) çalışıyor; mobilde süreleri ölçülmeli.
+1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-8genbv` dalı Tur 2–10'u içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz. Birleştirilmezse her tur önce bu dala ileri sarılmalı.
+2. Özellik 2'de kalanlar (küçük): kahramanda yerinde dönüş / yan adım (strafe) klipleri ya da prosedürel dönüş adımı; timsah için gövde salınımını telafi eden kilit. Tilki/ejderha koşu kilidi yeni GLB kliplerine ya da koşu hızının klibe göre düşürülmesine (oynanış kararı) bağlı.
+3. **Özellik 6'nın kalanı:** ekipman/üretim (kılıç seviyesi, malzeme), ata binme (at evcilleştirilebiliyor ama binilemiyor; at artık koşuda doğal dörtnal atıyor), gece/gündüz.
+4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme. Yüklemede `analyzeGait` (kahraman) ve `clipGroundSpeed` (tilki/ejderha) süreleri mobilde ölçülmeli.
 5. Özellik 3: ejderha için uçuş (`fly2` klibinden kök hareketini ayıklayarak).

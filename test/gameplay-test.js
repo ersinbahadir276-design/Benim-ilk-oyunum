@@ -191,6 +191,35 @@ window.runGameplayTests = async function () {
     P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax;
   }
 
+  // 1e2) dört ayaklı koşu (görev oranlı dörtnal): basan ayak kaymaz, basışlar erken bırakılmaz, gövde çökmez
+  {
+    const moved = G.animals.filter((x) => Math.hypot(x.x, x.z + 40) < 60).map((x) => [x, x.x, x.z]); moved.forEach(([x]) => { x.x += 400; });
+    for (const kind of ['wolf', 'horse', 'deer', 'lion', 'bear']) {
+      const a = find(kind), keep = [a.x, a.z, a.yaw], spd = a.spec.run;
+      a.x = 0; a.z = -60; a.yaw = 0; a.c.reset(); a.calmT = 999; a.c.ikEnabled = true;
+      a.updateWild = function (dt) { this.steer(this.x, this.z + 50, spd, dt, 6); return 'run'; };
+      sim(1.5, () => { P.x = a.x - 6; P.z = a.z; });
+      let prev = null, sIK = 0, n = 0, steps = 0, drop = 0, fr = 0, bad = false; const r0 = a.c.ikReleases;
+      sim(4, () => { P.x = a.x - 6; P.z = a.z; drop += a.c.ikDrop; fr++;
+        const cur = a.c.legs.map((l) => ({ p: l.ft.getWorldPosition(new THREE_V()), lk: l.locked && l.lockW > 0.95, lp: l.lockP.clone() }));
+        if (cur.some((c) => !Number.isFinite(c.p.x + c.p.y))) bad = true;
+        if (prev) cur.forEach((c, i) => { const o = prev[i]; if (c.lk && !o.lk) steps++; if (c.lk && o.lk && c.lp.distanceToSquared(o.lp) < 1e-8) { sIK += Math.hypot(c.p.x - o.p.x, c.p.z - o.p.z); n++; } });
+        prev = cur; });
+      const rel = a.c.ikReleases - r0, dr = drop / fr / a.spec.h;
+      ok(`hayvan koşusu (${kind}): basan ayak kaymaz, erken bırakma yok, gövde çökmez`, !bad && a.c.dutyOn && a.speed > spd * 0.9 && steps >= 20 && n >= 20 && sIK / n < 0.001 && rel <= steps * 0.1 && dr < 0.05,
+        `hız=${a.speed.toFixed(1)} görev oranı=${a.c.dutyK.toFixed(2)} kadans×${a.c.cadK.toFixed(2)} basış=${steps} erken bırakma=${rel} kayma=${(sIK / Math.max(1, n) * 1000).toFixed(2)} mm/kare (${n} kare) gövde alçalması=%${(dr * 100).toFixed(1)}`);
+      delete a.updateWild; a.c.reset(); a.x = keep[0]; a.z = keep[1]; a.yaw = keep[2]; freeze(a); a.calmT = 0; a.stT = 0;
+    }
+    // geri dönüş: yürüyüşe geçince sinüs döngüsü ve yarım basış geri gelir
+    const a = find('wolf'); a.x = 0; a.z = -60; a.calmT = 999;
+    a.updateWild = function (dt) { this.steer(this.x, this.z + 50, this.spec.walk * 1.6, dt, 6); return 'walk'; };
+    sim(1.5, () => { P.x = a.x - 6; P.z = a.z; });
+    ok('hayvan koşusu: yürüyüşe dönünce normal döngü', !a.c.dutyOn && Math.abs(a.c.dutyK - 0.5) < 0.02, 'görev oranı=' + a.c.dutyK.toFixed(3));
+    delete a.updateWild; a.c.reset(); freeze(a); a.calmT = 0; a.stT = 0;
+    moved.forEach(([x, ox, oz]) => { x.x = ox; x.z = oz; });
+    P.x = 0; P.z = 6; P.y = 0; P.yaw = Math.PI; P.hp = P.hpMax;
+  }
+
   // 1f) iskeletli (GLB: tilki, ejderha) ve iki ayaklı (Mağara Devi) ayak IK'si: düzde poz değişmez, yan eğimde bacak uçları zemine oturur
   {
     const gnd = P.ik.ground;

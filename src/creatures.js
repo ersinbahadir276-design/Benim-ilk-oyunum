@@ -185,16 +185,20 @@ class Quadruped extends Creature {
       ft.add(mesh(fparts));
       this.legs.push({ hip, up, lo, ft, rest, front, side, sprawl: sp.sprawl || 0 });
     };
-    mk(true, 1); mk(true, -1); mk(false, 1); mk(false, -1); this.legReach = reach; this.strideK = 1; this.cadK = 1;
+    mk(true, 1); mk(true, -1); mk(false, 1); mk(false, -1); this.legReach = reach; this.strideK = 1; this.cadK = 1; this.dutyK = 0.5; this.dutyOn = false;
     this.legs.forEach((l) => {
       l.up.rotation.x = l.rest[0]; l.lo.rotation.x = l.rest[1]; l.ft.rotation.x = l.rest[2];
       // ayak IK'si durumu: animasyon açıları (au/al/af), zemin farkı, basma kilidi
-      Object.assign(l, { L0: -l.lo.position.y, L1: -l.ft.position.y, au: 0, al: 0, af: 0, off: 0, lift: 0, locked: false, lockW: 0, lockP: new THREE.Vector3(), tgt: new THREE.Vector3(), anim: new THREE.Vector3(), bend: Math.sign(l.rest[1]) || 1, slip: 0, spent: false, hz: l.hip.rotation.z });
+      Object.assign(l, { L0: -l.lo.position.y, L1: -l.ft.position.y, au: 0, al: 0, af: 0, off: 0, lift: 0, locked: false, lockW: 0, lockP: new THREE.Vector3(), tgt: new THREE.Vector3(), anim: new THREE.Vector3(), bend: Math.sign(l.rest[1]) || 1, slip: 0, spent: false, hz: l.hip.rotation.z, lockDx: 0, lockDz: 0 });
     });
     neck.rotation.x = -sp.neckAng; head.rotation.x = sp.neckAng + (sp.headDown ?? 0.3);
     // düz zeminde, dinlenme pozunda ayak bileğinin köke göre yüksekliği (IK testleri ve ölçüm için)
     body.position.y = sp.h; this.root.updateMatrixWorld(true);
-    this.legs.forEach((l) => { l.restH = l.ft.getWorldPosition(_v1).y; l.sweepR = _v1.distanceTo(l.hip.getWorldPosition(_v2)); });
+    this.legs.forEach((l) => {
+      l.restH = l.ft.getWorldPosition(_v1).y; l.sweepR = _v1.distanceTo(l.hip.getWorldPosition(_v2));
+      // dinlenme pozunda bilek kalçanın tam altında değil: kalça düzleminde açısı (a0) ve uzaklığı (sR); doğrusal süpürme için
+      l.hip.worldToLocal(_v1); l.a0 = Math.atan2(-_v1.z, -_v1.y); l.sR = Math.hypot(_v1.y, _v1.z);
+    });
     this.sweepR = this.legs.reduce((m, l) => m + l.sweepR, 0) / 4;
     this.ikW = 0; this.ikDrop = 0; this.ikEnabled = true; this.ikReleases = 0; this._ikOn = false;
   }
@@ -209,21 +213,54 @@ class Quadruped extends Creature {
     // adım boyu – hız eşlemesi (yürüyüş/tırıs): basan ayak bileği yarım döngüde 2·R·sin(salınım) kadar geri süpürür
     // (R = kalça–bilek uzaklığı). Bu, gövdenin aynı sürede aldığı yola eşit olmalı, yoksa ayak zeminde kayar.
     // Önce salınım genliği büyütülür (en çok 1.4×), yetmezse adım sıklığı artırılır.
-    const base = (sp.sprawl ? 0.5 : 0.62) * 0.55;
-    let sk = 1, fk = 1;
-    if (moving && !run && !hop && !gal && o.speed > 0.05) {
-      const f = 1.25 * sp.cadence * (o.rate || 1), need = Math.asin(Math.min(0.9, o.speed / f / (4 * this.sweepR)));
+    const base = (sp.sprawl ? 0.5 : 0.62) * 0.55, f0 = (run ? 2.3 : 1.25) * sp.cadence * (o.rate || 1);
+    // görev oranlı (duty factor) döngü: dörtnal, sıçrama ve koşudaki tırıs. Sinüs döngüsünde basış hep döngünün yarısıydı
+    // ve 7–11 m/sn'de ayak klipte gövdeyle neredeyse aynı hızda kayıyordu (her basış erken bırakılıyordu). Burada basış
+    // döngünün D kadarı, ayak bu sürede doğrusal (sin uzayında) ve gövde hızıyla geri süpürülür: d = v·D/f = 2·R·sinθ.
+    // Önce D küçülür (en az 0.2: gerçek dörtnalda ~0.2–0.4), yetmezse adım sıklığı artar (en çok 2×).
+    const duty = moving && (run || hop);
+    let sk = 1, fk = 1, dk = 0.5;
+    if (moving && !duty && !gal && o.speed > 0.05) {
+      const need = Math.asin(Math.min(0.9, o.speed / f0 / (4 * this.sweepR)));
       sk = THREE.MathUtils.clamp(need / base, 0.6, 1.4);
       if (need > base * 1.4) fk = Math.min(1.8, Math.sin(need) / Math.sin(base * 1.4));
+    } else if (duty && o.speed > 0.05) {
+      const sMax = Math.sin(run ? 0.68 : 0.5), avail = 2 * this.sweepR * sMax * 0.9;
+      dk = THREE.MathUtils.clamp(avail * f0 / o.speed, 0.2, run ? 0.45 : 0.5);
+      if (avail * f0 / o.speed < 0.2) fk = Math.min(2, o.speed * 0.2 / (avail * f0));
     }
     const ks = Math.min(1, dt * 4); this.strideK += (sk - this.strideK) * ks; this.cadK += (fk - this.cadK) * ks;
-    if (moving) this.phase += dt * TAU * (run ? 2.3 : 1.25 * this.cadK) * sp.cadence * (o.rate || 1);
+    this.dutyK += ((duty ? dk : 0.5) - this.dutyK) * ks;
+    const fq = f0 * this.cadK;
+    if (moving) this.phase += dt * TAU * fq;
     const A = this.amp, ph = this.phase;
     let pitch = 0, by = 0, bz = 0, roll = 0, py = 0, neckX = -sp.neckAng, headX = sp.neckAng + (sp.headDown ?? 0.3), headY = 0, jaw = 0, yaw = 0;
     const swing = (sp.sprawl ? 0.5 : 0.62) * A * this.strideK, lift = [0, 0, 0, 0], sw = [0, 0, 0, 0];
-    for (let i = 0; i < 4; i++) { const p = ph + offs[i] * TAU; sw[i] = Math.sin(p) * swing; lift[i] = Math.max(0, -Math.cos(p)) * A; }
-    by = -Math.abs(Math.sin(ph * (gal || hop ? 0.5 : 1) + 0.6)) * sp.h * 0.05 * A;
-    if (gal || hop) { pitch = Math.sin(ph + 1.2) * (hop ? 0.22 : 0.09) * A; by += Math.max(0, Math.sin(ph + 2.2)) * sp.h * (hop ? 0.5 : 0.12) * A; }
+    this.dutyOn = duty;
+    if (duty) {
+      // basışta gereken süpürme mesafesi; her bacak kendi boyuna göre açısını seçer (ön/arka bacak boyları farklı)
+      const D = this.dutyK, d = (o.speed || 0) * D / Math.max(0.1, fq);
+      for (let i = 0; i < 4; i++) {
+        // bilek kalça düzleminde z = −sR·sin(a0 + açı); basışta z doğrusal değişsin diye açı bu bağıntıdan çözülür
+        const l = this.legs[i], h = d / (2 * l.sR), s0 = Math.sin(l.a0), u = ((ph / TAU + offs[i] + 0.25) % 1 + 1) % 1;
+        const ang = (s) => Math.asin(THREE.MathUtils.clamp(s0 + s * h, -0.97, 0.97)) - l.a0;
+        if (u < D) { sw[i] = ang(2 * u / D - 1) * A; lift[i] = 0; }
+        else { const v = (u - D) / (1 - D), e = v * v * (3 - 2 * v); sw[i] = ang(1 - 2 * e) * A; lift[i] = Math.sin(PI * v) * A; }
+      }
+    } else for (let i = 0; i < 4; i++) { const p = ph + offs[i] * TAU; sw[i] = Math.sin(p) * swing; lift[i] = Math.max(0, -Math.cos(p)) * A; }
+    if (duty) {
+      // gövde basışlarla eş zamanlı: ayak yerdeyken çöker (yük alır), uçuş evresinde yükselir; ön ayaklar basarken burun
+      // aşağı, arka ayaklar iterken burun yukarı. Önceki sinüs sıçraması basışla ilgisizdi; basış ortasında gövde
+      // kalkınca bacak kilitli ayağa yetişemiyor, kilit bırakılıyordu.
+      let Sf = 0, Sh = 0; const D = this.dutyK;
+      for (let i = 0; i < 4; i++) { const u = ((ph / TAU + offs[i] + 0.25) % 1 + 1) % 1, st = u < D ? Math.sin(PI * u / D) : 0; if (this.legs[i].front) Sf = Math.max(Sf, st); else Sh = Math.max(Sh, st); }
+      const S = Math.max(Sf, Sh);
+      by = sp.h * A * ((hop ? 0.16 : 0.06) * (1 - S) - 0.035 * S);
+      pitch = (Sh - Sf) * (hop ? 0.14 : 0.06) * A;
+    } else {
+      by = -Math.abs(Math.sin(ph * (gal || hop ? 0.5 : 1) + 0.6)) * sp.h * 0.05 * A;
+      if (gal || hop) { pitch = Math.sin(ph + 1.2) * (hop ? 0.22 : 0.09) * A; by += Math.max(0, Math.sin(ph + 2.2)) * sp.h * (hop ? 0.5 : 0.12) * A; }
+    }
     yaw = Math.sin(ph) * (sp.spineSway || 0.04) * A; roll = Math.sin(ph) * 0.03 * A;
     let rear = 0, death = 0;
     if (anim === 'idle') { by += Math.sin(t * 1.7 + sd) * sp.h * 0.008; headY = Math.sin(t * 0.45 + sd) * 0.45 * (Math.sin(t * 0.13 + sd) > 0 ? 1 : 0.2); neckX += Math.sin(t * 0.6 + sd) * 0.05; }
@@ -248,7 +285,7 @@ class Quadruped extends Creature {
     // bacaklar
     this.legs.forEach((l, i) => {
       let s = sw[i], lf = lift[i], extra = 0;
-      if (hop && !l.front) { s *= 1.5; }
+      if (hop && !l.front && !this.dutyOn) { s *= 1.5; }
       let u = l.rest[0] + s, lo = l.rest[1], f = l.rest[2];
       if (l.front) { lo -= lf * 0.75; f += lf * 0.95; u -= lf * 0.12; if (rear) { u = -1.0 + Math.sin(at_ * 14 + i * PI) * 0.45 * rear + (1 - rear) * u; lo = -0.9 * rear + (1 - rear) * lo; } }
       else { lo += lf * 0.6; f -= lf * 0.55; u -= lf * 0.2; if (rear) { u += rear * 0.8; lo -= rear * 0.25; f -= rear * 0.3; } }
@@ -256,7 +293,8 @@ class Quadruped extends Creature {
       u -= (pitch + (o.slope || 0)) * 0.9;
       // bacak hedefleri zaten sürekli (genlik, kaldırma, ölüm/şahlanma yumuşak eğrilerle geçiyor); genel yumuşatma (τ≈83 ms)
       // yürüyüş döngüsünü süzüp adımı kısaltıyor ve kaldırma evresinden kaydırıyordu → bacaklarda çok daha hızlı izleme
-      const kl = 1 - Math.exp(-dt * 60);
+      // görev oranlı döngüde basış 2–4 kare sürer; süzgeç orada bile gecikme yaratıyordu → doğrudan uygulanır
+      const kl = this.dutyOn ? 1 : 1 - Math.exp(-dt * 60);
       l.up.rotation.x += (u - l.up.rotation.x) * kl; l.lo.rotation.x += (lo - l.lo.rotation.x) * kl; l.ft.rotation.x += (f - l.ft.rotation.x) * kl;
     });
     if (this['ear1']) for (const s of [-1, 1]) this.r(this['ear' + s], -0.25 - A * 0.9 + Math.sin(t * 3 + sd) * 0.05, 0, -s * 0.2);
@@ -291,13 +329,19 @@ class Quadruped extends Creature {
       if (stance && !l.spent) {
         l.hip.getWorldPosition(_v1);
         if (!l.locked) { l.locked = true; l.lockP.copy(l.anim); }
-        else if (Math.hypot(l.lockP.x - l.anim.x, l.lockP.z - l.anim.z) > slipMax || _v1.distanceTo(l.lockP) > (l.L0 + l.L1) * 0.995) {
+        // erişim: kalçadan kilit noktasına uzaklık. Yükseklik animasyondan gelir (kilit anındaki eski yükseklik değil;
+        // gövde basışta inip kalkınca yanlış sonuç veriyordu). Gövde gerekirse aşağıda alçalır, bu yüzden %6 pay var.
+        else if (Math.hypot(l.lockP.x - l.anim.x, l.lockP.z - l.anim.z) > slipMax || _v1.distanceTo(_v2.set(l.lockP.x, l.anim.y, l.lockP.z)) > (l.L0 + l.L1) * 0.995 + sp.h * 0.06) {
           // bacak fazla gerildi (adım boyu hızdan kısa): kilidi bu basışta bırak, ayak yumuşakça animasyona döner
           l.locked = false; l.spent = true; this.ikReleases++;
         }
       } else { l.locked = false; if (!stance) l.spent = false; }
       l.lockW += ((l.locked ? 1 : 0) - l.lockW) * Math.min(1, dt * (l.locked ? 30 : 9));
-      l.tgt.x += (l.lockP.x - l.tgt.x) * l.lockW; l.tgt.z += (l.lockP.z - l.tgt.z) * l.lockW;
+      // kilit, animasyona göre bir kayma (ofset) olarak uygulanır ve ayak kalkınca bu ofset söner. Önceden hedef eski
+      // kilit noktasına doğru harmanlanıyordu: koşuda gövde hızla ilerlerken salınımdaki ayak geride sürükleniyor,
+      // erişemediği için gövdeyi %20–30 alçaltıyordu.
+      if (l.locked) { l.lockDx = l.lockP.x - l.anim.x; l.lockDz = l.lockP.z - l.anim.z; }
+      l.tgt.x += l.lockDx * l.lockW; l.tgt.z += l.lockDz * l.lockW;
       // zemin farkı: gerçek zemin − animasyonun varsaydığı düzlem
       const fwd = (l.tgt.x - rx) * fx + (l.tgt.z - rz) * fz;
       const off = THREE.MathUtils.clamp(G(l.tgt.x, l.tgt.z) - (rootY + fwd * grad), -maxDn, maxUp);
@@ -306,10 +350,12 @@ class Quadruped extends Creature {
       l.tgt.lerpVectors(l.anim, l.tgt, l.w);
       // yalnızca animasyondakinden daha uzak ve erişimin sınırındaki hedefler gövdeyi alçaltır
       l.hip.getWorldPosition(_v1);
-      need = Math.max(need, _v1.distanceTo(l.tgt) - Math.max(_v1.distanceTo(l.anim), (l.L0 + l.L1) * 0.97));
+      // gereken dikey alçalma: kalça hedefe yatayda hd uzaklıkta; bacak Rm boyuna ulaşsın diye kalça ne kadar inmeli
+      const Rm = Math.max(_v1.distanceTo(l.anim), (l.L0 + l.L1) * 0.97), hd = Math.hypot(_v1.x - l.tgt.x, _v1.z - l.tgt.z);
+      need = Math.max(need, hd < Rm ? _v1.y - l.tgt.y - Math.sqrt(Rm * Rm - hd * hd) : sp.h);
     }
     // gövdeyi alçalt (aşağıdaki ayağa uzanabilsin)
-    this.ikDrop += (Math.min(need, sp.h * 0.3) - this.ikDrop) * k;
+    const nd = Math.min(need, sp.h * 0.3); this.ikDrop += (nd - this.ikDrop) * (nd > this.ikDrop ? Math.min(1, dt * 40) : k); // hızlı in, yumuşak kalk
     if (this.ikDrop > 1e-4) { this.body.position.y -= this.ikDrop; this.body.updateMatrixWorld(true); }
     const e = 0.2;
     for (const l of legs) {
@@ -599,7 +645,7 @@ class GLBCreature extends Creature {
       l.tgt.y = l.p.y + l.off * w;
       need = Math.max(need, _v1.distanceTo(l.tgt) - Math.max(_v1.distanceTo(l.p), reach * 0.97));
     }
-    this.ikDrop += (Math.min(need, sp.h * 0.3) - this.ikDrop) * k;
+    const nd = Math.min(need, sp.h * 0.3); this.ikDrop += (nd - this.ikDrop) * (nd > this.ikDrop ? Math.min(1, dt * 40) : k); // hızlı in, yumuşak kalk
     // model pivotun çocuğu; pivot eğimle döndüğü için alçaltma pivot uzayındaki dikey eksen boyunca yapılır (küçük açıda yeterli)
     this.model.position.y = -this.ikDrop;
     this.model.updateMatrixWorld(true);
