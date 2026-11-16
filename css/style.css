@@ -25,7 +25,7 @@
 .slot{position:relative;width:54px;height:62px;background:#000a;border:2px solid #fff3;border-radius:10px;text-align:center;font-size:24px;padding-top:4px;cursor:pointer}
 .slot.sel{border-color:#ffd75e;background:#3a300fcc}.slot small{display:block;font-size:9px;opacity:.85;white-space:nowrap;overflow:hidden}
 .slot b{position:absolute;right:4px;top:1px;font-size:11px}.slot u{position:absolute;left:4px;top:1px;font-size:9px;opacity:.6;text-decoration:none}
-#helpbtn{position:absolute;left:12px;top:62px;width:30px;height:30px;border-radius:50%;border:1px solid #fff5;background:#0008;color:#fff;font-weight:700;cursor:pointer}
+#helpbtn{position:absolute;left:12px;top:96px;width:30px;height:30px;border-radius:50%;border:1px solid #fff5;background:#0008;color:#fff;font-weight:700;cursor:pointer}
 #floats span{position:absolute;font-weight:800;font-size:18px;text-shadow:0 1px 3px #000;transform:translate(-50%,-50%);pointer-events:none}
 #hurt{position:absolute;inset:0;box-shadow:inset 0 0 120px 30px #c0001a;opacity:0;transition:opacity .4s}
 #overlay{position:fixed;inset:0;background:radial-gradient(#1b2a44,#070b14);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
@@ -35,7 +35,26 @@
 #start{margin-top:10px;font-size:18px;font-weight:700;padding:10px 28px;border-radius:24px;border:0;background:#ffd75e;color:#2a2000;cursor:pointer}
 #touch #stick{position:absolute;left:22px;bottom:92px;width:120px;height:120px;border-radius:50%;background:#fff2;border:1px solid #fff4}
 #touch #stick i{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:#fff7}
-#tbtns{position:absolute;right:10px;bottom:88px;display:grid;grid-template-columns:repeat(4,54px);gap:8px}
-#tbtns button{width:54px;height:54px;border-radius:50%;border:1px solid #fff5;background:#0008;color:#fff;font-size:20px}
-#tbtns button.on{background:#ffd75e;color:#000}
-@media (max-width:760px){#pets{width:150px;font-size:11px}.bar{width:150px}#focus{top:64px}.slot{width:44px;height:54px;font-size:20px}#log{bottom:230px}#prompt{bottom:84px}#hold{bottom:74px}}
+/* dokunmatik: sağ başparmak için gamepad yüz düğmesi düzeni. Saldır en büyük ve en kolay yerde;
+   Savun hemen üstünde (savuşturma zamanlaması için başparmak kaydırması kısa), Kaçın solunda, Ağır sağında. */
+#tbtns{position:absolute;right:max(8px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));width:248px;height:300px}
+#tbtns button{position:absolute;border-radius:50%;border:1px solid #fff6;background:#0009;color:#fff;font-size:24px;line-height:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;touch-action:none}
+#tbtns button small{font-size:9px;letter-spacing:.04em;opacity:.85;margin-top:2px}
+#tbtns button:active,#tbtns button.on{background:#ffd75e;color:#000}
+#b-attack{width:84px;height:84px;right:78px;bottom:6px;font-size:32px!important;background:#7a1f1fcc!important}
+#b-heavy{width:64px;height:64px;right:4px;bottom:70px}
+#b-block{width:70px;height:70px;right:92px;bottom:100px;background:#1f3f7acc!important}
+#b-block:active{background:#7fc8ff!important}
+#b-dodge{width:66px;height:66px;right:176px;bottom:34px}
+#b-jump{width:54px;height:54px;right:20px;bottom:146px}
+#b-heal{width:50px;height:50px;right:186px;bottom:116px;opacity:.45}
+#touch.canheal #b-heal{opacity:1;border-color:#7dff9b}
+#tsmall{position:absolute;right:0;bottom:214px;display:flex;gap:6px}
+#tbtns #tsmall button.s{position:static;width:44px;height:44px;font-size:16px}
+#resolve{display:flex;gap:6px;margin-top:2px}
+#resolve i{width:22px;height:22px;transform:rotate(45deg);border:2px solid #8fd8ff;background:linear-gradient(0deg,#8fd8ff calc(var(--f,0)*100%),#0008 0);border-radius:3px}
+#glints i{position:absolute;width:34px;height:34px;pointer-events:none;display:none;border-radius:2px;
+  background:radial-gradient(circle,#fff 0 18%,transparent 19%),conic-gradient(from 45deg,transparent 0 10%,var(--g) 11% 14%,transparent 15% 35%,var(--g) 36% 39%,transparent 40% 60%,var(--g) 61% 64%,transparent 65% 85%,var(--g) 86% 89%,transparent 90%);
+  filter:drop-shadow(0 0 8px var(--g)) drop-shadow(0 0 3px #fff)}
+#glints i.blue{--g:#59b6ff}#glints i.red{--g:#ff3030}
+@media (max-width:760px){#tbtns{transform:scale(.88);transform-origin:right bottom}#pets{width:150px;font-size:11px}.bar{width:150px}#focus{top:64px}.slot{width:44px;height:54px;font-size:20px}#log{bottom:230px}#prompt{bottom:84px}#hold{bottom:74px}}

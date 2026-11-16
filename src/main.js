@@ -4,7 +4,7 @@ import { loadHero } from './hero.js';
 import { loadGLBCreatures, SPECIES } from './creatures.js';
 import { World, height, zone, rng, floorY, LAKE, PEAK, HALF } from './world.js';
 import { Animal, ITEMS, eats } from './animal.js';
-import { Player } from './player.js';
+import { Player, RESOLVE_MAX } from './player.js';
 
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -22,7 +22,7 @@ class Inventory {
 class Game {
   constructor() {
     this.time = 0; this.animals = []; this.pets = []; this.baits = []; this.floats = []; this.petCounter = {};
-    this.camYaw = 0; this.camPitch = 0.32; this.camDist = 6.5;
+    this.camYaw = 0; this.camPitch = 0.32; this.camDist = 6.5; this.stopT = 0; this.slowT = 0; this.slowK = 0.35; this.trauma = 0; this.sparks = [];
     this.keys = {}; this.edge = {}; this.touch = { mx: 0, mz: 0, run: false };
     this.ui = { hurtFlash: () => { const h = $('hurt'); h.style.transition = 'none'; h.style.opacity = 0.7; requestAnimationFrame(() => { h.style.transition = 'opacity .5s'; h.style.opacity = 0; }); } };
   }
@@ -44,7 +44,7 @@ class Game {
     this.inv = new Inventory(); this.player = new Player(this, hero);
     this.spawnAll(); this.bindInput(); this.buildHotbar();
     $('loadtxt').textContent = 'Hazır!'; $('loadbar').parentElement.hidden = true; $('start').hidden = false;
-    $('start').onclick = () => this.start(); $('helpbtn').onclick = () => this.pause();
+    $('start').onclick = () => this.start(); $('lowshake').onchange = (e) => { this.lowShake = e.target.checked; }; $('helpbtn').onclick = () => this.pause();
     if (Q.has('test')) this.start();
     this.last = performance.now(); r.setAnimationLoop(() => this.frame());
     window.GAME = this;
@@ -67,15 +67,15 @@ class Game {
 
   /* ---------------- girdi */
   bindInput() {
-    const map = { KeyW: 'w', KeyS: 's', KeyA: 'a', KeyD: 'd', ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd', ShiftLeft: 'run', ShiftRight: 'run', Space: 'jump', KeyC: 'crouch', KeyQ: 'roll', KeyJ: 'attack', KeyE: 'interact', KeyG: 'bait', KeyH: 'eat', KeyT: 'stay' };
+    const map = { KeyW: 'w', KeyS: 's', KeyA: 'a', KeyD: 'd', ArrowUp: 'w', ArrowDown: 's', ArrowLeft: 'a', ArrowRight: 'd', ShiftLeft: 'run', ShiftRight: 'run', Space: 'jump', KeyC: 'crouch', KeyQ: 'dodge', KeyJ: 'attack', KeyK: 'heavy', KeyL: 'block', KeyR: 'heal', KeyE: 'interact', KeyG: 'bait', KeyH: 'eat', KeyT: 'stay' };
     addEventListener('keydown', (e) => { if (e.code === 'Escape' && this.running) return this.pause(); const k = map[e.code]; if (k) { if (!this.keys[k]) this.edge[k] = true; this.keys[k] = true; e.preventDefault(); } const n = +e.key; if (n >= 1 && n <= 9) { const l = this.inv.list(); if (l[n - 1]) { this.inv.sel = l[n - 1]; this.inv.dirty = true; } } });
     addEventListener('keyup', (e) => { const k = map[e.code]; if (k) this.keys[k] = false; });
     addEventListener('blur', () => { this.keys = {}; });
     const c = $('c'); let drag = null;
     c.addEventListener('contextmenu', (e) => e.preventDefault());
-    c.addEventListener('pointerdown', (e) => { drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, btn: e.button, type: e.pointerType }; c.setPointerCapture(e.pointerId); });
+    c.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 2) { this.keys.block = true; this.edge.block = true; } drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0, btn: e.button, type: e.pointerType }; c.setPointerCapture(e.pointerId); });
     c.addEventListener('pointermove', (e) => { if (!drag || drag.id !== e.pointerId) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy); this.camYaw -= dx * 0.005; this.camPitch = Math.min(1.25, Math.max(-0.15, this.camPitch + dy * 0.004)); });
-    c.addEventListener('pointerup', (e) => { if (drag && drag.id === e.pointerId) { if (drag.moved < 6 && drag.btn === 0 && drag.type === 'mouse') this.edge.attack = true; drag = null; } });
+    c.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse' && e.button === 2) this.keys.block = false; if (drag && drag.id === e.pointerId) { if (drag.moved < 6 && drag.btn === 0 && drag.type === 'mouse') this.edge.attack = true; drag = null; } });
     c.addEventListener('wheel', (e) => { this.camDist = Math.min(14, Math.max(2.5, this.camDist + e.deltaY * 0.006)); }, { passive: true });
     // dokunmatik
     const stick = $('stick'), knob = stick.firstElementChild; let sid = null;
@@ -141,14 +141,28 @@ class Game {
   }
 
   /* ---------------- döngü */
+  hitStop(t) { this.stopT = Math.max(this.stopT, t); }
+  slowMo(t, k = 0.35) { this.slowT = Math.max(this.slowT, t); this.slowK = k; }
+  shake(n) { if (this.lowShake) n *= 0.3; this.trauma = Math.min(1, this.trauma + n); }
+  spark(ent, color, n) {
+    for (let i = 0; i < n; i++) {
+      const m = new THREE.Mesh(this.sparkGeo || (this.sparkGeo = new THREE.OctahedronGeometry(0.05)), new THREE.MeshBasicMaterial({ color, transparent: true }));
+      const h = (ent.c ? ent.c.height * 0.6 : 1.2) + (ent.alt || 0); m.position.set(ent.x, (ent.y || 0) + h, ent.z);
+      const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 4; m.userData.v = new THREE.Vector3(Math.cos(a) * v, 1.5 + Math.random() * 3.5, Math.sin(a) * v); m.userData.t = 0.25 + Math.random() * 0.25;
+      this.scene.add(m); this.sparks.push(m);
+    }
+  }
   frame() {
-    const now = performance.now(), dt = Math.min((now - this.last) / 1000, 0.05); this.last = now;
+    const now = performance.now(), dtR = Math.min((now - this.last) / 1000, 0.05); this.last = now; let dt = dtR;
+    if (this.stopT > 0) { this.stopT -= dtR; dt = dtR * 0.04; } else if (this.slowT > 0) { this.slowT -= dtR; dt = dtR * this.slowK; }
+    this.trauma = Math.max(0, this.trauma - dtR * 1.3);
+    this.sparks = this.sparks.filter((m) => { const u = m.userData; u.t -= dtR; if (u.t <= 0) { this.scene.remove(m); m.material.dispose(); return false; } u.v.y -= 14 * dtR; m.position.addScaledVector(u.v, dtR); m.material.opacity = Math.min(1, u.t * 4); return true; });
     if (this.running) this.update(dt); else this.camYaw += dt * 0.05;
     this.updateCamera(dt); this.renderer.render(this.scene, this.camera);
   }
   update(dt) {
     this.time += dt; const P = this.player, k = this.keys, e = this.edge;
-    const inp = { mx: (k.a ? 1 : 0) - (k.d ? 1 : 0) + this.touch.mx, mz: (k.w ? 1 : 0) - (k.s ? 1 : 0) + this.touch.mz, run: k.run || this.touch.run, jump: e.jump, attack: e.attack, roll: e.roll, crouch: e.crouch };
+    const inp = { mx: (k.a ? 1 : 0) - (k.d ? 1 : 0) + this.touch.mx, mz: (k.w ? 1 : 0) - (k.s ? 1 : 0) + this.touch.mz, run: k.run || this.touch.run, jump: e.jump, attack: e.attack, heavy: e.heavy, dodge: e.dodge || e.roll, block: k.block, heal: e.heal, crouch: e.crouch };
     P.update(dt, inp);
     this.near = this.nearest();
     if (e.interact) this.interact(); if (e.bait) this.dropBait(); if (e.eat) this.eatFood();
@@ -169,11 +183,26 @@ class Game {
     let cx = P.x - Math.sin(this.camYaw) * cp * d, cz = P.z - Math.cos(this.camYaw) * cp * d, cy = ty + Math.sin(this.camPitch) * d;
     cy = Math.max(cy, floorY(cx, cz, 0) + 0.5);
     cam.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, dt * 14)); cam.lookAt(P.x, ty, P.z);
+    const sh = this.trauma * this.trauma, T = performance.now() / 1000;   // sarsıntı: takipten sonra eklenen ofset
+    if (sh > 0.001) { cam.position.x += Math.sin(T * 47) * Math.cos(T * 31) * sh * 0.35; cam.position.y += Math.sin(T * 53 + 1.7) * sh * 0.28; cam.rotation.z += Math.sin(T * 41) * sh * 0.06; }
     this.sun.position.set(P.x + 30, P.y + 55, P.z + 22); this.sun.target.position.set(P.x, P.y, P.z);
+  }
+  updateGlints() {
+    const box = $('glints'), v = new THREE.Vector3(); let i = 0;
+    for (const a of this.animals) {
+      if (a.dead || a.tamed || a.state !== 'windup' || a.target !== this.player) continue;
+      v.set(a.x, a.y + a.alt + a.c.height * 1.05, a.z).project(this.camera); if (v.z > 1) continue;
+      let el = box.children[i]; if (!el) { el = document.createElement('i'); box.appendChild(el); } i++;
+      const k = Math.min(1, a.wuT / a.wuDur); el.className = a.unblock ? 'red' : 'blue'; el.style.display = 'block';
+      el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`; el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`; el.style.transform = `translate(-50%,-50%) scale(${0.4 + k * 0.9}) rotate(${k * 90}deg)`;
+    }
+    for (; i < box.children.length; i++) box.children[i].style.display = 'none';
   }
   updateHud(dt) {
     const P = this.player;
     $('hp').style.transform = `scaleX(${P.hp / P.hpMax})`; $('st').style.transform = `scaleX(${P.stamina / 100})`;
+    const rs = $('resolve').children; for (let i = 0; i < RESOLVE_MAX; i++) rs[i].style.setProperty('--f', Math.max(0, Math.min(1, P.resolve - i)));
+    $('touch').classList.toggle('canheal', P.resolve >= 1); this.updateGlints();
     if (this.inv.dirty) this.buildHotbar();
     this.hudT = (this.hudT || 0) - dt;
     if (this.hudT <= 0) {
@@ -183,7 +212,7 @@ class Game {
       const fo = $('focus'); fo.hidden = !f;
       if (f) { const tm = f.spec.tame; $('fname').textContent = f.tamed ? `${f.petName} (yoldaş)` : f.spec.name + (tm && tm.steps > 1 ? ` — güven ${f.trust}/${tm.steps}` : ''); $('fhp').style.transform = `scaleX(${Math.max(0, f.frac)})`;
         $('fhint').textContent = f.tamed ? `Açlık %${Math.round(f.hunger)} · ${f.mood()} · E: besle` : (f.cowerT > 0 ? `Şimdi! E: ${ITEMS[[].concat(tm.item)[0]].name} sun` : '🐾 ' + f.tameHint()); }
-      const pr = $('prompt'), n = this.near; let txt = '';
+      const pr = $('prompt'), n = this.near; let txt = ''; const vic = P.assassinTarget(); if (vic) txt = `⚔ Suikast — ${vic.spec.name} (saldır)`; else
       if (n?.node) txt = `E: ${NODE_GIVE[n.node.type][2]}`; else if (n?.animal) txt = n.animal.tamed ? `E: ${n.animal.petName} besle` : n.animal.spec.tame ? `E: Evcilleştir — ${n.animal.spec.name}` : '';
       pr.hidden = !txt; pr.textContent = txt;
     }

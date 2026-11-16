@@ -10,20 +10,25 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div id="stats"><div class="bar hp"><i id="hp"></i><span>CAN</span></div><div class="bar st"><i id="st"></i><span>DAYANIKLILIK</span></div></div>
+  <div id="stats"><div class="bar hp"><i id="hp"></i><span>CAN</span></div><div class="bar st"><i id="st"></i><span>DAYANIKLILIK</span></div><div id="resolve" title="Kararlılık"><i></i><i></i><i></i></div></div>
   <div id="focus" hidden><b id="fname"></b><div class="bar hp small"><i id="fhp"></i></div><div id="fhint"></div></div>
   <div id="pets"><h4>Evcil Yoldaşlar <span id="petcount">0/5</span></h4><div id="petlist"></div></div>
   <div id="prompt" hidden></div><div id="hold" hidden><i></i></div>
   <div id="log"></div>
   <div id="hotbar"></div>
   <button id="helpbtn">?</button>
-  <div id="floats"></div>
+  <div id="floats"></div><div id="glints"></div>
   <div id="hurt"></div>
   <div id="touch" hidden>
     <div id="stick"><i></i></div>
     <div id="tbtns">
-      <button data-k="attack">⚔</button><button data-k="jump">⤒</button><button data-k="roll">↻</button><button data-k="crouch">⇩</button>
-      <button data-k="interact">E</button><button data-k="bait">G</button><button data-k="eat">H</button><button data-k="run">»</button>
+      <div id="tsmall"><button data-k="run" class="s">»<small>Koş</small></button><button data-k="crouch" class="s">⇩<small>Çömel</small></button><button data-k="interact" class="s">E<small>Etkileş</small></button><button data-k="bait" class="s">G<small>Yem</small></button><button data-k="eat" class="s">H<small>Ye</small></button></div>
+      <button data-k="attack" id="b-attack">⚔<small>Saldır</small></button>
+      <button data-k="heavy" id="b-heavy">💥<small>Ağır</small></button>
+      <button data-k="block" id="b-block">🛡<small>Savun</small></button>
+      <button data-k="dodge" id="b-dodge">⇆<small>Kaçın</small></button>
+      <button data-k="jump" id="b-jump">⤒<small>Zıpla</small></button>
+      <button data-k="heal" id="b-heal">✚<small>İyileş</small></button>
     </div>
   </div>
 </div>
@@ -32,8 +37,11 @@
     <h1>Yaban Yoldaşları</h1>
     <p id="loadtxt">Yükleniyor…</p><div class="bar load"><i id="loadbar"></i></div>
     <div id="help">
-      <p><b>Hareket:</b> WASD · <b>Koş:</b> Shift · <b>Zıpla:</b> Boşluk · <b>Çömel:</b> C · <b>Takla/Kaçınma:</b> Q</p>
-      <p><b>Saldırı:</b> Sol tık / J (art arda bas: 3'lü kombo) · <b>Kamera:</b> fareyi sürükle · tekerlek: yakınlaş</p>
+      <p><b>Hareket:</b> WASD · <b>Koş:</b> Shift · <b>Zıpla:</b> Boşluk · <b>Çömel:</b> C · <b>Kamera:</b> fareyi sürükle, tekerlek</p>
+      <p><b>Hafif saldırı:</b> Sol tık / J (art arda: 3'lü kombo) · <b>Ağır saldırı:</b> K (duruş kırar) · <b>Savun:</b> sağ tık / L basılı · <b>Kaçın:</b> Q (iki kez: takla) · <b>İyileş:</b> R</p>
+      <p>Düşman saldırmadan önce parlar: <b style="color:#7fc8ff">mavi</b> = doğru anda savunmaya bas, <b>savuşturursun</b>; <b style="color:#ff6a6a">kırmızı</b> = engellenemez, <b>kaçın</b>. Son anda kaçınmak ve savuşturmak karşı saldırı açar ve Kararlılık doldurur.</p>
+      <p>Çömelip seni görmeyen bir düşmanın arkasına sokulursan saldır tuşu <b>suikast</b> yapar.</p>
+      <p><label><input type="checkbox" id="lowshake"> Ekran sarsıntısını azalt</label></p>
       <p><b>E:</b> topla / besle / evcilleştir (bazı türlerde basılı tut) · <b>G:</b> seçili yiyeceği yem olarak bırak</p>
       <p><b>1–9:</b> eşya seç · <b>H:</b> seçili yiyeceği ye (can) · <b>T:</b> yoldaşlar bekle/takip et</p>
       <p>Her türün evcilleştirme yöntemi farklıdır: hayvana yaklaşınca üstte ipucu görünür. En fazla 5 yoldaş.</p>
