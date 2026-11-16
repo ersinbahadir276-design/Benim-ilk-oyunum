@@ -14,7 +14,7 @@ window.runLoop = async function () {
   const waitPanels = async () => { for (let i = 0; i < 100; i++) { const m = document.getElementById('manhwa'); if (m.style.display !== 'block' || m.querySelector('.mh-next,.mh-ch')) return; await wait(100); } };
   const sec = async (name, fn) => { try { await fn(); } catch (e) { ok(name + ' (çalıştı)', false, String(e.stack || e).slice(0, 300)); } };
   const closeUI = async () => { await waitPanels(); const m = document.getElementById('manhwa'); if (m.style.display === 'block') { const s = m.querySelector('.mh-next') || m.querySelector('.mh-skip'); if (s) s.click(); } GT.inStory = false; GT.paused = true; document.getElementById('travel').style.display = 'none'; };
-  const smallGob = () => G.GOBS.find((g) => !g.dead && !g.big && !g.boss);
+  const smallGob = () => G.GOBS.find((g) => !g.dead && !g.big && !g.boss && !g.archer);
   const T0 = [30, 420];
   SYS.gold = 0; SYS.shards = 0;
 
@@ -109,7 +109,7 @@ window.runLoop = async function () {
     const g = smallGob(); g.x = P.x; g.z = P.z + 1.6; g.yaw = Math.PI; g.hp = g.max = 400; g.st = 'chase'; g.aware = 1; g.pos = 0;
     let broke = false; for (let i = 0; i < 12 && !broke; i++) { X.addPosture(g, 12); broke = X.isBroken(g); }
     ok('duruş: vuruşlar dengeyi dolduruyor, dolunca düşman sarsılıyor', broke && g.st === 'stagger', { durum: g.st });
-    sim(.05); X.uiTick(1); ok('duruş: kırılınca "SALDIR: İNFAZ" çıkıyor ve hedef seçiliyor', X.execTarget() === g && document.getElementById('prompt').textContent.includes('İNFAZ'), document.getElementById('prompt').textContent);
+    sim(.05); X.uiTick(1); ok('duruş: kırılınca "SALDIR: İNFAZ" çıkıyor ve hedef seçiliyor', X.execTarget() === g && document.getElementById('prompt').textContent.includes('İNFAZ'), JSON.stringify({ p: document.getElementById('prompt').textContent, et: !!X.execTarget(), same: X.execTarget() === g, br: X.isBroken(g), st: g.st, d: Math.hypot(g.x - P.x, g.z - P.z).toFixed(2), pst: P.st }));
     const hp0 = g.hp; IN.atkEdge = true; IN.atkHeld = true; sim(.05); IN.atkHeld = false; IN.atkUp = true; const st = P.st; sim(2, () => P.st === 'move' ? false : undefined);
     ok('infaz: SALDIR ile infaz animasyonu, silah hasarının ~4 katı', st === 'exec' && hp0 - g.hp > X.weaponDmg() * 3.5, { hasar: hp0 - g.hp, silah: Math.round(X.weaponDmg()) });
     // a big goblin needs many hits; a parry pushes posture a lot (posture also drains if you stop)

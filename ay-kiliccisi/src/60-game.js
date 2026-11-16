@@ -128,7 +128,7 @@ function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art a
  if(nearAltar()>=0)return'ETKİLEŞ: sunakta dinlen'+(SYS.altars&&SYS.altars[nearAltar()]?'':' (yak)');if(nearChest()>=0)return'ETKİLEŞ: sandığı aç';const sp=storyPrompt();if(sp)return sp;
  const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return'Büyük goblin tutulamaz';if(!isWolf(v)&&d<1.9)return'ETKİLEŞ: boyun kilidi  ·  ZIPLA ×2: üstüne atla';return isWolf(v)?'ZIPLA ×2: kurdun sırtına atla':'ZIPLA ×2: goblinin üstüne atla'}
  for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<2.8)return'ETKİLEŞ: konuş';return''}
-function uiTick(dt){hudT-=dt;if(hudT<=0){hudT=.1;hud(P);drawRadar();
+function uiTick(dt){hudT=Math.min(hudT,.1)-dt;if(hudT<=0){hudT=.1;hud(P);drawRadar();
   const all=[...wolves.filter(w=>!w.tame&&!w.dead&&Math.hypot(w.x-P.x,w.z-P.z)<60).map(w=>[hostileSt(w),w.aware]),...GOBS.filter(g=>!g.dead&&Math.hypot(g.x-P.x,g.z-P.z)<60).map(g=>[g.hostile(),g.aware]),...CROCS.filter(c=>!c.dead&&Math.hypot(c.x-P.x,c.z-P.z)<60).map(c=>[c.hostile(),c.aware])];
   const hostile=all.some(a=>a[0])||(DRAGON&&DRAGON.hostile()&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<120),sus=all.some(a=>!a[0]&&a[1]>.25),e=$('stealth');
   e.textContent=hostile?'TEHLİKE':sus?'ŞÜPHE':P.crouch?'GİZLİ':'';e.className=hostile?'red':sus?'yel':'';
@@ -180,7 +180,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
  if(SYS.intro){GT.paused=false;$('intro').style.display='none';note('[Sistem] Tekrar hoş geldin, Kara Zırh.')}else{$('intro').style.display='flex';$('introb').addEventListener('click',()=>{sfx.on();SYS.intro=1;$('intro').style.display='none';GT.paused=false;if(!SYS.prologue){SYS.prologue=1;showManhwa(PANELS.prologue(),()=>{note('[Sistem] Sınıf: Kara Zırh. İlk görev: «Uyanış»');save(P)})}
    save(P)})}
  let last=performance.now();
- function frame(now){requestAnimationFrame(frame);const raw=now-last,dtR=Math.min(raw/1000,.05);last=now;GT.time+=dtR;let dt=dtR;
+ function frame(now){requestAnimationFrame(frame);const raw=Math.max(0,now-last),dtR=Math.min(raw/1000,.05);last=now;GT.time+=dtR;let dt=dtR;
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
@@ -190,7 +190,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
-   dbg:{get PLD(){return PLD},humanGeo,faceTex,crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
+   dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
    openWin,renderWin,uiTick,maxHP,useBow,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}
