@@ -24,6 +24,19 @@ window.runGameplayTests = async function () {
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
 
+  // 1b) saç/ceket yay kemikleri (VRM secondaryAnimation)
+  { const S = P.hero.springs, J = S.joints, hair = J.filter((j) => j.bone.name.startsWith('HairJoint')), coat = J.filter((j) => j.bone.name.startsWith('J_Sec_'));
+    ok('yay kemikleri: saç ve ceket zincirleri yüklendi', hair.length >= 10 && coat.length >= 6, `saç=${hair.length} ceket=${coat.length}`);
+    const dev = (js) => Math.max(...js.map((j) => 2 * Math.acos(Math.min(1, Math.abs(j.bone.quaternion.dot(j.initRot))))));
+    P.x = 0; P.z = 6; G.keys.w = true; G.keys.run = true; let peak = 0; sim(1.2, () => { peak = Math.max(peak, dev(hair), dev(coat)); });
+    G.keys.w = G.keys.run = false; G.edge.jump = true; sim(1.5, () => { peak = Math.max(peak, dev(hair), dev(coat)); });
+    const finite = J.every((j) => Number.isFinite(j.bone.quaternion.x) && Number.isFinite(j.cur.x));
+    ok('yay kemikleri: koşu/zıplamada sallanır', finite && peak > 0.02 && peak < 1.25, 'en büyük sapma ' + peak.toFixed(3) + ' rad');
+    const _a = new P.hero.root.position.constructor(), _b = _a.clone(); P.hero.root.updateMatrixWorld(true);
+    const lenErr = Math.max(...J.map((j) => { j.bone.getWorldPosition(_a); j.toWorld(j.cur, _b); return Math.abs(_a.distanceTo(_b) - j.length); }));
+    ok('yay kemikleri: zincir boyu korunur', lenErr < 1e-3, lenErr.toExponential(1));
+    sim(4); ok('yay kemikleri: durunca dinlenmeye döner', dev(hair) < 0.35, dev(hair).toFixed(3)); }
+
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
   a = find('rabbit'); freeze(a); put(a, 1.2); P.crouching = false; ok('tavşan: çömelmeden evcilleşmez', a.tryTame() === false);

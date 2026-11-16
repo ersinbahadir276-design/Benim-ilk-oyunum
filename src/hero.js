@@ -2,6 +2,7 @@
 // Klipler kaynak iskeletten (UE tarzı manken) kahramanın iskeletine çalışma anında aktarılır (retarget).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SpringBones } from './springbones.js';
 
 const SIDE = (l, r) => (s) => (s === 'l' ? l : r);
 const MAP = { pelvis: 'J_Bip_C_Hips', spine_01: 'J_Bip_C_Spine', spine_02: 'J_Bip_C_Chest', spine_03: 'J_Bip_C_UpperChest', neck_01: 'J_Bip_C_Neck', Head: 'J_Bip_C_Head' };
@@ -107,6 +108,7 @@ export async function loadHero(base = 'assets/models/') {
   const model = vrm.scene; model.rotation.y = Math.PI; // VRM0 -Z'ye bakar
   root.add(model); toonify(model);
   root.updateMatrixWorld(true);
+  const springs = SpringBones.fromGLTF(vrm); // saç ve ceket eteği fiziği
   const clips = { ...retarget(a1.scene, a1.animations, root), ...retarget(a2.scene, a2.animations, root) };
   // T-poz dinlenme durumuna dön
   const sword = makeSword();
@@ -114,5 +116,5 @@ export async function loadHero(base = 'assets/models/') {
   sword.position.set(-0.07, -0.02, 0.02); sword.rotation.set(Math.PI / 2, 0, 0);
   hand.add(sword);
   const mixer = new THREE.AnimationMixer(root);
-  return { root, model, clips, mixer, sword, head: root.getObjectByName('J_Bip_C_Head') };
+  return { root, model, clips, mixer, sword, springs, head: root.getObjectByName('J_Bip_C_Head') };
 }

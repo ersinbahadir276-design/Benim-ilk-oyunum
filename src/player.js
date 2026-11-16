@@ -9,6 +9,8 @@ export class Player {
     this.hpMax = 100; this.hp = 100; this.stamina = 100; this.alive = true; this.crouching = false; this.radius = 0.4; this.alt = 0;
     this.state = 'move'; this.stT = 0; this.combo = 0; this.queued = false; this.hitDone = false; this.iframes = 0; this.cur = null; this.hurt = 0;
     game.scene.add(hero.root); this.play('Idle_Loop');
+    // ilk pozu uygula ve yay kemiklerini oraya oturt (T-pozdan sıçrama olmasın)
+    hero.mixer.update(0); hero.root.position.set(this.x, this.y, this.z); hero.root.rotation.y = this.yaw; hero.root.updateMatrixWorld(true); hero.springs.reset();
   }
   play(name, { fade = 0.18, once = false, ts = 1 } = {}) {
     const clip = this.hero.clips[name]; if (!clip) return 0;
@@ -79,6 +81,7 @@ export class Player {
     this.hp = Math.min(this.hpMax, this.hp + (this.alive && this.hurt < -6 ? dt * 1.2 : 0));
     this.hero.mixer.update(dt);
     const r = this.hero.root; r.position.set(this.x, this.y, this.z); r.rotation.y = this.yaw;
+    this.hero.springs.update(dt, r);
   }
   turn(want, dt, rate) { let d = (want - this.yaw) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; this.yaw += d * Math.min(1, dt * rate); }
   startAttack(i) {
