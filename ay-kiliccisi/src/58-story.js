@@ -87,9 +87,9 @@ const RED={fogC:[.32,.07,.06],sun:[1.1,.55,.45],fog:[25,160]},DUSK={fogC:[.25,.2
 const PANELS={
  prologue:()=>[
   {h:.62,st:{eye:[52,26,92],at:[0,10,0],env:RED,noHero:true,setup:()=>fires(true,[[-30,-34,9],[34,-30,8],[30,34,10],[-34,30,7],[0,0,12],[-14,40,6],[16,55,7]]),teardown:()=>fires(false)},nar:'Krallık düştü.',nar2:'Gökyüzü yanıyordu.'},
-  {h:.8,st:{eye:[1.9,1.15,17.4],at:[0,1.25,12.7],fov:44,env:RED,hero:{x:0,z:14.6,yaw:PI,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=0;KING.z=12;KING.yaw=0;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
+  {h:.8,st:{eye:[1.9,1.15,17.4],at:[0,1.25,12.7],fov:44,env:RED,hero:{x:0,z:14.6,yaw:PI,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=-1.2;KING.z=6.5;KING.yaw=PI;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
    nar:'Kael o gece surlardaki binlerce askerden biriydi.',nar2:'Şeytan Kraliçe ona bakmadı bile.'},
-  {h:.7,st:{eye:[4.6,1.7,19.6],at:[2.2,1.45,17],fov:40,env:RED,noHero:true,setup:()=>{Object.assign(VEYRA,{x:2.2,z:17,y:hAt(2.2,17),yaw:PI*.85,forceShow:true,hidden:false,forcePose:{RsX:-1.6,ReX:-.4,LsX:-.3,hdP:-.05}});fires(true,[[-6,6,2.6],[7,5,2.2]])},teardown:()=>{VEYRA.forceShow=false;VEYRA.forcePose=null;fires(false);if(!SYS.veyraFate&&SHRINE){VEYRA.x=SHRINE.x;VEYRA.z=SHRINE.z;VEYRA.yaw=0}}},
+  {h:.7,st:{eye:[4.6,1.7,19.6],at:[2.2,1.45,17],fov:40,env:RED,noHero:true,setup:(e=1)=>{Object.assign(VEYRA,{x:2.2,z:17,y:hAt(2.2,17),yaw:PI*.85,forceShow:true,hidden:false,forcePose:{RsX:lp(-.3,-2.1,e),ReX:lp(-1.2,-.3,e),LsX:-.3,hdP:lp(.2,-.1,e)}});fires(true,[[-6,6,2.6],[7,5,2.2]])},teardown:()=>{VEYRA.forceShow=false;VEYRA.forcePose=null;fires(false);if(!SYS.veyraFate&&SHRINE){VEYRA.x=SHRINE.x;VEYRA.z=SHRINE.z;VEYRA.yaw=0}}},
    nar:'Yangının içinde boynuzlu bir kız gördü. Kılıcı kor gibiydi. Sonra her şey karardı.',say:[{who:'Kael',txt:'Demek böyle bitiyor...',x:12,y:70}]},
   {h:.45,black:true,sys:['Ölüm algılandı.','Koşul sağlandı: «Pişmanlık»','Geri dönüş başlatılıyor...']},
   {h:.72,st:{eye:[SPAWN[0]+1.5,3.2,SPAWN[2]+2.4],at:[SPAWN[0],.5,SPAWN[2]],env:{fogC:[.8,.82,.78],sun:[1.1,1.05,.95],fog:[60,260]},hero:{x:SPAWN[0],z:SPAWN[2],yaw:PI,lie:1.45,pose:{LaZ:.5,RaZ:.6,hdX:-.2}}},
@@ -106,17 +106,4 @@ const PANELS={
   {h:.75,st:{eye:[SHRINE.x+3,2.2,SHRINE.z+4.5],at:[SHRINE.x,1.2,SHRINE.z+1],env:DUSK,hero:{x:SHRINE.x,z:SHRINE.z+2,yaw:PI,pose:{two:1,RaZ:-1.4,RaX:-1.0,Rel:.6,RaY:.2,chX:-.2}}},
    whisper:'Bu o. Krallığı yakanların kızı. Kes.',say:[{who:'Kael',txt:'Krallık yanarken seni gördüm. Yangının ortasındaydın.',x:6,y:70}],choice:true}],
  dragon:()=>[{h:.65,st:{eye:[LAIR[0]+20,14,LAIR[1]+40],at:[LAIR[0],4,LAIR[1]-60],env:DUSK,noHero:true},nar:'Kül Kanat düştü. Kuzey geçidi açık.',sys:['Ana görev: Kül Kale (yakında)']}]};
-let mhTok=0;const MHQ=[];
-// one strip at a time: a strip that arrives while another is open waits its turn
-function showManhwa(panels,done){const ov=$('manhwa');if(ov.style.display==='block'&&GT.inStory){MHQ.push([panels,done]);return}const tok=++mhTok;GT.inStory=true;GT.paused=true;ov.innerHTML='<div class="mh-load">Sahne çiziliyor…</div><button class="mh-skip">ATLA</button>';ov.style.display='block';ov.scrollTop=0;
- const end=()=>{if(tok!==mhTok)return;mhTok++;ov.style.display='none';ov.innerHTML='';GT.inStory=false;GT.paused=false;if(done)done();if(MHQ.length){const[p,d]=MHQ.shift();setTimeout(()=>showManhwa(p,d),60)}};ov.querySelector('.mh-skip').onclick=()=>{if(!panels.some(p=>p.choice))end()};
- const imgs=[];let i=0;const next=()=>{if(tok!==mhTok)return;if(i<panels.length){const p=panels[i++];imgs.push(p.black?null:shot(p.st,p.h));setTimeout(next,0)}else build()};setTimeout(next,30);
- function build(){if(tok!==mhTok)return;let h='';panels.forEach((p,k)=>{const slant=k%2?'polygon(0 0,100% 4%,100% 100%,0 96%)':'polygon(0 4%,100% 0,100% 96%,0 100%)';
-   h+='<div class="mh-p'+(p.black?' mh-b':'')+'" style="aspect-ratio:1/'+p.h+';clip-path:'+slant+'">'+(imgs[k]?'<img src="'+imgs[k]+'" alt="">':'');
-   if(p.nar)h+='<div class="mh-n">'+p.nar+(p.nar2?'<br>'+p.nar2:'')+'</div>';for(const s of p.say||[])h+='<div class="mh-s" style="left:'+s.x+'%;top:'+s.y+'%"><b>'+s.who+'</b>'+s.txt+'</div>';
-   if(p.sys)h+='<div class="mh-sys">'+p.sys.map(t=>'<div>[Sistem] '+t+'</div>').join('')+'</div>';if(p.whisper)h+='<div class="mh-w">'+p.whisper+'</div>';h+='</div><div class="mh-gap"></div>'});
-  const ch=panels.some(p=>p.choice);h+=ch?'<div class="mh-ch"><button id="mhFree">Zincirlerini kır</button><button id="mhKill">Kılıcını indir</button></div>':'<button class="mh-next">DEVAM</button>';
-  ov.innerHTML=h+'<button class="mh-skip">'+(ch?'':'ATLA')+'</button>';ov.querySelector('.mh-skip').style.display=ch?'none':'block';ov.querySelector('.mh-skip').onclick=end;
-  if(ch){$('mhFree').onclick=()=>{ov.style.display='none';chooseFate(true);showManhwa([{h:.65,st:{eye:[SHRINE.x+2.5,1.6,SHRINE.z+2.2],at:[SHRINE.x,1,SHRINE.z],env:DUSK,setup:()=>{VEYRA.forcePose={LsX:-.3,RsX:-.4,hdP:-.1}},teardown:()=>{VEYRA.forcePose=null}},say:[{who:'Veyra',txt:'Neden?.. Ben bir iblisim.',x:50,y:8},{who:'Kael',txt:'Bu sefer başka türlü bitecek.',x:6,y:72}]}],()=>{note('[Görev] Kül Kanat: kuzeydeki ejderhayı yen.','gold');if(done)done()})};
-   $('mhKill').onclick=()=>{ov.style.display='none';chooseFate(false);showManhwa([{h:.55,black:true,whisper:'Güzel.',sys:['Hırlayan güçlendi: Öfke daha hızlı dolar.']}],()=>{note('[Görev] Kül Kanat: kuzeydeki ejderhayı yen.','gold');if(done)done()})}}
-  else ov.querySelector('.mh-next').onclick=end}}
+

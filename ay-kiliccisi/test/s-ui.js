@@ -3,9 +3,9 @@ module.exports = async ({ page, shot, G, log }) => {
   await page.click('#introb'); await page.waitForTimeout(600);
   // the prologue manhwa opens; scroll and tap DEVAM like a phone user
   await page.waitForSelector('#manhwa .mh-next', { timeout: 60000 }); const open1 = await G(() => document.getElementById('manhwa').style.display === 'block' && __G.GT.paused);
-  await page.evaluate(() => { document.getElementById('manhwa').scrollTop = 99999; }); await page.waitForTimeout(300); await page.tap('#manhwa .mh-next'); await page.waitForTimeout(400);
+  await page.waitForTimeout(1200); const i0 = await G(() => __G.X.CINE.i); await page.tap('#manhwa .mh-next'); await page.tap('#manhwa .mh-next'); const i1 = await G(() => __G.X.CINE.i); await shot('ui-1b-cine', { wait: 900 }); await page.tap('#manhwa .mh-skip'); await page.waitForTimeout(400);
   const closed = await G(() => document.getElementById('manhwa').style.display === 'none' && !__G.GT.paused && __G.SYS.prologue === 1);
-  log('dokunmatik: UYAN → önsöz manhwası açılıyor, oyun duruyor; DEVAM ile oyuna dönülüyor', open1 && closed);
+  log('dokunmatik: UYAN → hareketli önsöz açılıyor; ▶ sonraki panel, ATLA oyuna döndürür', open1 && closed && i1 === i0 + 1, JSON.stringify([i0, i1]));
   await page.tap('#bSys'); await page.waitForTimeout(400); const tabs = await page.locator('#win .tab').count(); await page.locator('#win .tab', { hasText: 'Envanter' }).first().tap(); await page.waitForTimeout(300);
   const inv = await page.locator('#win .slot').count(); log('dokunmatik: Sistem → Envanter sekmesi dokunarak açılıyor (4 kuşanma yuvası)', tabs >= 7 && inv >= 4, JSON.stringify({ sekme: tabs, eşya: inv }));
   await shot('ui-2b-inventory', { wait: 200 }); await page.evaluate(() => { document.getElementById('winx').click(); });

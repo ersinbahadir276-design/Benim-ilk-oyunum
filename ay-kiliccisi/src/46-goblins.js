@@ -1,6 +1,6 @@
 // ===================== goblins: small ones in fast weak groups, one big club-wielder per camp =====================
 const GOBS=[];let GOBM=null,BIGM=null;
-const GOB_HOSTILE={aim:1,horn:1,chase:1,circle:1,windup:1,strike:1,recover:1,stagger:1,hurt:1,escape:1};
+const GOB_HOSTILE={hop:1,aim:1,horn:1,chase:1,circle:1,windup:1,strike:1,recover:1,stagger:1,hurt:1,escape:1};
 function mkGob(x,z,big,group,camp){const g={big,x,z,y:hAt(x,z),yaw:rnd()*6.28,hyaw:0,hx:x,hz:z,st:'idle',t:rr(0,3),hp:big?260:38,max:big?260:38,spd:0,aware:0,ls:[x,z],unseen:9,group,camp,
   rad:big?.8:.33,sc:big?1.25:1,ph:rnd()*6,cd:rr(.5,1.5),eye:big?2.3:1.0,flash:0,kx:0,kz:0,held:null,dead:0,R:null,q:{},slot:rnd()*6.28,hitDone:false,deadT:0,swims:false};
  g.hostile=()=>!!GOB_HOSTILE[g.st];
@@ -22,7 +22,10 @@ function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');
 function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;g.hp-=dmg;g.flash=1;g.aware=1;g.ls=[P.x,P.z];
  if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
  const kb=g.big?1.2:5;g.kx=dx*kb;g.kz=dz*kb;
- if(g.st!=='escape'&&g.st!=='choked'&&g.st!=='pinned'){if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
+ if(g.st!=='escape'&&g.st!=='choked'&&g.st!=='pinned'){g.hitN=GT.clock-(g.hitAt||-9)<2.2?(g.hitN||0)+1:1;g.hitAt=GT.clock;const light=kind&&kind.startsWith&&kind.startsWith('light');
+  if(!g.big&&(g.st==='windup'||g.st==='strike')&&light){g.kx*=.15;g.kz*=.15}                                  // committed attack: armoured against light hits
+  else if(!g.big&&g.hitN>=2&&g.st!=='stagger'){g.hitN=0;g.st='hop';g.t=0;g.kx=dx*9;g.kz=dz*9}                   // second hit in a row: hop back, then lunge
+  else if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
  alertGroup(g,P,22,GOBS);return false}
 const gobTokens=()=>GOBS.filter(g=>!g.dead&&!g.big&&(g.st==='windup'||g.st==='strike')).length;
 function updateGob(g,dt){g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
@@ -61,6 +64,7 @@ function updateGob(g,dt){g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const
   if(u>=1){if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.cd=g.big?rr(1.6,2.4):rr(.9,1.6)}break}
  case'recover':g.spd=0;if(g.t>(g.big?1.25:.5)){g.st='chase';g.t=0}break;
  case'stagger':g.spd=0;if(g.t>(g.big?2.1:1.5)){g.st='chase';g.t=0}break;
+ case'hop':g.spd=0;agentFace(g,P.x,P.z,dt,10);if(g.t>.42){g.st='windup';g.t=.18;g.hitDone=false;sfx.gobShout()}break;
  case'hurt':g.spd=0;if(g.t>.3){g.st='chase';g.t=0}break}
  // keep goblins apart
  for(const o of GOBS){if(o===g||o.dead)continue;const ex=g.x-o.x,ez=g.z-o.z,q=ex*ex+ez*ez,m=g.rad+o.rad;if(q<m*m&&q>1e-6){const k=Math.sqrt(q);g.x+=ex/k*(m-k)*.5;g.z+=ez/k*(m-k)*.5}}

@@ -13,7 +13,7 @@ window.runLoop = async function () {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const waitPanels = async () => { for (let i = 0; i < 100; i++) { const m = document.getElementById('manhwa'); if (m.style.display !== 'block' || m.querySelector('.mh-next,.mh-ch')) return; await wait(100); } };
   const sec = async (name, fn) => { try { await fn(); } catch (e) { ok(name + ' (çalıştı)', false, String(e.stack || e).slice(0, 300)); } };
-  const closeUI = async () => { await waitPanels(); const m = document.getElementById('manhwa'); if (m.style.display === 'block') { const s = m.querySelector('.mh-next') || m.querySelector('.mh-skip'); if (s) s.click(); } GT.inStory = false; GT.paused = true; document.getElementById('travel').style.display = 'none'; };
+  const closeUI = async () => { await waitPanels(); const m = document.getElementById('manhwa'); if (m.style.display === 'block') { for (let k = 0; k < 40 && X.CINE.on && !X.CINE.choice; k++) X.cineEnd(); if (X.CINE.on) X.cineEnd(true); } GT.inStory = false; GT.paused = true; document.getElementById('travel').style.display = 'none'; };
   const smallGob = () => G.GOBS.find((g) => !g.dead && !g.big && !g.boss && !g.archer);
   const T0 = [30, 420];
   SYS.gold = 0; SYS.shards = 0;
@@ -138,7 +138,7 @@ window.runLoop = async function () {
     const hit = gs.filter((g) => g.hp < 500).length;
     ok('Dönen Kesik: etraftaki 3 düşmanın hepsine iki kez vuruyor', st === 'skill' && hit === 3 && gs.every((g) => g.hp <= 500 - 2 * X.weaponDmg() * .8), { vurulan: hit, canlar: gs.map((g) => g.hp) });
     X.useSkill(); ok('yetenek: bekleme süresi var', P.st === 'move');
-    X.unlockSkill('dash'); SYS.skill = 'dash'; P.yaw = 0; const z0 = P.z; X.useSkill(); sim(.6);
+    gs.forEach((g) => { g.x += 400; g.hx = g.x; g.st = 'idle'; g.aware = 0; }); freshP(T0[0], T0[1]); X.unlockSkill('dash'); SYS.skill = 'dash'; P.yaw = 0; const z0 = P.z; X.useSkill(); sim(.6);
     ok('Gölge Adımı: 5 m+ ileri atılıyor, sırasında dokunulmaz', P.z - z0 > 5, { mesafe: +(P.z - z0).toFixed(2) });
     X.unlockSkill('roar'); SYS.skill = 'roar'; freshP(T0[0], T0[1]); const g = gs[0]; g.x = P.x + 2; g.z = P.z; g.st = 'chase'; g.aware = 1; g.dead = 0; X.useSkill(); sim(.6);
     ok('Savaş Kükremesi: küçük düşmanı korkutup kaçırıyor', g.fear > GT.clock && Math.hypot(g.x - P.x, g.z - P.z) > 2, { uzaklık: +Math.hypot(g.x - P.x, g.z - P.z).toFixed(1) });
@@ -199,8 +199,8 @@ window.runLoop = async function () {
     G.press('inter'); sim(.05);
     const m = document.getElementById('manhwa'); await waitPanels();
     ok('görev: İhtiyar Doran ile konuşunca manhwa bölümü açılıyor, oyun duruyor', m.style.display === 'block' && GT.inStory === true);
-    const panels = m.querySelectorAll('.mh-p').length, imgs = m.querySelectorAll('.mh-p img').length, bubbles = m.querySelectorAll('.mh-s').length;
-    ok('manhwa: paneller oyun içi çizimle dolu, konuşma balonları var', panels >= 2 && imgs >= 2 && bubbles >= 2, { panel: panels, resim: imgs, balon: bubbles });
+    const shots = X.CINE.shots.length, i0 = X.CINE.i; await wait(1500); const txt = m.querySelector('.cn-txt').textContent, who = m.querySelector('.cn-who').textContent; m.querySelector('.mh-next').click(); m.querySelector('.mh-next').click(); const i1 = X.CINE.i;
+    ok('manhwa: hareketli sahne oynuyor — yazı kendiliğinden yazılıyor, ▶ sonraki panele geçiyor', X.CINE.on && shots >= 2 && txt.length > 2 && who.length > 2 && i1 === i0 + 1, { sahne: shots, konusan: who, yazi: txt.slice(0, 30), gecis: [i0, i1] });
     await closeUI(); ok('görev: «Kurt Sürüsü» başladı', SYS.main === 2 && GT.inStory === false, SYS.main);
     for (let i = 0; i < 5; i++) X.questEvent('kill', G.wolves.find((w) => !w.boss)); sim(.05);
     ok('görev: 5 kurt → «Kül Yele» (Kül Yele zaten yenildiyse hemen «Köye Dönüş»)', SYS.main >= 3, SYS.main);
@@ -211,8 +211,9 @@ window.runLoop = async function () {
     ok('görev: kafes açılınca bölüm paneli, sonra «Zincirli Prenses»', SYS.cagesOpen && m.style.display === 'block');
     await closeUI(); sim(.05); ok('görev: «Zincirli Prenses»', SYS.main === 7, SYS.main);
     const sh = X.questTarget(); freshP(sh[0] + 3, sh[1] + 3); sim(.1); await waitPanels();
-    ok('Veyra: tapınağa yaklaşınca prenses bölümü ve SEÇİM düğmeleri', m.style.display === 'block' && !!document.getElementById('mhFree') && !!document.getElementById('mhKill'));
-    ok('Veyra: seçim varken ATLA yok (seçim zorunlu)', getComputedStyle(m.querySelector('.mh-skip')).display === 'none');
+    m.querySelector('.mh-skip').click(); const atChoice = X.CINE.on && X.CINE.shots[X.CINE.i].choice; for (let k = 0; k < 3; k++) m.querySelector('.mh-next').click();
+    ok('Veyra: tapınağa yaklaşınca prenses bölümü; ATLA seçim paneline götürür, seçim zorunlu', m.style.display === 'block' && atChoice && X.CINE.on && getComputedStyle(m.querySelector('.mh-ch')).display === 'flex');
+    ok('Veyra: seçim varken ATLA yok', getComputedStyle(m.querySelector('.mh-skip')).display === 'none');
     document.getElementById('mhFree').click(); sim(.05); await waitPanels();
     ok('Veyra: «Zincirlerini kır» → yoldaş oluyor', SYS.veyraFate === 'freed' && X.VEYRA.on);
     await closeUI(); sim(.1); ok('görev: «Kül Kanat» (ejderha) başladı', SYS.main === 8, SYS.main);
