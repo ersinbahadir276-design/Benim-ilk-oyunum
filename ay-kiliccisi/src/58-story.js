@@ -36,11 +36,11 @@ function storyInit(){SYS.main=SYS.main||0;
  if(!SYS.prologue)setTimeout(()=>{if(!SYS.intro)return;},0)}
 // ---------- quest givers and interactions
 function roleNear(r=2.8){let best=null,bd=r;for(const k in ROLES){const n=ROLES[k],d=Math.hypot(n.x-P.x,n.z-P.z);if(d<bd){bd=d;best=n}}return best}
-function questFor(n){if(n.role==='elder')return SYS.main===1||SYS.main===4;if(n.role==='hunter')return!SYS.q_pelts||(SYS.q_pelts===1&&(SYS.pelts||0)>=3);if(n.role==='priest')return!SYS.q_legacy||(SYS.q_legacy===1&&Object.keys(SYS.seals||{}).length>=3);if(n.role==='smith')return!SYS.metSmith;return false}
-function storyPrompt(){const n=roleNear();if(n)return'ETKİLEŞ: '+n.name+' ile konuş';const c=CAGES.find(c=>Math.hypot(c.x-P.x,c.z-P.z)<2.4);if(c&&SYS.chief&&!SYS.cagesOpen)return'ETKİLEŞ: kafesi aç';
+function questFor(n){if(n.role==='guild')return!SYS.guild||SYS.guild.active.some(cDone);if(n.role==='lost')return true;if(n.role==='elder')return SYS.main===1||SYS.main===4;if(n.role==='hunter')return!SYS.q_pelts||(SYS.q_pelts===1&&(SYS.pelts||0)>=3);if(n.role==='priest')return!SYS.q_legacy||(SYS.q_legacy===1&&Object.keys(SYS.seals||{}).length>=3);if(n.role==='smith')return!SYS.metSmith;return false}
+function storyPrompt(){const gp=guildPrompt();if(gp)return gp;const n=roleNear();if(n)return'ETKİLEŞ: '+n.name+' ile konuş';const c=CAGES.find(c=>Math.hypot(c.x-P.x,c.z-P.z)<2.4);if(c&&SYS.chief&&!SYS.cagesOpen)return'ETKİLEŞ: kafesi aç';
  if(SYS.q_legacy===1&&Object.keys(SYS.seals||{}).length>=3&&Math.hypot(P.x-10,P.z-50)<5)return'ETKİLEŞ: heykele mühürleri yerleştir';if(VEYRA&&VEYRA.down&&Math.hypot(VEYRA.x-P.x,VEYRA.z-P.z)<2.2)return'ETKİLEŞ: Veyra\'yı kaldır';return''}
 function say(who,txt){note(who+': "'+txt+'"')}
-function storyInteract(){const n=roleNear();if(n){n.st='watch';n.t=0;n.ls=[P.x,P.z];
+function storyInteract(){if(guildInteract())return true;const n=roleNear();if(n){n.st='watch';n.t=0;n.ls=[P.x,P.z];
   if(n.role==='elder'){if(SYS.main===1){SYS.main=2;SYS.qk=0;showManhwa(PANELS.ch1(),()=>note('[Görev] Kurt Sürüsü: yollardaki 5 kurdu avla.','gold'));return true}
    if(SYS.main===4){SYS.main=5;showManhwa(PANELS.ch2(),()=>note('[Görev] Kırık Diş: doğu kampına git.','gold'));return true}say(n.name,'«'+curMain().t+'» — '+(typeof curMain().d==='function'?curMain().d():curMain().d));return true}
   if(n.role==='hunter'){if(!SYS.q_pelts){SYS.q_pelts=1;say(n.name,'Bana 3 kurt postu getir, sana kurt postundan bir zırh dikerim. Kurtlardan düşer.');return true}

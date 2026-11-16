@@ -22,7 +22,7 @@ function restAt(i){SYS.altars=SYS.altars||{};const first=!SYS.altars[i];SYS.alta
  for(const w of wolves)if(!w.tame&&w.dead&&!w.boss){w.dead=0;w.st='idle';w.hp=w.max;w.x=w.hx;w.z=w.hz;w.roll=0;w.crouch=0;w.aware=0}else if(!w.tame&&hostileSt(w)){w.st='return';w.t=0;w.aware=0}
  for(const g of GOBS)if(g.dead&&!g.boss){Object.assign(g,{dead:0,hp:g.max,x:g.hx,z:g.hz,st:'idle',aware:0,deadT:0,held:null})}else g.calmDown();
  for(const c of CROCS)if(c.dead)Object.assign(c,{dead:0,hp:c.max,x:c.hx,z:c.hz,st:'idle',aware:0,deadT:0});else c.calmDown();
- sfx.rest();note(first?'[Sistem] Sunak yakıldı: '+ALTARS[i].n+' — kontrol noktası':'[Sistem] Dinlendin. Can ve iksirler doldu, düşmanlar geri döndü.','gold');if(first)addXP(25,P);save(P);openTravel(i)}
+ if(SYS.guild)fillBoard();sfx.rest();note(first?'[Sistem] Sunak yakıldı: '+ALTARS[i].n+' — kontrol noktası':'[Sistem] Dinlendin. Can ve iksirler doldu, düşmanlar geri döndü.','gold');if(first)addXP(25,P);save(P);openTravel(i)}
 function openTravel(from){const lit=ALTARS.map((a,i)=>[a,i]).filter(([a,i])=>SYS.altars&&SYS.altars[i]&&i!==from);const box=$('travel');if(!lit.length){box.style.display='none';return}
  box.innerHTML='<div class="wt">HIZLI YOLCULUK</div>'+lit.map(([a,i])=>'<button data-i="'+i+'">'+a.n+' <small>Sv.'+regionLevel(a.x,a.z)+'</small></button>').join('')+'<button data-i="-1">Kal</button>';box.style.display='flex';
  box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{box.style.display='none';const j=+b.dataset.i;if(j>=0){const a=ALTARS[j];__travel(a.x+1.6,a.z+1.6);SYS.altarAt=j;note('[Sistem] '+a.n+' sunağına geçtin.')}}))}

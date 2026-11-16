@@ -172,7 +172,7 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
  addEventListener('blur',()=>{IN.atkHeld=false;IN.blockHeld=false;P.sprintHeld=false})}
 // ---------- boot + adaptive quality (performance: measure first, then lower resolution, grass, draw distance)
 const QUAL={QL:0};
-function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
+function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();guildInit();checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
@@ -192,6 +192,6 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
    dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
-   openWin,renderWin,uiTick,maxHP,useBow,CINE,cineNext,cineEnd,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
+   openWin,renderWin,uiTick,maxHP,useBow,GUILD,guildInteract,guildAccept,guildTurnIn,guildKill,cDone,fillBoard,GRANK,CINE,cineNext,cineEnd,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}

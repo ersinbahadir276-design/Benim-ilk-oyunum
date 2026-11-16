@@ -35,7 +35,7 @@ function hud(P){$('hpf').style.width=cl(P.hp/maxHP()*100,0,100)+'%';$('hpt').tex
 let winOpen=false;
 let winTab='durum',winSel=null;
 function openWin(tab){winTab=tab||winTab;winSel=null;if(!winOpen){winOpen=true;$('win').style.display='flex'}renderWin(P)}
-function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['yetenek','YETENEK'],['gorev','GÖREV'],['harita','HARİTA'],['demirci','DEMİRCİ'],['ayar','AYAR']];
+function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['yetenek','YETENEK'],['gorev','GÖREV'],['lonca','LONCA'],['harita','HARİTA'],['demirci','DEMİRCİ'],['ayar','AYAR']];
  let h='<div class="tabs">'+tabs.map(([k,n])=>'<button class="tab'+(k===winTab?' on':'')+'" data-tab="'+k+'">'+n+'</button>').join('')+'</div>';
  const row=(k,n,d)=>'<div class="st"><span>'+n+'</span><b>'+SYS[k]+(gear(k)?'<small>+'+Math.round(gear(k))+'</small>':'')+'</b><i>'+d+'</i>'+(SYS.pts>0?'<button data-k="'+k+'">+</button>':'')+'</div>';
  const rc=r=>'style="color:'+RAR[r].c+'"';
@@ -66,7 +66,8 @@ function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['ye
   'Veyra: iskelet oranları «Kawaiope» (chained_tan, CC BY 4.0); görünüş bu oyun için kodla tasarlandı.<br>Şeytan Kral oranları: «Aldrich» (9S, CC BY 4.0) iskeletinden ölçüldü.<br>'+
   'Ejderha: «Tarisland - Dragon (High Poly)» — Doctor A. (Sketchfab), CC BY 4.0; oyuncunun eklediği model, sadeleştirildi. Not: tasarım Tarisland oyununa aittir.<br>'+
   'Meydan heykeli: «The Forgotten Knight» — dark_igorek, CC BY 4.0.<br>Kurtlar, goblinler, köylüler, timsahlar, dünya ve sesler: bu oyun için kodla üretildi.</div>'}
- $('winb').innerHTML=h+'<button id="winx">KAPAT</button>';
+ if(winTab==='lonca')h+=guildHtml();
+ $('winb').innerHTML=h+'<button id="winx">KAPAT</button>';guildBind($('winb'));
  $('winb').querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{winTab=b.dataset.tab;winSel=null;renderWin(P)}));
  $('winb').querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>{if(SYS.pts>0){SYS[b.dataset.k]++;SYS.pts--;if(b.dataset.k==='vit')P.hp+=12;save(P);renderWin(P)}}));
  $('winb').querySelectorAll('[data-id]').forEach(b=>b.addEventListener('click',()=>{const id=+b.dataset.id;if(id){winSel=id;winTab='envanter';renderWin(P)}}));

@@ -78,7 +78,7 @@ function doHit(kind){const S=curStance(),lt=kind.startsWith('light'),A=lt?{r:S.r
  if(any){const big=A.t==='big';GT.stop=Math.max(GT.stop,big?.12:.06);CAM.shake=Math.max(CAM.shake,big?.65:.4);sfx.hit()}
  if(kind==='jumpatk'||kind==='heavy'){const tp=swordTip();spawnSparks(tp[0],hAt(tp[0],tp[2])+.1,tp[2],6,[.8,.75,.6],3);if(hasFx('fire'))for(let i=0;i<4;i++)BURNS.push({x:P.x+Math.sin(P.yaw)*(1.2+i*.9),z:P.z+Math.cos(P.yaw)*(1.2+i*.9),t:0,life:4,mine:1})}
  return any}
-function onFoeKilled(f,byPet){if(isWolf(f))GS.onKill(f,byPet);else if(f.onKilled)f.onKilled(byPet);
+function onFoeKilled(f,byPet){guildKill(f);if(isWolf(f))GS.onKill(f,byPet);else if(f.onKilled)f.onKilled(byPet);
  const tier=f===DRAGON?3:f.boss?2:f.elite||(GOBS.includes(f)&&f.big)?1:0;lootFor(f,tier,isWolf(f)?2:GOBS.includes(f)?(f.big?14:4):f===DRAGON?200:6);if(isWolf(f)&&Math.random()<.35)SYS.pelts=(SYS.pelts||0)+1;if(P.lock===f)P.lock=null;questEvent('kill',f)}
 // --------------------------------------------------------------- silent takedowns
 // ETKİLEŞ behind an unaware small goblin -> choke hold + sword; ZIPLA twice behind an unaware wolf -> leap + neck lock;

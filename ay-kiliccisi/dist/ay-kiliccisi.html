@@ -23,7 +23,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-actio
 .mh-s{position:absolute;max-width:56%;background:#fff;color:#111;border-radius:22px;padding:8px 14px;font:700 13px/1.3 system-ui;box-shadow:2px 3px 0 #000}.mh-s b{display:block;font-size:10px;letter-spacing:1px;color:#777}.mh-s:after{content:'';position:absolute;left:24px;bottom:-10px;border:10px solid transparent;border-top-color:#fff;border-bottom:0}
 .mh-sys{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:60%;background:rgba(14,34,78,.82);border:1px solid #78beff;box-shadow:0 0 20px rgba(80,160,255,.6);padding:10px 14px;color:#cfe6ff;font:700 13px/1.6 system-ui;text-align:center}
 .mh-w{position:absolute;right:5%;bottom:10%;color:#ff3a2a;font:italic 900 20px/1.2 Georgia,serif;text-shadow:0 0 8px #000,0 0 14px #900;transform:rotate(-4deg)}
-body.incine>div:not(#manhwa){visibility:hidden}#manhwa.cine{background:transparent;overflow:hidden;padding:0;touch-action:none}
+body.incine>div:not(#manhwa),body.incine>canvas:not(#c){visibility:hidden}#manhwa.cine{background:transparent;overflow:hidden;padding:0;touch-action:none}
 .cn-black{position:absolute;inset:0;background:radial-gradient(#0d1326,#000);display:none}.cn-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}.cn-flash.go{animation:cnf .45s ease-out}@keyframes cnf{0%{opacity:.85}100%{opacity:0}}
 .cn-bar{position:absolute;left:0;right:0;background:#000;height:11vh}.cn-bar.t{top:0}.cn-bar.b{bottom:0;height:max(17vh,74px);padding:8px max(16px,var(--sl)) 8px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
 .cn-who{color:#ffd76a;font:800 12px system-ui;letter-spacing:2px;text-transform:uppercase}.cn-txt{color:#fff;font:600 15px/1.35 system-ui;max-width:680px}
@@ -31,6 +31,7 @@ body.incine>div:not(#manhwa){visibility:hidden}#manhwa.cine{background:transpare
 .cn-sys{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);min-width:min(70%,420px);white-space:pre-line;background:rgba(14,34,78,.85);border:1px solid #78beff;box-shadow:0 0 24px rgba(80,160,255,.6);padding:12px 16px;color:#cfe6ff;font:700 14px/1.7 system-ui;text-align:center;display:none}
 .cn-w{position:absolute;right:6%;bottom:calc(max(17vh,74px) + 16px);color:#ff3a2a;font:italic 900 22px/1.2 Georgia,serif;text-shadow:0 0 8px #000,0 0 14px #900;transform:rotate(-4deg);display:none}
 #manhwa.cine .mh-next{position:absolute;right:calc(14px + var(--sr));bottom:calc(max(17vh,74px) + 10px);margin:0;padding:10px 18px}#manhwa.cine .mh-skip{position:absolute}#manhwa.cine .mh-ch{position:absolute;left:0;right:0;bottom:calc(max(17vh,74px) + 14px);margin:0}.cn-dots{position:absolute;left:0;right:0;bottom:3px;text-align:center;color:#777;font-size:8px;letter-spacing:2px}
+.gcard{position:relative;border:1px solid #ffd76a;border-radius:8px;padding:8px 10px;margin:6px 0;background:linear-gradient(135deg,rgba(60,45,10,.5),rgba(14,34,78,.5));font-size:12px;line-height:1.5}.grank{position:absolute;right:12px;top:6px;font:900 34px Georgia,serif;color:#ffd76a;text-shadow:0 0 10px rgba(255,200,80,.6)}.item button{margin-top:4px;align-self:flex-start;padding:4px 10px!important;font-size:11px!important}
 .mh-load{color:#9fd0ff;text-align:center;margin-top:40vh;font:700 15px system-ui}.mh-next,.mh-skip{display:block;margin:14px auto;padding:12px 30px;border-radius:24px;border:1px solid #78beff;background:rgba(14,34,78,.9);color:#fff;font:800 14px system-ui}
 .mh-skip{position:fixed;right:calc(12px + var(--sr));top:calc(10px + var(--st));padding:6px 14px;margin:0;font-size:11px;opacity:.8}.mh-ch{display:flex;gap:10px;justify-content:center;margin:16px auto}.mh-ch button{padding:14px 18px;border-radius:10px;border:2px solid #ff6a5a;background:#2a0a0a;color:#fff;font:800 14px system-ui}.mh-ch button:first-child{border-color:#ffd76a;background:#2a220a}
 .bar.s{height:6px}#hpt{position:absolute;left:0;right:0;top:-1px;text-align:center;font-size:9px}
@@ -1446,7 +1447,7 @@ function hud(P){$('hpf').style.width=cl(P.hp/maxHP()*100,0,100)+'%';$('hpt').tex
 let winOpen=false;
 let winTab='durum',winSel=null;
 function openWin(tab){winTab=tab||winTab;winSel=null;if(!winOpen){winOpen=true;$('win').style.display='flex'}renderWin(P)}
-function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['yetenek','YETENEK'],['gorev','GÖREV'],['harita','HARİTA'],['demirci','DEMİRCİ'],['ayar','AYAR']];
+function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['yetenek','YETENEK'],['gorev','GÖREV'],['lonca','LONCA'],['harita','HARİTA'],['demirci','DEMİRCİ'],['ayar','AYAR']];
  let h='<div class="tabs">'+tabs.map(([k,n])=>'<button class="tab'+(k===winTab?' on':'')+'" data-tab="'+k+'">'+n+'</button>').join('')+'</div>';
  const row=(k,n,d)=>'<div class="st"><span>'+n+'</span><b>'+SYS[k]+(gear(k)?'<small>+'+Math.round(gear(k))+'</small>':'')+'</b><i>'+d+'</i>'+(SYS.pts>0?'<button data-k="'+k+'">+</button>':'')+'</div>';
  const rc=r=>'style="color:'+RAR[r].c+'"';
@@ -1477,7 +1478,8 @@ function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['ye
   'Veyra: iskelet oranları «Kawaiope» (chained_tan, CC BY 4.0); görünüş bu oyun için kodla tasarlandı.<br>Şeytan Kral oranları: «Aldrich» (9S, CC BY 4.0) iskeletinden ölçüldü.<br>'+
   'Ejderha: «Tarisland - Dragon (High Poly)» — Doctor A. (Sketchfab), CC BY 4.0; oyuncunun eklediği model, sadeleştirildi. Not: tasarım Tarisland oyununa aittir.<br>'+
   'Meydan heykeli: «The Forgotten Knight» — dark_igorek, CC BY 4.0.<br>Kurtlar, goblinler, köylüler, timsahlar, dünya ve sesler: bu oyun için kodla üretildi.</div>'}
- $('winb').innerHTML=h+'<button id="winx">KAPAT</button>';
+ if(winTab==='lonca')h+=guildHtml();
+ $('winb').innerHTML=h+'<button id="winx">KAPAT</button>';guildBind($('winb'));
  $('winb').querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{winTab=b.dataset.tab;winSel=null;renderWin(P)}));
  $('winb').querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>{if(SYS.pts>0){SYS[b.dataset.k]++;SYS.pts--;if(b.dataset.k==='vit')P.hp+=12;save(P);renderWin(P)}}));
  $('winb').querySelectorAll('[data-id]').forEach(b=>b.addEventListener('click',()=>{const id=+b.dataset.id;if(id){winSel=id;winTab='envanter';renderWin(P)}}));
@@ -1640,7 +1642,7 @@ function restAt(i){SYS.altars=SYS.altars||{};const first=!SYS.altars[i];SYS.alta
  for(const w of wolves)if(!w.tame&&w.dead&&!w.boss){w.dead=0;w.st='idle';w.hp=w.max;w.x=w.hx;w.z=w.hz;w.roll=0;w.crouch=0;w.aware=0}else if(!w.tame&&hostileSt(w)){w.st='return';w.t=0;w.aware=0}
  for(const g of GOBS)if(g.dead&&!g.boss){Object.assign(g,{dead:0,hp:g.max,x:g.hx,z:g.hz,st:'idle',aware:0,deadT:0,held:null})}else g.calmDown();
  for(const c of CROCS)if(c.dead)Object.assign(c,{dead:0,hp:c.max,x:c.hx,z:c.hz,st:'idle',aware:0,deadT:0});else c.calmDown();
- sfx.rest();note(first?'[Sistem] Sunak yakıldı: '+ALTARS[i].n+' — kontrol noktası':'[Sistem] Dinlendin. Can ve iksirler doldu, düşmanlar geri döndü.','gold');if(first)addXP(25,P);save(P);openTravel(i)}
+ if(SYS.guild)fillBoard();sfx.rest();note(first?'[Sistem] Sunak yakıldı: '+ALTARS[i].n+' — kontrol noktası':'[Sistem] Dinlendin. Can ve iksirler doldu, düşmanlar geri döndü.','gold');if(first)addXP(25,P);save(P);openTravel(i)}
 function openTravel(from){const lit=ALTARS.map((a,i)=>[a,i]).filter(([a,i])=>SYS.altars&&SYS.altars[i]&&i!==from);const box=$('travel');if(!lit.length){box.style.display='none';return}
  box.innerHTML='<div class="wt">HIZLI YOLCULUK</div>'+lit.map(([a,i])=>'<button data-i="'+i+'">'+a.n+' <small>Sv.'+regionLevel(a.x,a.z)+'</small></button>').join('')+'<button data-i="-1">Kal</button>';box.style.display='flex';
  box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{box.style.display='none';const j=+b.dataset.i;if(j>=0){const a=ALTARS[j];__travel(a.x+1.6,a.z+1.6);SYS.altarAt=j;note('[Sistem] '+a.n+' sunağına geçtin.')}}))}
@@ -1807,7 +1809,7 @@ function doHit(kind){const S=curStance(),lt=kind.startsWith('light'),A=lt?{r:S.r
  if(any){const big=A.t==='big';GT.stop=Math.max(GT.stop,big?.12:.06);CAM.shake=Math.max(CAM.shake,big?.65:.4);sfx.hit()}
  if(kind==='jumpatk'||kind==='heavy'){const tp=swordTip();spawnSparks(tp[0],hAt(tp[0],tp[2])+.1,tp[2],6,[.8,.75,.6],3);if(hasFx('fire'))for(let i=0;i<4;i++)BURNS.push({x:P.x+Math.sin(P.yaw)*(1.2+i*.9),z:P.z+Math.cos(P.yaw)*(1.2+i*.9),t:0,life:4,mine:1})}
  return any}
-function onFoeKilled(f,byPet){if(isWolf(f))GS.onKill(f,byPet);else if(f.onKilled)f.onKilled(byPet);
+function onFoeKilled(f,byPet){guildKill(f);if(isWolf(f))GS.onKill(f,byPet);else if(f.onKilled)f.onKilled(byPet);
  const tier=f===DRAGON?3:f.boss?2:f.elite||(GOBS.includes(f)&&f.big)?1:0;lootFor(f,tier,isWolf(f)?2:GOBS.includes(f)?(f.big?14:4):f===DRAGON?200:6);if(isWolf(f)&&Math.random()<.35)SYS.pelts=(SYS.pelts||0)+1;if(P.lock===f)P.lock=null;questEvent('kill',f)}
 // --------------------------------------------------------------- silent takedowns
 // ETKİLEŞ behind an unaware small goblin -> choke hold + sword; ZIPLA twice behind an unaware wolf -> leap + neck lock;
@@ -2133,11 +2135,11 @@ function storyInit(){SYS.main=SYS.main||0;
  if(!SYS.prologue)setTimeout(()=>{if(!SYS.intro)return;},0)}
 // ---------- quest givers and interactions
 function roleNear(r=2.8){let best=null,bd=r;for(const k in ROLES){const n=ROLES[k],d=Math.hypot(n.x-P.x,n.z-P.z);if(d<bd){bd=d;best=n}}return best}
-function questFor(n){if(n.role==='elder')return SYS.main===1||SYS.main===4;if(n.role==='hunter')return!SYS.q_pelts||(SYS.q_pelts===1&&(SYS.pelts||0)>=3);if(n.role==='priest')return!SYS.q_legacy||(SYS.q_legacy===1&&Object.keys(SYS.seals||{}).length>=3);if(n.role==='smith')return!SYS.metSmith;return false}
-function storyPrompt(){const n=roleNear();if(n)return'ETKİLEŞ: '+n.name+' ile konuş';const c=CAGES.find(c=>Math.hypot(c.x-P.x,c.z-P.z)<2.4);if(c&&SYS.chief&&!SYS.cagesOpen)return'ETKİLEŞ: kafesi aç';
+function questFor(n){if(n.role==='guild')return!SYS.guild||SYS.guild.active.some(cDone);if(n.role==='lost')return true;if(n.role==='elder')return SYS.main===1||SYS.main===4;if(n.role==='hunter')return!SYS.q_pelts||(SYS.q_pelts===1&&(SYS.pelts||0)>=3);if(n.role==='priest')return!SYS.q_legacy||(SYS.q_legacy===1&&Object.keys(SYS.seals||{}).length>=3);if(n.role==='smith')return!SYS.metSmith;return false}
+function storyPrompt(){const gp=guildPrompt();if(gp)return gp;const n=roleNear();if(n)return'ETKİLEŞ: '+n.name+' ile konuş';const c=CAGES.find(c=>Math.hypot(c.x-P.x,c.z-P.z)<2.4);if(c&&SYS.chief&&!SYS.cagesOpen)return'ETKİLEŞ: kafesi aç';
  if(SYS.q_legacy===1&&Object.keys(SYS.seals||{}).length>=3&&Math.hypot(P.x-10,P.z-50)<5)return'ETKİLEŞ: heykele mühürleri yerleştir';if(VEYRA&&VEYRA.down&&Math.hypot(VEYRA.x-P.x,VEYRA.z-P.z)<2.2)return'ETKİLEŞ: Veyra\'yı kaldır';return''}
 function say(who,txt){note(who+': "'+txt+'"')}
-function storyInteract(){const n=roleNear();if(n){n.st='watch';n.t=0;n.ls=[P.x,P.z];
+function storyInteract(){if(guildInteract())return true;const n=roleNear();if(n){n.st='watch';n.t=0;n.ls=[P.x,P.z];
   if(n.role==='elder'){if(SYS.main===1){SYS.main=2;SYS.qk=0;showManhwa(PANELS.ch1(),()=>note('[Görev] Kurt Sürüsü: yollardaki 5 kurdu avla.','gold'));return true}
    if(SYS.main===4){SYS.main=5;showManhwa(PANELS.ch2(),()=>note('[Görev] Kırık Diş: doğu kampına git.','gold'));return true}say(n.name,'«'+curMain().t+'» — '+(typeof curMain().d==='function'?curMain().d():curMain().d));return true}
   if(n.role==='hunter'){if(!SYS.q_pelts){SYS.q_pelts=1;say(n.name,'Bana 3 kurt postu getir, sana kurt postundan bir zırh dikerim. Kurtlardan düşer.');return true}
@@ -2426,7 +2428,7 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
  addEventListener('blur',()=>{IN.atkHeld=false;IN.blockHeld=false;P.sprintHeld=false})}
 // ---------- boot + adaptive quality (performance: measure first, then lower resolution, grass, draw distance)
 const QUAL={QL:0};
-function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
+function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();guildInit();checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
@@ -2446,7 +2448,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
    dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
-   openWin,renderWin,uiTick,maxHP,useBow,CINE,cineNext,cineEnd,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
+   openWin,renderWin,uiTick,maxHP,useBow,GUILD,guildInteract,guildAccept,guildTurnIn,guildKill,cDone,fillBoard,GRANK,CINE,cineNext,cineEnd,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}
 // ---- 62-cine.js
@@ -2489,6 +2491,67 @@ function cineDraw(st,e,u){const rel=q=>st.abs?q:[q[0],q[1]+hAt(q[0],q[2]),q[2]],
   for(const f of FIRE_PROPS)if(f.vis){const k=1+Math.sin(GT.time*11+f.M[12])*.1;f.M[5]*=k}
   updateScenery(GT.time,0,env,eye);skinAll();drawWolves(P,GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawVeyra(GT.time);drawKing();drawAll(VP,eye,light,GT.time,env)}
  finally{if(st.teardown)st.teardown();for(const o of pObjs)o.vis=true;Object.assign(P,{x:save.x,z:save.z,y:save.y,yaw:save.yaw,ps:save.ps,lift:save.lift});P.rag=save.rag}}
+// ---- 63-guild.js
+// ===================== the Adventurers' Guild =====================
+// Register with the clerk in the village, take contracts from the board, hand them in for gold, experience and guild
+// points. Rank (F → S) rises with guild points AND a real deed for each step, not with character level.
+const GRANK=['F','E','D','C','B','A','S'],GPTS=[0,30,80,170,320,550,900];
+const GDEED=[null,null,{t:"Kül Yele'yi yen",ok:()=>SYS.ashmane},{t:"Kırık Diş'i yen",ok:()=>SYS.chief},{t:'Ejderha Kül Kanat\'ı yen',ok:()=>SYS.dragon},{t:'10 sandık aç ve 5 sunak yak',ok:()=>(SYS.chestsOpened||0)>=10&&Object.keys(SYS.altars||{}).length>=5},{t:'30 kontrat tamamla',ok:()=>SYS.guild&&SYS.guild.done>=30}];
+const GUILD={clerk:null,x:-38,z:-26,ents:{}};
+const GT_TEMPL=[// r = minimum rank, kind, target, base count, gold, points
+ {r:0,k:'hunt',tg:'wolf',n:4,g:28,p:10,t:'Kurt sürüsü',d:n=>n+' kurt avla'},{r:0,k:'hunt',tg:'gob',n:4,g:32,p:12,t:'Goblin temizliği',d:n=>n+' goblin öldür'},
+ {r:0,k:'gather',tg:'pelts',n:2,g:24,p:8,t:'Post siparişi',d:n=>n+' kurt postu getir'},{r:0,k:'gather',tg:'meat',n:4,g:18,p:8,t:'Hanın et siparişi',d:n=>n+' et getir'},
+ {r:0,k:'chest',n:2,g:26,p:10,t:'Kayıp ganimet',d:n=>n+' sandık bul ve aç'},{r:0,k:'rescue',n:1,g:45,p:16,t:'Kayıp köylü',d:()=>'Ormanda kaybolan köylüyü bul ve konuş'},
+ {r:1,k:'hunt',tg:'archer',n:3,g:48,p:16,t:'Okçu avı',d:n=>n+' okçu goblin öldür'},{r:1,k:'bounty',tg:'gob',n:1,g:85,p:26,t:'Azılı: Tek Göz Rok',d:()=>'Azılı goblin Tek Göz Rok\'u öldür'},
+ {r:2,k:'hunt',tg:'big',n:1,g:95,p:30,t:'Dev avı',d:n=>n+' büyük goblin öldür'},{r:2,k:'hunt',tg:'croc',n:3,g:100,p:30,t:'Bataklık temizliği',d:n=>n+' timsah öldür'},
+ {r:2,k:'bounty',tg:'wolf',n:1,g:125,p:36,t:'Azılı: Gece Pençe',d:()=>'Azılı kurt Gece Pençe\'yi öldür'},{r:3,k:'altar',n:2,g:110,p:34,t:'Yol açıcı',d:n=>n+' yeni sunak yak'}];
+const gRank=()=>SYS.guild?SYS.guild.rank:0;
+function guildSpot(R){for(let i=0;i<60;i++){const a=R()*6.283,d=240+R()*330,x=Math.cos(a)*d,z=Math.sin(a)*d;const zn=zoneAt(x,z);if((zn==='forest'||zn==='dense')&&depthAt(x,z)<=0&&!inField(x,z,6)){const p=collide(x,z,.6);return p}}return[0,260]}
+function compassWords(x,z){const d=Math.round(Math.hypot(x,z)/10)*10,a=Math.atan2(x,-z)*180/PI,dir=['kuzey','kuzeydoğu','doğu','güneydoğu','güney','güneybatı','batı','kuzeybatı'][Math.round(((a+360)%360)/45)%8];return'Krallığın '+d+' m '+dir+'inde'}
+function newContract(){const G2=SYS.guild,r=G2.rank,pool=GT_TEMPL.filter(t=>t.r<=r+1&&!G2.board.concat(G2.active).some(c=>c.t===t.t)),T=pool[Math.floor(Math.random()*pool.length)];if(!T)return null;
+ const sc=1+.35*Math.max(0,r-T.r),n=T.k==='bounty'||T.k==='rescue'?1:Math.round(T.n*sc),c={id:(G2.seq=(G2.seq||0)+1),k:T.k,tg:T.tg||'',t:T.t,d:T.d(n),r:T.r,need:n,have:0,gold:Math.round(T.g*sc),pts:Math.round(T.p*sc),xp:Math.round(T.g*sc*1.5)};
+ if(T.k==='bounty'||T.k==='rescue'){const p=guildSpot(Math.random);c.x=Math.round(p[0]);c.z=Math.round(p[1]);c.d+=' ('+compassWords(c.x,c.z)+')'}if(T.k==='chest')c.base=SYS.chestsOpened||0;if(T.k==='altar')c.base=Object.keys(SYS.altars||{}).length;return c}
+function fillBoard(){const G2=SYS.guild;if(!G2)return;for(let i=0;i<8&&G2.board.length<4;i++){const c=newContract();if(c)G2.board.push(c)}}
+// world entities for a contract (the bounty target with two followers, the lost villager); also rebuilt after loading a save
+function guildSpawn(c){if(GUILD.ents[c.id])return;if(c.k==='bounty'){const lv=Math.max(3,regionLevel(c.x,c.z)+2);
+  if(c.tg==='wolf'){const w=mkWolf(c.x,c.z,{alpha:true});w.sc=1.45;scaleFoe(w,lv,260);w.bounty=c.id;w.elite=true;w.title=c.t;GUILD.ents[c.id]=[w];for(let i=0;i<2;i++){const p=collide(c.x+3+i*2,c.z+2,.6),o=mkWolf(p[0],p[1]);scaleFoe(o,lv,105);GUILD.ents[c.id].push(o)}}
+  else{const g=mkGob(c.x,c.z,false,'bounty'+c.id,CAMPSITES[0]);g.sc=1.3;scaleFoe(g,lv,240);g.bounty=c.id;g.elite=true;g.title=c.t;g.R=rigObj(GOBM,{out:.014,cull:150});g.R.ob.col=[1.15,.8,.75];GUILD.ents[c.id]=[g];
+   for(let i=0;i<2;i++){const p=collide(c.x+2+i*2,c.z+2,.4),o=mkGob(p[0],p[1],false,'bounty'+c.id,CAMPSITES[0]);o.archer=i===1;scaleFoe(o,lv,80);o.R=rigObj(GOBM,{out:.014,cull:150});GUILD.ents[c.id].push(o)}}}
+ else if(c.k==='rescue'&&!c.found){if(!NPCM.villager)NPCM.villager=humanGeo('villager');const n=mkNpc('villager',c.x,c.z,{yaw:0,post:[c.x,c.z,0]});n.R=rigObj(NPCM.villager,{out:.012,cull:130,outCol:[.12,.1,.1]});n.lost=c.id;n.name='Kayıp köylü';n.role='lost';GUILD.ents[c.id]=[n]}}
+function guildInit(){if(!NPCM.merchant)NPCM.merchant=humanGeo('merchant');const p=collide(GUILD.x,GUILD.z,.5),n=mkNpc('merchant',p[0],p[1],{yaw:PI/2,post:[p[0],p[1],PI/2]});n.role='guild';n.name='Lonca Görevlisi Selin';n.R=rigObj(NPCM.merchant,{out:.012,cull:130,outCol:[.12,.1,.1]});n.R.ob.col=[.8,.95,1.25];GUILD.clerk=n;
+ // the contract board: two posts, planks, pinned papers, a banner
+ const g=G(),bx=p[0],bz=p[1]-3.2,by=hAt(bx,bz),wd=[.4,.28,.16];box(g,bx-1.5,by,bz-.1,bx-1.3,by+2.6,bz+.1,wd);box(g,bx+1.3,by,bz-.1,bx+1.5,by+2.6,bz+.1,wd);box(g,bx-1.4,by+.9,bz-.06,bx+1.4,by+2.3,bz+.06,[.5,.36,.2]);box(g,bx-1.7,by+2.5,bz-.2,bx+1.7,by+2.7,bz+.2,[.3,.2,.12]);
+ for(let i=0;i<5;i++){const x=bx-1.1+i*.52,y=by+1.15+(i%2)*.5;box(g,x,y,bz+.06,x+.38,y+.5,bz+.075,[.9,.86,.72])}box(g,bx+1.75,by+1.2,bz-.03,bx+2.5,by+2.6,bz+.03,[.2,.3,.6]);box(g,bx+1.7,by,bz-.06,bx+1.8,by+2.9,bz+.06,wd);
+ obj(geo(g),{shade:.8,pos:[bx,0,bz],cull:200,out:.02,outCol:[.08,.05,.03]});addBox(bx-1.6,bz-.25,bx+1.6,bz+.25,2.6);GUILD.bx=bx;GUILD.bz=bz;
+ if(SYS.guild){for(const c of SYS.guild.active)guildSpawn(c);fillBoard()}}
+const nearClerk=(r=3)=>GUILD.clerk&&Math.hypot(GUILD.clerk.x-P.x,GUILD.clerk.z-P.z)<r||GUILD.bx!==undefined&&Math.hypot(GUILD.bx-P.x,GUILD.bz+.8-P.z)<2.6;
+function cDone(c){if(c.k==='gather')return(SYS[c.tg]||0)>=c.need;if(c.k==='chest')return(SYS.chestsOpened||0)-c.base>=c.need;if(c.k==='altar')return Object.keys(SYS.altars||{}).length-c.base>=c.need;if(c.k==='rescue')return!!c.found;return c.have>=c.need}
+function cProg(c){const h=c.k==='gather'?Math.min(c.need,SYS[c.tg]||0):c.k==='chest'?Math.min(c.need,(SYS.chestsOpened||0)-c.base):c.k==='altar'?Math.min(c.need,Object.keys(SYS.altars||{}).length-c.base):c.k==='rescue'?(c.found?1:0):Math.min(c.need,c.have);return h+'/'+c.need}
+function guildPrompt(){if(nearClerk())return SYS.guild?'R1: Lonca — kontratlar':'R1: Maceracılar Loncası\'na kaydol';const n=NPCS.find(o=>o.lost&&Math.hypot(o.x-P.x,o.z-P.z)<2.8);return n?'R1: kayıp köylüyle konuş':''}
+function guildInteract(){const n=NPCS.find(o=>o.lost&&Math.hypot(o.x-P.x,o.z-P.z)<2.8);if(n){const c=SYS.guild&&SYS.guild.active.find(c=>c.id===n.lost);if(c){c.found=true;note('Köylü: "Tanrılara şükür! Kurtlar peşimdeydi. Köye dönüyorum."','gold');note('[Lonca] «'+c.t+'» tamam — loncaya haber ver.','gold')}rigHide(n.R);NPCS.splice(NPCS.indexOf(n),1);save(P);return true}
+ if(!nearClerk())return false;const k=GUILD.clerk;k.st='watch';k.t=0;k.ls=[P.x,P.z];
+ if(!SYS.guild){SYS.guild={rank:0,pts:0,done:0,active:[],board:[],seq:0,no:1000+Math.floor(Math.random()*9000)};fillBoard();save(P);
+  showManhwa([{h:.7,st:{eye:[k.x+2.4,1.7,k.z+1.6],at:[k.x,1.4,k.z],fov:42},say:[{who:'Selin',txt:'Maceracılar Loncası\'na hoş geldin. Kayıt için adın yeter.'},{who:'Kael',txt:'Kael.'},{who:'Selin',txt:'F rütbesinden başlıyorsun. Rütbe seviyeyle değil, yaptıklarınla yükselir.'}]},
+   {h:.5,black:true,sys:['Maceracı kaydı tamamlandı.','Kimlik No: '+SYS.guild.no,'Rütbe: F','Görev panosu açıldı.']}],()=>{note('[Lonca] Panodan kontrat al: SİSTEM → LONCA','gold');openWin('lonca')});return true}
+ guildTurnIn();openWin('lonca');return true}
+function guildTurnIn(){const G2=SYS.guild;let any=false;for(const c of G2.active.slice())if(cDone(c)){any=true;if(c.k==='gather')SYS[c.tg]-=c.need;G2.active.splice(G2.active.indexOf(c),1);G2.done++;G2.pts+=c.pts;SYS.gold=(SYS.gold||0)+c.gold;addXP(c.xp,P);delete GUILD.ents[c.id];
+   note('[Lonca] «'+c.t+'» teslim edildi: +'+c.gold+' altın, +'+c.pts+' lonca puanı','gold');sfx.rare();if(G2.done%4===0){const it=randomDrop(Math.max(SYS.lv,2),Math.min(3,1+G2.rank));giveItem(it);note('[Lonca] Sadakat ödülü: '+it.name,'gold')}}
+ // promotion: enough points AND the deed of the next rank
+ while(G2.rank<6&&G2.pts>=GPTS[G2.rank+1]&&(!GDEED[G2.rank+1]||GDEED[G2.rank+1].ok())){G2.rank++;note('[Lonca] RÜTBE ATLADIN: '+GRANK[G2.rank]+' sınıfı maceracı!','gold');sfx.level();addXP(60*G2.rank,P)}
+ fillBoard();if(any)save(P);return any}
+function guildAccept(id){const G2=SYS.guild,c=G2.board.find(c=>c.id===id);if(!c)return;if(!nearClerk(6)){note('Kontrat almak için lonca panosuna git.');return}if(G2.active.length>=3){note('En fazla 3 kontrat taşıyabilirsin.');return}
+ G2.board.splice(G2.board.indexOf(c),1);G2.active.push(c);if(c.k==='chest')c.base=SYS.chestsOpened||0;if(c.k==='altar')c.base=Object.keys(SYS.altars||{}).length;guildSpawn(c);note('[Lonca] Kontrat alındı: «'+c.t+'»','gold');sfx.chest();save(P)}
+function guildDrop(id){const G2=SYS.guild,c=G2.active.find(c=>c.id===id);if(!c)return;G2.active.splice(G2.active.indexOf(c),1);for(const e of GUILD.ents[c.id]||[]){if(e.lost){rigHide(e.R);const i=NPCS.indexOf(e);if(i>=0)NPCS.splice(i,1)}else if(!e.dead){e.dead=1;e.deadT=999;e.st='dead'}}delete GUILD.ents[c.id];note('Kontrat bırakıldı.');fillBoard();save(P)}
+function guildKill(f){const G2=SYS.guild;if(!G2)return;const kind=isWolf(f)?'wolf':GOBS.includes(f)?(f.big?'big':f.archer?'archer':'gob'):CROCS.includes(f)?'croc':'';
+ for(const c of G2.active){const before=cDone(c);if(c.k==='bounty'){if(f.bounty===c.id)c.have=1}else if(c.k==='hunt'&&(c.tg===kind||c.tg==='gob'&&kind==='archer'))c.have++;if(!before&&cDone(c))note('[Lonca] «'+c.t+'» tamam — loncaya dön.','gold')}}
+function guildHtml(){const G2=SYS.guild;if(!G2)return'<div class="wt">MACERACILAR LONCASI</div><p>Henüz kayıtlı değilsin. Köyde, demircinin batısındaki görev panosunun yanında <b>Lonca Görevlisi Selin</b> ile konuş.</p>';
+ const nx=G2.rank<6?G2.rank+1:6,dd=GDEED[nx],card='<div class="gcard"><div><b>MACERACI KİMLİĞİ</b> · No '+G2.no+'</div><div class="grank">'+GRANK[G2.rank]+'</div><div>Kael · Kara Zırh · Sv.'+SYS.lv+'</div><div>Tamamlanan kontrat: '+G2.done+'</div></div>';
+ let h='<div class="wt">MACERACILAR LONCASI</div>'+card+(G2.rank<6?'<div class="wr"><span>'+GRANK[nx]+' rütbesi için</span><b>'+G2.pts+' / '+GPTS[nx]+' puan</b></div>'+(dd?'<div class="wr"><span>Gereken başarı</span><b>'+(dd.ok()?'✔ ':'✘ ')+dd.t+'</b></div>':''):'<div class="wr"><span>En yüksek rütbe</span><b>S</b></div>');
+ const row=(c,btn)=>'<div class="item'+(cDone(c)&&btn==='x'?' sel':'')+'"><b>['+GRANK[c.r]+'] '+c.t+'</b><i>'+c.d+(btn==='x'?' · '+cProg(c):'')+'</i><i>Ödül: '+c.gold+' altın · '+c.pts+' lonca puanı · '+c.xp+' XP</i>'+(btn==='a'?'<button data-ga="'+c.id+'">KABUL ET</button>':'<button data-gd="'+c.id+'">BIRAK</button>')+'</div>';
+ h+='<div class="wt2">ÜSTLENDİKLERİN ('+G2.active.length+'/3)</div>'+(G2.active.map(c=>row(c,'x')).join('')||'<p>Kontrat yok.</p>')+(G2.active.some(cDone)?'<button data-gt="1">TAMAMLANANLARI TESLİM ET</button>':'');
+ h+='<div class="wt2">GÖREV PANOSU'+(nearClerk(6)?'':' (kabul etmek için panoya git)')+'</div>'+(G2.board.map(c=>row(c,'a')).join('')||'<p>Pano boş. Bir sunakta dinlenince yeni kontratlar gelir.</p>');return h}
+function guildBind(el){el.querySelectorAll('[data-ga]').forEach(b=>b.addEventListener('click',()=>{guildAccept(+b.dataset.ga);renderWin(P)}));el.querySelectorAll('[data-gd]').forEach(b=>b.addEventListener('click',()=>{guildDrop(+b.dataset.gd);renderWin(P)}));
+ el.querySelectorAll('[data-gt]').forEach(b=>b.addEventListener('click',()=>{if(nearClerk(6))guildTurnIn();else note('Teslim için loncaya dön.');renderWin(P)}))}
 // ---- 90-loader.js
 (function(){const TX={},jobs=[];for(const k in KND.tex)jobs.push(['k_'+k,KND.tex[k]]);DRG.groups.forEach((g,i)=>jobs.push(['d_'+i,g.tex]));let left=jobs.length;
  if(!gl){$('load').textContent='Bu cihaz WebGL desteklemiyor';return}
