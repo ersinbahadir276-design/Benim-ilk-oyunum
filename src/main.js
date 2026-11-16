@@ -5,6 +5,7 @@ import { loadGLBCreatures, SPECIES } from './creatures.js';
 import { World, height, zone, rng, floorY, LAKE, PEAK, HALF } from './world.js';
 import { Animal, ITEMS, eats } from './animal.js';
 import { Player, RESOLVE_MAX } from './player.js';
+import { Quality, PRESETS } from './quality.js';
 
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -28,13 +29,16 @@ class Game {
   }
   async init() {
     const canvas = $('c');
-    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    r.setPixelRatio(Math.min(devicePixelRatio, 1.75)); r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFShadowMap; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+    const Qy = this.quality = new Quality({ touch: 'ontouchstart' in window || Q.has('touch'), ua: navigator.userAgent, cores: navigator.hardwareConcurrency, memory: navigator.deviceMemory, dpr: devicePixelRatio }, { adaptive: !Q.has('test') });
+    if (Q.get('q') in PRESETS) Qy.level = Q.get('q');
+    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: Qy.p.aa, powerPreference: 'high-performance' });
+    r.setPixelRatio(Qy.pixelRatio()); r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFShadowMap; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
     const scene = this.scene = new THREE.Scene(); scene.background = new THREE.Color(0x9cc6ea); scene.fog = new THREE.Fog(0x9cc6ea, 70, 260);
     this.camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.2, 600);
     scene.add(new THREE.HemisphereLight(0xdfeeff, 0x54663c, 1.25));
     const sun = this.sun = new THREE.DirectionalLight(0xfff2d9, 2.6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
     Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 38, bottom: -38, near: 1, far: 160 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04; scene.add(sun, sun.target);
+    Qy.apply(this); this.bindQualityUI();
     addEventListener('resize', () => { r.setSize(innerWidth, innerHeight); this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix(); });
     // yükleme
     let done = 0; const step = (t) => { done++; $('loadbar').style.transform = `scaleX(${done / 4})`; $('loadtxt').textContent = t; };
@@ -50,6 +54,13 @@ class Game {
     window.GAME = this;
   }
   start() { $('overlay').style.display = 'none'; $('hud').hidden = false; this.running = true; if ('ontouchstart' in window || Q.has('touch')) { $('touch').hidden = false; $('log').style.bottom = '240px'; } this.msg('Kamptasın. Çevredeki hayvanlara yaklaş; üstte evcilleştirme ipucunu göreceksin.'); }
+  bindQualityUI() {
+    const sel = $('quality'), fps = $('showfps'), Qy = this.quality;
+    sel.value = Qy.choice; fps.checked = Qy.showFps; $('fps').hidden = !Qy.showFps; this.updateQualityUI();
+    sel.onchange = () => { const aaBefore = Qy.p.aa; Qy.set(sel.value, this); this.updateQualityUI(); if (Qy.p.aa !== aaBefore) $('qnote').textContent = 'Kenar yumuşatma değişikliği sayfa yenilenince uygulanır.'; };
+    fps.onchange = () => { Qy.setShowFps(fps.checked); $('fps').hidden = !fps.checked; };
+  }
+  updateQualityUI() { $('qnote').textContent = `Şu an: ${this.quality.label()}`; }
   pause() { this.running = false; const o = $('overlay'); o.style.display = 'flex'; o.classList.add('pause'); $('loadtxt').textContent = 'Duraklatıldı'; $('start').textContent = 'Devam Et'; }
 
   spawnAll() {
@@ -153,7 +164,9 @@ class Game {
     }
   }
   frame() {
-    const now = performance.now(), dtR = Math.min((now - this.last) / 1000, 0.05); this.last = now; let dt = dtR;
+    const now = performance.now(), raw = (now - this.last) / 1000, dtR = Math.min(raw, 0.05); this.last = now; let dt = dtR;
+    if (this.running) { if (this.quality.tick(raw, this)) this.updateQualityUI(); this.frameN = (this.frameN || 0) + 1; }
+    if (this.quality.showFps && (this.fpsT = (this.fpsT || 0) - raw) <= 0) { this.fpsT = 0.5; $('fps').textContent = `${Math.round(this.quality.gov.fps || 0)} FPS · ${this.quality.label()}`; }
     if (this.stopT > 0) { this.stopT -= dtR; dt = dtR * 0.04; } else if (this.slowT > 0) { this.slowT -= dtR; dt = dtR * this.slowK; }
     this.trauma = Math.max(0, this.trauma - dtR * 1.3);
     this.sparks = this.sparks.filter((m) => { const u = m.userData; u.t -= dtR; if (u.t <= 0) { this.scene.remove(m); m.material.dispose(); return false; } u.v.y -= 14 * dtR; m.position.addScaledVector(u.v, dtR); m.material.opacity = Math.min(1, u.t * 4); return true; });

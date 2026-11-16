@@ -58,3 +58,5 @@
   filter:drop-shadow(0 0 8px var(--g)) drop-shadow(0 0 3px #fff)}
 #glints i.blue{--g:#59b6ff}#glints i.red{--g:#ff3030}
 @media (max-width:760px){#tbtns{transform:scale(.88);transform-origin:right bottom}#pets{width:150px;font-size:11px}.bar{width:150px}#focus{top:64px}.slot{width:44px;height:54px;font-size:20px}#log{bottom:230px}#prompt{bottom:84px}#hold{bottom:74px}}
+#fps{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px !important;margin-top:6px;border-top:1px solid #fff2;padding-top:4px;font:12px/1.4 monospace;color:#bfe;pointer-events:none}
+.qrow select{margin-left:6px;background:#1a2230;color:#fff;border:1px solid #fff4;border-radius:6px;padding:3px 6px}.qrow small{opacity:.75}

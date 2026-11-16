@@ -152,7 +152,7 @@ export class Animal {
     this.hurtT -= dt; this.byPlayerT -= dt; this.calmT -= dt; this.cowerT -= dt; this.cool -= dt; this.stT -= dt; this.flash -= dt;
     const dP = this.dist(P); this.dP = dP;
     // uzaktakileri uyut (performans)
-    const far = dP > 130 && !this.tamed; c.root.visible = !far && !(this.dead && this.deadT > 14);
+    const QP = g.quality?.p, far = dP > (QP ? QP.sleep : 130) && !this.tamed; c.root.visible = !far && !(this.dead && this.deadT > 14);
     if (far && !this.dead) return;
     let anim = 'idle', rate = 1; this.speed = 0;
     if (this.dead) {
@@ -171,7 +171,11 @@ export class Animal {
     c.root.scale.setScalar(this.flash > 0 ? 1.06 : 1);
     if (this.state === 'windup' && !this.dead) { const k = Math.min(1, this.wuT / Math.max(0.01, this.wuDur)); c.root.scale.set(1 + 0.05 * k, 1 - 0.09 * k, 1 + 0.05 * k); }   // gerilip çömelme
     else if (this.staggerT > 0 && !this.dead) c.root.rotation.z = Math.sin(g.time * 18) * 0.06; else c.root.rotation.z = 0;
-    c.animate(dt, anim, g.time, { slope, rate, air: this.alt > 0.5, glide: this.state === 'wander' || this.state === 'idle', happy: this.tamed && dP < 4 });
+    // animasyon LOD: uzaktaki, dövüşmeyen hayvanların iskeleti her N karede bir (biriken dt ile) güncellenir
+    this.animAcc = (this.animAcc || 0) + dt;
+    if (QP && dP > QP.lod && !this.tamed && !this.dead && this.state !== 'windup' && this.state !== 'attack' && ((this.lodN = (this.lodN || 0) + 1) % QP.lodSkip)) { this.anim = anim; this.animSkipped = (this.animSkipped || 0) + 1; return; }
+    const adt = this.animAcc; this.animAcc = 0;
+    c.animate(adt, anim, g.time, { slope, rate, air: this.alt > 0.5, glide: this.state === 'wander' || this.state === 'idle', happy: this.tamed && dP < 4 });
     this.anim = anim;
   }
 

@@ -77,6 +77,20 @@ Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oy
 - Kahramanın saç/giysi fiziği (VRM yay kemikleri) çalışmıyor; ata binme ve kayıt (save) sistemi henüz yok.
 - Depoda daha önce bir oyun ya da kız karakter bulunmuyordu (depo boştu); oyun sıfırdan kuruldu, kaldırılacak bir karakter yoktu.
 
+## Görüntü kalitesi ve mobil performans
+
+Başlangıç menüsünde **Görüntü kalitesi** (Otomatik / Düşük / Orta / Yüksek) ve **FPS göster** seçenekleri var; seçim tarayıcıda saklanır.
+
+| Ön ayar | Piksel oranı (en çok) | Gölge | Görüş | Uzak hayvan uykusu | İskelet LOD |
+| --- | --- | --- | --- | --- | --- |
+| Düşük | 1,0 | kapalı | 150 m sis | 90 m | 30 m'den sonra 3 karede 1 |
+| Orta | 1,25 | 1024 | 205 m sis | 115 m | 50 m'den sonra 2 karede 1 |
+| Yüksek | 1,75 | 2048 | 260 m sis | 130 m | 80 m'den sonra 2 karede 1 |
+
+- **Otomatik:** dokunmatik/Android cihazlarda Orta (≤4 çekirdek ya da ≤3 GB bellekte Düşük), masaüstünde Yüksek ile başlar.
+- **Uyarlanabilir çözünürlük:** FPS 2 sn boyunca 40'ın altında kalırsa çözünürlük %10 adımlarla ön ayarın alt sınırına kadar düşer; yine yetmezse (Otomatik'te) bir alt ön ayara geçilir. Uzun süre 56+ FPS olunca çözünürlük geri yükselir. Ön ayar kendiliğinden yükseltilmez.
+- Kenar yumuşatma (antialias) değişikliği sayfa yenilenince uygulanır. URL'ye `?q=low|medium|high` eklenerek ön ayar zorlanabilir.
+
 ## Test
 
 - `test/model-viewer.html?m=wolf` — her modeli ve animasyonunu tek tek oynatır (`m=hero`, `dragon`, `fox`, `rabbit`, `deer`, `horse`, `bear`, `lion`, `tiger`, `crocodile`, `snake`, `eagle`, `shadowbeast`, `ogre`).

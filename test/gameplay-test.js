@@ -117,5 +117,33 @@ window.runGameplayTests = async function () {
   P.crouching = true; const w2 = G.animals.find((x) => x.kind === 'wolf' && !x.dead && !x.tamed); freeze(w2); P.x = w2.x + Math.sin(w2.yaw) * (w2.radius + 1.0); P.z = w2.z + Math.cos(w2.yaw) * (w2.radius + 1.0);
   ok('dövüş: önünden suikast olmaz', P.assassinTarget() !== w2); P.crouching = false;
   }
+  // Mobil performans: kalite ön ayarları, uyarlanabilir çözünürlük, animasyon LOD
+  {
+    const QM = await import('../src/quality.js'), Qy = G.quality, lvl0 = Qy.level;
+    ok('kalite: zayıf Android = Düşük', QM.pickAutoPreset({ touch: true, ua: 'Mozilla/5.0 (Linux; Android 11)', cores: 4, memory: 2 }) === 'low');
+    ok('kalite: güçlü telefon = Orta', QM.pickAutoPreset({ touch: true, ua: 'Android', cores: 8, memory: 8 }) === 'medium');
+    ok('kalite: masaüstü = Yüksek', QM.pickAutoPreset({ touch: false, ua: 'X11; Linux x86_64', cores: 8 }) === 'high');
+    const gv = new QM.FrameGovernor(); let acts = []; for (let i = 0; i < 25 * 3; i++) { const r = gv.push(1 / 25); if (r) acts.push(r); }
+    ok('kalite: 25 FPS sürünce düşürme önerilir', acts[0] === 'down', acts.join(',') + ' fps=' + gv.fps.toFixed(0));
+    acts = []; for (let i = 0; i < 60 * 10; i++) { const r = gv.push(1 / 60); if (r) acts.push(r); } ok('kalite: uzun süre 60 FPS = yükseltme önerisi', acts.includes('up'), acts.join(','));
+    ok('kalite: arka plan sekmesi (uzun kare) ölçülmez', gv.push(3) === null);
+    const q2 = new QM.Quality({ touch: true, ua: 'Android', cores: 8, memory: 8, dpr: 3 }); q2.choice = 'auto'; q2.level = 'medium'; q2.scale = 1;
+    const steps = []; for (let i = 0; i < 40 && q2.level === 'medium'; i++) for (let k = 0; k < 20; k++) { if (q2.tick(1 / 20, null)) steps.push(q2.scale); }
+    ok('kalite: önce çözünürlük adım adım düşer', steps.length >= 3 && steps[0] === 0.9 && steps.includes(0.7), steps.join(','));
+    ok('kalite: alt sınırda Otomatik bir alt ön ayara geçer', q2.level === 'low' && q2.scale === 1, q2.level);
+    ok('kalite: piksel oranı cihaz × ön ayar sınırıyla kısıtlı', Math.abs(q2.pixelRatio() - 1.0) < 1e-6, q2.pixelRatio());
+    Qy.level = 'low'; Qy.apply(G); G.renderer.render(G.scene, G.camera);
+    ok('kalite: Düşük = gölge kapalı, kısa görüş', !G.sun.castShadow && G.camera.far === 230 && G.scene.fog.far === 150 && G.renderer.getPixelRatio() <= 1, `far ${G.camera.far} pr ${G.renderer.getPixelRatio()}`);
+    Qy.level = 'high'; Qy.apply(G); G.renderer.render(G.scene, G.camera);
+    ok('kalite: Yüksek = 2048 gölge', G.sun.castShadow && G.sun.shadow.mapSize.x === 2048 && G.camera.far === 600);
+    // animasyon LOD ve uyku mesafesi
+    G.animals.forEach((x) => { if (!x.tamed) { x.target = null; x.calmT = 999; } });
+    const fa = G.animals.find((x) => x.kind === 'deer' && !x.dead && !x.tamed); freeze(fa); fa.hp = fa.hpMax;
+    const away = (d) => { P.x = fa.x + d; P.z = fa.z; P.y = 0; P.state = 'move'; P.hp = P.hpMax; };
+    away(100); fa.animSkipped = 0; sim(1); ok('kalite: uzaktaki hayvanın iskeleti seyrek güncellenir (Yüksek)', fa.c.root.visible && fa.animSkipped >= 12 && fa.animSkipped <= 18, 'atlanan ' + fa.animSkipped + '/30');
+    away(5); fa.animSkipped = 0; sim(0.5); ok('kalite: yakındaki hayvan her karede canlanır', fa.animSkipped === 0);
+    Qy.level = 'low'; Qy.apply(G); away(100); sim(0.2); ok('kalite: Düşük ön ayarda 100 m ötedeki hayvan uyur', !fa.c.root.visible);
+    Qy.level = lvl0; Qy.apply(G); away(5); sim(0.2);
+  }
   G.running = real; return out;
 };
