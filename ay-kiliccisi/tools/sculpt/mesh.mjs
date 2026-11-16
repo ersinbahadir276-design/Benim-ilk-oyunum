@@ -55,7 +55,17 @@ export async function sculpt(M) {
   // simplify
   const pos = new Float32Array(P), idx32 = new Uint32Array(I);
   const target = Math.min(I.length, (M.tris || 12000) * 3);
-  const [simp] = MeshoptSimplifier.simplify(idx32, pos, 3, target, M.err ?? 0.004, []);
+  // crisp decals (e.g. glowing slits, runes): give the simplifier a 0..1 "inside the decal" attribute so it keeps their outlines
+  // instead of smearing the glow across large triangles
+  const crisp = (M.decals || []).filter((dc) => dc.crisp);
+  let simp;
+  if (crisp.length) {
+    const nvr = P.length / 3, att = new Float32Array(nvr);
+    for (let v = 0; v < nvr; v++) { const x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2]; let d = 1;
+      for (const dc of crisp) if (inBB(dc.sdf.bb, x, y, z, 2 * vox)) d = Math.min(d, dc.sdf.d(x, y, z));
+      att[v] = sat(0.5 - d / (2 * vox)); }
+    [simp] = MeshoptSimplifier.simplifyWithAttributes(idx32, pos, 3, att, 1, [M.crispW ?? 0.6], null, target, M.err ?? 0.004, []);
+  } else [simp] = MeshoptSimplifier.simplify(idx32, pos, 3, target, M.err ?? 0.004, []);
   const remap = new Int32Array(P.length / 3).fill(-1), V = []; const outI = [];
   for (const q of simp) { if (remap[q] < 0) { remap[q] = V.length / 3; V.push(P[q * 3], P[q * 3 + 1], P[q * 3 + 2]); } outI.push(remap[q]); }
   // attributes

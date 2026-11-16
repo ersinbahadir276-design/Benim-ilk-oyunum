@@ -28,8 +28,25 @@ export default function hero(ALL) {
   const neckHole = cone([0, 1.6, 0.02], [0, 1.9, 0.04], 0.098, 0.13), armHoles = symX(sphere([0.315, 1.645, 0], 0.1));
   const cuirSolid = I(0.012, lens, bodyE, taper, slab(1.3, 1.69));
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
-  const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
+  // Hırlayan, the wolf spirit bound in the armour: a bronze wolf head on the breastplate with burning eyes,
+  // and curse cracks that run from its eyes across the left breast (they glow with the rage meter in game)
+  const onSurf = (q, sdf = cuirSolid) => { let p = q.slice(); for (let i = 0; i < 6; i++) { const d = sdf.d(...p), e = 0.001;
+    const g = v3.norm([sdf.d(p[0] + e, p[1], p[2]) - sdf.d(p[0] - e, p[1], p[2]), sdf.d(p[0], p[1] + e, p[2]) - sdf.d(p[0], p[1] - e, p[2]), sdf.d(p[0], p[1], p[2] + e) - sdf.d(p[0], p[1], p[2] - e)]); p = v3.sub(p, v3.mul(g, d)); } return p; };
+  const zc = onSurf([0, 1.47, 0.3])[2], S = (x, y) => onSurf([x, y, 0.3]);
+  const crackPaths = [[[0.034, 1.5], [0.07, 1.528], [0.1, 1.512], [0.134, 1.55], [0.165, 1.585]], [[0.1, 1.512], [0.122, 1.462], [0.152, 1.442], [0.172, 1.4]],
+    [[0.07, 1.528], [0.083, 1.578], [0.064, 1.622]], [[0.036, 1.462], [0.06, 1.42], [0.052, 1.365], [0.075, 1.33]]];
+  const cracks = U(0, ...crackPaths.map((pts, k) => tube(pts.map(([x, y]) => S(x, y)), (t) => (k ? 0.0048 : 0.0058) * (1 - 0.4 * t), 0.002)));
+  const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr, cracks);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  const eyes = symX(sphere([0.026, 1.492, zc + 0.02], 0.0115));
+  const wolf = Sub(0.003, U(0.012,
+    ellipsoid([0, 1.503, zc - 0.012], [0.054, 0.046, 0.03]), symX(ellipsoid([0.031, 1.466, zc - 0.008], [0.029, 0.034, 0.024])),
+    cone([0, 1.476, zc + 0.004], [0, 1.404, zc + 0.012], 0.026, 0.016), sphere([0, 1.4, zc + 0.019], 0.0105),
+    symX(horn([[0.033, 1.528, zc - 0.012], [0.054, 1.566, zc - 0.006], [0.07, 1.603, zc - 0.014]], 0.02)),
+    symX(cone([0.007, 1.503, zc + 0.017], [0.047, 1.515, zc + 0.006], 0.009, 0.0065))),
+  eyes, cone([0, 1.505, zc + 0.03], [0, 1.53, zc + 0.03], 0.004, 0.004));
+  C({ name: 'wolfCrest', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.006, sdf: wolf });
+  C({ name: 'wolfFangs', mat: 'horn', bone: 'UpperChest', rigid: true, k: 0.003, sdf: symX(U(0, horn([[0.015, 1.41, zc + 0.006], [0.017, 1.386, zc + 0.009], [0.019, 1.366, zc + 0.004]], 0.0068), horn([[0.03, 1.425, zc + 0.0], [0.033, 1.405, zc + 0.003], [0.036, 1.39, zc - 0.002]], 0.0055))) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
@@ -115,6 +132,8 @@ export default function hero(ALL) {
   C({ name: 'neckGuard', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.86 - i * 0.04, -0.02], [0.13 + i * 0.008, 0.11, 0.155 + i * 0.008]), 0.008), zcut(-0.02, 1), slab(1.78 - i * 0.04, 1.84 - i * 0.04)))) });
   const hornPts = [[0.11, 1.97, 0.02], [0.165, 2.0, -0.03], [0.215, 2.06, -0.095], [0.235, 2.14, -0.17], [0.215, 2.2, -0.24]];
   C({ name: 'horns', mat: 'horn', bone: 'Head', rigid: true, k: 0.014, sdf: symX(disp(horn(hornPts, 0.037, 0.004), (x, y, z) => 0.0028 * Math.sin(Math.hypot(x - 0.11, y - 1.97, z - 0.02) * 115), 0.003)) });
+  // the visor's lower rim ends in a wolf's fangs (Hırlayan's maw)
+  C({ name: 'helmFangs', mat: 'horn', bone: 'Head', rigid: true, k: 0.004, sdf: symX(U(0, horn([[0.022, 1.8, 0.126], [0.024, 1.779, 0.13], [0.026, 1.754, 0.125]], 0.0105), horn([[0.054, 1.803, 0.11], [0.057, 1.784, 0.113], [0.06, 1.765, 0.108]], 0.0085))) });
   C({ name: 'helmRivets', mat: 'rivet', bone: 'Head', rigid: true, k: 0, sdf: symX(U(0, sphere([0.115, 1.925, 0.05], 0.0085), sphere([0.115, 1.89, -0.04], 0.0085), sphere([0.11, 1.97, -0.06], 0.0085))) });
 
   // ------------------------------------------------------------ tattered cape (folds shaped before the shell so the cloth never tears into strips)
@@ -132,7 +151,9 @@ export default function hero(ALL) {
 
   return {
     name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
-    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
+    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'], crisp: true },
+      { mat: 'glow', sdf: grow(eyes, 0.0015), onPart: ['wolfCrest', 'cuirass'], crisp: true },
+      { mat: 'glow', sdf: grow(cracks, 0.0016), onPart: ['cuirass'], crisp: true }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
       trim: { col: [0.42, 0.3, 0.13], gloss: 0.72, metal: 1, wear: 0.55, edge: [1.0, 0.82, 0.45], var: 0.12, freq: 30, tint: 0 },
