@@ -1,0 +1,1 @@
+module.exports = async ({ shot, G }) => { await G(() => { const g = __G; g.fastStream = 1; g.tp(1.5, 150); g.P.yaw = Math.PI; g.CAM.yaw = 0; }); await shot('road-1', { wait: 1500 }); await G(() => { const g = __G; g.tp(60, 1.5); g.P.yaw = -Math.PI / 2; g.CAM.yaw = -Math.PI / 2; }); await shot('road-2', { wait: 1500 }); };
