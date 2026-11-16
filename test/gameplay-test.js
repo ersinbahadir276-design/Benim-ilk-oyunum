@@ -23,6 +23,17 @@ window.runGameplayTests = async function () {
   G.keys.w = false; sim(0.5); G.edge.crouch = true; sim(0.5); ok('oyuncu: çömelme klibi', P.crouching && P.cur._clip.name === 'Crouch_Idle_Loop', P.cur._clip.name);
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
+  // 1b) saç/ceket fiziği (VRM yay kemikleri)
+  const SB = G.player.hero.springs, dev = () => Math.max(...SB.joints.map((j) => 2 * Math.acos(Math.min(1, Math.abs(j.bone.quaternion.dot(j.restRot)))))) * 57.3;
+  const coat = SB.joints.filter((j) => /CoatSkirt/.test(j.bone.name)).length, hair = SB.joints.filter((j) => /Hair/.test(j.bone.name)).length;
+  ok('kahraman: yay kemikleri yüklendi (saç + ceket)', coat >= 6 && hair >= 7 && SB.colliders.length >= 10, `saç=${hair} ceket=${coat} çarp=${SB.colliders.length}`);
+  P.x = 0; P.z = 6; G.keys.w = true; G.keys.run = true; let swing = 0; sim(1.2, () => { swing = Math.max(swing, dev()); }); G.keys.w = G.keys.run = false;
+  ok('kahraman: koşarken saç/etek savrulur ama ters dönmez', swing > 8 && swing < 95, swing.toFixed(1) + '°');
+  sim(4); const settle = SB.joints.filter((j) => /CoatSkirt/.test(j.bone.name)).reduce((m, j) => Math.max(m, j.tail.distanceTo(j.prev)), 0);
+  ok('kahraman: durunca fizik sakinleşir', settle < 0.002, settle.toFixed(4));
+  const fin = SB.joints.every((j) => Number.isFinite(j.tail.x + j.tail.y + j.tail.z));
+  const pen = SB.joints.reduce((m, j) => Math.max(m, ...j.g.colliders.map((c) => c.r + j.g.hitRadius - j.tail.distanceTo(c.world))), -1);
+  ok('kahraman: saç kafanın/gövdenin içine girmez, NaN yok', fin && pen < 0.01, 'derinlik=' + pen.toFixed(3));
 
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
