@@ -1,6 +1,7 @@
 // Oynanış testleri: tarayıcıda gerçek oyun döngüsünü hızlandırarak çalıştırır.
 // Kullanım: test/run-tests.mjs (Playwright) ya da konsolda:  await runGameplayTests()
 window.runGameplayTests = async function () {
+  const THREE_V = window.GAME.player.hero.root.position.constructor; // three.js Vector3 (modül dışından)
   const G = window.GAME, P = G.player, out = [];
   const real = G.running; G.running = false; // gerçek zamanlı döngüyü durdur, elle ilerlet
   const sim = (sec, each) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { if (each && each(i) === false) break; G.update(1 / 30); } };
@@ -22,6 +23,18 @@ window.runGameplayTests = async function () {
   G.edge.roll = true; sim(0.2); ok('oyuncu: takla/kaçınma + dokunulmazlık', P.state === 'roll' && P.iframes > 0 && P.cur._clip.name === 'Roll', P.state); sim(1.2);
   G.keys.w = false; sim(0.5); G.edge.crouch = true; sim(0.5); ok('oyuncu: çömelme klibi', P.crouching && P.cur._clip.name === 'Crouch_Idle_Loop', P.cur._clip.name);
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
+  // 1b) saç ve palto yay kemikleri (VRM ikincil hareket)
+  { const S = P.hero.spring, hair = S.joints.filter((j) => j.bone.name.startsWith('HairJoint')), coat = S.joints.filter((j) => j.bone.name.startsWith('J_Sec_'));
+    ok('yay kemikleri: saç ve palto zincirleri kuruldu', hair.length >= 7 && coat.length >= 6 && S.colliders.length > 10, `saç=${hair.length} palto=${coat.length} çarp=${S.colliders.length}`);
+    const dev = (js) => Math.max(...js.map((j) => j.bone.quaternion.angleTo(j.localRot)));
+    G.keys.w = false; G.edge.crouch = P.crouching; sim(0.1); G.keys.w = true; G.keys.run = true; sim(0.4); const mv = dev(coat), mvh = dev(hair);
+    const cam0 = G.camYaw; G.camYaw += Math.PI; sim(0.25); G.camYaw = cam0; const turnDev = dev(hair); G.keys.w = false; G.keys.run = false;
+    const finite = S.joints.every((j) => Number.isFinite(j.cur.x + j.cur.y + j.cur.z) && Math.abs(j.cur.distanceTo(j.bone.getWorldPosition(new THREE_V())) - j.length) < 1e-3);
+    const capped = S.joints.every((j) => { const r = j.axis.clone().applyQuaternion(j.bone.parent.getWorldQuaternion(new j.localRot.constructor()).multiply(j.localRot)); return r.angleTo(j.cur.clone().sub(j.bone.getWorldPosition(new THREE_V()))) <= j.maxAngle + 0.01; });
+    ok('yay kemikleri: koşu/dönüşte palto ve saç sallanır (açı sınırı içinde)', mv > 0.03 && turnDev > 0.02 && finite && capped && mv < 1.6, `palto=${mv.toFixed(3)} saç=${mvh.toFixed(3)} dönüş=${turnDev.toFixed(3)} sonlu=${finite}`);
+    sim(3); const tip = (js) => js.reduce((s, j) => s + j.cur.distanceTo(j.prev), 0) / js.length; const rest = dev(hair), jit = tip(hair);
+    ok('yay kemikleri: durunca saç yatışır (titreme yok)', rest < turnDev && jit < 0.002, `sapma=${rest.toFixed(3)} uç hızı=${jit.toFixed(4)}`);
+    P.x = 0; P.z = 6; sim(0.3); }
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
 
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir

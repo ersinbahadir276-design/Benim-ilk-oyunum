@@ -19,7 +19,9 @@ if (name === 'hero') {
   let cur; const play = (n) => { cur?.stop(); cur = h.mixer.clipAction(h.clips[n]); cur.reset().play(); };
   Object.keys(h.clips).forEach((n) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => play(n); ui.appendChild(b); });
   if (P.get('a')) play(P.get('a'));
-  update = (dt) => h.mixer.update(dt); window.T = { setTime: (t) => { h.mixer.setTime(t); } };
+  let spin = 0; const spinOn = P.has('spin'); // ?spin: kahramanı döndürerek saç/palto fiziğini göster
+  update = (dt) => { h.mixer.update(dt); if (spinOn) { spin += dt * 2.5; h.root.rotation.y = Math.sin(spin) * 1.2; } h.spring.update(dt); };
+  window.T = { setTime: (t) => { h.mixer.setTime(0); h.spring.reset(); const n = Math.round(t * 60); for (let i = 0; i < n; i++) update(1 / 60); } };
 } else {
   await loadGLBCreatures('../assets/models/');
   const c = makeCreature(name); scene.add(c.root); size = c.spec.viewSize || c.spec.len || 2;
