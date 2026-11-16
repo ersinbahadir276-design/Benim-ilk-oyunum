@@ -37,7 +37,7 @@ export const SPECIES = {
   tiger: { name: 'Kaplan', kind: 'quad', hp: 150, dmg: 21, walk: 1.5, run: 9, temper: 'predator', diet: 'carn', sense: 18, drops: { meat: 3 }, tame: { method: 'behindFeed', item: 'meat', steps: 2, hint: 'Çömelerek arkasından sokul ve 2 kez et ver (görürse saldırır)' },
     len: 1.75, h: 0.92, bodyR: 0.28, width: 0.8, color: 0xe08a2c, belly: 0xf6ead6, stripes: 0x1c120a, legR: 0.075, legTaper: 0.8, neckLen: 0.32, neckAng: 0.42, headR: 0.17, snoutLen: 0.15, snoutR: 0.1, snoutColor: 0xf6ead6, ears: 'round', earSize: 0.65, tail: { type: 'thin', len: 1.0, r: 0.04, color: 0xe08a2c, ang: -0.8, rings: 0x1c120a }, gait: 'walk', runGait: 'gallop', cadence: 0.95 },
   crocodile: { name: 'Timsah', kind: 'quad', hp: 140, dmg: 24, walk: 0.9, run: 4.6, temper: 'ambush', diet: 'carn', sense: 9, drops: { meat: 3 }, tame: { method: 'bait', item: ['fish'], steps: 3, hint: 'Yakınına 3 kez balık bırak (G) ve 7 m geri çekil' },
-    len: 2.1, h: 0.3, bodyR: 0.27, width: 1.25, flat: 0.62, color: 0x4d5e37, belly: 0xc9c79a, legR: 0.07, legTaper: 0.8, sprawl: 0.95, neckLen: 0.2, neckAng: 0.05, headR: 0.17, snoutLen: 0.6, snoutR: 0.17, snoutFlat: 0.5, headDown: 0.0, jaw: true, ears: 'none', ridges: true, tail: { type: 'croc', len: 1.9, r: 0.2, color: 0x4d5e37, ang: -0.05 }, gait: 'walk', cadence: 1.1, spineSway: 0.22 },
+    len: 2.1, h: 0.3, bodyR: 0.27, width: 1.25, flat: 0.62, color: 0x4d5e37, belly: 0xc9c79a, legR: 0.07, legTaper: 0.8, sprawl: 0.95, neckLen: 0.2, neckAng: 0.05, headR: 0.17, snoutLen: 0.6, snoutR: 0.17, snoutFlat: 0.5, headDown: 0.0, jaw: true, ears: 'none', ridges: true, tail: { type: 'croc', len: 1.9, r: 0.2, color: 0x4d5e37, ang: -0.05 }, gait: 'walk', runGait: 'trot', cadence: 1.1, spineSway: 0.22 },
   shadowbeast: { name: 'Gölge Pençe', kind: 'quad', hp: 210, dmg: 26, walk: 1.6, run: 8.4, temper: 'predator', diet: 'carn', sense: 22, drops: { meat: 2, moonstone: 1 }, tame: { method: 'weakenFeed', item: 'moonstone', hpBelow: 0.3, steps: 1, hint: 'Canını %30 altına düşür, sonra ay taşı sun' },
     len: 1.9, h: 1.15, bodyR: 0.33, width: 0.85, color: 0x241a38, belly: 0x3a2a5c, legR: 0.08, legTaper: 0.7, neckLen: 0.42, neckAng: 0.5, headR: 0.19, snoutLen: 0.26, snoutR: 0.1, jaw: true, ears: 'point', horns: 0xb9a8ff, spikes: 0x8f6cff, glow: 0xc04bff, tail: { type: 'thin', len: 1.2, r: 0.05, color: 0x241a38, ang: -0.5, blade: 0x8f6cff }, gait: 'walk', runGait: 'gallop', cadence: 1.0 },
   snake: { name: 'Yılan', kind: 'snake', hp: 35, dmg: 14, walk: 1.0, run: 3.8, temper: 'ambush', diet: 'carn', sense: 7, drops: { meat: 1 }, tame: { method: 'charm', item: 'flute', steps: 1, hint: 'Yakınında kıpırdamadan E basılı tut: kaval çal (5 sn)' },
@@ -171,7 +171,10 @@ class Quadruped extends Creature {
     this.legs = [];
     const hipY = -R * 0.3 * (sp.flat || 1), reach = (sp.h + hipY) / Math.cos(sp.sprawl || 0);
     const mk = (front, side) => {
-      const rest = front ? [0.2, -0.27, 0.07] : [-0.32, 0.74, -0.42]; if (sp.sprawl) rest.forEach((v, i) => { rest[i] = v * 0.6; });
+      // yayvan bacaklı (timsah): gerçek "yüksek yürüyüş" duruşu gibi dirsek/diz ~55° bükük. Önceden bacak dinlenmede
+      // neredeyse düzdü (kalça–bilek 0.315 m, bacak 0.316 m); gövde salınımı kalçayı yana kaydırınca basan ayağa erişim
+      // kalmıyor, kilit basışların yarısında bırakılıyordu. Bükük diz IK'ye ~%10 erişim payı bırakır.
+      const rest = sp.sprawl ? (front ? [0.45, -0.95, 0.5] : [-0.5, 1.0, -0.5]) : front ? [0.2, -0.27, 0.07] : [-0.32, 0.74, -0.42];
       const prop = front ? [0.44, 0.42, 0.14] : [0.4, 0.38, 0.22];
       const boost = front ? 1 : (sp.hindBoost || 1), lr = sp.legR * boost, tp2 = sp.legTaper || 0.62;
       let a = 0, vert = 0; const cs = rest.map((v) => (a += v, Math.cos(a))); prop.forEach((p, i) => { vert += p * cs[i]; });
@@ -200,7 +203,7 @@ class Quadruped extends Creature {
       l.hip.worldToLocal(_v1); l.a0 = Math.atan2(-_v1.z, -_v1.y); l.sR = Math.hypot(_v1.y, _v1.z);
     });
     this.sweepR = this.legs.reduce((m, l) => m + l.sweepR, 0) / 4;
-    this.ikW = 0; this.ikDrop = 0; this.ikEnabled = true; this.ikReleases = 0; this._ikOn = false;
+    this.ikW = 0; this.ikDrop = 0; this.sideRoll = 0; this.ikEnabled = true; this.ikReleases = 0; this._ikOn = false;
   }
   animate(dt, anim, t, o = {}) {
     // önceki karenin IK düzeltmesini geri al: yumuşatma (r) saf animasyon pozundan devam etsin, düzeltme birikmesin
@@ -261,7 +264,12 @@ class Quadruped extends Creature {
       by = -Math.abs(Math.sin(ph * (gal || hop ? 0.5 : 1) + 0.6)) * sp.h * 0.05 * A;
       if (gal || hop) { pitch = Math.sin(ph + 1.2) * (hop ? 0.22 : 0.09) * A; by += Math.max(0, Math.sin(ph + 2.2)) * sp.h * (hop ? 0.5 : 0.12) * A; }
     }
-    yaw = Math.sin(ph) * (sp.spineSway || 0.04) * A; roll = Math.sin(ph) * 0.03 * A;
+    // yayvan bacaklılarda (timsah) gövde salınımı basışa kilitli: gövde, sol ön ayak basışın ortasındayken en çok sola
+    // döner. Tırısta çapraz çift (sol ön + sağ arka) birlikte bastığı için tek bir gövde dönüşü iki kalçayı da kendi
+    // basan ayağına doğru kaydırır (kertenkele/timsah omurgasının duran dalgası); salınım adımı uzatır, erişimi
+    // bozmaz. Önceden faz rastgeleydi: koşuda ön kalça basan ayaktan uzaklaşıyor, kilit bırakılıyordu.
+    const swPh = !sp.sprawl ? 0 : duty ? PI - PI * this.dutyK + TAU * offs[0] : PI / 2 + TAU * offs[0];
+    yaw = Math.sin(ph + swPh) * (sp.spineSway || 0.04) * A; roll = Math.sin(ph) * 0.03 * A;
     let rear = 0, death = 0;
     if (anim === 'idle') { by += Math.sin(t * 1.7 + sd) * sp.h * 0.008; headY = Math.sin(t * 0.45 + sd) * 0.45 * (Math.sin(t * 0.13 + sd) > 0 ? 1 : 0.2); neckX += Math.sin(t * 0.6 + sd) * 0.05; }
     if (anim === 'eat') { neckX += Math.min(1.5, sp.neckAng + (sp.h - sp.bodyR) / Math.max(0.2, sp.neckLen) * 0.75); headX = 0.15 + Math.sin(t * 9) * 0.1; jaw = 0.2 + Math.sin(t * 9) * 0.2; pitch += 0.06; }
@@ -269,6 +277,16 @@ class Quadruped extends Creature {
     if (anim === 'attack') { const p = clamp01(at_ / this.attackTime), l = Math.sin(PI * p);
       if (sp.rearAttack) { rear = l; jaw = l * 0.7; } else { bz = l * sp.len * 0.28; pitch += l * 0.12 - Math.sin(TAU * p) * 0.1; neckX += l * 0.4; headX -= l * 0.25; jaw = Math.sin(PI * clamp01(p * 1.6)) * 0.85; } }
     if (anim === 'die') { death = ease(clamp01(at_ / this.dieTime * 1.4)); neckX += death * 0.5; jaw = death * 0.3; }
+    // yayvan bacaklılar yan eğimde gövdeyi eğime yatırır (gövde yere yakın, ayaklar 0.6 m yana açık: 31° yan eğimde iki
+    // yandaki zemin arasında ~0.35 m fark var, bacak boyundan fazla). Yatış IK düzlemine de eklenir (_footIK).
+    if (sp.sprawl) {
+      let tr = 0;
+      if (o.ground && !o.air && o.ik !== false && this.ikEnabled && anim !== 'die') {
+        const ry = this.root.rotation.y, sx = Math.cos(ry), sz = -Math.sin(ry), e = sp.bodyR * sp.width, x = this.root.position.x, z = this.root.position.z;
+        tr = THREE.MathUtils.clamp(Math.atan((o.ground(x + sx * e, z + sz * e) - o.ground(x - sx * e, z - sz * e)) / (2 * e)) * 0.85, -0.5, 0.5);
+      }
+      this.sideRoll += (tr - this.sideRoll) * Math.min(1, dt * 5); roll += this.sideRoll;
+    }
     // gövde
     const b = this.body, pv = this.pivot;
     b.position.y += (sp.h + by - b.position.y) * k; b.position.z += (bz - b.position.z) * k;
@@ -319,7 +337,7 @@ class Quadruped extends Creature {
     this._ikOn = true;
     const root = this.root, k = Math.min(1, dt * 14), rx = root.position.x, rz = root.position.z, rootY = root.position.y;
     root.updateMatrixWorld(true);
-    const fx = Math.sin(root.rotation.y), fz = Math.cos(root.rotation.y), grad = -Math.tan(o.slope || 0);
+    const fx = Math.sin(root.rotation.y), fz = Math.cos(root.rotation.y), grad = -Math.tan(o.slope || 0), lgrad = Math.tan(this.sideRoll || 0), lsec = 1 / Math.cos(this.sideRoll || 0);
     const maxUp = sp.h * 0.45, maxDn = sp.h * 0.35, slipMax = Math.max(0.12, sp.len * 0.28), moving = A > 0.25;
     let need = 0;
     for (const l of legs) {
@@ -344,7 +362,11 @@ class Quadruped extends Creature {
       l.tgt.x += l.lockDx * l.lockW; l.tgt.z += l.lockDz * l.lockW;
       // zemin farkı: gerçek zemin − animasyonun varsaydığı düzlem
       const fwd = (l.tgt.x - rx) * fx + (l.tgt.z - rz) * fz;
-      const off = THREE.MathUtils.clamp(G(l.tgt.x, l.tgt.z) - (rootY + fwd * grad), -maxDn, maxUp);
+      // yan yatış (yayvan bacaklılar): animasyonun düzlemi gövde merkezi (kökten sp.h yukarıda) etrafında θ kadar döner.
+      // Yanal uzaklığı X olan noktada düzlem X·tanθ + h(1 − 1/cosθ); bilek düzleme dik restH uzakta, dikeyde restH/cosθ.
+      const lat = (l.tgt.x - rx) * fz - (l.tgt.z - rz) * fx; // gövdenin sol (+x) yönü dünyada (fz, 0, −fx)
+      const rollY = lgrad ? lat * lgrad + (l.restH - sp.h) * (lsec - 1) : 0;
+      const off = THREE.MathUtils.clamp(G(l.tgt.x, l.tgt.z) - (rootY + fwd * grad + rollY), -maxDn, maxUp);
       l.off += (off - l.off) * k; l.tgt.y += l.off;
       l.w = w * (rear > 0.05 && l.front ? 1 - rear : 1);
       l.tgt.lerpVectors(l.anim, l.tgt, l.w);
@@ -362,7 +384,7 @@ class Quadruped extends Creature {
       if (l.w < 1e-3) continue;
       // yana açılma: hedef bacak düzleminin dışındaysa (dönüş, yan eğim) kalça eklemi yana döner
       l.hip.worldToLocal(_v2.copy(l.tgt));
-      const ab = THREE.MathUtils.clamp(Math.atan2(_v2.x, -_v2.y), -0.35, 0.35);
+      const abM = l.sprawl ? 0.6 : 0.35, ab = THREE.MathUtils.clamp(Math.atan2(_v2.x, -_v2.y), -abM, abM);
       if (Math.abs(ab) > 1e-4) { l.hip.rotation.z = l.hz + ab; l.hip.updateMatrixWorld(true); l.hip.worldToLocal(_v2.copy(l.tgt)); }
       const L0 = l.L0, L1 = l.L1, d = THREE.MathUtils.clamp(Math.hypot(_v2.y, _v2.z), Math.abs(L0 - L1) + 1e-3, (L0 + L1) * 0.999);
       const phi = Math.atan2(-_v2.z, -_v2.y);
@@ -475,7 +497,7 @@ class Biped extends Creature {
       this.legs.push({ th, kn, s, L0: 0.5 * S, L1: 0.48 * S, ank: new THREE.Vector3(0, -0.48 * S, 0), off: 0, ax: 0, kx: 0, p: new THREE.Vector3(), tgt: new THREE.Vector3(), ...Creature.lockState() });
     }
     this.ikStats = { locks: 0, releases: 0, early: 0 };
-    this.hipH = hipH; this.stride = 0; this.omega = 0; this.ikW = 0; this.ikDrop = 0; this.ikEnabled = true; this._ikOn = false;
+    this.hipH = hipH; this.stride = 0; this.omega = 0; this.ikW = 0; this.ikDrop = 0; this.sideRoll = 0; this.ikEnabled = true; this._ikOn = false;
   }
   animate(dt, anim, t, o = {}) {
     // önceki karenin IK düzeltmesini geri al: yumuşatma (r) saf animasyon açılarından devam etsin, düzeltme birikmesin

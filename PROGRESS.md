@@ -7,7 +7,7 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 | # | Özellik | Durum | Not |
 | --- | --- | --- | --- |
 | 1 | Yüksek kaliteli erkek kahraman | ✅ Tamamlandı | VRoid avatar, toon gölgeleme, kılıç, saç/kumaş yay kemikleri (Tur 2), yüz ifadeleri + göz kırpma + baş/göz bakışı (Tur 3). Kalan küçük eksik: dudak senkronu (oyunda diyalog olmadığı için gerekmiyor). |
-| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Büyük ölçüde | Kahraman: 17 retarget klip, eğimde ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4); faz senkronlu yürüme/koşu/depar karışımı ve basan ayak kilidi (Tur 7). Dört ayaklılar (9 tür): eğimde ayak IK'si, yürürken basma kilidi, adım boyu–hız eşlemesi (Tur 5); koşuda görev oranlı dörtnal döngüsü, 7 türde koşuda erken bırakma %100 → %0 (Tur 10). Tilki, ejderha, Mağara Devi: eğimde ayak IK'si (Tur 6), yürürken basma kilidi (Tur 8). **Eksik:** timsah yürüyüş/koşusunda ve tilki/ejderha koşusunda kilit çoğu adımda bırakılıyor; tavşanın koşu basışı 30 fps'de tek kare; kahramanda dönüş/yan adım (strafe) klibi yok. |
+| 2 | Gerçekçi 3B karakter animasyonları | 🟡 Büyük ölçüde | Kahraman: 17 retarget klip, eğimde ayak IK'si + kalça alçaltma + ayak tabanı eğimi, katmanlı darbe tepkisi (Tur 4); faz senkronlu yürüme/koşu/depar karışımı ve basan ayak kilidi (Tur 7). Dört ayaklılar (9 tür): eğimde ayak IK'si, yürürken basma kilidi, adım boyu–hız eşlemesi (Tur 5); koşuda görev oranlı dörtnal döngüsü, 7 türde koşuda erken bırakma %100 → %0 (Tur 10). Tilki, ejderha, Mağara Devi: eğimde ayak IK'si (Tur 6), yürürken basma kilidi (Tur 8). Timsah: bükük dizli duruş, basışa kilitli gövde salınımı, koşuda tırıs, yan eğimde gövde yatışı (Tur 12; erken bırakma 25/51 → 0–3/52 yürüyüş, 22/43 → 0/44 koşu). **Eksik:** tilki/ejderha koşusunda kilit çoğu adımda bırakılıyor; tavşanın koşu basışı 30 fps'de tek kare; kahramanda dönüş/yan adım (strafe) klibi yok. |
 | 3 | Gönderilen GLB modellerin entegrasyonu | 🟡 Kısmen | Gönderilen tek dosya (ejderha) ve tilki bağlı. Ejderhanın `fly2` klibi kullanılmıyor (ejderha uçmuyor). Yeni GLB gelirse `GLBCreature` ile bağlanacak. |
 | 4 | Çok sayıda hayvan ve yaratık | ✅ İşlevsel olarak tamam | 14 tür. 12 tür kodla üretilmiş düşük poligonlu model; görsel kalite ejderha ve kahramanın altında. |
 | 5 | Evcilleştirme ve yapay zekâ | ✅ İşlevsel olarak tamam | Türe özgü yöntemler, 5 yoldaş, takip/savaş/açlık. Testler geçiyor; tek kararsız test aşağıda. |
@@ -183,20 +183,41 @@ Bu dosya her otomatik geliştirme turunda güncellenir. Bir özellik ancak gerç
 - 5 yeni test (dönüşte adım + kaymama, dönüş sonu duruş, girişle yerinde dönüş, durunca yerleşme, ışınlanmada yeniden yerleşme/NaN). **138/138 test geçti (2 ardışık koşu), konsol hatası yok.**
 - Ortam notu: yerel sunucu başlatma izni yine verilmedi; testler dosyaları Playwright `context.route` ile diskten sunan geçici bir çalıştırıcıyla koşuldu (`test/gameplay-test.js` aynen). `test/run-tests.mjs` değişmedi.
 
+### Tur 12 (2026-11-16): timsahta ayak kilidi ve yan eğim (özellik 2)
+- Not: Bu turun dalı (`ccr-70a30f22-3yt8eg`) yine `main`'deydi ve PROGRESS.md yoktu; önce Tur 2–11 zincirine (`qhhbcm`) ileri sarıldı (fast-forward), iş tekrar edilmedi. `qhhbcm`'den sonra `main`'den başlayan 2 dal yine tekrar yapmış: `z56ii2` (yay kemiği fiziği), `hn42ad` (XP/kayıt); gereksiz.
+- Ölçülen sorunun nedeni: timsahın yayvan bacakları dinlenme pozunda neredeyse düzdü (kalça–bilek 0.315 m, bacak boyu 0.316 m). Erişim payı ~2 cm olduğundan gövde salınımı (0.22 rad, kalçalar ±15 cm yana kayıyor) ve gövde inip kalkması basan ayağa erişimi bozuyordu; bırakmaların hepsi (25/25 ve 21/21) erişim denetiminden, hiçbiri kayma sınırından değildi.
+- `src/creatures.js`:
+  - Yayvan bacaklılarda "yüksek yürüyüş" dinlenme pozu: dirsek/diz ~55° bükük (ön [0.45, −0.95, 0.5], arka [−0.5, 1.0, −0.5]). Bacak boyları zemine değecek şekilde yeniden ölçekleniyor; IK'ye ~%10 erişim payı kalıyor.
+  - Gövde salınımı (`spineSway`) basışa kilitli: gövde, sol ön ayak basışın ortasındayken en çok sola döner (sinüs ve görev oranlı döngü için ayrı faz). Timsahın koşusu tırıs (`runGait: 'trot'`); çapraz çift birlikte bastığı için tek bir gövde dönüşü iki kalçayı da basan ayağa doğru kaydırır (kertenkele/timsah omurgasının duran dalgası). Önceden faz ilişkisizdi; koşuda ön kalça basan ayaktan uzaklaşıyordu.
+  - Yayvan bacaklarda kalça yana açılma sınırı ±0.35 → ±0.6 rad (salınımda basan ayağa yanal erişim; koşuda kalan 0.5 mm/kare kayma 0'a indi).
+  - Yan eğimde gövde yatışı (`sideRoll`): yayvan bacaklılar gövde genişliği boyunca ölçülen yan eğimin %85'i kadar (en çok 0.5 rad) yatar; IK düzlemi buna göre düzeltilir (düzlem gövde merkezi etrafında döner: X·tanθ + (restH − h)(1/cosθ − 1)). IK kapalıyken ya da ölümde yatış yok.
+- Ölçümler (30 fps; önce → sonra):
+
+  | Durum | Erken bırakma / basış | Basan ayak kayması | Gövde alçalması |
+  | --- | --- | --- | --- |
+  | Yürüyüş, düz, 1.44 m/sn | 25/51 → 0/52 | 0.04 → 0 mm/kare | %11.7 → %0 |
+  | Koşu, düz, 4.6 m/sn | 22/43 → 0/44 | 0 → 0 mm/kare | %2.9 → %0 |
+  | Test yürüyüşü (dönüş + arazi) | 49/51 → 2–3/52 | 0 → 0.5–0.8 mm/kare | — |
+  | 31° yan eğimde ayak–zemin hatası | 0.21–0.27 m → 0.001–0.002 m | — | — |
+
+- Görsel kontrol (model görüntüleyici, yandan ve üstten): dirsek/dizler bükük, ayaklar yana açık, gövde ve kuyruk yürüyüşte S şeklinde salınıyor.
+- Testler: timsah dört ayaklı IK testlerine (düzde poz, yan eğim, NaN/kemik boyu, yürürken kilit, ölüm) ve koşu testine eklendi; yürüyüş kilidi testindeki ölçüt `erken bırakma ≤ basış` → `≤ basış × 0.15` sıkılaştırıldı (eski timsah 49/51 ile geçiyordu). **144/144 test geçti (3 ardışık koşu), konsol hatası yok.**
+- Ortam notu: bu turda `python3 -m http.server 8765` ile yerel sunucu çalıştı; `test/run-tests.mjs` değişmedi.
+
 ## Bilinen sorunlar
 - Dudak senkronu yok (oyunda seslendirme yok).
-- Timsahta (yayvan bacaklar, güçlü gövde salınımı) ayak kilidi yürürken basışların ~yarısında, koşarken ~yarısında erken bırakılıyor. Tavşanın koşusunda basış 30 fps'de tek kare sürüyor, kilit pratikte görünmüyor (kayma da görünmüyor). Diğer 7 dört ayaklıda yürüyüş ve koşuda erken bırakma yok (Tur 10).
+- Timsahın gövdesi tek parça döner (omurga eklemi yok); salınım kuyrukta S şekli verir ama gövdenin kendisi bükülmez. Tavşanın koşusunda basış 30 fps'de tek kare sürüyor, kilit pratikte görünmüyor (kayma da görünmüyor). Diğer 7 dört ayaklıda yürüyüş ve koşuda erken bırakma yok (Tur 10); timsahta da yok (Tur 12).
 - Tilki ve ejderha koşusunda klipler bu hızı karşılayamıyor: tilki `Run` klibi ~1.5 m/sn, ejderhada koşu için yürüme klibi kullanılıyor (1.7 m/sn). Oynatma hızı en çok 2.2 kat (daha hızlısı doğal görünmüyor). Bu yüzden 7.5 / 6.5 m/sn'de basışların çoğu erken bırakılıyor ve ayak klipteki kadar kayıyor. Çözüm: hızlı koşu klibi olan GLB'ler ya da koşu hızının klibe göre düşürülmesi (oynanış kararı).
 - Mağara Devi'nde ayak tabanı eğime yatmıyor (ayrı bilek eklemi yok).
 - Kartal evcilleştirme testi ara sıra başarısız oluyor (vahşi hayvan rastgeleliği).
 - Arkadan gelen darbede katmanlı `Hit_Chest` klibi (önden vuruş klibi) yarı ağırlıkla yine geriye doğru oynar; yönlü savrulma bunu baskın şekilde öne çevirir ama ayrı bir "arkadan darbe" klibi yok.
-- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-qhhbcm` (Tur 2–11; `8genbv` Tur 10'a kadar; `5gqvtf` Tur 9'a kadar). Tur 9'dan sonra da yay kemiği fiziği `main`'den başlayan 4 dalda daha tekrar yazılmış (`3blqpr`, `znc4u0`, `gtq3z2`, `i6tc9k`); bunlar artık gereksiz. Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
+- Önceki turların dalları `main`'e birleşmedi; birleştirme kullanıcının kararı. En güncel zincir artık `ccr-70a30f22-3yt8eg` (Tur 2–12; `qhhbcm` Tur 11'e kadar; `8genbv` Tur 10'a kadar; `5gqvtf` Tur 9'a kadar). Tur 9'dan sonra da yay kemiği fiziği `main`'den başlayan 4 dalda daha tekrar yazılmış (`3blqpr`, `znc4u0`, `gtq3z2`, `i6tc9k`); bunlar artık gereksiz. Zamanlanmış çalışmalar hâlâ `main`'den başlıyor; her tur önce bu zincire taşınmalı (ya da zincir `main`'e birleştirilmeli), yoksa iş yeniden yapılır.
 - Yerinde dönüşte gövde/kalça ağırlık aktarımı yok (ayaklar adım atar ama kalça yana kaymaz); yerinde dönüş eşiğin altındaki küçük dönüşlerde (< ~29°) ayaklar yerinde döner gibi değil, yön farkı korunarak kalır.
 - Kahramanda yürüme ↔ koşu karışımında (≈1.2–4.6 m/sn) iki ayağın basışı biraz asimetrik. Bir ayak basışın sonunda (topuk kalkarken) erken bırakılabiliyor; ayakta kayma görünmüyor.
 
 ## Sonraki öncelikler
-1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-qhhbcm` dalı Tur 2–11'i içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz. Birleştirilmezse her tur önce bu dala ileri sarılmalı.
-2. Özellik 2'de kalanlar (küçük): yerinde dönüşte kalça ağırlık aktarımı; timsah için gövde salınımını telafi eden kilit. Tilki/ejderha koşu kilidi yeni GLB kliplerine ya da koşu hızının klibe göre düşürülmesine (oynanış kararı) bağlı.
-3. **Özellik 6'nın kalanı:** ekipman/üretim (kılıç seviyesi, malzeme), ata binme (at evcilleştirilebiliyor ama binilemiyor; at artık koşuda doğal dörtnal atıyor), gece/gündüz.
+1. **Dalları birleştirme (kullanıcı kararı):** `ccr-70a30f22-3yt8eg` dalı Tur 2–12'yi içeriyor. `main`'e birleştirilirse sonraki turlar işi tekrarlamaz. Birleştirilmezse her tur önce bu dala ileri sarılmalı. Ayrıca kullanıcının kendi dalı `claude/player-character-animal-system-vahlxx` farklı bir yöne gitmiş (Ay Kılıççısı / Kara Zırh, Şeytan Kral, ANALIZ.md); bu zincirle birleşmiyor. Hangisinin ana yön olduğu kullanıcının kararı.
+2. Özellik 2'de kalanlar (küçük): yerinde dönüşte kalça ağırlık aktarımı. Tilki/ejderha koşu kilidi yeni GLB kliplerine ya da koşu hızının klibe göre düşürülmesine (oynanış kararı) bağlı.
+3. **Özellik 6'nın kalanı:** ekipman/üretim (kılıç seviyesi, malzeme), ata binme (at evcilleştirilebiliyor ama binilemiyor), gece/gündüz.
 4. Özellik 7: kalite ayarı (gölge, piksel oranı), doku sıkıştırma (KTX2), uzak hayvanlarda güncelleme seyreltme. Yüklemede `analyzeGait` (kahraman) ve `clipGroundSpeed` (tilki/ejderha) süreleri mobilde ölçülmeli.
 5. Özellik 3: ejderha için uçuş (`fly2` klibinden kök hareketini ayıklayarak).

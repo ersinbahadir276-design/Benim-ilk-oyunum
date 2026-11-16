@@ -186,7 +186,7 @@ window.runGameplayTests = async function () {
     const ankle = (l) => l.ft.getWorldPosition(new THREE_V());
     const clr = (a) => a.c.legs.map((l) => { const v = ankle(l); return v.y - gnd(v.x, v.z) - l.restH; });
     const stand = (a, x, z, yaw, en) => { a.c.ikEnabled = en; P.x = x + 8; P.z = z + 8; P.state = 'move'; P.hp = P.hpMax; sim(1.5, () => { a.x = x; a.z = z; a.yaw = yaw; freeze(a); a.hp = a.hpMax; a.dead = false; }); };
-    for (const kind of ['wolf', 'horse']) {
+    for (const kind of ['wolf', 'horse', 'crocodile']) {
       const a = find(kind), keep = [a.x, a.z, a.yaw];
       stand(a, 2, 1, 0.7, true);
       const dev = Math.max(...a.c.legs.map((l) => Math.abs(l.up.rotation.x - l.au) + Math.abs(l.lo.rotation.x - l.al) + Math.abs(l.ft.rotation.x - l.af)));
@@ -209,7 +209,7 @@ window.runGameplayTests = async function () {
         prev = cur;
       });
       const rel = a.c.ikReleases - rel0;
-      ok(`hayvan IK (${kind}): yürürken basan ayak kaymaz (ayak kilidi)`, n > 30 && replant === 0 && slipIK / n < 0.003 && slipAnim / n > slipIK / n * 3 && rel <= steps,
+      ok(`hayvan IK (${kind}): yürürken basan ayak kaymaz (ayak kilidi)`, n > 30 && replant === 0 && slipIK / n < 0.003 && slipAnim / n > slipIK / n * 3 && rel <= steps * 0.15,
         `kare=${n} kayma IK=${(slipIK / n * 1000).toFixed(1)} mm/kare, animasyon=${(slipAnim / n * 1000).toFixed(1)} mm/kare, yeniden basma=${replant}, basış=${steps}, erken bırakma=${rel}, hız=${a.speed.toFixed(1)}`);
       a.dead = true; a.deadT = 0; sim(0.1); ok(`hayvan IK (${kind}): ölünce devre dışı`, a.c.ikW === 0); a.dead = false; a.hp = a.hpMax; a.c.reset();
       a.x = keep[0]; a.z = keep[1]; a.yaw = keep[2]; a.home = { x: keep[0], z: keep[1] }; freeze(a); a.calmT = 0; a.stT = 0;
@@ -221,7 +221,7 @@ window.runGameplayTests = async function () {
   // 1e2) dört ayaklı koşu (görev oranlı dörtnal): basan ayak kaymaz, basışlar erken bırakılmaz, gövde çökmez
   {
     const moved = G.animals.filter((x) => Math.hypot(x.x, x.z + 40) < 60).map((x) => [x, x.x, x.z]); moved.forEach(([x]) => { x.x += 400; });
-    for (const kind of ['wolf', 'horse', 'deer', 'lion', 'bear']) {
+    for (const kind of ['wolf', 'horse', 'deer', 'lion', 'bear', 'crocodile']) {
       const a = find(kind), keep = [a.x, a.z, a.yaw], spd = a.spec.run;
       a.x = 0; a.z = -60; a.yaw = 0; a.c.reset(); a.calmT = 999; a.c.ikEnabled = true;
       a.updateWild = function (dt) { this.steer(this.x, this.z + 50, spd, dt, 6); return 'run'; };
