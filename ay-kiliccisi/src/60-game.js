@@ -113,7 +113,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  const dk=cl(Math.sin(GT.tod*2*PI)*1.7+.62,0,1),m3=(a,b,t)=>[lp(a[0],b[0],t),lp(a[1],b[1],t),lp(a[2],b[2],t)],dusk=1-Math.abs(dk-.5)*2;GT.night=dk<.35;
  const zn=zoneAt(P.x,P.z),swamp=zn==='swamp'?1:0,qf=[1,1,.85,.7][QUAL.QL];
  let fog=m3([.07,.09,.19],[.66,.8,.93],dk);fog=m3(fog,[.93,.62,.45],dusk*.35);fog=m3(fog,[.45,.5,.42],swamp*.45);
- const env={fogC:fog,sun:m3([.5,.56,.82],[1,1,1],dk),fog:[lp(35,60,dk)*(1-swamp*.4),lp(220,300,dk)*(1-swamp*.35)*qf],focus:[CAM.tx,CAM.ty,CAM.tz]};
+ const env={fogC:fog,sun:m3([.5,.56,.82],[1,1,1],dk),fog:[lp(35,60,dk)*(1-swamp*.4),lp(220,300,dk)*(1-swamp*.35)*qf],focus:[CAM.tx,CAM.ty,CAM.tz]};updateScenery(GT.time,dtReal,env,eye);
  const light=vnorm(vadd(vadd(vmul(L.r,-.45),vmul(L.u,.62)),vmul(L.f,-.62)));
  for(const o of pObjs){o.M=PM;o.flash=P.flash*.6;o.vis=true}if(P.inv>0&&P.st!=='dodge'&&P.st!=='getup'&&Math.floor(GT.time*14)%2===0)for(const o of pObjs)o.flash=.35;
  if(P.st==='charge'&&P.charge>=1)for(const o of pObjs)o.flash=.15+.1*Math.sin(GT.time*20);

@@ -33,7 +33,7 @@ function mkWolf(x,z,o={}){const w={x,z,y:hAt(x,z),yaw:o.yaw===undefined?rnd()*6.
 function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                                         // a lone wolf with its back to the spawn
  mkWolf(4,250);mkWolf(13,244);                                                                             // a pair on the way to the kingdom
  for(let p=0;p<12;p++){let cx,cz,r,ok;do{cx=rr(-640,640);cz=rr(-640,640);r=Math.hypot(cx,cz);ok=r>225&&r<655&&Math.hypot(cx-SPAWN[0],cz-SPAWN[2])>75}while(!ok);
-  const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);mkWolf(x,z,{alpha:i===0&&p%4===0})}}
+  const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);if(depthAt(x,z)>0||waterAt(x,z)>-50&&hAt(x,z)<waterAt(x,z)+.6)continue;mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
 const hostileSt=w=>w.st==='howl'||w.st==='chase'||w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='circle'||w.st==='recover'||w.st==='hurt'||w.st==='evade';

@@ -4,12 +4,12 @@ Tür: geri dönüş (regresyon) + Sistem + karanlık fantezi. Oyun içinde dikey
 anlatılır; paneller oyun motorunda çekilen kareler, konuşma balonları ve mavi Sistem pencereleridir.
 
 ## Karakterler
-- **Kael Varn — "Kara Zırh".** Krallığın son şövalyesi. İlk hayatında Şeytan Kral'a yenildi, krallık yandı.
+- **Kael Varn — "Kara Zırh".** Sıradan bir maceracı/asker; kimsenin tanımadığı biri. İlk hayatında krallık düştüğü gece kalabalığın içinde öldü ve üç yıl önceye geri döndü. Şeytan Kral(içe) ile kişisel bir bağı YOK (kullanıcı isteği) ve 'son savaşçı' değil.
   Lanetli bir zırh giyer; zırh ona güç verir ama öfkesini besler. Az konuşur, kuru mizahı vardır.
 - **Hırlayan.** Zırhın içindeki kurt ruhu. Kırmızı yazıyla fısıldar, kan ister. Öfke modunda sesi yükselir.
 - **Azgal, Yedi Gecenin Kralı.** Şeytan Kral. Kuzeydeki kül kalede yaşar. Uzun kuyruklu, boynuzlu taçlı dev.
   Krallığı üç yıl sonra yakacak.
-- **Veyra.** Azgal'ın kızı; kıvrık boynuzlar, kızıl saç, alev kılıcı Kızıl Kor. İlk hayatta Kael'i öldüren oydu.
+- **Veyra.** Azgal'ın kızı; kıvrık boynuzlar, kızıl saç, alev kılıcı Kızıl Kor. İlk hayatta Kael onu yalnızca yangının içinde uzaktan gördü.
   Bu sefer kendi babasının adamları tarafından zincire vurulmuş olarak bulunur. Göğsündeki mühür onu
   babasına bağlar.
 - **İhtiyar Doran** (köy büyüğü, ana görev), **Demirci Hask** (yükseltme), **Avcı Lena** (kurt görevleri),
@@ -18,7 +18,7 @@ anlatılır; paneller oyun motorunda çekilen kareler, konuşma balonları ve ma
 
 ## Önsöz — "Son Gece"
 1. Kızıl gökyüzü, yanan başkent. *Krallık düştü.*
-2. Kael diz çökmüş, kılıcı kırık. Azgal tepeden bakıyor: **"Kara Zırh... Sonuncusu sendin."**
+2. Kael diz çökmüş, kılıcı kırık. Kraliçe surlarda; Kael'e bakmıyor bile (anlatım: "binlerce askerden biriydi").
 3. Azgal'ın arkasında boynuzlu bir kız, gözleri kor gibi. Alev kılıcı Kael'in göğsünde. Kael: **"...Sen."**
 4. Karanlık. Mavi pencere: **[Sistem] Ölüm algılandı. Koşul sağlandı: «Pişmanlık». Geri dönüş başlatılıyor.**
 5. Sabah, orman. Kael uyanır. **"Üç yıl önce mi?.. Krallık hâlâ ayakta."**
@@ -38,7 +38,7 @@ aşama değiştiren bir şef. Kurtarılan köylü fısıldar: "Bataklıktaki har
 Harabelerde Veyra zincirli, yorgun. Kael onu tanır. Paneller: kılıç kaldırılmış, Veyra'nın gözleri.
 **Seçim:** «Zincirlerini kır» ya da «Kılıcını indir».
 - Kurtarırsan: Veyra yoldaş olur (alevle savaşır, seni korur, kendi kararlarını verir). Mühür yüzünden ilk hayatta
-  Kael'i öldürdüğünü açıklar. Güveni arttıkça yeni repliği ve birlikte saldırısı açılır.
+  krallığın neden yakılacağını anlatır. Güveni arttıkça yeni repliği ve birlikte saldırısı açılır.
 - Öldürürsen: Hırlayan güçlenir (Öfke daha hızlı dolar), Azgal'ın generalleri erken gelir, son daha karanlık olur.
 
 ## 4. Bölüm — "Kül Kanat"

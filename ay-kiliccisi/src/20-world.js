@@ -13,8 +13,10 @@ const campH=CAMPS.map(c=>HILL(c[0],c[1])*.6);
 function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<420){const ridge=Math.abs(Math.sin(x*.021+Math.sin(z*.017)*1.6))*Math.cos(z*.019+.4);h+=72*sst(420,95,dm)+ridge*9*sst(420,160,dm)*sst(60,140,dm);if(dm<120)h=lp(h,LAIR_Y,sst(120,62,dm))}
  const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+70)h=lp(h,-6.4+Math.sin(x*.04)*.8,sst(LAKE[2]+60,LAKE[2]-25,dl));
- const dr=riverD(x,z);if(dr<40)h=Math.min(h,lp(-5,h,sst(6,30,dr)));
+ if(dl>=LAKE[2]+42&&dl<LAKE[2]+170)h=Math.max(h,lp(WATER_L+1.4,-40,sst(LAKE[2]+90,LAKE[2]+170,dl)));
+ const dr=riverD(x,z);if(dr<40)h=Math.min(h,lp(-5,h,sst(6,30,dr)));if(dr>=22&&dr<110&&dl>LAKE[2]+40)h=Math.max(h,lp(WATER_L+1.2,-40,sst(60,110,dr)));
  const ds=Math.hypot(x-SWAMP[0],z-SWAMP[1]);if(ds<SWAMP[2]+60)h=lp(h,-1.15+1.15*Math.sin(x*.05+Math.sin(z*.04)*2)*Math.cos(z*.06)+.45*Math.sin(x*.17)*Math.cos(z*.13),sst(SWAMP[2]+50,SWAMP[2]-80,ds));
+ if(ds>=SWAMP[2]+22&&ds<SWAMP[2]+150)h=Math.max(h,lp(WATER_S+1.0,-40,sst(SWAMP[2]+80,SWAMP[2]+150,ds)));
  CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<60)h=lp(h,campH[i],sst(58,30,d))});
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
 function zoneAt(x,z){const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
@@ -26,7 +28,7 @@ const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',rive
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
  return fx+fz<1?a+(b-a)*fx+(c-a)*fz:d+(c-d)*(1-fx)+(b-d)*(1-fz)}
-const waterAt=(x,z)=>{const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+62||riverD(x,z)<32)return WATER_L;if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+40)return WATER_S;return -99};
+const waterAt=(x,z)=>{const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+50||riverD(x,z)<25)return WATER_L;if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+30)return WATER_S;return -99};
 const depthAt=(x,z)=>Math.max(0,waterAt(x,z)-hAt(x,z));
 // ---------- collision: trees/rocks (circles in a 12 m grid), buildings and walls (boxes in a 24 m grid)
 const trees=[],treeGrid=new Map(),TG=12,boxes=[],boxGrid=new Map(),BG=24,HOUSES=[],STALLS=[];
@@ -161,12 +163,13 @@ function buildWorld(){
   if(Math.abs(x)>WS-16||Math.abs(z)>WS-16)continue;const zn=zoneAt(x,z),h=hAt(x,z);let dens=0,k=0;
   if(zn==='dense'){dens=inner?.45:.92;k=kind<.75?2:1}else if(zn==='forest'){dens=inner?0:.55;k=kind<.6?0:1}else if(zn==='swamp'){dens=.1;k=3}else if(zn==='mountain'){dens=h<36?.22*sst(40,16,h):0;k=4}else if(zn==='ruins'){dens=.08;k=1}
   if(p>dens||!treeOK(x,z))continue;const lc=k===2?[.07,.2,.1]:k===4?[.1,.26,.16]:kind<.4?[.12,.33,.16]:[.2,.42,.17];addSpec({x,z,s:k===2?s*1.25:s,k,lv:[lc[0]*r2(.85,1.15),lc[1]*r2(.85,1.15),lc[2]*r2(.85,1.15)],rot:[R2(),R2(),R2()]})}
- for(const t of TREES)addTree(t.x,t.z,(t.k===1?.42:t.k===3?.3:.36)*t.s*(t.k===2?1.1:1),t.k===3?4:7);
+ sceneryPre();
+ for(const t of TREES)if(t.k!==6)addTree(t.x,t.z,(t.k===1?.42:t.k===3?.3:.36)*t.s*(t.k===2?1.1:1),t.k===3?4:7);
  // boulders on the mountain and in the ruins (collision + line of sight)
  const rk=G();for(let i=0;i<520;i++){const a=R2()*6.283,d=r2(70,430),x=MOUNT[0]+Math.cos(a)*d,z=MOUNT[1]+Math.sin(a)*d*.9,s=r2(.8,3.2);if(!treeOK(x,z)&&zoneAt(x,z)!=='lair')continue;rock(rk,x,hAt(x,z),z,s,R2);addTree(x,z,s*.85,s*1.2)}
  for(const c of RUINS)for(let i=0;i<10;i++){const a=R2()*6.283,d=r2(20,60),x=c[0]+Math.cos(a)*d,z=c[1]+Math.sin(a)*d,s=r2(.5,1.4);rock(rk,x,hAt(x,z),z,s,R2);addTree(x,z,s*.8,s)}
  rockObjs(rk);
- buildWater();for(const c of CAMPS)buildCamp(c[0],c[1],R2);for(const c of RUINS)buildRuin(c[0],c[1],R2);buildLair(R2);
+ buildWater();buildScenery();for(const c of CAMPS)buildCamp(c[0],c[1],R2);for(const c of RUINS)buildRuin(c[0],c[1],R2);buildLair(R2);
  makeGrass(21000,46);
 }
 function mkRng(seed){let a=seed>>>0;return()=>{a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
@@ -178,10 +181,10 @@ function rockObjs(g){// split into ~60k-vertex objects
  const per=Math.floor(60000/(1+8*2))*(1+8*2);let i=0;const nv=g.P.length/3;while(i<nv){const sub=G(),end=Math.min(nv,i+per);for(let k=i*3;k<end*3;k++){sub.P.push(g.P[k]);sub.N.push(g.N[k]);sub.C.push(g.C[k])}for(let k=i;k<end;k++){sub.U.push(0,0);sub.W.push(0)}
   for(let k=0;k<g.I.length;k+=3){const a=g.I[k];if(a>=i&&a<end)sub.I.push(g.I[k]-i,g.I[k+1]-i,g.I[k+2]-i)}const cx=sub.P.length?sub.P[0]:0,cz=sub.P.length?sub.P[2]:0;obj(geo(sub),{shade:.8,pos:[cx,0,cz],cull:900,out:.02,outCol:[.15,.15,.18]});i=end}}
 // ---------- water: lake, river ribbon, swamp pools
-function buildWater(){const lake=G(),seg=56;{const o=0;lake.P.push(LAKE[0],WATER_L,LAKE[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=LAKE[2]+70;lake.P.push(LAKE[0]+Math.cos(a)*r,WATER_L,LAKE[1]+Math.sin(a)*r);if(k)lake.I.push(o,o+k+1,o+k)}}
- const rv=G();let prev=null;for(let i=0;i<RIVER.length-1;i++){const a=RIVER[i],b=RIVER[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(L/10);for(let s=0;s<=n;s++){if(i>0&&s===0)continue;const t=s/n,x=lp(a[0],b[0],t),z=lp(a[1],b[1],t),ux=-(b[1]-a[1])/L,uz=(b[0]-a[0])/L,w=30;
+function buildWater(){const lake=G(),seg=56;{const o=0;lake.P.push(LAKE[0],WATER_L,LAKE[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=LAKE[2]+52;lake.P.push(LAKE[0]+Math.cos(a)*r,WATER_L,LAKE[1]+Math.sin(a)*r);if(k)lake.I.push(o,o+k+1,o+k)}}
+ const rv=G();let prev=null;for(let i=0;i<RIVER.length-1;i++){const a=RIVER[i],b=RIVER[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(L/10);for(let s=0;s<=n;s++){if(i>0&&s===0)continue;const t=s/n,x=lp(a[0],b[0],t),z=lp(a[1],b[1],t),ux=-(b[1]-a[1])/L,uz=(b[0]-a[0])/L,w=26;
    const o=rv.P.length/3;rv.P.push(x+ux*w,WATER_L,z+uz*w,x-ux*w,WATER_L,z-uz*w);if(prev!==null)rv.I.push(prev,prev+1,o,prev+1,o+1,o);prev=o}}
- const sw=G();{sw.P.push(SWAMP[0],WATER_S,SWAMP[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=SWAMP[2]+40;sw.P.push(SWAMP[0]+Math.cos(a)*r,WATER_S,SWAMP[1]+Math.sin(a)*r);if(k)sw.I.push(0,k+1,k)}}
+ const sw=G();{sw.P.push(SWAMP[0],WATER_S,SWAMP[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=SWAMP[2]+31;sw.P.push(SWAMP[0]+Math.cos(a)*r,WATER_S,SWAMP[1]+Math.sin(a)*r);if(k)sw.I.push(0,k+1,k)}}
  for(const[g,c,al]of[[lake,[.18,.4,.6],.66],[rv,[.2,.44,.62],.66],[sw,[.1,.16,.15],.8]]){const nv=g.P.length/3;for(let i=0;i<nv;i++){g.N.push(0,1,0);g.C.push(1,1,1);g.U.push(0,0);g.W.push(0)}const o=obj(geo(g),{unlit:1,blend:1,noOff:1,col:c,shade:1,order:1,pos:[g.P[0],0,g.P[2]],cull:1400});o.alpha=al;WATERS.push(o)}
  // reeds and swamp lily pads (static, wind sway)
  const rd=G(),R=mkRng(77);for(let i=0;i<900;i++){const a=R()*6.283,d=Math.sqrt(R())*(SWAMP[2]+20),x=SWAMP[0]+Math.cos(a)*d,z=SWAMP[1]+Math.sin(a)*d,h=hAt(x,z);if(Math.abs(h-WATER_S)>.9)continue;const o=rd.P.length/3,hh=1.2+R()*1.3,c=[.36+R()*.1,.42+R()*.08,.2];
@@ -228,6 +231,8 @@ function treeChunkGeo(list){const g=G(),trunkC=[.36,.25,.16];
   else if(t.k===1){cyl(x,y,z,.36*s,.26*s,3.2*s,6,trunkC);cone(x,y+2.6*s,z,2.9*s,2.6*s,8,lv,5,rot[0]);cone(x,y+3.9*s,z,2.5*s,2.9*s,8,[lv[0]*1.1,lv[1]*1.1,lv[2]*1.1],8,rot[1])}
   else if(t.k===2){cyl(x,y,z,.42*s,.26*s,4*s,6,[.22,.17,.12]);for(let i=0;i<4;i++)cone(x,y+(2+i*1.7)*s,z,(2.8-i*.5)*s,3.2*s,8,[lv[0]*(1+i*.08),lv[1]*(1+i*.08),lv[2]*(1+i*.08)],5+i*2,rot[i%3]+i)}
   else if(t.k===3){const dark=[.24,.21,.17],l=[Math.cos(rot[0]*6)*.6*s,Math.sin(rot[0]*6)*.6*s];cyl(x,y,z,.32*s,.12*s,4.4*s,5,dark,l);for(let i=0;i<3;i++){const a=rot[i%3]*6.28+i*2.1,bx=x+l[0]*.6,bz=z+l[1]*.6,by=y+(2.4+i*.7)*s;cyl(bx,by,bz,.1*s,.03*s,1.6*s,4,dark,[Math.cos(a)*1.4*s,Math.sin(a)*1.4*s])}}
+  else if(t.k===6){for(let i=0;i<3;i++){const a=rot[i]*6.283,d=i?.55*s:0,bx=x+Math.cos(a)*d,bz=z+Math.sin(a)*d,by=hAt(bx,bz)-.1,f=1+i*.12;cone(bx,by,bz,(.75-i*.12)*s,(1.05-i*.15)*s,6,[lv[0]*f,lv[1]*f,lv[2]*f],3,rot[i]*3)}
+   if(t.berry)for(let i=0;i<4;i++){const a=rot[i%3]*9+i*1.7;cone(x+Math.cos(a)*.42*s,y+.5*s+(i%2)*.2,z+Math.sin(a)*.42*s,.07,.1,4,[.85,.12,.15],0,0)}}
   else{cyl(x,y,z,.22*s,.14*s,1.8*s,5,trunkC);cone(x,y+1.2*s,z,1.5*s,2.6*s,6,lv,5,rot[0]);cone(x,y+2.8*s,z,1.0*s,2.2*s,6,lv,7,rot[1])}}
  return g}
 function streamForest(px,pz,budget){const R1=340,R2=440;let built=0;

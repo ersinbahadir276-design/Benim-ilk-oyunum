@@ -85,7 +85,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-actio
 <div class="btn sh" id="bRage" style="right:calc(202px + var(--sr));bottom:calc(206px + var(--sb));width:54px;height:54px"><i>L1+R1</i>ÖFKE</div>
 <div class="btn" id="bSys" style="right:calc(112px + var(--sr));top:calc(8px + var(--st));width:50px;height:50px;border-radius:10px;background:rgba(40,90,190,.5);border-color:#9fd0ff">SİSTEM</div>
 <div id="win"><div id="winb"></div></div>
-<div id="intro"><div id="introb2"><div class="wt">KARA ZIRH</div><p class="sys">[Sistem] Yeni bir oyuncu algılandı.</p><p>Kael Varn, krallığın son şövalyesi. Bir kez öldü. Şimdi geri döndü.</p><p style="font-size:12px;opacity:.8">Sol yarı: yürü · sağ yarı: bak · SALDIR (bas/tut) · BLOK · KAÇIN · ZIPLA · YETENEK · İKSİR · HEDEF</p><button id="introb">UYAN</button></div></div>
+<div id="intro"><div id="introb2"><div class="wt">KARA ZIRH</div><p class="sys">[Sistem] Yeni bir oyuncu algılandı.</p><p>Kael Varn, sıradan bir maceracı. Krallık düştüğü gece o da öldü. Şimdi üç yıl önceye geri döndü.</p><p style="font-size:12px;opacity:.8">Sol yarı: yürü · sağ yarı: bak · SALDIR (bas/tut) · BLOK · KAÇIN · ZIPLA · YETENEK · İKSİR · HEDEF</p><button id="introb">UYAN</button></div></div>
 <div id="load">Yükleniyor…</div>
 <script>
 (function(){
@@ -298,8 +298,10 @@ const campH=CAMPS.map(c=>HILL(c[0],c[1])*.6);
 function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<420){const ridge=Math.abs(Math.sin(x*.021+Math.sin(z*.017)*1.6))*Math.cos(z*.019+.4);h+=72*sst(420,95,dm)+ridge*9*sst(420,160,dm)*sst(60,140,dm);if(dm<120)h=lp(h,LAIR_Y,sst(120,62,dm))}
  const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+70)h=lp(h,-6.4+Math.sin(x*.04)*.8,sst(LAKE[2]+60,LAKE[2]-25,dl));
- const dr=riverD(x,z);if(dr<40)h=Math.min(h,lp(-5,h,sst(6,30,dr)));
+ if(dl>=LAKE[2]+42&&dl<LAKE[2]+170)h=Math.max(h,lp(WATER_L+1.4,-40,sst(LAKE[2]+90,LAKE[2]+170,dl)));
+ const dr=riverD(x,z);if(dr<40)h=Math.min(h,lp(-5,h,sst(6,30,dr)));if(dr>=22&&dr<110&&dl>LAKE[2]+40)h=Math.max(h,lp(WATER_L+1.2,-40,sst(60,110,dr)));
  const ds=Math.hypot(x-SWAMP[0],z-SWAMP[1]);if(ds<SWAMP[2]+60)h=lp(h,-1.15+1.15*Math.sin(x*.05+Math.sin(z*.04)*2)*Math.cos(z*.06)+.45*Math.sin(x*.17)*Math.cos(z*.13),sst(SWAMP[2]+50,SWAMP[2]-80,ds));
+ if(ds>=SWAMP[2]+22&&ds<SWAMP[2]+150)h=Math.max(h,lp(WATER_S+1.0,-40,sst(SWAMP[2]+80,SWAMP[2]+150,ds)));
  CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<60)h=lp(h,campH[i],sst(58,30,d))});
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
 function zoneAt(x,z){const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
@@ -311,7 +313,7 @@ const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',rive
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
  return fx+fz<1?a+(b-a)*fx+(c-a)*fz:d+(c-d)*(1-fx)+(b-d)*(1-fz)}
-const waterAt=(x,z)=>{const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+62||riverD(x,z)<32)return WATER_L;if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+40)return WATER_S;return -99};
+const waterAt=(x,z)=>{const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+50||riverD(x,z)<25)return WATER_L;if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+30)return WATER_S;return -99};
 const depthAt=(x,z)=>Math.max(0,waterAt(x,z)-hAt(x,z));
 // ---------- collision: trees/rocks (circles in a 12 m grid), buildings and walls (boxes in a 24 m grid)
 const trees=[],treeGrid=new Map(),TG=12,boxes=[],boxGrid=new Map(),BG=24,HOUSES=[],STALLS=[];
@@ -446,12 +448,13 @@ function buildWorld(){
   if(Math.abs(x)>WS-16||Math.abs(z)>WS-16)continue;const zn=zoneAt(x,z),h=hAt(x,z);let dens=0,k=0;
   if(zn==='dense'){dens=inner?.45:.92;k=kind<.75?2:1}else if(zn==='forest'){dens=inner?0:.55;k=kind<.6?0:1}else if(zn==='swamp'){dens=.1;k=3}else if(zn==='mountain'){dens=h<36?.22*sst(40,16,h):0;k=4}else if(zn==='ruins'){dens=.08;k=1}
   if(p>dens||!treeOK(x,z))continue;const lc=k===2?[.07,.2,.1]:k===4?[.1,.26,.16]:kind<.4?[.12,.33,.16]:[.2,.42,.17];addSpec({x,z,s:k===2?s*1.25:s,k,lv:[lc[0]*r2(.85,1.15),lc[1]*r2(.85,1.15),lc[2]*r2(.85,1.15)],rot:[R2(),R2(),R2()]})}
- for(const t of TREES)addTree(t.x,t.z,(t.k===1?.42:t.k===3?.3:.36)*t.s*(t.k===2?1.1:1),t.k===3?4:7);
+ sceneryPre();
+ for(const t of TREES)if(t.k!==6)addTree(t.x,t.z,(t.k===1?.42:t.k===3?.3:.36)*t.s*(t.k===2?1.1:1),t.k===3?4:7);
  // boulders on the mountain and in the ruins (collision + line of sight)
  const rk=G();for(let i=0;i<520;i++){const a=R2()*6.283,d=r2(70,430),x=MOUNT[0]+Math.cos(a)*d,z=MOUNT[1]+Math.sin(a)*d*.9,s=r2(.8,3.2);if(!treeOK(x,z)&&zoneAt(x,z)!=='lair')continue;rock(rk,x,hAt(x,z),z,s,R2);addTree(x,z,s*.85,s*1.2)}
  for(const c of RUINS)for(let i=0;i<10;i++){const a=R2()*6.283,d=r2(20,60),x=c[0]+Math.cos(a)*d,z=c[1]+Math.sin(a)*d,s=r2(.5,1.4);rock(rk,x,hAt(x,z),z,s,R2);addTree(x,z,s*.8,s)}
  rockObjs(rk);
- buildWater();for(const c of CAMPS)buildCamp(c[0],c[1],R2);for(const c of RUINS)buildRuin(c[0],c[1],R2);buildLair(R2);
+ buildWater();buildScenery();for(const c of CAMPS)buildCamp(c[0],c[1],R2);for(const c of RUINS)buildRuin(c[0],c[1],R2);buildLair(R2);
  makeGrass(21000,46);
 }
 function mkRng(seed){let a=seed>>>0;return()=>{a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
@@ -463,10 +466,10 @@ function rockObjs(g){// split into ~60k-vertex objects
  const per=Math.floor(60000/(1+8*2))*(1+8*2);let i=0;const nv=g.P.length/3;while(i<nv){const sub=G(),end=Math.min(nv,i+per);for(let k=i*3;k<end*3;k++){sub.P.push(g.P[k]);sub.N.push(g.N[k]);sub.C.push(g.C[k])}for(let k=i;k<end;k++){sub.U.push(0,0);sub.W.push(0)}
   for(let k=0;k<g.I.length;k+=3){const a=g.I[k];if(a>=i&&a<end)sub.I.push(g.I[k]-i,g.I[k+1]-i,g.I[k+2]-i)}const cx=sub.P.length?sub.P[0]:0,cz=sub.P.length?sub.P[2]:0;obj(geo(sub),{shade:.8,pos:[cx,0,cz],cull:900,out:.02,outCol:[.15,.15,.18]});i=end}}
 // ---------- water: lake, river ribbon, swamp pools
-function buildWater(){const lake=G(),seg=56;{const o=0;lake.P.push(LAKE[0],WATER_L,LAKE[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=LAKE[2]+70;lake.P.push(LAKE[0]+Math.cos(a)*r,WATER_L,LAKE[1]+Math.sin(a)*r);if(k)lake.I.push(o,o+k+1,o+k)}}
- const rv=G();let prev=null;for(let i=0;i<RIVER.length-1;i++){const a=RIVER[i],b=RIVER[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(L/10);for(let s=0;s<=n;s++){if(i>0&&s===0)continue;const t=s/n,x=lp(a[0],b[0],t),z=lp(a[1],b[1],t),ux=-(b[1]-a[1])/L,uz=(b[0]-a[0])/L,w=30;
+function buildWater(){const lake=G(),seg=56;{const o=0;lake.P.push(LAKE[0],WATER_L,LAKE[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=LAKE[2]+52;lake.P.push(LAKE[0]+Math.cos(a)*r,WATER_L,LAKE[1]+Math.sin(a)*r);if(k)lake.I.push(o,o+k+1,o+k)}}
+ const rv=G();let prev=null;for(let i=0;i<RIVER.length-1;i++){const a=RIVER[i],b=RIVER[i+1],L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(L/10);for(let s=0;s<=n;s++){if(i>0&&s===0)continue;const t=s/n,x=lp(a[0],b[0],t),z=lp(a[1],b[1],t),ux=-(b[1]-a[1])/L,uz=(b[0]-a[0])/L,w=26;
    const o=rv.P.length/3;rv.P.push(x+ux*w,WATER_L,z+uz*w,x-ux*w,WATER_L,z-uz*w);if(prev!==null)rv.I.push(prev,prev+1,o,prev+1,o+1,o);prev=o}}
- const sw=G();{sw.P.push(SWAMP[0],WATER_S,SWAMP[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=SWAMP[2]+40;sw.P.push(SWAMP[0]+Math.cos(a)*r,WATER_S,SWAMP[1]+Math.sin(a)*r);if(k)sw.I.push(0,k+1,k)}}
+ const sw=G();{sw.P.push(SWAMP[0],WATER_S,SWAMP[1]);for(let k=0;k<=seg;k++){const a=k/seg*2*PI,r=SWAMP[2]+31;sw.P.push(SWAMP[0]+Math.cos(a)*r,WATER_S,SWAMP[1]+Math.sin(a)*r);if(k)sw.I.push(0,k+1,k)}}
  for(const[g,c,al]of[[lake,[.18,.4,.6],.66],[rv,[.2,.44,.62],.66],[sw,[.1,.16,.15],.8]]){const nv=g.P.length/3;for(let i=0;i<nv;i++){g.N.push(0,1,0);g.C.push(1,1,1);g.U.push(0,0);g.W.push(0)}const o=obj(geo(g),{unlit:1,blend:1,noOff:1,col:c,shade:1,order:1,pos:[g.P[0],0,g.P[2]],cull:1400});o.alpha=al;WATERS.push(o)}
  // reeds and swamp lily pads (static, wind sway)
  const rd=G(),R=mkRng(77);for(let i=0;i<900;i++){const a=R()*6.283,d=Math.sqrt(R())*(SWAMP[2]+20),x=SWAMP[0]+Math.cos(a)*d,z=SWAMP[1]+Math.sin(a)*d,h=hAt(x,z);if(Math.abs(h-WATER_S)>.9)continue;const o=rd.P.length/3,hh=1.2+R()*1.3,c=[.36+R()*.1,.42+R()*.08,.2];
@@ -513,6 +516,8 @@ function treeChunkGeo(list){const g=G(),trunkC=[.36,.25,.16];
   else if(t.k===1){cyl(x,y,z,.36*s,.26*s,3.2*s,6,trunkC);cone(x,y+2.6*s,z,2.9*s,2.6*s,8,lv,5,rot[0]);cone(x,y+3.9*s,z,2.5*s,2.9*s,8,[lv[0]*1.1,lv[1]*1.1,lv[2]*1.1],8,rot[1])}
   else if(t.k===2){cyl(x,y,z,.42*s,.26*s,4*s,6,[.22,.17,.12]);for(let i=0;i<4;i++)cone(x,y+(2+i*1.7)*s,z,(2.8-i*.5)*s,3.2*s,8,[lv[0]*(1+i*.08),lv[1]*(1+i*.08),lv[2]*(1+i*.08)],5+i*2,rot[i%3]+i)}
   else if(t.k===3){const dark=[.24,.21,.17],l=[Math.cos(rot[0]*6)*.6*s,Math.sin(rot[0]*6)*.6*s];cyl(x,y,z,.32*s,.12*s,4.4*s,5,dark,l);for(let i=0;i<3;i++){const a=rot[i%3]*6.28+i*2.1,bx=x+l[0]*.6,bz=z+l[1]*.6,by=y+(2.4+i*.7)*s;cyl(bx,by,bz,.1*s,.03*s,1.6*s,4,dark,[Math.cos(a)*1.4*s,Math.sin(a)*1.4*s])}}
+  else if(t.k===6){for(let i=0;i<3;i++){const a=rot[i]*6.283,d=i?.55*s:0,bx=x+Math.cos(a)*d,bz=z+Math.sin(a)*d,by=hAt(bx,bz)-.1,f=1+i*.12;cone(bx,by,bz,(.75-i*.12)*s,(1.05-i*.15)*s,6,[lv[0]*f,lv[1]*f,lv[2]*f],3,rot[i]*3)}
+   if(t.berry)for(let i=0;i<4;i++){const a=rot[i%3]*9+i*1.7;cone(x+Math.cos(a)*.42*s,y+.5*s+(i%2)*.2,z+Math.sin(a)*.42*s,.07,.1,4,[.85,.12,.15],0,0)}}
   else{cyl(x,y,z,.22*s,.14*s,1.8*s,5,trunkC);cone(x,y+1.2*s,z,1.5*s,2.6*s,6,lv,5,rot[0]);cone(x,y+2.8*s,z,1.0*s,2.2*s,6,lv,7,rot[1])}}
  return g}
 function streamForest(px,pz,budget){const R1=340,R2=440;let built=0;
@@ -525,6 +530,63 @@ function streamForest(px,pz,budget){const R1=340,R2=440;let built=0;
 function buildKnight(TX){const bin=atob(KNB),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);const buf=u8.buffer,M=mtrs([10,.9,50],[0,-PI/2,0]);
  for(const gr of KND.groups){const g={P:new Float32Array(buf,gr.P[0],gr.P[1]),N:new Float32Array(buf,gr.N[0],gr.N[1]),U:new Float32Array(buf,gr.U[0],gr.U[1]),I:new Uint16Array(buf,gr.I[0],gr.I[1]),C:new Float32Array(gr.nv*3).fill(1),W:new Float32Array(gr.nv)};
   obj(geo(g),{M,tex:TX['k_'+gr.name],pos:[10,0,50],cull:140,shade:.9})}}
+// ---- 21-scenery.js
+// ===================== scenery: distant snowy mountains, scattered rocks and bushes, the waterfall, farms and a windmill =====================
+// Everything is real 3D geometry. The far mountain ring is a backdrop that travels with the camera (it is so far away
+// that it never gets closer); rocks, bushes, fields, fences and the mill are walk-around world objects.
+const FIELDS=[[150,14,236,64,0],[150,-64,236,-14,1],[-236,14,-150,64,1],[-236,-64,-150,-14,0],[16,150,66,226,1],[-66,150,-16,226,0]];
+const inField=(x,z,m=4)=>FIELDS.some(f=>x>f[0]-m&&x<f[2]+m&&z>f[1]-m&&z<f[3]+m);
+const MILL=[262,96];let MTN=null,MILLOB=null,FALLS=null;
+// runs before tree collision is registered: clear the farmland, sow bushes
+function sceneryPre(){const R=mkRng(90210);
+ for(let i=TREES.length-1;i>=0;i--){const t=TREES[i];if(inField(t.x,t.z,6)||Math.hypot(t.x-MILL[0],t.z-MILL[1])<24){TREES.splice(i,1);const a=TCH.get(tchKey(t.x,t.z));if(a){const j=a.indexOf(t);if(j>=0)a.splice(j,1)}}}
+ for(let i=0;i<5200;i++){const x=(R()-.5)*2*(WS-30),z=(R()-.5)*2*(WS-30),zn=zoneAt(x,z);if(zn==='kingdom'||zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='swamp')continue;if(depthAt(x,z)>0||inField(x,z,3))continue;if(Math.abs(x)<5||Math.abs(z)<5)continue;
+  const dry=zn==='mountain'||zn==='ruins',g=dry?[.3,.34,.2]:zn==='dense'?[.1,.26,.13]:[.2,.42,.16],f=.85+R()*.3;addSpec({x,z,s:.7+R()*.8,k:6,lv:[g[0]*f,g[1]*f,g[2]*f],rot:[R(),R(),R()],berry:R()<.12})}}
+function buildScenery(){const R=mkRng(31337),r=(a,b)=>a+(b-a)*R();
+ // ---------- rocks everywhere (more along the river, in the old forest and on high ground); they block movement and sight
+ const RC=new Map();for(let i=0;i<1500;i++){let x=(R()-.5)*2*(WS-40),z=(R()-.5)*2*(WS-40);const zn=zoneAt(x,z);if(zn==='kingdom'||zn==='lake'||zn==='camp'||zn==='lair'||zn==='swamp'||zn==='mountain')continue;if(depthAt(x,z)>0||inField(x,z,5)||Math.abs(x)<6||Math.abs(z)<6)continue;
+  const big=R()<.12,s=big?r(1.8,3.6):r(.35,1.2),k=Math.floor((x+WS)/400)*10+Math.floor((z+WS)/400);let g=RC.get(k);if(!g)RC.set(k,g=G());rock(g,x,hAt(x,z)-.1,z,s,R);if(s>.7)addTree(x,z,s*.8,s*1.1);
+  if(big)for(let j=0;j<3;j++){const a=R()*6.28,d=s*r(.9,1.5),s2=r(.4,1);rock(g,x+Math.cos(a)*d,hAt(x+Math.cos(a)*d,z+Math.sin(a)*d)-.1,z+Math.sin(a)*d,s2,R)}}
+ for(const[k,g]of RC){if(!g.P.length)continue;const cx=Math.floor(k/10)*400-WS+200,cz=(k%10)*400-WS+200;obj(geo(g),{shade:.8,pos:[cx,0,cz],cull:560})}
+ // ---------- farmland: striped fields that follow the ground, fences, haystacks
+ const fg=G(),H=(x,z)=>hAt(x,z)+.07,wood=[.42,.3,.18],hay=[.78,.66,.3];
+ for(const[x0,z0,x1,z1,kind]of FIELDS){const alongX=(x1-x0)>(z1-z0),A=kind?[.62,.52,.2]:[.3,.46,.18],B=kind?[.5,.4,.16]:[.36,.27,.16];
+  for(let x=x0;x<x1;x+=2)for(let z=z0;z<z1;z+=2){const row=Math.floor((alongX?z-z0:x-x0)/2)%2,c=row?A:B,q=(a,b)=>[a,H(a,b),b];quad(fg,q(x,z+2),q(x+2,z+2),q(x+2,z),q(x,z),c)}
+  const post=(x,z)=>{const y=hAt(x,z);box(fg,x-.07,y,z-.07,x+.07,y+1.05,z+.07,wood)},rail=(xa,za,xb,zb)=>{for(const h of[.45,.85]){const ya=hAt(xa,za)+h,yb=hAt(xb,zb)+h,dx=xb-xa,dz=zb-za,l=Math.hypot(dx,dz),nx=-dz/l*.04,nz=dx/l*.04;
+    quad(fg,[xa+nx,ya-.05,za+nz],[xb+nx,yb-.05,zb+nz],[xb+nx,yb+.05,zb+nz],[xa+nx,ya+.05,za+nz],wood);quad(fg,[xb-nx,yb-.05,zb-nz],[xa-nx,ya-.05,za-nz],[xa-nx,ya+.05,za-nz],[xb-nx,yb+.05,zb-nz],wood)}};
+  const gate=alongX?[(x0+x1)/2,Math.abs(z0)<Math.abs(z1)?z0:z1]:[Math.abs(x0)<Math.abs(x1)?x0:x1,(z0+z1)/2];
+  const side=(xa,za,xb,zb)=>{const n=Math.round(Math.hypot(xb-xa,zb-za)/4);for(let i=0;i<n;i++){const ax=lp(xa,xb,i/n),az=lp(za,zb,i/n),bx=lp(xa,xb,(i+1)/n),bz=lp(za,zb,(i+1)/n);post(ax,az);if(Math.hypot((ax+bx)/2-gate[0],(az+bz)/2-gate[1])<3)continue;rail(ax,az,bx,bz)}post(xb,zb)};
+  side(x0,z0,x1,z0);side(x1,z0,x1,z1);side(x1,z1,x0,z1);side(x0,z1,x0,z0);addBox(x0-.2,z0-.2,x1+.2,z0+.2,1.1);addBox(x0-.2,z1-.2,x1+.2,z1+.2,1.1);addBox(x0-.2,z0,x0+.2,z1,1.1);addBox(x1-.2,z0,x1+.2,z1,1.1);
+  for(let i=0;i<3;i++){const hx=r(x0+5,x1-5),hz=r(z0+5,z1-5),hy=hAt(hx,hz),n=9;for(let k=0;k<n;k++){const a0=k/n*6.283,a1=(k+1)/n*6.283,p=(a,rr2,y)=>[hx+Math.cos(a)*rr2,hy+y,hz+Math.sin(a)*rr2];
+    quad(fg,p(a1,1.1,0),p(a0,1.1,0),p(a0,.95,1.1),p(a1,.95,1.1),hay);tri(fg,p(a0,.95,1.1),p(a1,.95,1.1),[hx,hy+1.9,hz],[hay[0]*1.1,hay[1]*1.1,hay[2]*1.1])}addTree(hx,hz,1.1,1.8)}}
+ for(let i=0;i<fg.N.length;i+=3)if(fg.N[i+1]>.9){fg.N[i]=0;fg.N[i+1]=1;fg.N[i+2]=0}
+ obj(geo(fg),{shade:.5,pos:[0,0,0],cull:700});
+ // ---------- windmill: stone tower, timber cap, four turning sails
+ {const[mx,mz]=MILL,my=hAt(mx,mz),g=G(),n=10,stone=[.62,.6,.56],roof=[.36,.2,.14];
+  for(let k=0;k<n;k++){const a0=k/n*6.283,a1=(k+1)/n*6.283,p=(a,rr2,y)=>[mx+Math.cos(a)*rr2,my+y,mz+Math.sin(a)*rr2],f=.9+.1*Math.sin(k*2.3);quad(g,p(a1,3.2,0),p(a0,3.2,0),p(a0,2.2,9),p(a1,2.2,9),[stone[0]*f,stone[1]*f,stone[2]*f]);tri(g,p(a0,2.6,9),p(a1,2.6,9),[mx,my+12,mz],roof)}
+  box(g,mx-.6,my,mz+3.0,mx+.6,my+2.1,mz+3.3,[.3,.2,.12]);obj(geo(g),{shade:.8,pos:[mx,0,mz],cull:700,out:.03,outCol:[.1,.08,.07]});addTree(mx,mz,3.4,10);
+  const s=G(),wd=[.5,.36,.2],cl2=[.86,.8,.66];for(let k=0;k<4;k++){const a=k*PI/2,c=Math.cos(a),sn=Math.sin(a),P2=(u,v)=>[u*c-v*sn,u*sn+v*c,0];
+   quad(s,P2(-.12,.4),P2(.12,.4),P2(.12,7),P2(-.12,7),wd);quad(s,P2(.12,1.6),P2(1.5,1.6),P2(1.5,6.8),P2(.12,6.8),cl2);quad(s,P2(.12,7),P2(.12,.4),P2(-.12,.4),P2(-.12,7),wd);quad(s,P2(.12,6.8),P2(1.5,6.8),P2(1.5,1.6),P2(.12,1.6),cl2)}
+  MILLOB=obj(geo(s),{shade:.7,pos:[mx,0,mz],cull:700,ds:1});MILLOB.at=[mx,my+9.2,mz+2.75]}
+ // ---------- the waterfall at the head of the river: a rock wall, falling water, mist
+ {const a=RIVER[0],b=RIVER[1],dl=Math.hypot(a[0]-b[0],a[1]-b[1]),ux=(a[0]-b[0])/dl,uz=(a[1]-b[1])/dl,px=-uz,pz=ux,cx=a[0]+ux*10,cz=a[1]+uz*10,top=WATER_L+19,g=G();
+  for(let i=0;i<60;i++){const t=(i/59-.5)*2,row=i%4,w=t*34,back=5+Math.abs(t)*12+row*4,x=cx+px*w+ux*back,z=cz+pz*w+uz*back,s=r(6,9.5)-row*.6;rock(g,x,WATER_L-3+row*5.2,z,s,R);if(row===0)addTree(x,z,s*.8,20)}
+  obj(geo(g),{shade:.8,pos:[cx,0,cz],cull:700});
+  const w=G(),W=5,seg=10;for(let j=0;j<seg;j++){const y0=lp(top,WATER_L,j/seg),y1=lp(top,WATER_L,(j+1)/seg),o0=3+Math.pow(j/seg,2)*4.5,o1=3+Math.pow((j+1)/seg,2)*4.5,P3=(s2,y,o)=>[cx+px*s2-ux*o+ux*9,y,cz+pz*s2-uz*o+uz*9];
+   for(let k=-2;k<2;k++){const f=.84+.16*(k&1)-.05*(j%2),v0=w.P.length/3;quad(w,P3(k*W/2,y0,o0),P3((k+1)*W/2,y0,o0),P3((k+1)*W/2,y1,o1),P3(k*W/2,y1,o1),[.78*f,.9*f,1*f]);for(let q=v0;q<v0+4;q++)w.W[q]=6+((q+j)%3)*4}}
+  FALLS=obj(geo(w),{unlit:1,blend:1,noOff:1,shade:.5,pos:[cx,0,cz],cull:700,ds:1,col:[1,1,1]});FALLS.alpha=.82;FALLS.at=[cx-ux*-1,WATER_L,cz-uz*-1,ux,uz]}
+ // ---------- far mountains: two jagged rings with snow caps
+ {const g=G(),sun=vnorm([.5,.7,.45]),peak=(ang,rad,hh,br,seed)=>{const RR=mkRng(seed),n=9,cx=Math.cos(ang)*rad,cz=Math.sin(ang)*rad,rings=[[1,0],[.62,.34],[.3,.68]],V=[];
+    for(const[rf,hf]of rings){const row=[];for(let k=0;k<n;k++){const a=k/n*6.283,jr=br*rf*(.75+RR()*.5);row.push([cx+Math.cos(a)*jr,hh*hf*(.85+RR()*.3)-14,cz+Math.sin(a)*jr])}V.push(row)}const apex=[cx+(RR()-.5)*br*.2,hh-14,cz+(RR()-.5)*br*.2];
+    const col=(p,nr)=>{const t=(p[1]+14)/hh,snow=sst(.5,.62,t+(RR()-.5)*.1),lit=.62+.38*Math.max(0,vdot(nr,sun)),rk=[.33+.1*t,.37+.08*t,.45+.06*t];return[lp(rk[0],.94,snow)*lit,lp(rk[1],.96,snow)*lit,lp(rk[2],1,snow)*lit]};
+    const T=(a,b,c)=>{const nr=vnorm(vcross(vsub(b,a),vsub(c,a))),o=g.P.length/3;if(nr[1]<0){nr[0]=-nr[0];nr[1]=-nr[1];nr[2]=-nr[2]}for(const p of[a,b,c]){g.P.push(p[0],p[1],p[2]);g.N.push(nr[0],nr[1],nr[2]);const cc=col(p,nr);g.C.push(cc[0],cc[1],cc[2]);g.U.push(0,0);g.W.push(0)}g.I.push(o,o+1,o+2)};
+    for(let j=0;j<2;j++)for(let k=0;k<n;k++){const k1=(k+1)%n;T(V[j][k],V[j][k1],V[j+1][k1]);T(V[j][k],V[j+1][k1],V[j+1][k])}for(let k=0;k<n;k++)T(V[2][k],V[2][(k+1)%n],apex)};
+  for(let i=0;i<22;i++)peak(i/22*6.283+.1,590,150+((i*37)%5)*26+(i%3)*18,150,1000+i);for(let i=0;i<26;i++)peak(i/26*6.283,500,70+((i*53)%7)*13,105,2000+i);
+  MTN=obj(geo(g),{unlit:1,shade:.42,pos:[0,0,0],cull:0,ds:1,order:-5})}}
+// per frame: mountains follow the camera, the mill turns, the waterfall throws mist
+function updateScenery(time,dt,env,cam){if(MTN){MTN.M=mtrs([cam[0],-6,cam[2]],[0,0,0]);MTN.col=[env.sun[0],env.sun[1],env.sun[2]];MTN.pos=[cam[0],0,cam[2]]}
+ if(MILLOB){const a=MILLOB.at;MILLOB.M=mtrs(a,[0,0,time*.5])}
+ if(FALLS&&dt>0&&Math.hypot(P.x-FALLS.at[0],P.z-FALLS.at[2])<160&&Math.random()<dt*24){const a=FALLS.at;spawnSparks(a[0]+(Math.random()-.5)*6,a[1]+.4,a[2]+(Math.random()-.5)*6,2,[.85,.93,1],2.2)}}
 // ---- 25-perception.js
 // ===================== perception: every creature and NPC only sees in front of its eyes =====================
 // Cheap to expensive: distance, then the view cone (from the HEAD direction), then line of sight
@@ -768,7 +830,7 @@ function mkWolf(x,z,o={}){const w={x,z,y:hAt(x,z),yaw:o.yaw===undefined?rnd()*6.
 function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                                         // a lone wolf with its back to the spawn
  mkWolf(4,250);mkWolf(13,244);                                                                             // a pair on the way to the kingdom
  for(let p=0;p<12;p++){let cx,cz,r,ok;do{cx=rr(-640,640);cz=rr(-640,640);r=Math.hypot(cx,cz);ok=r>225&&r<655&&Math.hypot(cx-SPAWN[0],cz-SPAWN[2])>75}while(!ok);
-  const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);mkWolf(x,z,{alpha:i===0&&p%4===0})}}
+  const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);if(depthAt(x,z)>0||waterAt(x,z)>-50&&hAt(x,z)<waterAt(x,z)+.6)continue;mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
 const hostileSt=w=>w.st==='howl'||w.st==='chase'||w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='circle'||w.st==='recover'||w.st==='hurt'||w.st==='evade';
@@ -2111,9 +2173,9 @@ const PANELS={
  prologue:()=>[
   {h:.62,st:{eye:[52,26,92],at:[0,10,0],env:RED,noHero:true,setup:()=>fires(true,[[-30,-34,9],[34,-30,8],[30,34,10],[-34,30,7],[0,0,12],[-14,40,6],[16,55,7]]),teardown:()=>fires(false)},nar:'Krallık düştü.',nar2:'Gökyüzü yanıyordu.'},
   {h:.8,st:{eye:[1.9,1.15,17.4],at:[0,1.25,12.7],fov:44,env:RED,hero:{x:0,z:14.6,yaw:PI,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=0;KING.z=12;KING.yaw=0;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
-   say:[{who:'Azgal',txt:'Kara Zırh... Sonuncusu sendin.',x:58,y:12}]},
+   nar:'Kael o gece surlardaki binlerce askerden biriydi.',nar2:'Şeytan Kraliçe ona bakmadı bile.'},
   {h:.7,st:{eye:[4.6,1.7,19.6],at:[2.2,1.45,17],fov:40,env:RED,noHero:true,setup:()=>{Object.assign(VEYRA,{x:2.2,z:17,y:hAt(2.2,17),yaw:PI*.85,forceShow:true,hidden:false,forcePose:{RsX:-1.6,ReX:-.4,LsX:-.3,hdP:-.05}});fires(true,[[-6,6,2.6],[7,5,2.2]])},teardown:()=>{VEYRA.forceShow=false;VEYRA.forcePose=null;fires(false);if(!SYS.veyraFate&&SHRINE){VEYRA.x=SHRINE.x;VEYRA.z=SHRINE.z;VEYRA.yaw=0}}},
-   nar:'Annesinin yanında boynuzlu bir kız. Kılıcı kor gibiydi.',say:[{who:'Kael',txt:'...Sen.',x:12,y:70}]},
+   nar:'Yangının içinde boynuzlu bir kız gördü. Kılıcı kor gibiydi. Sonra her şey karardı.',say:[{who:'Kael',txt:'Demek böyle bitiyor...',x:12,y:70}]},
   {h:.45,black:true,sys:['Ölüm algılandı.','Koşul sağlandı: «Pişmanlık»','Geri dönüş başlatılıyor...']},
   {h:.72,st:{eye:[SPAWN[0]+1.5,3.2,SPAWN[2]+2.4],at:[SPAWN[0],.5,SPAWN[2]],env:{fogC:[.8,.82,.78],sun:[1.1,1.05,.95],fog:[60,260]},hero:{x:SPAWN[0],z:SPAWN[2],yaw:PI,lie:1.45,pose:{LaZ:.5,RaZ:.6,hdX:-.2}}},
    nar:'Sabah. Orman.',say:[{who:'Kael',txt:'Üç yıl önce mi?.. Krallık hâlâ ayakta.',x:46,y:14}]},
@@ -2127,7 +2189,7 @@ const PANELS={
  cages:()=>[{h:.7,st:{eye:[CAGES[0].x+2.4,1.6,CAGES[0].z+2.4],at:[CAGES[0].x,1,CAGES[0].z],fov:42},say:[{who:'Köylü',txt:'Bataklıktaki tapınakta... zincirli bir iblis kız var. Boynuzları...',x:6,y:10},{who:'Kael',txt:'Boynuzları.',x:58,y:66}]}],
  princess:()=>[{h:.7,st:{eye:[SHRINE.x+.6,1.4,SHRINE.z+3.4],at:[SHRINE.x,.9,SHRINE.z],fov:40,env:DUSK,noHero:true},nar:'Zincirler. Kızıl saç. O gözler.',say:[{who:'Veyra',txt:'...Sen kimsin? Annem mi yolladı?',x:52,y:10}]},
   {h:.75,st:{eye:[SHRINE.x+3,2.2,SHRINE.z+4.5],at:[SHRINE.x,1.2,SHRINE.z+1],env:DUSK,hero:{x:SHRINE.x,z:SHRINE.z+2,yaw:PI,pose:{two:1,RaZ:-1.4,RaX:-1.0,Rel:.6,RaY:.2,chX:-.2}}},
-   whisper:'Bu o. Seni öldüren. Kes.',say:[{who:'Kael',txt:'İlk hayatımda... beni sen öldürdün.',x:6,y:70}],choice:true}],
+   whisper:'Bu o. Krallığı yakanların kızı. Kes.',say:[{who:'Kael',txt:'Krallık yanarken seni gördüm. Yangının ortasındaydın.',x:6,y:70}],choice:true}],
  dragon:()=>[{h:.65,st:{eye:[LAIR[0]+20,14,LAIR[1]+40],at:[LAIR[0],4,LAIR[1]-60],env:DUSK,noHero:true},nar:'Kül Kanat düştü. Kuzey geçidi açık.',sys:['Ana görev: Kül Kale (yakında)']}]};
 let mhTok=0;const MHQ=[];
 // one strip at a time: a strip that arrives while another is open waits its turn
@@ -2140,7 +2202,7 @@ function showManhwa(panels,done){const ov=$('manhwa');if(ov.style.display==='blo
    if(p.sys)h+='<div class="mh-sys">'+p.sys.map(t=>'<div>[Sistem] '+t+'</div>').join('')+'</div>';if(p.whisper)h+='<div class="mh-w">'+p.whisper+'</div>';h+='</div><div class="mh-gap"></div>'});
   const ch=panels.some(p=>p.choice);h+=ch?'<div class="mh-ch"><button id="mhFree">Zincirlerini kır</button><button id="mhKill">Kılıcını indir</button></div>':'<button class="mh-next">DEVAM</button>';
   ov.innerHTML=h+'<button class="mh-skip">'+(ch?'':'ATLA')+'</button>';ov.querySelector('.mh-skip').style.display=ch?'none':'block';ov.querySelector('.mh-skip').onclick=end;
-  if(ch){$('mhFree').onclick=()=>{ov.style.display='none';chooseFate(true);showManhwa([{h:.65,st:{eye:[SHRINE.x+2.5,1.6,SHRINE.z+2.2],at:[SHRINE.x,1,SHRINE.z],env:DUSK,setup:()=>{VEYRA.forcePose={LsX:-.3,RsX:-.4,hdP:-.1}},teardown:()=>{VEYRA.forcePose=null}},say:[{who:'Veyra',txt:'Neden?.. Ben seni...',x:50,y:8},{who:'Kael',txt:'Bu sefer başka türlü bitecek.',x:6,y:72}]}],()=>{note('[Görev] Kül Kanat: kuzeydeki ejderhayı yen.','gold');if(done)done()})};
+  if(ch){$('mhFree').onclick=()=>{ov.style.display='none';chooseFate(true);showManhwa([{h:.65,st:{eye:[SHRINE.x+2.5,1.6,SHRINE.z+2.2],at:[SHRINE.x,1,SHRINE.z],env:DUSK,setup:()=>{VEYRA.forcePose={LsX:-.3,RsX:-.4,hdP:-.1}},teardown:()=>{VEYRA.forcePose=null}},say:[{who:'Veyra',txt:'Neden?.. Ben bir iblisim.',x:50,y:8},{who:'Kael',txt:'Bu sefer başka türlü bitecek.',x:6,y:72}]}],()=>{note('[Görev] Kül Kanat: kuzeydeki ejderhayı yen.','gold');if(done)done()})};
    $('mhKill').onclick=()=>{ov.style.display='none';chooseFate(false);showManhwa([{h:.55,black:true,whisper:'Güzel.',sys:['Hırlayan güçlendi: Öfke daha hızlı dolar.']}],()=>{note('[Görev] Kül Kanat: kuzeydeki ejderhayı yen.','gold');if(done)done()})}}
   else ov.querySelector('.mh-next').onclick=end}}
 // ---- 59-arrows.js
@@ -2307,7 +2369,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  const dk=cl(Math.sin(GT.tod*2*PI)*1.7+.62,0,1),m3=(a,b,t)=>[lp(a[0],b[0],t),lp(a[1],b[1],t),lp(a[2],b[2],t)],dusk=1-Math.abs(dk-.5)*2;GT.night=dk<.35;
  const zn=zoneAt(P.x,P.z),swamp=zn==='swamp'?1:0,qf=[1,1,.85,.7][QUAL.QL];
  let fog=m3([.07,.09,.19],[.66,.8,.93],dk);fog=m3(fog,[.93,.62,.45],dusk*.35);fog=m3(fog,[.45,.5,.42],swamp*.45);
- const env={fogC:fog,sun:m3([.5,.56,.82],[1,1,1],dk),fog:[lp(35,60,dk)*(1-swamp*.4),lp(220,300,dk)*(1-swamp*.35)*qf],focus:[CAM.tx,CAM.ty,CAM.tz]};
+ const env={fogC:fog,sun:m3([.5,.56,.82],[1,1,1],dk),fog:[lp(35,60,dk)*(1-swamp*.4),lp(220,300,dk)*(1-swamp*.35)*qf],focus:[CAM.tx,CAM.ty,CAM.tz]};updateScenery(GT.time,dtReal,env,eye);
  const light=vnorm(vadd(vadd(vmul(L.r,-.45),vmul(L.u,.62)),vmul(L.f,-.62)));
  for(const o of pObjs){o.M=PM;o.flash=P.flash*.6;o.vis=true}if(P.inv>0&&P.st!=='dodge'&&P.st!=='getup'&&Math.floor(GT.time*14)%2===0)for(const o of pObjs)o.flash=.35;
  if(P.st==='charge'&&P.charge>=1)for(const o of pObjs)o.flash=.15+.1*Math.sin(GT.time*20);
