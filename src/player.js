@@ -79,6 +79,7 @@ export class Player {
     this.hp = Math.min(this.hpMax, this.hp + (this.alive && this.hurt < -6 ? dt * 1.2 : 0));
     this.hero.mixer.update(dt);
     const r = this.hero.root; r.position.set(this.x, this.y, this.z); r.rotation.y = this.yaw;
+    if (this.hero.springs) { r.updateMatrixWorld(true); this.hero.springs.update(dt, r.position); }
   }
   turn(want, dt, rate) { let d = (want - this.yaw) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; this.yaw += d * Math.min(1, dt * rate); }
   startAttack(i) {

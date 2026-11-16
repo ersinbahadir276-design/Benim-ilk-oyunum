@@ -24,6 +24,28 @@ window.runGameplayTests = async function () {
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
 
+  // 1b) saç/ceket fiziği (VRM yay kemikleri)
+  const SB = P.hero.springs; ok('yay kemikleri yüklendi (saç + ceket)', SB && SB.joints.length >= 20 && SB.joints.some((j) => j.j.bone.name.startsWith('HairJoint')) && SB.joints.some((j) => j.j.bone.name.includes('CoatSkirt')), SB ? SB.joints.length : 'yok');
+  { // koşup aniden durunca eteğin ucu geride kalır, sonra salınıp dinlenme durumuna döner; uzunluk korunur, NaN yok
+    const sk = SB.joints.find((j) => j.j.bone.name === 'J_Sec_L_CoatSkirtBack').j, hj = SB.joints.find((j) => j.j.bone.name.startsWith('HairJoint')).j;
+    const V = P.hero.root.position.constructor, tail = () => P.hero.root.worldToLocal(sk.curTail.clone()), hw = new V();
+    P.x = 0; P.z = 6; P.yaw = Math.PI; G.keys = {}; sim(2); const rest = tail();
+    G.keys.w = true; G.keys.run = true; sim(1.5); G.keys.w = false; G.keys.run = false;
+    let maxDev = 0; sim(0.5, () => { maxDev = Math.max(maxDev, tail().distanceTo(rest)); });
+    ok('ceket eteği koşu/durmada salınır', maxDev > 0.02, 'sapma=' + maxDev.toFixed(3));
+    sim(3); const back = tail().distanceTo(rest);
+    const len = sk.curTail.distanceTo(sk.bone.getWorldPosition(hw));
+    ok('ceket eteği dinlenmeye döner, boy korunur', back < 0.03 && Math.abs(len - sk.length) < 1e-3, 'kalan=' + back.toFixed(3) + ' boy=' + len.toFixed(3) + '/' + sk.length.toFixed(3));
+    ok('yay kemiklerinde NaN yok', SB.joints.every(({ j }) => Number.isFinite(j.curTail.x + j.curTail.y + j.curTail.z) && Number.isFinite(j.bone.quaternion.w)) && Number.isFinite(hj.curTail.y));
+    // saç ucu baş çarpıştırıcısının içine girmez
+    const headC = SB.colliderGroups.find((c) => c.obj.name === 'J_Bip_C_Head').spheres[0];
+    const inside = SB.joints.filter(({ j, settings }) => j.bone.name.startsWith('HairJoint') && j.curTail.distanceTo(headC.p) < headC.r + settings.hitRadius - 1e-3).length;
+    ok('saç uçları kafanın içine girmez', inside === 0, inside + ' uç içeride');
+    // ışınlanınca (yeniden doğma) saç uçmaz: uçlar kemik başına yakın kalır
+    P.x = 40; P.z = 40; sim(1 / 30); const far = Math.max(...SB.joints.map(({ j }) => j.curTail.distanceTo(j.bone.getWorldPosition(hw)) - j.length));
+    ok('ışınlanmada yay kemikleri sıfırlanır', far < 1e-3, far.toExponential(1)); P.x = 0; P.z = 6; sim(0.2);
+  }
+
   // 2) tavşan: çömelmeden kaçar, çömelince havuçla evcilleşir
   let a = find('rabbit'); put(a, 3); P.crouching = false; sim(0.5); ok('tavşan: ayakta yaklaşınca kaçar', a.state === 'flee', a.state);
   a = find('rabbit'); freeze(a); put(a, 1.2); P.crouching = false; ok('tavşan: çömelmeden evcilleşmez', a.tryTame() === false);
