@@ -10,7 +10,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud" hidden>
-  <div id="stats"><div class="bar hp"><i id="hp"></i><span>CAN</span></div><div class="bar st"><i id="st"></i><span>DAYANIKLILIK</span></div></div>
+  <div id="stats"><div class="bar hp"><i id="hp"></i><span>CAN</span></div><div class="bar st"><i id="st"></i><span>DAYANIKLILIK</span></div><div class="bar xp"><i id="xp"></i><span id="lvnum">Sv. 1</span></div></div>
   <div id="focus" hidden><b id="fname"></b><div class="bar hp small"><i id="fhp"></i></div><div id="fhint"></div></div>
   <div id="pets"><h4>Evcil Yoldaşlar <span id="petcount">0/5</span></h4><div id="petlist"></div></div>
   <div id="prompt" hidden></div><div id="hold" hidden><i></i></div>
@@ -37,8 +37,9 @@
       <p><b>E:</b> topla / besle / evcilleştir (bazı türlerde basılı tut) · <b>G:</b> seçili yiyeceği yem olarak bırak</p>
       <p><b>1–9:</b> eşya seç · <b>H:</b> seçili yiyeceği ye (can) · <b>T:</b> yoldaşlar bekle/takip et</p>
       <p>Her türün evcilleştirme yöntemi farklıdır: hayvana yaklaşınca üstte ipucu görünür. En fazla 5 yoldaş.</p>
+      <p><b>İlerleme:</b> Avlanmak, evcilleştirmek ve toplamak XP kazandırır; seviye atlayınca canın ve kılıç hasarın artar. Yoldaşlar da savaşarak seviye atlar. Oyun 20 sn'de bir ve duraklatınca otomatik kaydedilir.</p>
     </div>
-    <button id="start" hidden>Oyuna Başla</button>
+    <button id="start" hidden>Oyuna Başla</button> <button id="newgame" hidden>Yeni Oyun</button>
   </div>
 </div>
 <script type="module" src="src/main.js"></script>

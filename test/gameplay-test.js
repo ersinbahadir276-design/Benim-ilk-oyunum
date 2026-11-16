@@ -78,5 +78,30 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  // 21) ilerleme: XP, seviye, hasar çarpanı
+  const M = await import(new URL('src/progress.js', location.href).href); const PR = G.progress;
+  release(); PR.level = 1; PR.xp = 0; P.hpMax = 100; P.hp = 100;
+  a = find('wolf'); put(a, 3); a.damage(999, P); ok('ilerleme: öldürme XP verir', PR.xp === M.killXp(a.spec), PR.xp);
+  PR.gain(M.xpToNext(1) + M.xpToNext(2)); ok('ilerleme: seviye atlama canı artırır', PR.level === 3 && P.hpMax === 124 && P.hp === 124, `lv=${PR.level} hpMax=${P.hpMax}`);
+  a = find('bear'); freeze(a); put(a, 1.5); P.yaw = Math.atan2(a.x - P.x, a.z - P.z); a.hp = a.hpMax; P.combo = 0; P.swing(); ok('ilerleme: kılıç hasarı seviyeyle artar', Math.abs(a.hpMax - a.hp - 18 * 1.16) < 0.01, (a.hpMax - a.hp).toFixed(2)); a.hp = a.hpMax; a.target = null;
+  const r0 = G.inv.count('berry'); const x0 = PR.xp; const n2 = G.world.nodes.find((x) => x.type === 'berry' && x.ready); P.x = n2.x + 0.8; P.z = n2.z; P.state = 'move'; sim(0.1); G.edge.interact = true; sim(0.2); ok('ilerleme: toplama XP verir', G.inv.count('berry') > r0 && PR.xp === x0 + M.GATHER_XP, PR.xp - x0);
+  // 22) yoldaş seviyesi
+  calmAll(); a = find('wolf'); a.hp = a.hpMax; a.becomePet(); ok('evcilleştirme XP verir', PR.xp > x0 + M.GATHER_XP);
+  PR.petGain(a, M.petXpToNext(1) + M.petXpToNext(2) + 1); ok('yoldaş: seviye atlar, can/hasar artar', a.level === 3 && a.hpMax === Math.round(a.spec.hp * 1.2) && Math.abs(a.dmgMul - 1.16) < 1e-9, `lv=${a.level} hp=${a.hpMax}`);
+  const v = find('deer'); const px = a.xp; v.damage(999, a); ok('yoldaş: kendi öldürdüğünden XP alır', a.xp > px || a.level > 3, `${px}→${a.xp}`);
+  // 23) kayıt / yükleme
+  const pet2 = find('rabbit'); pet2.becomePet(); pet2.level = 4; M.applyPetLevel(pet2); pet2.stay = true;
+  G.inv.items = { flute: 1, meat: 7, honey: 2 }; const lvS = PR.level, xpS = PR.xp;
+  const data = JSON.parse(JSON.stringify(M.serialize(G)));
+  ok('kayıt: biçim geçerli', M.validSave(data) && data.pets.length === 2 && !M.validSave({ v: 2 }) && !M.validSave(null));
+  release(); PR.level = 1; PR.xp = 0; G.inv.items = { flute: 1 }; const nA = G.animals.length;
+  const okLoad = M.applySave(G, data, (k, x, z) => G.makePet(k, x, z));
+  const rw = G.pets.find((p) => p.kind === 'wolf'), rr = G.pets.find((p) => p.kind === 'rabbit');
+  ok('yükleme: seviye/XP/envanter geri gelir', okLoad && PR.level === lvS && PR.xp === xpS && G.inv.count('meat') === 7 && G.inv.count('honey') === 2 && P.hpMax === M.playerHpMax(lvS));
+  ok('yükleme: yoldaşlar seviyeleriyle geri gelir', G.pets.length === 2 && rw?.level === 3 && rr?.level === 4 && rr.stay && rr.hpMax === Math.round(rr.spec.hp * M.petHpMul(4)) && G.animals.length === nA + 2, `${rw?.level}/${rr?.level}`);
+  release(); ok('yoldaş serbest bırakılınca yabani istatistiğe döner', rr.hpMax === rr.spec.hp && rr.level === 1 && rr.dmgMul === 1);
+  const dg = G.animals.find((o) => o.kind === 'dragon'); const nB = G.animals.length; M.applySave(G, { ...data, pets: [{ kind: 'dragon', name: 'Ejderha', level: 2, xp: 0, hunger: 80, frac: 1 }] }, (k, x, z) => G.makePet(k, x, z));
+  ok('yükleme: ejderha tekil kalır', G.animals.length === nB && dg.tamed && G.pets[0] === dg); release();
+  ok('kayıt: localStorage yaz/oku', M.writeSave(G) && M.readSave()?.player.level === PR.level); M.clearSave(); ok('kayıt: sil', M.readSave() === null);
   G.running = real; return out;
 };
