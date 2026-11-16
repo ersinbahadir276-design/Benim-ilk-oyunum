@@ -45,6 +45,14 @@ GitHub Pages açılırsa (Settings → Pages → dal kökü) doğrudan internett
 
 Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oyuncunun vurduğu hedefleri algılayıp savaşır. Her yoldaşın canı ve açlığı vardır: açken zayıf vurur, açlık sıfırlanınca can kaybeder ve sonunda terk eder. Yanına gidip E ile beslenir (etçil: et/balık, otçul: havuç/böğürtlen/elma).
 
+## İlerleme ve kayıt
+
+- **XP kaynakları:** av öldürmek (türün canına göre), evcilleştirmek (bir türü ilk kez evcilleştirince +%50 bonus), kaynak toplamak.
+- **Oyuncu seviyesi (en fazla 30):** her seviye +10 can, +%6 saldırı gücü, +%3 dayanıklılık yenilenmesi; seviye atlayınca can dolar.
+- **Yoldaş seviyesi (en fazla 20):** yoldaş öldürdüğü avdan XP alır, yakındaki diğer yoldaşlar %35 pay alır. Her seviye +%8 can, +%7 saldırı.
+- **Tür kataloğu:** evcilleştirilen farklı türler kaydedilir.
+- **Kayıt:** 20 saniyede bir, duraklatınca ve sekme kapanınca tarayıcıya (localStorage) otomatik kaydedilir: seviye/XP, can, konum, envanter, yoldaşlar (ad, seviye, açlık, can). Açılışta “Devam Et — Seviye N” görünür; “Yeni Oyun” kaydı siler. `?fresh` kayıtsız oynatır.
+
 ## Modeller ve animasyonlar — neyin ne olduğu
 
 | Varlık | Kaynak | İskelet / animasyon |
@@ -59,18 +67,18 @@ Evcil yoldaşlar (en fazla 5) oyuncuyu takip eder, oyuncuya saldıranları ve oy
 - Gönderilen arşivde **yalnızca ejderha** vardı. Diğer 12 tür el yapımı sanatçı modeli değil, kodla üretilmiş düşük poligonlu modellerdir; görsel kaliteleri ejderha ve kahramanın altındadır. Bu türler için GLB gönderilirse aynı `GLBCreature` sınıfıyla (ejderha/tilki gibi) bağlanır.
 - Ejderhanın `fly2` klibi sabit bir sinematik uçuş yolu içerdiği için oyunda kullanılmıyor; ejderha yerde yürür ve savaşır. Özgün 46 MB dosya, oyunda kullanılmayan 21 klip çıkarılarak 11 MB'a indirildi (`tools/build-assets.mjs`); ağ ve dokulara dokunulmadı, yalnızca malzeme tanımı three.js'in okuyabildiği PBR biçimine çevrildi.
 - Prosedürel hayvanlarda ayak–zemin kilidi (IK) yok; hızlı dönüşlerde ayaklar hafif kayabilir.
-- Kahramanın saç/giysi fiziği (VRM yay kemikleri) çalışmıyor; ata binme ve kayıt (save) sistemi henüz yok.
+- Kahramanın saç/giysi fiziği (VRM yay kemikleri) çalışmıyor; ata binme henüz yok.
 - Depoda daha önce bir oyun ya da kız karakter bulunmuyordu (depo boştu); oyun sıfırdan kuruldu, kaldırılacak bir karakter yoktu.
 
 ## Test
 
 - `test/model-viewer.html?m=wolf` — her modeli ve animasyonunu tek tek oynatır (`m=hero`, `dragon`, `fox`, `rabbit`, `deer`, `horse`, `bear`, `lion`, `tiger`, `crocodile`, `snake`, `eagle`, `shadowbeast`, `ogre`).
-- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 51 oynanış testi: oyuncu animasyon durumları, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama.
+- `node test/run-tests.mjs` (Playwright gerekir, sunucu açıkken) — 66 oynanış testi: oyuncu animasyon durumları, her türün evcilleştirme yöntemi, 5 yoldaş sınırı, takip, koruma/savaş, açlık, besleme, ölüm/yeniden doğma, ganimet, toplama, XP/seviye, yoldaş seviyesi, kayıt/yükleme.
 
 ## Geliştirme planı
 
 1. **Tamamlandı:** dünya ve bölgeler, erkek kahraman + animasyonlar, 14 tür, yapay zekâ, türe özgü evcilleştirme, yoldaş sistemi (takip/savaş/açlık/can), envanter ve toplama, dokunmatik kontroller, testler.
 2. **Sıradaki:** gönderilecek yeni GLB'lerle prosedürel türlerin değiştirilmesi, ejderha için uçuş, ata binme.
-3. **Sonra:** kayıt sistemi, görevler, gece/gündüz, ses.
+3. **Sonra:** görevler, gece/gündüz, ses. (İlerleme ve kayıt sistemi tamamlandı.)
 
 Lisanslar ve atıflar: [CREDITS.md](CREDITS.md)

@@ -1,6 +1,7 @@
 // Hayvan varlığı: yabani davranış (yapay zekâ), evcilleştirme adımları ve evcil yoldaş davranışı.
 import { makeCreature, SPECIES } from './creatures.js';
 import { height, floorY, waterDepth, HALF } from './world.js';
+import { petDmgMul, setPetLevel } from './progress.js';
 
 const TAU = Math.PI * 2;
 const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
@@ -24,6 +25,7 @@ export class Animal {
     this.target = null; this.dead = false; this.deadT = 0; this.tamed = false; this.trust = 0; this.hunger = 100;
     this.hurtT = 0; this.byPlayerT = 0; this.calmT = 0; this.cowerT = 0; this.atkT = 0; this.cool = 0; this.holdP = 0; this.fed = false;
     this.alt = this.spec.kind === 'bird' ? 12 + Math.random() * 6 : 0; this.altGoal = this.alt; this.wp = null; this.stay = false; this.flash = 0; this.petName = '';
+    this.level = 1; this.xp = 0;
     this.aggroR = { predator: this.spec.sense, territorial: kind === 'dragon' ? 13 : 3.2, ambush: this.spec.sense * 0.6 }[this.spec.temper] || 0;
     game.scene.add(this.c.root); this._place();
   }
@@ -57,10 +59,11 @@ export class Animal {
     if (from === this.g.player || from?.tamed) {
       const got = []; for (const [k, v] of Object.entries(this.spec.drops || {})) { this.g.inv.add(k, v); got.push(`${v} ${ITEMS[k].name}`); }
       if (got.length) this.g.msg(`Ganimet: ${got.join(', ')}`);
+      this.g.progress?.onKill(this, from);
     }
   }
   respawn() {
-    this.dead = false; this.hp = this.hpMax; this.x = this.home.x; this.z = this.home.z; this.trust = 0; this.fed = false; this.cowerT = 0; this.calmT = 0;
+    this.dead = false; setPetLevel(this, 1); this.hp = this.hpMax; this.x = this.home.x; this.z = this.home.z; this.trust = 0; this.fed = false; this.cowerT = 0; this.calmT = 0;
     this.alt = this.altGoal = this.spec.kind === 'bird' ? 14 : 0; this.set('idle', 1); this.c.reset(); this.c.root.visible = true;
   }
 
@@ -91,6 +94,15 @@ export class Animal {
     const no = g.petCounter[this.kind] = (g.petCounter[this.kind] || 0) + 1; this.petName = this.spec.name + (no > 1 ? ' ' + no : '');
     this.altGoal = this.spec.kind === 'bird' ? 4 : 0; g.pets.push(this); this.set('follow');
     g.msg(`✨ ${this.petName} evcilleştirildi! (${g.pets.length}/5)`); g.floatText('❤❤❤', this, '#ff6f9c');
+    g.progress?.onTame(this);
+  }
+  // kayıttan yoldaş geri yükleme (mesaj/XP vermeden)
+  restorePet(d) {
+    const g = this.g; setPetLevel(this, d.level, d.xp);
+    this.tamed = true; this.target = null; this.cowerT = 0; this.calmT = 0; this.stay = !!d.stay; this.trust = this.spec.tame?.steps || 1;
+    this.petName = String(d.name || this.spec.name).slice(0, 40); this.hunger = Math.min(100, Math.max(0, +d.hunger || 50));
+    this.hp = Math.min(this.hpMax, Math.max(1, +d.hp || this.hpMax)); this.alt = this.altGoal = this.spec.kind === 'bird' ? 4 : 0;
+    this.home = { x: this.x, z: this.z }; g.pets.push(this); this.set('follow'); this._place(); return this;
   }
   // E tuşu: bir evcilleştirme adımı dene. Başarılıysa true.
   tryTame() {
@@ -168,7 +180,7 @@ export class Animal {
     if (this.spec.kind === 'bird') this.altGoal = d < 9 ? 0.7 : 5;
     if (this.state === 'attack') {
       this.atkT += dt; this.face(tgt, dt);
-      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed && this.hunger < 25 ? 0.5 : 1), this); }
+      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed ? petDmgMul(this.level) * (this.hunger < 25 ? 0.5 : 1) : 1), this); }
       if (this.atkT >= this.c.attackTime) { this.cool = 0.5 + Math.random() * 0.5; this.set('chase'); }
       return 'attack';
     }

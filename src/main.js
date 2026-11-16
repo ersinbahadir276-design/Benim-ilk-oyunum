@@ -5,6 +5,8 @@ import { loadGLBCreatures, SPECIES } from './creatures.js';
 import { World, height, zone, rng, floorY, LAKE, PEAK, HALF } from './world.js';
 import { Animal, ITEMS, eats } from './animal.js';
 import { Player } from './player.js';
+import { Progression } from './progress.js';
+import { serialize, applySave, writeSave, readSave, clearSave } from './save.js';
 
 const $ = (id) => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
@@ -24,7 +26,8 @@ class Game {
     this.time = 0; this.animals = []; this.pets = []; this.baits = []; this.floats = []; this.petCounter = {};
     this.camYaw = 0; this.camPitch = 0.32; this.camDist = 6.5;
     this.keys = {}; this.edge = {}; this.touch = { mx: 0, mz: 0, run: false };
-    this.ui = { hurtFlash: () => { const h = $('hurt'); h.style.transition = 'none'; h.style.opacity = 0.7; requestAnimationFrame(() => { h.style.transition = 'opacity .5s'; h.style.opacity = 0; }); } };
+    this.saveT = 20;
+    this.ui = { levelUp: () => { const l = $('lvl'); l.classList.remove('pop'); void l.offsetWidth; l.classList.add('pop'); }, hurtFlash: () => { const h = $('hurt'); h.style.transition = 'none'; h.style.opacity = 0.7; requestAnimationFrame(() => { h.style.transition = 'opacity .5s'; h.style.opacity = 0; }); } };
   }
   async init() {
     const canvas = $('c');
@@ -41,16 +44,26 @@ class Game {
     step('Dünya kuruluyor…'); this.world = new World(scene);
     const hero = await loadHero(); step('Kahraman hazır…');
     await loadGLBCreatures('assets/models/', () => step('Yaratıklar yükleniyor…'));
-    this.inv = new Inventory(); this.player = new Player(this, hero);
+    this.inv = new Inventory(); this.progress = new Progression(this); this.player = new Player(this, hero);
     this.spawnAll(); this.bindInput(); this.buildHotbar();
+    // kayıt: test modunda ya da ?fresh ile yüklenmez/yazılmaz
+    this.persist = !Q.has('test') && !Q.has('fresh');
+    const saved = this.persist ? readSave() : null;
+    if (saved && applySave(this, saved)) { $('start').textContent = `Devam Et — Seviye ${this.progress.level}`; $('newgame').hidden = false; }
     $('loadtxt').textContent = 'Hazır!'; $('loadbar').parentElement.hidden = true; $('start').hidden = false;
     $('start').onclick = () => this.start(); $('helpbtn').onclick = () => this.pause();
+    $('newgame').onclick = () => { if (confirm('Kayıtlı ilerleme silinsin ve yeni oyun başlasın mı?')) { this.persist = false; clearSave(); location.reload(); } };
+    const flush = () => { if (this.persist && this.running) this.save(); };
+    addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
     if (Q.has('test')) this.start();
     this.last = performance.now(); r.setAnimationLoop(() => this.frame());
     window.GAME = this;
   }
   start() { $('overlay').style.display = 'none'; $('hud').hidden = false; this.running = true; if ('ontouchstart' in window || Q.has('touch')) { $('touch').hidden = false; $('log').style.bottom = '240px'; } this.msg('Kamptasın. Çevredeki hayvanlara yaklaş; üstte evcilleştirme ipucunu göreceksin.'); }
-  pause() { this.running = false; const o = $('overlay'); o.style.display = 'flex'; o.classList.add('pause'); $('loadtxt').textContent = 'Duraklatıldı'; $('start').textContent = 'Devam Et'; }
+  save() { if (!this.persist) return false; const ok = writeSave(this); if (ok) { const s = $('saved'); s.hidden = false; clearTimeout(this._svT); this._svT = setTimeout(() => { s.hidden = true; }, 1500); } return ok; }
+  serialize() { return serialize(this); }
+  applySave(d) { return applySave(this, d); }
+  pause() { if (this.running) this.save(); $('newgame').hidden = !this.persist; this.running = false; const o = $('overlay'); o.style.display = 'flex'; o.classList.add('pause'); $('loadtxt').textContent = 'Duraklatıldı'; $('start').textContent = 'Devam Et'; }
 
   spawnAll() {
     const R = rng(777), put = (kind, n, ok) => { let k = 0, tries = 0; while (k < n && tries++ < 5000) { const x = (R() - 0.5) * 2 * (HALF - 12), z = (R() - 0.5) * 2 * (HALF - 12), h = height(x, z); if (Math.hypot(x, z) < 16 || !ok(zone(x, z), h, x, z)) continue; this.animals.push(new Animal(this, kind, x, z)); k++; } };
@@ -64,6 +77,9 @@ class Game {
     // kampın yakınına birer tanışma hayvanı
     this.animals.push(new Animal(this, 'rabbit', 12, 14), new Animal(this, 'horse', -18, 20), new Animal(this, 'fox', 22, -14));
   }
+  addAnimal(kind, x, z) { const a = new Animal(this, kind, x, z); this.animals.push(a); return a; }
+  // hayvanı dünyadan tamamen kaldır (kayıttan yüklerken eski yoldaşlar için)
+  dropAnimal(a) { const i = this.pets.indexOf(a); if (i >= 0) this.pets.splice(i, 1); const j = this.animals.indexOf(a); if (j >= 0) this.animals.splice(j, 1); this.scene.remove(a.c.root); $('petlist').innerHTML = ''; }
 
   /* ---------------- girdi */
   bindInput() {
@@ -106,7 +122,7 @@ class Game {
       this.pets.forEach((p) => { const d = document.createElement('div'); d.className = 'pet'; d.innerHTML = '<div class="row"><b></b><span class="mood"></span><button title="Serbest bırak">Bırak</button></div><div class="bar hp"><i></i></div><div class="bar hunger"><i></i></div>'; d.querySelector('button').onclick = () => { this.msg(`${p.petName} serbest bırakıldı.`); this.removePet(p, false); }; list.appendChild(d); });
       if (!this.pets.length) list.innerHTML = '';
     }
-    this.pets.forEach((p, i) => { const d = list.children[i]; if (!d) return; d.querySelector('b').textContent = p.petName; d.querySelector('.mood').textContent = p.mood(); const b = d.querySelectorAll('.bar i'); b[0].style.transform = `scaleX(${Math.max(0, p.frac)})`; b[1].style.transform = `scaleX(${p.hunger / 100})`; });
+    this.pets.forEach((p, i) => { const d = list.children[i]; if (!d) return; d.querySelector('b').textContent = `${p.petName} · Sv ${p.level}`; d.querySelector('.mood').textContent = p.mood(); const b = d.querySelectorAll('.bar i'); b[0].style.transform = `scaleX(${Math.max(0, p.frac)})`; b[1].style.transform = `scaleX(${p.hunger / 100})`; });
   }
   removePet(p, dead) { const i = this.pets.indexOf(p); if (i >= 0) this.pets.splice(i, 1); p.tamed = false; p.trust = 0; p.fed = false; p.stay = false; p.home = { x: p.x, z: p.z }; p.calmT = 40; p.target = null; if (!dead) { p.altGoal = p.spec.kind === 'bird' ? 14 : 0; p.set('idle', 2); } $('petlist').innerHTML = ''; }
   removeBait(b) { const i = this.baits.indexOf(b); if (i >= 0) this.baits.splice(i, 1); this.scene.remove(b.mesh); }
@@ -135,7 +151,7 @@ class Game {
   }
   interact() {
     const P = this.player, n = this.near; if (!n || !P.alive || (P.state !== 'move')) return;
-    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.msg(`+${cnt} ${ITEMS[item].name}`); return; }
+    if (n.node) { const [item, cnt] = NODE_GIVE[n.node.type]; this.inv.add(item, cnt); n.node.ready = false; n.node.timer = 75; n.node.fruit.visible = false; P.interactAnim(n.node.type === 'carrot' || n.node.type === 'moonstone'); this.msg(`+${cnt} ${ITEMS[item].name}`); this.progress.onGather(); return; }
     const a = n.animal; P.yaw = Math.atan2(a.x - P.x, a.z - P.z);
     if (a.tamed) { a.feedPet(); P.interactAnim(false); } else if (a.tryTame()) P.interactAnim(false);
   }
@@ -161,6 +177,7 @@ class Game {
     this.world.update(dt, this.time);
     for (const b of this.baits) { b.t += dt; b.mesh.rotation.y += dt; } if (this.baits[0]?.t > 150) this.removeBait(this.baits[0]);
     this.edge = {};
+    this.saveT -= dt; if (this.saveT <= 0) { this.saveT = 20; this.save(); }
     this.updateHud(dt);
   }
   updateCamera(dt) {
@@ -174,6 +191,7 @@ class Game {
   updateHud(dt) {
     const P = this.player;
     $('hp').style.transform = `scaleX(${P.hp / P.hpMax})`; $('st').style.transform = `scaleX(${P.stamina / 100})`;
+    if (this.progress.dirty) { const pr = this.progress; pr.dirty = false; $('lvnum').textContent = pr.level; $('xp').style.transform = `scaleX(${pr.frac})`; $('xptxt').textContent = pr.level >= 30 ? 'EN YÜKSEK SEVİYE' : `XP ${Math.floor(pr.xp)}/${pr.need}`; }
     if (this.inv.dirty) this.buildHotbar();
     this.hudT = (this.hudT || 0) - dt;
     if (this.hudT <= 0) {
