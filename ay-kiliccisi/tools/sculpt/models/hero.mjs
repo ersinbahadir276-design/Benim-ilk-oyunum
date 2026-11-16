@@ -30,9 +30,20 @@ export default function hero(ALL) {
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  // gothic layering: raised pectoral plates, an overlapping plackart with an ogee top edge, and a crescent-moon boss (the Moon Swordsman's mark)
+  const pecs = symX(I(0.01, shell(ellipsoid([0.085, 1.525, 0.05], [0.115, 0.1, 0.16], rot.z(-0.25)), 0.006, 0.004), grow(cuirSolid, 0.007), zcut(0.08, -1), xcut(0.014, -1)));
+  C({ name: 'pecs', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.005, sdf: Sub(0.004, pecs, neckHole, armHoles) });
+  const ogee = { d: (x, y, z) => y - (1.43 + 0.075 * Math.max(0, 1 - Math.pow(Math.abs(x) / 0.17, 1.4))), bb: [-1, 0, -1, 1, 3, 1] };
+  const plack = I(0.005, grow(cuirSolid, 0.011), ogee, slab(1.3, 1.52), zcut(0.04, -1));
+  C({ name: 'plackart', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.004, sdf: plack });
+  C({ name: 'plackTrim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: I(0.003, grow(cuirSolid, 0.014), shell({ d: (x, y, z) => ogee.d(x, y, z), bb: ogee.bb }, 0.0055, -0.0065), slab(1.3, 1.52), zcut(0.05, -1)) });
+  const moon = Sub(0.002, cone([0, 1.5, 0.1], [0, 1.5, 0.3], 0.06, 0.06), cone([0.027, 1.514, 0.1], [0.027, 1.514, 0.3], 0.051, 0.051));
+  C({ name: 'moonBoss', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, grow(cuirSolid, 0.017), moon, zcut(0.1, -1)) });
+  C({ name: 'moonStar', mat: 'rivet', bone: 'UpperChest', rigid: true, k: 0, sdf: sphere([-0.016, 1.52, 0.205], 0.01) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
-    C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
+    C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.24 - i * 0.012, 0.008], [0.19 + i * 0.011, 0.23, 0.158 + i * 0.009]), slab(y1 - 0.056, y1)) });
+    C({ name: 'lameEdge' + i, mat: 'trim', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.003, sdf: I(0.003, shell(ellipsoid([0, 1.24 - i * 0.012, 0.008], [0.19 + i * 0.011, 0.23, 0.158 + i * 0.009]), 0.004, 0.002), slab(y1 - 0.058, y1 - 0.046)) }); }
   const beltE = ellipsoid([0, 1.13, 0.005], [0.212, 0.12, 0.172]);
   C({ name: 'belt', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: I(0.004, beltE, slab(1.103, 1.153)) });
   C({ name: 'buckle', mat: 'trim', bone: 'Hips', rigid: true, k: 0.003, sdf: Sub(0.003, box([0, 1.128, 0.178], [0.046, 0.034, 0.014], null, 0.008), box([0, 1.128, 0.19], [0.026, 0.015, 0.02], null, 0.004)) });
@@ -49,8 +60,8 @@ export default function hero(ALL) {
   const tufts = [];
   for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2, cx = Math.sin(a) * 0.2, cz = Math.cos(a) * 0.165 - 0.025, back = Math.cos(a) < 0.2;
     tufts.push(ellipsoid([cx, 1.695 + 0.012 * Math.sin(i * 2.7), cz], [0.07, 0.05, 0.07], rot.y(a)));
-    if (back || Math.abs(Math.sin(a)) > 0.7) { const o = [Math.sin(a) * 0.255, 1.66, Math.cos(a) * 0.21 - 0.03]; tufts.push(horn([o, v3.add(o, [Math.sin(a) * 0.04, -0.07, Math.cos(a) * 0.04]), v3.add(o, [Math.sin(a) * 0.05, -0.14 - (i % 3) * 0.02, Math.cos(a) * 0.06])], 0.034, 0.006)); } }
-  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.011 * fbm(x * 55, y * 12, z * 55, 3) + 0.005 * noise(x * 170, y * 25, z * 170), 0.018);
+    if (back || Math.abs(Math.sin(a)) > 0.7) { const o = [Math.sin(a) * 0.255, 1.66, Math.cos(a) * 0.21 - 0.03]; tufts.push(horn([o, v3.add(o, [Math.sin(a) * 0.035, -0.06, Math.cos(a) * 0.035]), v3.add(o, [Math.sin(a) * 0.045, -0.12 - (i % 3) * 0.018, Math.cos(a) * 0.05])], 0.04, 0.012)); } }
+  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.012 * fbm(x * 40, y * 6, z * 40, 3) + 0.004 * Math.abs(noise(x * 95, y * 9, z * 95)), 0.018);
   C({ name: 'fur', mat: 'fur', bone: 'UpperChest', tau: 0.012, k: 0.02, sdf: Sub(0.01, fur, cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.082, 0.078)) });
 
   // ------------------------------------------------------------ pauldrons
