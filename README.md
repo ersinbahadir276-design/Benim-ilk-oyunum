@@ -16,13 +16,28 @@ GitHub Pages açılırsa (Settings → Pages → dal kökü) doğrudan internett
 | Eylem | Tuş |
 | --- | --- |
 | Hareket / Koş | WASD / Shift |
-| Zıpla / Çömel / Takla (kaçınma) | Boşluk / C / Q |
-| Kılıç saldırısı (3'lü kombo) | Sol tık veya J |
+| Zıpla / Çömel | Boşluk / C |
+| Hafif saldırı (3'lü kombo) | Sol tık veya J |
+| Ağır saldırı (duruş kırar) | K |
+| Savun / savuştur (basılı tut) | Sağ tık veya L |
+| Kaçın (iki kez: takla) | Q |
+| İyileş (1 Kararlılık) | R |
 | Topla · besle · evcilleştir | E (at ve yılanda basılı tut) |
 | Seçili yiyeceği yem olarak bırak | G |
 | Eşya seç / seçili yiyeceği ye | 1–9 / H |
 | Yoldaşlar bekle ↔ takip et | T |
 | Kamera | Fareyi sürükle, tekerlek |
+
+## Dövüş (Ghost of Tsushima tarzı)
+
+- **Parlama:** Düşman saldırmadan önce başının üstünde parlar. **Mavi** = savunulabilir; vuruştan hemen önce (0,22 sn içinde) savunmaya basarsan **savuşturma** olur, düşman sendeler ve sonraki vuruşun ×1,6 güçlü **karşı saldırı** olur. **Kırmızı** = engellenemez, savunma işe yaramaz, kaçınmalısın. Kırmızı yalnızca ağır vuran türlerde (ayı, aslan, kaplan, timsah, Gölge Pençe, dev, ejderha) çıkar.
+- **Savunma:** Basılı tutulan savunma hasarı keser ama dayanıklılık harcar. Dayanıklılık biterse savunma kırılır ve kısa süre sendelersin.
+- **Kaçınma:** Kısa sıçrama, yönsüzse geriye. Vuruşa denk gelen son an kaçınması **kusursuz kaçınma** sayılır: zaman yavaşlar ve karşı saldırı açılır. İki kez basınca takla.
+- **Duruş:** Her düşmanın görünmez bir duruş ölçeği var. Ağır saldırı ve üçüncü kombo vuruşu onu doldurur; dolunca düşman sendeler ve ×1,4 hasar alır.
+- **Kararlılık:** Savuşturma, kusursuz kaçınma ve suikast doldurur (en çok 3). Bir tanesi 35 can iyileştirir; iyileşirken vurulursan kesilir.
+- **Suikast:** Çömelip seni fark etmemiş bir düşmanın arkasına sokul ve saldır. Tek hamlede öldürür; dev ve Gölge Pençe yalnızca yarı canını kaybeder. Ejderha suikaste açık değil.
+- **Vuruş hissi:** Vuruş duraksaması, kamera sarsıntısı, kıvılcım ve yavaş çekim. Ayarlardan sarsıntı azaltılabilir.
+- **Dokunmatik düzen:** Sağ başparmak için gamepad yüz düğmeleri gibi dizildi. Saldır en büyük ve en altta, Savun hemen üstünde (savuşturma için başparmak kısa yol alır), Kaçın solunda, Ağır sağında, Zıpla ve İyileş dış halkada. Koş, Çömel, Etkileş, Yem, Ye üstte küçük sırada.
 
 ## Türler ve evcilleştirme yöntemleri
 

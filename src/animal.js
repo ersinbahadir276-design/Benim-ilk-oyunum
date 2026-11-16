@@ -22,6 +22,7 @@ export class Animal {
     this.hpMax = this.spec.hp; this.hp = this.hpMax; this.radius = this.c.radius;
     this.state = 'idle'; this.stT = Math.random() * 3; this.anim = 'idle'; this.speed = 0;
     this.target = null; this.dead = false; this.deadT = 0; this.tamed = false; this.trust = 0; this.hunger = 100;
+    this.po = 0; this.poMax = Math.max(30, this.hpMax * 0.45); this.poT = 9; this.staggerT = 0; this.victimT = 0; this.wuT = 0; this.wuDur = 0; this.unblock = false;
     this.hurtT = 0; this.byPlayerT = 0; this.calmT = 0; this.cowerT = 0; this.atkT = 0; this.cool = 0; this.holdP = 0; this.fed = false;
     this.alt = this.spec.kind === 'bird' ? 12 + Math.random() * 6 : 0; this.altGoal = this.alt; this.wp = null; this.stay = false; this.flash = 0; this.petName = '';
     this.aggroR = { predator: this.spec.sense, territorial: kind === 'dragon' ? 13 : 3.2, ambush: this.spec.sense * 0.6 }[this.spec.temper] || 0;
@@ -33,13 +34,22 @@ export class Animal {
   set(state, t = 0) { this.state = state; this.stT = t; }
 
   /* ---------------- hasar / ölüm */
-  damage(n, from) {
+  // Duruş (posture): ağır vuruşlar ve savuşturmalar doldurur; dolunca düşman sendeler ve açık kalır.
+  stagger(t, why) {
+    this.staggerT = Math.max(this.staggerT, t); this.po = 0; this.cool = Math.max(this.cool, t * 0.6);
+    if (this.state === 'windup' || this.state === 'attack') this.set('chase');
+    if (why) this.g.floatText(why, this, '#ffd75e');
+  }
+  damage(n, from, opt = {}) {
     if (this.dead) return;
+    if (this.staggerT > 0 && !opt.assassin) n *= 1.4;
+    if (opt.posture && !this.tamed) { this.po += opt.posture; this.poT = 0; if (this.po >= this.poMax && this.staggerT <= 0) this.stagger(2.2, 'DURUŞ KIRILDI'); }
     this.hp -= n; this.hurtT = 6; this.flash = 0.18; this.holdP = 0;
     const fromPlayer = from === this.g.player; if (fromPlayer) this.byPlayerT = 8;
     this.g.floatText(`-${Math.round(n)}`, this, this.tamed ? '#ff8080' : '#ffe27a');
     if (this.hp <= 0) return this.die(from);
     if (this.tamed) { if (from && from !== this.g.player && !this.target) this.target = from; return; }
+    if (this.victimT > 0) return;
     const tm = this.spec.tame, t = this.spec.temper;
     if (tm?.method === 'weakenFeed' && this.frac <= tm.hpBelow && this.cowerT <= 0 && (fromPlayer || from?.tamed)) {
       this.cowerT = 10; this.target = null; this.set('cower', 10);
@@ -131,13 +141,14 @@ export class Animal {
     this.set('eat', 1.6); g.msg(`${this.petName} ${ITEMS[item].name.toLowerCase()} yedi.`); g.floatText('❤', this, '#ff6f9c');
   }
   mood() {
-    if (this.dead) return 'Öldü'; if (this.state === 'attack' || this.state === 'chase') return 'Savaşıyor';
+    if (this.dead) return 'Öldü'; if (this.state === 'attack' || this.state === 'chase' || this.state === 'windup') return 'Savaşıyor';
     if (this.hunger < 25) return 'Aç!'; if (this.frac < 0.4) return 'Yaralı'; if (this.stay) return 'Bekliyor'; return 'Mutlu';
   }
 
   /* ---------------- ana güncelleme */
   update(dt) {
     const g = this.g, P = g.player, sp = this.spec, c = this.c;
+    this.staggerT -= dt; this.victimT -= dt; this.poT += dt; if (this.poT > 2.5) this.po = Math.max(0, this.po - dt * this.poMax * 0.18);
     this.hurtT -= dt; this.byPlayerT -= dt; this.calmT -= dt; this.cowerT -= dt; this.cool -= dt; this.stT -= dt; this.flash -= dt;
     const dP = this.dist(P); this.dP = dP;
     // uzaktakileri uyut (performans)
@@ -158,6 +169,8 @@ export class Animal {
     const slope = this.alt > 0.5 || this.dead ? 0 : -Math.atan2(floorY(this.x + fx, this.z + fz, fd) - floorY(this.x - fx, this.z - fz, fd), L * 2);
     if (anim === 'walk' || anim === 'run') rate = Math.max(0.5, this.speed / (anim === 'run' ? sp.run : sp.walk));
     c.root.scale.setScalar(this.flash > 0 ? 1.06 : 1);
+    if (this.state === 'windup' && !this.dead) { const k = Math.min(1, this.wuT / Math.max(0.01, this.wuDur)); c.root.scale.set(1 + 0.05 * k, 1 - 0.09 * k, 1 + 0.05 * k); }   // gerilip çömelme
+    else if (this.staggerT > 0 && !this.dead) c.root.rotation.z = Math.sin(g.time * 18) * 0.06; else c.root.rotation.z = 0;
     c.animate(dt, anim, g.time, { slope, rate, air: this.alt > 0.5, glide: this.state === 'wander' || this.state === 'idle', happy: this.tamed && dP < 4 });
     this.anim = anim;
   }
@@ -166,18 +179,42 @@ export class Animal {
   fight(dt, tgt) {
     const reach = this.radius + (tgt.radius || 0.4) + 0.55, d = this.dist(tgt);
     if (this.spec.kind === 'bird') this.altGoal = d < 9 ? 0.7 : 5;
+    // hazırlık (windup): saldırıdan önce görünür bir parlama. Mavi = blok/savuşturma, kırmızı = engellenemez (kaçın).
+    if (this.state === 'windup') {
+      this.wuT += dt; this.face(tgt, dt);
+      if (d > reach * 2.4) { this.set('chase'); return 'run'; }
+      if (this.wuT >= this.wuDur) { this.set('attack'); this.atkT = 0; this.hit = false; this.c.reset(); return 'attack'; }
+      return 'idle';
+    }
     if (this.state === 'attack') {
-      this.atkT += dt; this.face(tgt, dt);
-      if (!this.hit && this.atkT >= this.c.attackHit) { this.hit = true; if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) tgt.damage(this.spec.dmg * (this.tamed && this.hunger < 25 ? 0.5 : 1), this); }
+      this.atkT += dt; if (this.atkT < this.c.attackHit * 0.6) this.face(tgt, dt);
+      if (!this.hit && this.atkT >= this.c.attackHit) {
+        this.hit = true;
+        if (d < reach * 1.4 && Math.abs(this.alt - (tgt.alt || 0)) < 2) {
+          const r = tgt.damage(this.spec.dmg * (this.tamed && this.hunger < 25 ? 0.5 : 1), this, { unblockable: this.unblock });
+          if (r === 'parry') { this.stagger(1.5); this.po = Math.min(this.poMax * 0.9, this.po + this.poMax * 0.5); return 'idle'; }
+          if (r === 'block') { this.cool = Math.max(this.cool, 0.6); }
+        }
+      }
       if (this.atkT >= this.c.attackTime) { this.cool = 0.5 + Math.random() * 0.5; this.set('chase'); }
       return 'attack';
     }
-    if (d <= reach) { if (this.cool <= 0) { this.set('attack'); this.atkT = 0; this.hit = false; this.c.reset(); return 'attack'; } this.face(tgt, dt); return 'idle'; }
+    if (d <= reach) {
+      if (this.cool <= 0) {
+        const sp = this.spec, heavyHitter = sp.dmg >= 20;
+        this.wuT = 0; this.unblock = !this.tamed && tgt === this.g.player && heavyHitter && Math.random() < (this.kind === 'dragon' ? 0.45 : 0.3);
+        this.wuDur = (sp.windup || (sp.dmg >= 40 ? 0.95 : heavyHitter ? 0.72 : 0.55)) * (this.tamed || tgt !== this.g.player ? 0.4 : 1) * (this.unblock ? 1.2 : 1);
+        this.set('windup'); return 'idle';
+      }
+      this.face(tgt, dt); return 'idle';
+    }
     this.steer(tgt.x, tgt.z, this.spec.run * (this.tamed && this.hunger < 25 ? 0.7 : 1), dt); return 'run';
   }
 
   updateWild(dt) {
     const g = this.g, P = g.player, sp = this.spec, t = sp.temper, dP = this.dP;
+    if (this.victimT > 0) return 'idle';                                   // suikast anında donar
+    if (this.staggerT > 0) { if (this.target) this.face(this.target, dt * 0.3); return 'idle'; }   // sendeleme: açık
     if (this.state === 'held' && this.stT <= 0) this.set('idle', 1);
     if (this.state === 'held') { this.face(P, dt); return sp.tame.method === 'charm' ? 'charm' : (Math.sin(g.time * 5) > 0.6 ? 'attack' : 'idle'); }
     if (this.state === 'cower') { if (this.cowerT <= 0) { this.set('chase'); this.target = P; } return 'idle'; }

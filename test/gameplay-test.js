@@ -19,7 +19,8 @@ window.runGameplayTests = async function () {
   G.keys.w = true; sim(1); ok('oyuncu: koşu (jog) klibi', P.cur._clip.name === 'Jog_Fwd_Loop' && P.speed > 3, P.cur._clip.name + ' ' + P.speed.toFixed(1));
   G.keys.run = true; sim(1); ok('oyuncu: depar klibi', P.cur._clip.name === 'Sprint_Loop', P.cur._clip.name); G.keys.run = false;
   G.edge.jump = true; sim(0.4); ok('oyuncu: zıplama', P.state === 'jump' && P.y > 0.5, P.state + ' y=' + P.y.toFixed(2)); sim(1.5); ok('oyuncu: yere iniş', P.state === 'move', P.state);
-  G.edge.roll = true; sim(0.2); ok('oyuncu: takla/kaçınma + dokunulmazlık', P.state === 'roll' && P.iframes > 0 && P.cur._clip.name === 'Roll', P.state); sim(1.2);
+  G.edge.dodge = true; sim(0.1); ok('oyuncu: kaçınma (sıçrama) + dokunulmazlık', P.state === 'dodge' && P.iframes > 0, P.state);
+  G.edge.dodge = true; sim(0.15); ok('oyuncu: çift kaçınma = takla', P.state === 'roll' && P.cur._clip.name === 'Roll', P.state); sim(1.2);
   G.keys.w = false; sim(0.5); G.edge.crouch = true; sim(0.5); ok('oyuncu: çömelme klibi', P.crouching && P.cur._clip.name === 'Crouch_Idle_Loop', P.cur._clip.name);
   G.keys.w = true; sim(0.6); ok('oyuncu: çömelerek yürüme', P.cur._clip.name === 'Crouch_Fwd_Loop', P.cur._clip.name); G.keys.w = false; G.edge.crouch = true; sim(0.4);
   G.edge.attack = true; sim(0.15); ok('oyuncu: kılıç saldırısı', P.state === 'attack' && P.cur._clip.name === 'Sword_Regular_A', P.cur._clip.name); G.edge.attack = true; sim(0.6); ok('oyuncu: kombo 2', P.cur._clip.name === 'Sword_Regular_B', P.cur._clip.name); sim(1.5);
@@ -78,5 +79,43 @@ window.runGameplayTests = async function () {
   a = find('deer'); const m0 = G.inv.count('meat'); a.damage(999, P); sim(1.5); ok('av ölünce ganimet ve ölüm animasyonu', a.dead && a.c.anim === 'die' && G.inv.count('meat') > m0);
   // 20) kaynak toplama
   const n = G.world.nodes.find((x) => x.type === 'berry'); P.x = n.x + 0.8; P.z = n.z; P.state = 'move'; const b0 = G.inv.count('berry'); sim(0.1); G.edge.interact = true; sim(0.2); ok('kaynak toplama (böğürtlen)', G.inv.count('berry') === b0 + 2 && !n.ready);
+  { // 21) Tsushima tarzı dövüş
+  release(); G.animals.forEach((x) => { if (!x.tamed) { x.target = null; x.calmT = 999; } });
+  const duel = (kind) => { const x1 = G.animals.find((x) => x.kind === kind && !x.dead && !x.tamed); x1.hp = x1.hpMax; x1.po = 0; x1.staggerT = 0; x1.cool = 0; x1.calmT = 0; x1.cowerT = 0; x1.victimT = 0;
+    P.x = x1.x + Math.sin(x1.yaw) * (x1.radius + 1.0); P.z = x1.z + Math.cos(x1.yaw) * (x1.radius + 1.0); P.y = 0; P.yaw = Math.atan2(x1.x - P.x, x1.z - P.z); P.hp = P.hpMax; P.stamina = 100; P.alive = true; P.state = 'move'; P.iframes = 0; P.crouching = false; G.keys = {};
+    x1.target = P; x1.set('chase'); return x1; };
+  const until = (x1, st, max = 4) => { let n = 0; sim(max, () => { n++; return x1.state !== st; }); return n; };
+  let x1 = duel('wolf'); until(x1, 'windup', 2); ok('dövüş: kurt saldırmadan önce hazırlanır (parlama)', x1.state === 'windup' && x1.wuDur >= 0.5, x1.state + ' ' + x1.wuDur.toFixed(2));
+  // normal blok: erken basılı tutulan savunma hasarı keser
+  G.keys.block = true; let hp0 = P.hp, st0 = P.stamina; sim(1.6); G.keys.block = false;
+  ok('dövüş: blok hasarı keser, dayanıklılık düşer', P.hp === hp0 && P.stamina < st0, `hp ${P.hp} st ${st0.toFixed(0)}→${P.stamina.toFixed(0)}`);
+  // savuşturma: vuruştan hemen önce bas
+  x1 = duel('wolf'); until(x1, 'attack', 3); let parried = false; hp0 = P.hp;
+  sim(1, () => { if (!G.keys.block && x1.atkT >= x1.c.attackHit - 0.1) G.keys.block = true; if (x1.staggerT > 0) { parried = true; return false; } }); G.keys.block = false;
+  ok('dövüş: doğru anda blok = savuşturma, kurt sendeler', parried && P.hp === hp0 && P.counterT > 0, `stagger ${x1.staggerT.toFixed(2)} hp ${P.hp}`);
+  const hpw = x1.hp; G.edge.attack = true; sim(0.6); ok('dövüş: savuşturma sonrası karşı saldırı daha güçlü', hpw - x1.hp >= 16 * 1.6 * 1.4 - 0.5, (hpw - x1.hp).toFixed(1));
+  // engellenemez (kırmızı) saldırı bloktan geçer
+  x1 = duel('bear'); x1.calmT = 0; until(x1, 'windup', 3); x1.unblock = true; G.keys.block = true; hp0 = P.hp; until(x1, 'chase', 3); G.keys.block = false;
+  ok('dövüş: kırmızı (engellenemez) saldırı bloktan geçer', P.hp < hp0, `hp ${hp0}→${P.hp.toFixed(0)}`);
+  // kusursuz kaçınma
+  x1 = duel('wolf'); until(x1, 'attack', 3); let dodged = false; sim(1, () => { if (P.state === 'move' && x1.atkT >= x1.c.attackHit - 0.12) G.edge.dodge = true; if (P.counterT > 0) { dodged = true; return false; } });
+  ok('dövüş: son anda kaçınma = kusursuz kaçınma + karşı saldırı', dodged && P.hp === P.hpMax, `hp ${P.hp}`); sim(1);
+  // ağır saldırı duruşu kırar
+  x1 = duel('bear'); x1.cool = 99; let broke = false; for (let i = 0; i < 6 && !broke; i++) { P.state = 'move'; P.stamina = 100; G.edge.heavy = true; sim(1.4, () => { if (x1.staggerT > 0) { broke = true; return false; } }); x1.cool = 99; }
+  ok('dövüş: ağır saldırılar duruşu kırar', broke, `po ${x1.po.toFixed(0)}/${x1.poMax.toFixed(0)}`);
+  // savunma kırılması: dayanıklılık bitince
+  x1 = duel('bear'); x1.calmT = 0; P.stamina = 5; G.keys.block = true; until(x1, 'windup', 3); x1.unblock = false; let brk = false; sim(3, () => { if (P.state === 'stagger') { brk = true; return false; } }); G.keys.block = false;
+  ok('dövüş: dayanıklılık bitince savunma kırılır', brk, P.state);
+  // Kararlılık ile iyileşme
+  G.animals.forEach((x) => { if (!x.tamed) { x.target = null; x.calmT = 999; if (x.state === 'windup' || x.state === 'attack') x.set('idle', 5); } }); sim(2); P.state = 'move'; P.resolve = 1.2; P.hp = 40; G.edge.heal = true; sim(2); ok('dövüş: Kararlılık harcayarak iyileşme', P.hp >= 75 && P.resolve < 1, `hp ${P.hp.toFixed(0)} r ${P.resolve.toFixed(2)}`);
+  // suikast: çömelip fark edilmemiş kurdun arkasından
+  G.animals.forEach((x) => { if (!x.tamed) { x.target = null; x.calmT = 999; } });
+  x1 = G.animals.find((x) => x.kind === 'wolf' && !x.dead && !x.tamed); freeze(x1); x1.hp = x1.hpMax; P.state = 'move'; P.hp = P.hpMax; P.crouching = true;
+  P.x = x1.x - Math.sin(x1.yaw) * (x1.radius + 1.0); P.z = x1.z - Math.cos(x1.yaw) * (x1.radius + 1.0); P.y = 0;
+  ok('dövüş: arkadan çömelince suikast hedefi bulunur', P.assassinTarget() === x1);
+  G.edge.attack = true; sim(1.6); ok('dövüş: suikast tek hamlede öldürür', x1.dead, `hp ${x1.hp}`);
+  P.crouching = true; const w2 = G.animals.find((x) => x.kind === 'wolf' && !x.dead && !x.tamed); freeze(w2); P.x = w2.x + Math.sin(w2.yaw) * (w2.radius + 1.0); P.z = w2.z + Math.cos(w2.yaw) * (w2.radius + 1.0);
+  ok('dövüş: önünden suikast olmaz', P.assassinTarget() !== w2); P.crouching = false;
+  }
   G.running = real; return out;
 };
