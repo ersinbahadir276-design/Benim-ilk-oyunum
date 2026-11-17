@@ -691,16 +691,19 @@ function axisAng(k,t){const c=Math.cos(t),s=Math.sin(t),C=1-c,[x,y,z]=k;return[c
 const r3t=m=>[m[0],m[3],m[6],m[1],m[4],m[7],m[2],m[5],m[8]];
 // two-bone arm IK in model space: shoulder->elbow->hand reaches `target`, elbow bends towards `pole`;
 // `axisDown` (optional) turns the hand so the sword grip axis points that way. w = blend weight.
-function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H[side+'LowerArm'],Hd=H[side+'Hand'],B=PLD.bones;
+function armIK(side,target,pole,axisDown,w){const H=HB,Gl=limbIK(H[side+'UpperArm'],H[side+'LowerArm'],target,pole,w),Hd=H[side+'Hand'];
+ if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
+ skUpdate()}
+// generic two-bone chain U->Lo->(end of Lo): the end reaches `target`, the middle joint bends towards `pole`. Returns Lo's new global rotation.
+// The end bone is the first child of Lo (hand for arms, foot for legs). Caller runs skUpdate().
+function limbIK(U,Lo,target,pole,w){const B=PLD.bones,Hd=SK.par.indexOf(Lo);
  const S=SK.GP[U],L1=Math.hypot(...vsub(B[Lo].r,B[U].r)),L2=Math.hypot(...vsub(B[Hd].r,B[Lo].r));
  let T=target;if(w<1){const cur=SK.GP[Hd];T=vadd(cur,vmul(vsub(target,cur),w))}
  const st=vsub(T,S),d=cl(Math.hypot(...st),.05,L1+L2-.002),u=vnorm(st),pv=vsub(pole,vmul(u,vdot(pole,u))),v=vnorm(Math.hypot(...pv)>1e-4?pv:[0,-1,0]);
  const ca=cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1),sa=Math.sqrt(1-ca*ca),E=vadd(S,vadd(vmul(u,L1*ca),vmul(v,L1*sa)));
  const PG=SK.GR[SK.par[U]],r1=vnorm(vsub(B[Lo].r,B[U].r)),Gu=fromTo(r1,vnorm(vsub(E,S)));
  const r2=r3v(Gu,vnorm(vsub(B[Hd].r,B[Lo].r))),Gl=r3m(fromTo(r2,vnorm(vsub(vadd(S,vmul(u,d)),E))),Gu);
- SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
- if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
- skUpdate()}
+ SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);return Gl}
 // ---- 31-hero.js
 // ===================== Kael, the Black Armor: our own armour design on the berserk_armor proportions =====================
 // Blackened plate, horned helm with a burning eye slit, wolf-fur mantle, tattered cape and a huge two-handed sword.
@@ -794,6 +797,44 @@ function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape
  const mk=(list,o)=>{if(!list.length)return;const g=merge(list);const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);let off=0;for(const p of list){J.set(p.J4,off*4);Wt.set(p.W4,off*4);off+=p.P.length/3}
   if(!g.N||g.N.length!==g.P.length)normals(g);return addSkin(g,J,Wt,o)};
  HERO.armor=mk(parts.armor,{out:.004,outCol:OUT,shade:.95});HERO.cape=mk(parts.cape,{out:0,shade:.8,ds:1});HERO.glow=mk(parts.glow,{unlit:1,col:[1,.25,.15],shade:0})}
+// ---- 32-footik.js
+// ===================== foot IK: feet planted on uneven ground =====================
+// Runs after applyPose + playerMatrix. Each ankle is moved by the terrain height under it (relative to the body
+// centre), the pelvis drops to the lower foot so the downhill leg can reach, a two-bone leg IK bends the knee
+// towards the front, and planted soles tilt to follow the slope. Off in the air, lying, rolling, swimming.
+const FIK={on:1,w:0,off:0,dbg:null};
+function fikTarget(){const st=P.st;if(!FIK.on)return 0;
+ if(P.air||st==='jump'||st==='down'||st==='dead'||st==='getup'||st==='td'||P.td||P.pinBy)return 0;
+ if(st==='dodge'&&(P.spin||P.roll))return 0;
+ if(P.rag&&P.rag.ang>.05)return 0;if(P.lift>.002)return 0;
+ if(waterAt(P.x,P.z)-1.25>hAt(P.x,P.z)-.05)return 0;// swimming / wading deep
+ return 1}
+// model-space direction from a world-space one (M is a rigid transform: inverse rotation = transpose)
+const fikToModel=(M,v)=>[M[0]*v[0]+M[1]*v[1]+M[2]*v[2],M[4]*v[0]+M[5]*v[1]+M[6]*v[2],M[8]*v[0]+M[9]*v[1]+M[10]*v[2]];
+function fikNormal(x,z){const e=.18,hx=(hAt(x+e,z)-hAt(x-e,z))/(2*e),hz=(hAt(x,z+e)-hAt(x,z-e))/(2*e);return vnorm([-hx,1,-hz])}
+function footIK(M,dt){const H=HB,B=PLD.bones,k=Math.min(1,(dt||0)*12);
+ FIK.w+=(fikTarget()-FIK.w)*(dt?k:1);
+ if(FIK.w<.01){FIK.w=Math.max(0,FIK.w);FIK.off*=1-k;FIK.dbg=null;return}
+ const w=FIK.w,legs=[];
+ for(const S of['left','right']){const f=H[S+'Foot'],a=SK.GP[f],wp=mpt(M,a),g=hAt(wp[0],wp[2]);
+  // swing height = how far the animation lifted this ankle above its rest height (no tilt mid-swing)
+  const lift=Math.max(0,a[1]-B[f].r[1]);
+  legs.push({S,f,a:a.slice(),wp,d:cl(g-P.y,-.45,.45),lift})}
+ // pelvis offset: drop to the lower foot (never lift much: the body centre already stands on the ground)
+ const want=cl(Math.min(legs[0].d,legs[1].d),-.4,.06)*w;FIK.off+=(want-FIK.off)*(dt?Math.min(1,dt*16):1);
+ SK.root=vadd(SK.root,[0,FIK.off,0]);skUpdate();
+ for(const L of legs){const U=H[L.S+'UpperLeg'],Lo=H[L.S+'LowerLeg'],f=L.f;
+  const T=[SK.GP[f][0],L.a[1]+L.d*w,SK.GP[f][2]];
+  const Gf0=SK.GR[f].slice();
+  if(Math.abs(T[1]-SK.GP[f][1])>1e-4){const hip=SK.GP[U],kn=SK.GP[Lo],mid=vmul(vadd(hip,T),.5);
+   limbIK(U,Lo,T,vadd([0,0,.3],vmul(vsub(kn,mid),4)),1);skUpdate()}
+  // sole: keep the pre-IK foot orientation (applyPose keeps it level), then tilt it with the ground under it
+  const n=fikToModel(M,fikNormal(L.wp[0],L.wp[2])),plant=w*(1-sst(.03,.14,L.lift));
+  let tn=vnorm(vadd([0,1,0],vmul(vsub(n,[0,1,0]),plant)));const ang=Math.acos(cl(tn[1],-1,1));
+  if(ang>.4){const h=Math.hypot(tn[0],tn[2]);tn=[tn[0]/h*Math.sin(.4),Math.cos(.4),tn[2]/h*Math.sin(.4)]}
+  SK.R[f]=r3m(r3t(SK.GR[Lo]),r3m(fromTo([0,1,0],tn),Gf0));skUpdate();
+  L.err=SK.GP[f][1]-T[1]}
+ FIK.dbg=legs}
 // ---- 40-wolves.js
 // ===================== wolves: model, perception, behaviour =====================
 const WG={},wolves=[],wslots=[],WSLOTS=9,W_UP=.32,W_LO=.3;
@@ -2348,7 +2389,7 @@ function step(dt){GT.dt=dt;if(dt>0){GT.clock+=dt;updatePlayer(dt);
   updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt;
   const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
- poseTarget();applyPose(P.ps);PM=playerMatrix(dt);
+ poseTarget();applyPose(P.ps);PM=playerMatrix(dt);footIK(PM,dt);
  if(P.pinBy){const w=P.pinBy,b=mpt(PM,SK.GP[w.part.bone]),ty=Math.atan2(b[0]-w.x,b[2]-w.z);w.yaw+=angd(ty,w.yaw)*.25;const gx=b[0]-Math.sin(w.yaw)*.95*w.sc,gz=b[2]-Math.cos(w.yaw)*.95*w.sc;w.x=lp(w.x,gx,.25);w.z=lp(w.z,gz,.25);w.y=hAt(w.x,w.z)}
  queueTelegraphs()}
 // enemies' visible tells on the ground
@@ -2440,7 +2481,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,PLD:()=>PLD,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,

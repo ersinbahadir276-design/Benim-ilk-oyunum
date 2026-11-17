@@ -43,13 +43,16 @@ function axisAng(k,t){const c=Math.cos(t),s=Math.sin(t),C=1-c,[x,y,z]=k;return[c
 const r3t=m=>[m[0],m[3],m[6],m[1],m[4],m[7],m[2],m[5],m[8]];
 // two-bone arm IK in model space: shoulder->elbow->hand reaches `target`, elbow bends towards `pole`;
 // `axisDown` (optional) turns the hand so the sword grip axis points that way. w = blend weight.
-function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H[side+'LowerArm'],Hd=H[side+'Hand'],B=PLD.bones;
+function armIK(side,target,pole,axisDown,w){const H=HB,Gl=limbIK(H[side+'UpperArm'],H[side+'LowerArm'],target,pole,w),Hd=H[side+'Hand'];
+ if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
+ skUpdate()}
+// generic two-bone chain U->Lo->(end of Lo): the end reaches `target`, the middle joint bends towards `pole`. Returns Lo's new global rotation.
+// The end bone is the first child of Lo (hand for arms, foot for legs). Caller runs skUpdate().
+function limbIK(U,Lo,target,pole,w){const B=PLD.bones,Hd=SK.par.indexOf(Lo);
  const S=SK.GP[U],L1=Math.hypot(...vsub(B[Lo].r,B[U].r)),L2=Math.hypot(...vsub(B[Hd].r,B[Lo].r));
  let T=target;if(w<1){const cur=SK.GP[Hd];T=vadd(cur,vmul(vsub(target,cur),w))}
  const st=vsub(T,S),d=cl(Math.hypot(...st),.05,L1+L2-.002),u=vnorm(st),pv=vsub(pole,vmul(u,vdot(pole,u))),v=vnorm(Math.hypot(...pv)>1e-4?pv:[0,-1,0]);
  const ca=cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1),sa=Math.sqrt(1-ca*ca),E=vadd(S,vadd(vmul(u,L1*ca),vmul(v,L1*sa)));
  const PG=SK.GR[SK.par[U]],r1=vnorm(vsub(B[Lo].r,B[U].r)),Gu=fromTo(r1,vnorm(vsub(E,S)));
  const r2=r3v(Gu,vnorm(vsub(B[Hd].r,B[Lo].r))),Gl=r3m(fromTo(r2,vnorm(vsub(vadd(S,vmul(u,d)),E))),Gu);
- SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
- if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
- skUpdate()}
+ SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);return Gl}
