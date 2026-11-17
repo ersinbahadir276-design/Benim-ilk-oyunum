@@ -53,3 +53,33 @@ function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H
  SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
  if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
  skUpdate()}
+// ---------- foot planting on uneven ground (two-bone leg IK, after applyPose)
+// Each foot keeps its animated lift but is carried onto the terrain under it; the pelvis drops so the downhill foot
+// reaches, the uphill knee bends more, and planted soles tilt with the slope. Offsets are smoothed so steps never pop.
+const FIK_ON={move:1,land:1,attack:1,charge:1,heavy:1,block:1,parry:1,exec:1,shoot:1,drink:1,hurt:1,gbreak:1,runatk:1,assn:1,skill:1};
+function legIK(side,T,pole){const H=HB,U=H[side+'UpperLeg'],Lo=H[side+'LowerLeg'],F=H[side+'Foot'],B=PLD.bones;
+ const S=SK.GP[U],L1=Math.hypot(...vsub(B[Lo].r,B[U].r)),L2=Math.hypot(...vsub(B[F].r,B[Lo].r));
+ const st=vsub(T,S),d=cl(Math.hypot(...st),.05,L1+L2-.002),u=vnorm(st),pv=vsub(pole,vmul(u,vdot(pole,u))),v=vnorm(Math.hypot(...pv)>1e-4?pv:[0,0,1]);
+ const ca=cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1),sa=Math.sqrt(1-ca*ca),E=vadd(S,vadd(vmul(u,L1*ca),vmul(v,L1*sa)));
+ const PG=SK.GR[SK.par[U]];
+ // keep the thigh's twist from the animation: rotate the current thigh frame instead of the rest frame
+ const Gu2=r3m(fromTo(vnorm(r3v(SK.GR[U],vnorm(vsub(B[Lo].r,B[U].r)))),vnorm(vsub(E,S))),SK.GR[U]);
+ const r2=r3v(Gu2,vnorm(vsub(B[F].r,B[Lo].r))),Gl=r3m(fromTo(r2,vnorm(vsub(vadd(S,vmul(u,d)),E))),Gu2);
+ SK.R[U]=r3m(r3t(PG),Gu2);SK.R[Lo]=r3m(r3t(Gu2),Gl);return Gl}
+function footIK(dt){const F=P.fik||(P.fik={L:0,R:0,hip:0,pL:0,pR:0,w:0});
+ const gy=hAt(P.x,P.z),on=!P.fikOff&&FIK_ON[P.st]&&!P.air&&!(P.rag&&P.rag.ang>.02)&&Math.abs(P.y-gy)<.08;
+ const k=Math.min(1,(dt||0)*14);F.w+=((on?1:0)-F.w)*Math.min(1,(dt||0)*10);if(F.w<.01&&!on){F.w=0;return}
+ const M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]),fw=[Math.sin(P.yaw),Math.cos(P.yaw)],e=.14;
+ const tgt={};for(const sd of['left','right']){const key=sd==='left'?'L':'R',fb=HB[sd+'Foot'],w=mpt(M,SK.GP[fb]);
+  const g=hAt(w[0],w[2]),d=cl(g-gy,-.35,.35),sl=(hAt(w[0]+fw[0]*e,w[2]+fw[1]*e)-hAt(w[0]-fw[0]*e,w[2]-fw[1]*e))/(2*e);
+  F[key]+=(d-F[key])*k;F['p'+key]+=(cl(Math.atan(sl),-.5,.5)-F['p'+key])*k;tgt[sd]=fb}
+ const hip=Math.min(0,F.L,F.R)*F.w;F.hip+=(hip-F.hip)*k;if(Math.abs(F.hip)<1e-4&&Math.abs(F.L)<1e-4&&Math.abs(F.R)<1e-4&&Math.abs(F.pL)+Math.abs(F.pR)<1e-3)return;
+ const want={};for(const sd of['left','right'])want[sd]=SK.GP[tgt[sd]].slice();// animated ankle positions before the pelvis drop
+ SK.root[1]+=F.hip;skUpdate();
+ for(const sd of['left','right']){const key=sd==='left'?'L':'R',fb=tgt[sd],a=want[sd],T=[a[0],a[1]+F[key]*F.w,a[2]];
+  const knee=SK.GP[HB[sd+'LowerLeg']],mid=vmul(vadd(SK.GP[HB[sd+'UpperLeg']],SK.GP[fb]),.5),pole=vadd(vsub(knee,mid),[0,0,.05]);
+  const Gl=legIK(sd,T,pole);skUpdate();
+  // sole: keep the animated foot pitch but add the ground slope while the foot is close to the ground
+  const plant=F.w*(1-sst(.04,.15,a[1]-Math.min(want.left[1],want.right[1])));
+  const cur=SK.GR[fb],Gf=r3m(rX(-F['p'+key]*plant),cur);SK.R[fb]=r3m(r3t(Gl),Gf)}
+ skUpdate()}
