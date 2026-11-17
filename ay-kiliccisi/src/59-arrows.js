@@ -8,7 +8,7 @@ function arrowGeom(){if(arrowGeo)return;const g=G(),sh=[.42,.3,.18],fe=[.85,.82,
 function shootArrow(from,to,speed,owner,dmg,lead){arrowGeom();const T=Math.hypot(to[0]-from[0],to[2]-from[2])/speed,tx=to[0]+(lead?lead[0]*T:0),tz=to[2]+(lead?lead[1]*T:0);
  const dx=tx-from[0],dz=tz-from[2],dh=Math.hypot(dx,dz)||1,t=dh/speed,vy=(to[1]-from[1])/t+4.9*t;
  let a=ARROWS.find(x=>!x.on);if(!a){a={ob:obj(arrowGeo,{shade:.9,pos:[0,0,0],cull:120,out:.004,outCol:[.05,.04,.03]})};ARROWS.push(a)}
- Object.assign(a,{on:true,x:from[0],y:from[1],z:from[2],vx:dx/dh*speed,vy,vz:dz/dh*speed,owner,dmg,life:4,stuck:0});a.ob.vis=true;sfx.swing()}
+ Object.assign(a,{on:true,x:from[0],y:from[1],z:from[2],vx:dx/dh*speed,vy,vz:dz/dh*speed,owner,dmg,life:4,stuck:0,lv:0,soul:0});a.ob.col=[1,1,1];a.ob.vis=true;sfx.swing();return a}
 function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;continue}a.life-=dt;if(a.life<=0){a.on=false;continue}
   if(!a.stuck){a.vy-=9.8*dt;a.x+=a.vx*dt;a.y+=a.vy*dt;a.z+=a.vz*dt;
    if(a.y<hAt(a.x,a.z)+.05){a.stuck=1;a.life=Math.min(a.life,3);a.y=hAt(a.x,a.z)+.08}
@@ -19,11 +19,11 @@ function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;contin
 // ---------- goblin archers
 function archerChase(g,d,dt){if(!g.archer)return false;if(g.unseen>1||d>22)return false;
  if(d<5.5){const ax=g.x+(g.x-P.x)/d*3,az=g.z+(g.z-P.z)/d*3;agentMove(g,ax,az,4.6,dt,g.rad,6);agentFace(g,P.x,P.z,dt,6);return true}// too close: back off
- if(g.cd<=0){g.st='aim';g.t=0;sfx.gobShout();return true}
+ if(g.cd<=0){g.st='aim';g.t=0;if(g.skel)skelRattle(g,3);else sfx.gobShout();return true}
  const a=Math.atan2(g.x-P.x,g.z-P.z)+.6*dt*(g.side||1),r=Math.min(14,Math.max(9,d));agentMove(g,P.x+Math.sin(a)*r,P.z+Math.cos(a)*r,3.2,dt,g.rad,6);agentFace(g,P.x,P.z,dt,8);return true}
 function archerAim(g,d,dt){g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
  if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z);const sp=.55+d*.07,ra=Math.random()*6.28,rr2=Math.sqrt(Math.random())*sp,ld=Math.random()*.45;// like a skeleton archer: often close, not always on target
-  shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],[P.x+Math.cos(ra)*rr2,P.y+1.0+Math.random()*.5,P.z+Math.sin(ra)*rr2],19,'foe',Math.round(8*lvDmg(g.lv||1)),[P.vx*ld,P.vz*ld]);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
+  const ar=shootArrow([g.x+Math.sin(g.yaw)*.4,hy+(g.skel?1.25:1.0),g.z+Math.cos(g.yaw)*.4],[P.x+Math.cos(ra)*rr2,P.y+1.0+Math.random()*.5,P.z+Math.sin(ra)*rr2],g.skel?21:19,'foe',Math.round((g.skel?10:8)*lvDmg(g.lv||1)),[P.vx*ld,P.vz*ld]);ar.lv=g.lv||1;ar.soul=g.skel?1:0;if(ar.soul)ar.ob.col=[.75,1.15,1.6]}
  if(g.t>1.3){g.shot=0;g.st='chase';g.t=0;g.cd=rr(1.6,2.6)}}
 function archerPose(g,q){if(!g.archer)return;const aim=g.st==='aim',k=aim?sst(0,.35,g.t):(g.hostile()?.4:0);if(!k)return;
  q.LsX=lp(q.LsX||0,-1.5,k);q.LsZ=lp(q.LsZ||0,.1,k);q.LeX=lp(q.LeX||0,-.05,k);q.RsX=lp(q.RsX||0,-1.35,k);q.RsY=lp(q.RsY||0,.5,k);q.ReX=lp(q.ReX||0,-1.9*(aim?sst(0,.8,g.t):.3),k);q.spY=lp(q.spY||0,-.35,k)}

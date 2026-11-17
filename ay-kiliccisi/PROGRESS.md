@@ -109,6 +109,8 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] Veyra yüzü: şimdiki doku düz; daha ifadeli yüz ve göz animasyonu
 - [ ] Kamera ağaç tacının içine girince saydamlaştırma
 
+- [x] Zamanlanmış çalıştırma (2026-11-17): iskelet okçular (harabe başına 2, ruh oku), kemik takırtısı sesi. Ayrıntı: kök PROGRESS.md.
+
 ## Bilinen sorunlar / test edilemeyenler
 - Gerçek Android cihazda dokunma, titreşim ve gerçek GPU performansı test edilemedi (yazılımsal WebGL ile ölçüldü).
 - Ses yalnızca kodla üretiliyor (WebAudio); kulakla dinlenemedi.

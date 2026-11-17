@@ -5,7 +5,7 @@ module.exports = async ({ G, log, shot, page }) => {
     const sim = (s) => { for (let i = 0; i < Math.round(s / DT); i++) { GT.time += DT; g.step(DT); } };
     const setNight = (n) => { GT.tod = n ? 0.75 : 0.25; GT.night = !!n; };
     const o = {}; const S = g.GOBS.filter((x) => x.skel);
-    o.count = S.length; o.model = !!(X.dbg.humanGeo('skeleton').binv); o.ruinsZone = S.every((s) => g.zoneAt(s.hx, s.hz) === 'ruins');
+    o.count = S.length; o.archers = S.filter((s) => s.archer).length; o.archPerRuin = [0, 1, 2].map((i) => S.filter((s) => s.archer && s.group === 'ruin' + i).length); o.model = !!(X.dbg.humanGeo('skeleton').binv); o.ruinsZone = S.every((s) => g.zoneAt(s.hx, s.hz) === 'ruins');
     o.lv = S[0].lv; o.hp = S[0].max;
     // day: all buried and not counted as foes
     setNight(0); const s0 = S[0]; g.tp(s0.hx + 15, s0.hz); P.hp = X.maxHP(); sim(0.5); setNight(0);
@@ -31,8 +31,16 @@ module.exports = async ({ G, log, shot, page }) => {
     // dawn: survivors that are not fighting sink back
     setNight(0); for (const s of grp) if (!s.dead) { s.st = 'idle'; s.aware = 0; } g.tp(s0.hx + 60, s0.hz); sim(0.3); setNight(0);
     o.dawn = grp.every((s) => s.buried);
+    // skeleton archer: keeps distance, nocks a pale soul arrow that hits harder than a goblin's
+    setNight(1); const ar = S.find((s) => s.archer && s.group === 'ruin2'); g.tp(ar.hx + 11, ar.hz); setNight(1); ar.dead = 0; ar.buried = 0; ar.reformPend = 0; ar.hp = ar.max; ar.aware = 1; ar.st = 'chase'; ar.t = 0; ar.cd = 0; ar.unseen = 0;
+    ar.x = P.x - 11; ar.z = P.z; const trace = []; ar.ls = [P.x, P.z]; let aimed = 0, shotA = null;
+    for (let i = 0; i < 120 && !shotA; i++) { GT.time += DT; g.step(DT); setNight(1); trace.push(ar.st); if (ar.st === 'aim') aimed = 1; shotA = g.X.dbg.ARROWS.find((x) => x.on && x.owner === 'foe' && x.soul); }
+    o.trace = [...new Set(trace)].join(','); o.archer = [aimed, !!shotA, shotA ? shotA.dmg : 0, shotA ? shotA.ob.col[2] > 1.2 : false, ar.bowOb ? 1 : 0];
+    // the archer also only scatters on a plain blow and counts separately when finished
+    const ak0 = g.SYS.skelArcherKills || 0; const da = X.foeHurt(ar, 99999, 0, 1, 'heavy'); if (da) X.onFoeKilled(ar, false); o.archerKill = [da, (g.SYS.skelArcherKills || 0) - ak0];
     return o; });
-  log('15 iskelet, 3 harabede', r.count === 15 && r.ruinsZone, JSON.stringify([r.count, r.ruinsZone]));
+  log('18 iskelet, 3 harabede', r.count === 18 && r.ruinsZone, JSON.stringify([r.count, r.ruinsZone]));
+  log('her harabede 2 iskelet okçu', r.archers === 6 && r.archPerRuin.every((n) => n === 2), JSON.stringify(r.archPerRuin));
   log('heykel modeli yüklü', r.model);
   log('bölge seviyesine göre can', r.lv >= 8 && r.hp > 70, JSON.stringify([r.lv, r.hp]));
   log('gündüz gömülü, düşman listesinde değil', r.dayBuried);
@@ -44,6 +52,8 @@ module.exports = async ({ G, log, shot, page }) => {
   log('ikinci kez: gerçekten ölür, sayaç + ödül', r.second[0] === true && r.second[1] && !r.second[2] && r.second[3] === 1, JSON.stringify(r.second));
   log('ağır saldırı tek seferde bitirir', r.heavy[0] === true && !r.heavy[1], JSON.stringify(r.heavy));
   log('ölenler o gece dinlenir (toprağa döner)', r.restBuried[0] && r.restBuried[1] && r.restBuried[2], JSON.stringify(r.restBuried));
+  log('iskelet okçu nişan alıp ruh oku atıyor (goblinden ağır)', r.archer[0] && r.archer[1] && r.archer[2] >= 10 && r.archer[3], JSON.stringify(r.archer) + ' ' + r.trace);
+  log('iskelet okçu ağır vuruşla biter, ayrı sayılır', r.archerKill[0] === true && r.archerKill[1] === 1, JSON.stringify(r.archerKill));
   log('şafakta savaşmayanlar toprağa döner', r.dawn);
   // close-up screenshot of a risen skeleton (night)
   await G(() => { const g = __G, GT = g.GT, S = g.GOBS.filter((x) => x.skel && x.group === 'ruin1'); GT.tod = 0.83; GT.night = true; const s = S[0];

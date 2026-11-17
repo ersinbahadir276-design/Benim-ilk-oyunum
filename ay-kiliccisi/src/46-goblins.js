@@ -36,7 +36,7 @@ function updateGob(g,dt){g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const
   const T=g.from==='pinned'?1.4:1.0;if(g.t>T){g.st='chase';g.t=0;g.aware=1;alertGroup(g,P,22,GOBS)}g.y=hAt(g.x,g.z);return}
  // perception
  const range=g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
- if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted){if(g.skel)sfx.thud();else sfx.gobShout();note(g.skel?'[!] İskelet savaşçı seni gördü!':g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
+ if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted){if(g.skel)skelRattle(g,5);else sfx.gobShout();note(g.skel?'[!] '+skelName(g)+' seni gördü!':g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
   if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
  else if(sees||d<4&&P.alive){g.ls=[P.x,P.z];g.unseen=0}else g.unseen=(g.unseen||0)+dt;// in a fight, someone 4 m away is heard and felt even outside the view cone
  g.hyaw=lp(g.hyaw,0,Math.min(1,dt*4));

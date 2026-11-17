@@ -1139,7 +1139,7 @@ function updateGob(g,dt){g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const
   const T=g.from==='pinned'?1.4:1.0;if(g.t>T){g.st='chase';g.t=0;g.aware=1;alertGroup(g,P,22,GOBS)}g.y=hAt(g.x,g.z);return}
  // perception
  const range=g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
- if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted){if(g.skel)sfx.thud();else sfx.gobShout();note(g.skel?'[!] İskelet savaşçı seni gördü!':g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
+ if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted){if(g.skel)skelRattle(g,5);else sfx.gobShout();note(g.skel?'[!] '+skelName(g)+' seni gördü!':g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
   if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
  else if(sees||d<4&&P.alive){g.ls=[P.x,P.z];g.unseen=0}else g.unseen=(g.unseen||0)+dt;// in a fight, someone 4 m away is heard and felt even outside the view cone
  g.hyaw=lp(g.hyaw,0,Math.min(1,dt*4));
@@ -1215,9 +1215,14 @@ function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z)
 // A heavy blow, a jump attack, a skill, an execution or an assassination ends them for good.
 const SKEL_RISE=2.2,SKEL_REFORM=1.4,SKEL_HP=70,SKEL_REST=300;
 const SKEL_FINISH={heavy:1,jumpatk:1,exec:1,assn:1,stab:1,fire:1,burst:1,skill:1};
-function spawnSkeletons(){RUINS.forEach((r,i)=>{for(let k=0;k<5;k++){const a=k/5*2*PI+i*1.3,rd=k?rr(6,13):2,p=collide(r[0]+Math.cos(a)*rd,r[1]+Math.sin(a)*rd,.4),g=mkGob(p[0],p[1],false,'ruin'+i,null);
-  Object.assign(g,{skel:1,hp:SKEL_HP,max:SKEL_HP,rad:.36,eye:1.7,buried:1,dead:1,st:'dead',deadT:999,restUntil:0,reformed:0,reformPend:0});g.yaw=rnd()*6.28}})}
+// per ruin: 4 sword skeletons around the centre + 2 skeleton archers on the broken outer walls
+const SKEL_PER_RUIN=6,SKEL_ARCHERS=2;
+function spawnSkeletons(){RUINS.forEach((r,i)=>{for(let k=0;k<SKEL_PER_RUIN;k++){const arch=k>=SKEL_PER_RUIN-SKEL_ARCHERS,a=k/SKEL_PER_RUIN*2*PI+i*1.3,rd=arch?rr(14,18):k?rr(6,13):2,p=collide(r[0]+Math.cos(a)*rd,r[1]+Math.sin(a)*rd,.4),g=mkGob(p[0],p[1],false,'ruin'+i,null);
+  Object.assign(g,{skel:1,hp:SKEL_HP,max:SKEL_HP,rad:.36,eye:1.7,buried:1,dead:1,st:'dead',deadT:999,restUntil:0,reformed:0,reformPend:0});if(arch){g.archer=1;g.side=k%2?1:-1}g.yaw=rnd()*6.28}})}
 const isSkel=(f)=>!!(f&&f.skel);
+const skelName=(g)=>g.archer?'İskelet okçu':'İskelet savaşçı';
+// a dry clatter of bones (rise, spotting the hero, scattering, nocking a soul arrow)
+function skelRattle(g,n){if(!sfx.bones)return;if(g&&P&&Math.hypot(g.x-P.x,g.z-P.z)>40)return;sfx.bones(n||4)}
 // how far below the ground a rising skeleton is drawn
 function skelSink(g){return g.skel&&g.st==='rise'?(1-sst(0,.75,g.t/SKEL_RISE))*1.5:0}
 function skelDust(g,n){spawnSparks(g.x,(g.y||hAt(g.x,g.z))+.3,g.z,n,[.5,.9,1.3],3)}
@@ -1226,11 +1231,11 @@ function skelTick(g,dt,d){
  if(g.buried){g.dead=1;g.st='dead';g.deadT=999;g.y=hAt(g.x,g.z);
   if(GT.night&&GT.clock>=g.restUntil&&P.alive&&d<75&&d>5){
    Object.assign(g,{buried:0,dead:0,hp:g.max,st:'rise',t:0,deadT:0,reformed:0,reformPend:0,aware:d<20?1:.4,x:g.hx,z:g.hz,ls:[P.x,P.z],pos:0,held:null,kx:0,kz:0,spd:0});g.y=hAt(g.x,g.z);
-   if(d<45){skelDust(g,14);if(!skelTick.warned||GT.clock-skelTick.warned>60){skelTick.warned=GT.clock;note('[!] Harabelerde ölüler topraktan kalkıyor…','red')}}}
+   if(d<45){skelDust(g,14);skelRattle(g,6);if(!skelTick.warned||GT.clock-skelTick.warned>60){skelTick.warned=GT.clock;note('[!] Harabelerde ölüler topraktan kalkıyor…','red')}}}
   return true}
  if(g.st==='rise'){g.spd=0;agentFace(g,P.x,P.z,dt,2);g.y=hAt(g.x,g.z);if(g.t>=SKEL_RISE){g.st=g.aware>=1?'chase':'idle';g.t=0;if(g.aware>=1)alertGroup(g,P,24,GOBS)}return true}
  if(g.dead){g.deadT+=dt;g.y=hAt(g.x,g.z);
-  if(g.reformPend&&g.deadT>3.2){Object.assign(g,{dead:0,reformPend:0,reformed:1,hp:Math.max(1,Math.round(g.max*.5)),st:'reform',t:0,aware:1,ls:[P.x,P.z],pos:0});skelDust(g,12);if(d<30)note('[!] İskeletin kemikleri yeniden birleşti!','red')}
+  if(g.reformPend&&g.deadT>3.2){Object.assign(g,{dead:0,reformPend:0,reformed:1,hp:Math.max(1,Math.round(g.max*.5)),st:'reform',t:0,aware:1,ls:[P.x,P.z],pos:0});skelDust(g,12);skelRattle(g,5);if(d<30)note('[!] '+skelName(g)+': kemikler yeniden birleşti!','red')}
   else if(!g.reformPend&&g.deadT>30&&d>40){g.buried=1;g.restUntil=GT.clock+SKEL_REST}
   return true}
  if(g.st==='reform'){g.spd=0;g.y=hAt(g.x,g.z);if(g.t>=SKEL_REFORM){g.st='chase';g.t=0}return true}
@@ -1238,10 +1243,10 @@ function skelTick(g,dt,d){
  return false}
 // a killing blow that is not a finisher only scatters the bones (once)
 function skelCollapse(g,kind){if(g.reformed||SKEL_FINISH[kind])return false;
- Object.assign(g,{hp:0,dead:1,st:'dead',t:0,deadT:0,reformPend:1,held:null});skelDust(g,10);sfx.thud&&sfx.thud();
+ Object.assign(g,{hp:0,dead:1,st:'dead',t:0,deadT:0,reformPend:1,held:null});skelDust(g,10);sfx.thud&&sfx.thud();skelRattle(g,7);
  if(!SYS.skelHint){SYS.skelHint=1;note('[Sistem] Kemikler dağıldı ama ruh ateşi sönmedi. İskeleti ağır saldırı, zıplama saldırısı ya da İNFAZ ile bitir.','gold')}
  return true}
-function skelKilled(g){SYS.skelKills=(SYS.skelKills||0)+1;SYS.gold=(SYS.gold||0)+8;addXP(60,P);note('[Sistem] İskelet savaşçı huzura kavuştu · +60 XP · +8 altın');skelDust(g,18);save(P)}
+function skelKilled(g){SYS.skelKills=(SYS.skelKills||0)+1;if(g.archer)SYS.skelArcherKills=(SYS.skelArcherKills||0)+1;const xp=g.archer?70:60;SYS.gold=(SYS.gold||0)+8;addXP(xp,P);note('[Sistem] '+skelName(g)+' huzura kavuştu · +'+xp+' XP · +8 altın');skelDust(g,18);save(P)}
 // ---- 47-npcs.js
 // ===================== village NPCs: villagers, merchants, guards =====================
 // They live in the village, walk between houses, the well and the market; guards stand at the gates or patrol.
@@ -2258,7 +2263,7 @@ function arrowGeom(){if(arrowGeo)return;const g=G(),sh=[.42,.3,.18],fe=[.85,.82,
 function shootArrow(from,to,speed,owner,dmg,lead){arrowGeom();const T=Math.hypot(to[0]-from[0],to[2]-from[2])/speed,tx=to[0]+(lead?lead[0]*T:0),tz=to[2]+(lead?lead[1]*T:0);
  const dx=tx-from[0],dz=tz-from[2],dh=Math.hypot(dx,dz)||1,t=dh/speed,vy=(to[1]-from[1])/t+4.9*t;
  let a=ARROWS.find(x=>!x.on);if(!a){a={ob:obj(arrowGeo,{shade:.9,pos:[0,0,0],cull:120,out:.004,outCol:[.05,.04,.03]})};ARROWS.push(a)}
- Object.assign(a,{on:true,x:from[0],y:from[1],z:from[2],vx:dx/dh*speed,vy,vz:dz/dh*speed,owner,dmg,life:4,stuck:0});a.ob.vis=true;sfx.swing()}
+ Object.assign(a,{on:true,x:from[0],y:from[1],z:from[2],vx:dx/dh*speed,vy,vz:dz/dh*speed,owner,dmg,life:4,stuck:0,lv:0,soul:0});a.ob.col=[1,1,1];a.ob.vis=true;sfx.swing();return a}
 function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;continue}a.life-=dt;if(a.life<=0){a.on=false;continue}
   if(!a.stuck){a.vy-=9.8*dt;a.x+=a.vx*dt;a.y+=a.vy*dt;a.z+=a.vz*dt;
    if(a.y<hAt(a.x,a.z)+.05){a.stuck=1;a.life=Math.min(a.life,3);a.y=hAt(a.x,a.z)+.08}
@@ -2269,11 +2274,11 @@ function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;contin
 // ---------- goblin archers
 function archerChase(g,d,dt){if(!g.archer)return false;if(g.unseen>1||d>22)return false;
  if(d<5.5){const ax=g.x+(g.x-P.x)/d*3,az=g.z+(g.z-P.z)/d*3;agentMove(g,ax,az,4.6,dt,g.rad,6);agentFace(g,P.x,P.z,dt,6);return true}// too close: back off
- if(g.cd<=0){g.st='aim';g.t=0;sfx.gobShout();return true}
+ if(g.cd<=0){g.st='aim';g.t=0;if(g.skel)skelRattle(g,3);else sfx.gobShout();return true}
  const a=Math.atan2(g.x-P.x,g.z-P.z)+.6*dt*(g.side||1),r=Math.min(14,Math.max(9,d));agentMove(g,P.x+Math.sin(a)*r,P.z+Math.cos(a)*r,3.2,dt,g.rad,6);agentFace(g,P.x,P.z,dt,8);return true}
 function archerAim(g,d,dt){g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
  if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z);const sp=.55+d*.07,ra=Math.random()*6.28,rr2=Math.sqrt(Math.random())*sp,ld=Math.random()*.45;// like a skeleton archer: often close, not always on target
-  shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],[P.x+Math.cos(ra)*rr2,P.y+1.0+Math.random()*.5,P.z+Math.sin(ra)*rr2],19,'foe',Math.round(8*lvDmg(g.lv||1)),[P.vx*ld,P.vz*ld]);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
+  const ar=shootArrow([g.x+Math.sin(g.yaw)*.4,hy+(g.skel?1.25:1.0),g.z+Math.cos(g.yaw)*.4],[P.x+Math.cos(ra)*rr2,P.y+1.0+Math.random()*.5,P.z+Math.sin(ra)*rr2],g.skel?21:19,'foe',Math.round((g.skel?10:8)*lvDmg(g.lv||1)),[P.vx*ld,P.vz*ld]);ar.lv=g.lv||1;ar.soul=g.skel?1:0;if(ar.soul)ar.ob.col=[.75,1.15,1.6]}
  if(g.t>1.3){g.shot=0;g.st='chase';g.t=0;g.cd=rr(1.6,2.6)}}
 function archerPose(g,q){if(!g.archer)return;const aim=g.st==='aim',k=aim?sst(0,.35,g.t):(g.hostile()?.4:0);if(!k)return;
  q.LsX=lp(q.LsX||0,-1.5,k);q.LsZ=lp(q.LsZ||0,.1,k);q.LeX=lp(q.LeX||0,-.05,k);q.RsX=lp(q.RsX||0,-1.35,k);q.RsY=lp(q.RsY||0,.5,k);q.ReX=lp(q.ReX||0,-1.9*(aim?sst(0,.8,g.t):.3),k);q.spY=lp(q.spY||0,-.35,k)}
@@ -2309,7 +2314,7 @@ let AC=null;const sfx={on(){if(AC)return;try{AC=new (window.AudioContext||window
  snarl(){this.tone(.9,70,140,.32,'sawtooth');this.noise(.9,300,900,.15)},thud(){this.tone(.25,110,40,.6);this.noise(.2,400,120,.4,'lowpass')},level(){this.tone(.18,520,780,.25);setTimeout(()=>this.tone(.3,780,1040,.25),150)},
  dodge(){this.noise(.2,500,1800,.18)},jump(){this.noise(.12,300,900,.12)},land(){this.noise(.1,300,120,.2,'lowpass')},parry(){this.tone(.35,1800,900,.35,'triangle');this.noise(.2,4000,2000,.3)},
  block(){this.tone(.18,900,500,.3,'triangle');this.noise(.12,2500,1200,.2)},hurt(){this.tone(.18,300,160,.25,'square')},charge(){this.tone(.9,200,520,.12,'sine')},charged(){this.tone(.25,900,1300,.2,'triangle')},
- grab(){this.noise(.25,600,200,.3,'lowpass')},stab(){this.noise(.18,1200,300,.45,'lowpass');this.tone(.2,140,50,.5)},struggle(){this.noise(.08,800,400,.2)},gobShout(){this.tone(.22,420,620,.18,'square')},
+ grab(){this.noise(.25,600,200,.3,'lowpass')},stab(){this.noise(.18,1200,300,.45,'lowpass');this.tone(.2,140,50,.5)},struggle(){this.noise(.08,800,400,.2)},gobShout(){this.tone(.22,420,620,.18,'square')},bones(n=4){for(let i=0;i<n;i++)setTimeout(()=>{this.noise(.035,2600+Math.random()*1400,1500,.2,'bandpass');if(i%2)this.tone(.05,900+Math.random()*500,600,.05,'square')},i*48+Math.random()*30)},
  roar(v=1){this.tone(1.4,90,45,.45*v,'sawtooth');this.noise(1.4,500,120,.35*v,'lowpass')},hiss(){this.noise(.6,5000,2500,.25,'highpass')},snap(){this.noise(.08,2500,800,.5);this.tone(.08,200,80,.4,'square')},
  wings(v=.6){this.noise(.3,250,80,.4*v,'lowpass')},rare(){this.tone(.25,660,990,.2,'triangle');setTimeout(()=>this.tone(.35,990,1320,.2,'triangle'),120)},anvil(){this.tone(.3,1400,900,.3,'triangle');this.noise(.1,3000,1500,.3)},drink(){this.noise(.5,300,600,.15,'lowpass')},
  rest(){this.tone(1.2,220,330,.2,'sine');this.tone(1.2,330,495,.12,'sine')},chest(){this.noise(.25,400,200,.3,'lowpass');this.tone(.3,500,800,.15,'triangle')},break(){this.tone(.3,300,90,.4,'square');this.noise(.25,2000,400,.3)},lock(){this.tone(.08,1200,1500,.12,'square')},howl(){this.tone(1.6,300,520,.3,'sawtooth');setTimeout(()=>this.tone(1.2,520,380,.25,'sawtooth'),700)},horn(){this.tone(1.3,150,140,.4,'sawtooth')},inhale(){this.noise(1.6,200,1800,.25)},fire(){this.noise(.25,700,300,.25,'lowpass')},hey(){this.tone(.25,330,280,.2,'triangle')}};
@@ -2488,7 +2493,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
-   dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
+   dbg:{get PLD(){return PLD},humanGeo,ARROWS,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
    openWin,renderWin,uiTick,maxHP,useBow,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}

@@ -11,7 +11,7 @@ let AC=null;const sfx={on(){if(AC)return;try{AC=new (window.AudioContext||window
  snarl(){this.tone(.9,70,140,.32,'sawtooth');this.noise(.9,300,900,.15)},thud(){this.tone(.25,110,40,.6);this.noise(.2,400,120,.4,'lowpass')},level(){this.tone(.18,520,780,.25);setTimeout(()=>this.tone(.3,780,1040,.25),150)},
  dodge(){this.noise(.2,500,1800,.18)},jump(){this.noise(.12,300,900,.12)},land(){this.noise(.1,300,120,.2,'lowpass')},parry(){this.tone(.35,1800,900,.35,'triangle');this.noise(.2,4000,2000,.3)},
  block(){this.tone(.18,900,500,.3,'triangle');this.noise(.12,2500,1200,.2)},hurt(){this.tone(.18,300,160,.25,'square')},charge(){this.tone(.9,200,520,.12,'sine')},charged(){this.tone(.25,900,1300,.2,'triangle')},
- grab(){this.noise(.25,600,200,.3,'lowpass')},stab(){this.noise(.18,1200,300,.45,'lowpass');this.tone(.2,140,50,.5)},struggle(){this.noise(.08,800,400,.2)},gobShout(){this.tone(.22,420,620,.18,'square')},
+ grab(){this.noise(.25,600,200,.3,'lowpass')},stab(){this.noise(.18,1200,300,.45,'lowpass');this.tone(.2,140,50,.5)},struggle(){this.noise(.08,800,400,.2)},gobShout(){this.tone(.22,420,620,.18,'square')},bones(n=4){for(let i=0;i<n;i++)setTimeout(()=>{this.noise(.035,2600+Math.random()*1400,1500,.2,'bandpass');if(i%2)this.tone(.05,900+Math.random()*500,600,.05,'square')},i*48+Math.random()*30)},
  roar(v=1){this.tone(1.4,90,45,.45*v,'sawtooth');this.noise(1.4,500,120,.35*v,'lowpass')},hiss(){this.noise(.6,5000,2500,.25,'highpass')},snap(){this.noise(.08,2500,800,.5);this.tone(.08,200,80,.4,'square')},
  wings(v=.6){this.noise(.3,250,80,.4*v,'lowpass')},rare(){this.tone(.25,660,990,.2,'triangle');setTimeout(()=>this.tone(.35,990,1320,.2,'triangle'),120)},anvil(){this.tone(.3,1400,900,.3,'triangle');this.noise(.1,3000,1500,.3)},drink(){this.noise(.5,300,600,.15,'lowpass')},
  rest(){this.tone(1.2,220,330,.2,'sine');this.tone(1.2,330,495,.12,'sine')},chest(){this.noise(.25,400,200,.3,'lowpass');this.tone(.3,500,800,.15,'triangle')},break(){this.tone(.3,300,90,.4,'square');this.noise(.25,2000,400,.3)},lock(){this.tone(.08,1200,1500,.12,'square')},howl(){this.tone(1.6,300,520,.3,'sawtooth');setTimeout(()=>this.tone(1.2,520,380,.25,'sawtooth'),700)},horn(){this.tone(1.3,150,140,.4,'sawtooth')},inhale(){this.noise(1.6,200,1800,.25)},fire(){this.noise(.25,700,300,.25,'lowpass')},hey(){this.tone(.25,330,280,.2,'triangle')}};
@@ -190,7 +190,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
-   dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
+   dbg:{get PLD(){return PLD},humanGeo,ARROWS,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
    openWin,renderWin,uiTick,maxHP,useBow,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}
