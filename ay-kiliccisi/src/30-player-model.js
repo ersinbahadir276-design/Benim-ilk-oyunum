@@ -53,3 +53,32 @@ function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H
  SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
  if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
  skUpdate()}
+// ===================== terrain foot IK (planted feet follow slopes and steps) =====================
+// applyPose() assumes flat ground. Here each foot samples the terrain under it: the pelvis drops to the lower foot,
+// each leg is re-solved (two-bone, keeping the knee's bending plane), and the sole tilts to the slope normal.
+// Offsets and weight are smoothed so walking over bumps never pops. Off while airborne, rolling, lying or wading.
+const FIK={w:0,l:0,r:0,drop:0,nl:[0,1,0],nr:[0,1,0],on:true};
+function slopeN(x,z){const e=.22,dx=hAt(x+e,z)-hAt(x-e,z),dz=hAt(x,z+e)-hAt(x,z-e);return vnorm([-dx/(2*e),1,-dz/(2*e)])}
+function legIK(side,T,nM,w){const H=HB,U=H[side+'UpperLeg'],Lo=H[side+'LowerLeg'],F=H[side+'Foot'],B=PLD.bones,par=SK.par;
+ const S=SK.GP[U],K=SK.GP[Lo],A=SK.GP[F],L1=Math.hypot(...vsub(B[Lo].r,B[U].r)),L2=Math.hypot(...vsub(B[F].r,B[Lo].r));
+ const st=vsub(T,S),d=cl(Math.hypot(...st),.12,L1+L2-.003),u=vnorm(st);
+ // bending plane: keep the current knee direction; a straight leg bends forwards (+z in model space)
+ let pv=vsub(vsub(K,S),vmul(u,vdot(vsub(K,S),u)));if(Math.hypot(...pv)<.01)pv=vsub([0,0,1],vmul(u,u[2]));const v=vnorm(pv);
+ const ca=cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1),E=vadd(S,vadd(vmul(u,L1*ca),vmul(v,L1*Math.sqrt(1-ca*ca))));
+ const D1=fromTo(vnorm(vsub(K,S)),vnorm(vsub(E,S))),GU=r3m(D1,SK.GR[U]);
+ const D2=fromTo(vnorm(r3v(D1,vsub(A,K))),vnorm(vsub(vadd(S,vmul(u,d)),E))),GL=r3m(D2,r3m(D1,SK.GR[Lo]));
+ const GF=r3m(fromTo([0,1,0],nM),SK.GR[F]),blend=(a,b)=>w>=1?b:a.map((x,i)=>lp(x,b[i],w));
+ const nU=r3m(r3t(SK.GR[par[U]]),GU),nL=r3m(r3t(GU),GL),nF=r3m(r3t(GL),GF);
+ SK.R[U]=blend(SK.R[U],nU);SK.R[Lo]=blend(SK.R[Lo],nL);SK.R[F]=blend(SK.R[F],nF)}
+function footIK(dt){const H=HB,k=1-Math.exp(-(dt||.016)*14),rag=P.rag&&P.rag.ang>.05;
+ const ok=FIK.on&&!P.air&&!rag&&!['td','down','dead','getup','dodge','jump'].includes(P.st)&&P.y-hAt(P.x,P.z)<.03;
+ FIK.w=lp(FIK.w,ok?1:0,k);if(FIK.w<.01){FIK.l=FIK.r=FIK.drop=0;return}
+ const M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]),c=Math.cos(P.yaw),s=Math.sin(P.yaw),toM=n=>vnorm([n[0]*c-n[2]*s,n[1],n[0]*s+n[2]*c]);
+ const samp=(F)=>{const w=mpt(M,SK.GP[F]);return[cl(hAt(w[0],w[2])-P.y,-.4,.4),toM(slopeN(w[0],w[2]))]};
+ const[ol,nl]=samp(H.leftFoot),[or,nr]=samp(H.rightFoot);
+ FIK.l=lp(FIK.l,ol,k);FIK.r=lp(FIK.r,or,k);FIK.drop=lp(FIK.drop,Math.max(-.32,Math.min(0,ol,or)),k);
+ FIK.nl=vnorm(FIK.nl.map((x,i)=>lp(x,nl[i],k)));FIK.nr=vnorm(FIK.nr.map((x,i)=>lp(x,nr[i],k)));
+ const w=FIK.w,yl=SK.GP[H.leftFoot][1],yr=SK.GP[H.rightFoot][1];
+ SK.root[1]+=FIK.drop*w;skUpdate();
+ const tL=SK.GP[H.leftFoot].slice(),tR=SK.GP[H.rightFoot].slice();tL[1]=yl+FIK.l*w;tR[1]=yr+FIK.r*w;
+ legIK('left',tL,FIK.nl,w);legIK('right',tR,FIK.nr,w);skUpdate()}

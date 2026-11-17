@@ -107,6 +107,8 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] Veyra yüzü: şimdiki doku düz; daha ifadeli yüz ve göz animasyonu
 - [ ] Kamera ağaç tacının içine girince saydamlaştırma
 
+- [x] Oturum 8 (otomatik tur): kahraman arazi ayak IK'sı (`footIK`/`legIK` 30-player-model.js): leğen alçak ayağa iner, bacaklar yeniden çözülür, taban eğime döner; `test/s-footik.js` 5/5 (eğimde boşluk 7 cm → <0,5 cm).
+
 ## Bilinen sorunlar / test edilemeyenler
 - Gerçek Android cihazda dokunma, titreşim ve gerçek GPU performansı test edilemedi (yazılımsal WebGL ile ölçüldü).
 - Ses yalnızca kodla üretiliyor (WebAudio); kulakla dinlenemedi.
