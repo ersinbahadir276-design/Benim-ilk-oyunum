@@ -64,17 +64,17 @@ export function humanoid(ALL, kind, S) {
   const H = (p) => v3.add(hc, p), hb = (p) => v3.add(headB, p);
   if (!gob && !S.demon) {
     const cranium = ellipsoid(H([0, hr * 0.06, -hr * 0.04]), [hr * 0.9, hr * 1.02, hr * 0.98]);
-    const face = U(hr * 0.25, ellipsoid(H([0, -hr * 0.3, hr * 0.2]), [hr * 0.72, hr * 0.62, hr * 0.74]), sphere(H([0, -hr * 0.66, hr * 0.56]), hr * 0.2), ellipsoid(H([0, hr * 0.14, hr * 0.74]), [hr * 0.6, hr * 0.13, hr * 0.2]));
-    const nose = U(hr * 0.06, cone(H([0, hr * 0.05, hr * 0.9]), H([0, -hr * 0.22, hr * 1.08]), hr * 0.07, hr * 0.1), ellipsoid(H([0, -hr * 0.25, hr * 1.0]), [hr * 0.15, hr * 0.08, hr * 0.1]));
+    const face = U(hr * 0.3, ellipsoid(H([0, -hr * 0.28, hr * 0.14]), [hr * 0.74, hr * 0.66, hr * 0.78]), sphere(H([0, -hr * 0.7, hr * 0.42]), hr * 0.22)); // soft egg shape, small chin: no brow ridge, no eye sockets
+    const nose = ellipsoid(H([0, -hr * 0.2, hr * 0.93]), [hr * 0.07, hr * 0.09, hr * 0.09]);
     const sockets = symX(ellipsoid(H([hr * 0.34, hr * 0.02, hr * 0.93]), [hr * 0.2, hr * 0.1, hr * 0.08]));
     const ears = symX(ellipsoid(H([hr * 0.9, -hr * 0.05, -hr * 0.02]), [hr * 0.1, hr * 0.22, hr * 0.15], rot.y(0.3)));
     // the face is painted (eyes, brows, lips) through a front projection; the sculpt gives the forms
     faceUV = (x, y, z, top) => Math.hypot(x - hc[0], y - hc[1], z - hc[2]) < hr * 1.7 ? [0.5 + (x - hc[0]) / (2.4 * hr), 0.5 - (y - hc[1]) / (2.4 * hr), top.name === 'head' ? Math.max(0, Math.min(1, (z - hc[2] - hr * 0.25) / (hr * 0.3))) : 0] : null;
-    add({ name: 'head', mat: 'skin', bone: 'head', rigid: true, k: 0.02, sdf: Sub(0.012, U(hr * 0.2, cranium, face, nose, ears), sockets) });
+    add({ name: 'head', mat: 'face', bone: 'head', rigid: true, k: 0.02, sdf: U(hr * 0.2, cranium, face, U(hr * 0.12, nose, ears)) });
     // hair
     if (S.hairStyle !== 'bald') { const long = S.hairStyle === 'long', bun = S.hairStyle === 'bun';
-      const cap = I(0.012, grow(cranium, hr * 0.09), plane(H([0, hr * 0.42, hr * 0.5]), [0, -0.6, 0.8]), plane(H([0, -hr * (long ? 1.6 : 0.3), hr * 0.3]), [0, -1, long ? 0 : 0.42]), plane(H([0, -hr * 0.1, hr * 0.42]), [0, -0.25, 0.97]));
-      const extra = long ? U(0.04, ellipsoid(H([0, -hr * 0.9, -hr * 0.55]), [hr * 0.95, hr * 1.1, hr * 0.5]), symX(ellipsoid(H([hr * 0.75, -hr * 0.55, -hr * 0.1]), [hr * 0.3, hr * 0.8, hr * 0.45]))) : bun ? sphere(H([0, hr * 0.5, -hr * 0.95]), hr * 0.38) : null;
+      const cap = I(0.012, grow(cranium, hr * 0.09), plane(H([0, hr * 0.5, hr * 0.5]), [0, -0.6, 0.8]), plane(H([0, -hr * (long ? 1.6 : 0.3), hr * 0.3]), [0, -1, long ? 0 : 0.42]), plane(H([0, -hr * 0.1, hr * 0.3]), [0, -0.25, 0.97]));
+      const extra = long ? ellipsoid(H([0, -hr * 0.9, -hr * 0.62]), [hr * 0.92, hr * 1.1, hr * 0.42]) : bun ? sphere(H([0, hr * 0.5, -hr * 0.95]), hr * 0.38) : null; // long hair falls behind the ears, never over the cheeks
       const hairD = disp(extra ? U(hr * 0.3, cap, extra) : cap, (x, y, z) => 0.006 * fbm(x * 70, y * 16, z * 70, 2), 0.008);
       add({ name: 'hair', mat: 'hair', tau: 0.02, k: 0.01, sdf: hairD, boneFn: (x, y) => long && y < hc[1] - hr * 0.6 ? [['head', 0.4], ['spine', 0.6]] : [['head', 1]] }); }
     if (S.beard) add({ name: 'beard', mat: 'hair', bone: 'head', rigid: true, k: 0.02, sdf: Sub(0.006, disp(U(0.03, ellipsoid(H([0, -hr * 0.62, hr * 0.62]), [hr * 0.62, hr * 0.62 * S.beard, hr * 0.42]), symX(ellipsoid(H([hr * 0.55, -hr * 0.35, hr * 0.45]), [hr * 0.22, hr * 0.42, hr * 0.3]))), (x, y, z) => 0.007 * fbm(x * 60, y * 22, z * 60, 2), 0.009), box(H([0, -hr * 0.47, hr * 0.95]), [hr * 0.2, hr * 0.03, hr * 0.15], null, 0.004)) });
@@ -117,6 +117,7 @@ export function humanoid(ALL, kind, S) {
 export function mats(o) {
   return {
     skin: { col: o.skin, var: 0.08, freq: 30, gloss: 0.18, dirt: 0.25 },
+    face: { col: o.skin, var: 0.02, freq: 20, gloss: 0.16, dirt: 0, ao: 0.12 },   // clean, evenly lit face (the painted features carry the expression)
     c1: { col: o.c1, col2: o.c1b || o.c1.map((q) => q * 0.75), freq2: 6, var: 0.18, freq: 60, gloss: 0.1, dirt: 0.5 },
     c2: { col: o.c2, col2: o.c2b || o.c2.map((q) => q * 0.78), freq2: 6, var: 0.16, freq: 60, gloss: 0.1, dirt: 0.5 },
     hair: { col: o.hair, col2: o.hair.map((q) => q * 0.6), freq2: 30, var: 0.25, freq: 80, gloss: 0.35, dirt: 0.6 },

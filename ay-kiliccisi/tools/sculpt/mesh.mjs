@@ -81,7 +81,7 @@ export async function sculpt(M) {
     if (mt.col2) { const t = sat(0.5 + fbm(x * (mt.freq2 || 6) + 3, y * (mt.freq2 || 6), z * (mt.freq2 || 6), 2) * (mt.mix2 || 1.4)); c = c.map((q, i) => q + (mt.col2[i] - q) * t); }
     if (mt.grad) { const t = sat((y - mt.grad[0]) / (mt.grad[1] - mt.grad[0])); c = c.map((q, i) => q * (mt.grad[2][i] + (1 - mt.grad[2][i]) * t)); } // darker towards the bottom (hem, boots)
     const wear = mt.wear ?? 0, edge = mt.edge || [1, 1, 1]; c = c.map((q, i) => q + (edge[i] * Math.max(q, 0.35) * 1.6 - q) * convex * wear);
-    c = c.map((q) => q * (1 - (mt.dirt ?? 0.35) * cavity)); c = c.map((q) => q * (0.35 + 0.65 * ao));
+    c = c.map((q) => q * (1 - (mt.dirt ?? 0.35) * cavity)); const aoS = mt.ao ?? 0.65; c = c.map((q) => q * (1 - aoS + aoS * ao));
     C[v * 3] = c[0]; C[v * 3 + 1] = c[1]; C[v * 3 + 2] = c[2];
     MT[v * 4] = mt.gloss ?? 0.2; MT[v * 4 + 1] = mt.metal ?? 0; MT[v * 4 + 2] = mt.em ?? 0; MT[v * 4 + 3] = mt.tint ?? (mt.metal ? 1 : 0);
     if (M.uv) { const t = M.uv(x, y, z, top); if (t) { UV[v * 2] = t[0]; UV[v * 2 + 1] = t[1]; MASK[v] = t[2] || 0; } }
