@@ -68,7 +68,7 @@ window.runMech = function () {
     const r5 = G.hitPlayer({ src, dmg: 10, guard: 10 }); ok('savunma kırılınca vuruş can götürüyor', r5 === 'hit' && P.hp < hp0, { sonuç: r5, can: P.hp });
     sim(1.6); const gA = P.guard; sim(2.5); ok('savunma canı yavaşça doluyor', P.guard > gA + 10 && P.st !== 'gbreak', { önce: +gA.toFixed(1), sonra: +P.guard.toFixed(1) });
     // parry: block pressed just before the hit (a small goblin as attacker)
-    freshP(T0[0], T0[1], 0); const gob = G.GOBS.find((g) => !g.big && !g.dead); gob.x = P.x; gob.z = P.z + 1.3; gob.yaw = Math.PI; gob.st = 'strike'; gob.t = 0;
+    freshP(T0[0], T0[1], 0); const gob = G.GOBS.find((g) => !g.big && !g.dead); gob.x = P.x; gob.z = P.z + 1.3; gob.yaw = Math.PI; gob.st = 'strike'; gob.t = 0; gob.hitDone = true; gob.lv = 0;
     IN.blockHeld = false; sim(.1); IN.blockHeld = true; sim(.1); const r6 = G.hitPlayer({ src: gob, dmg: 7, guard: 18 });
     ok('tam zamanlı savuşturma: düşman sarsılıyor ve açık kalıyor', r6 === 'parry' && gob.st === 'stagger' && gob.open(), { sonuç: r6, goblin: gob.st });
     IN.blockHeld = true; sim(.6); const r7 = G.hitPlayer({ src: gob, dmg: 7, guard: 18 }); ok('geç blok savuşturma sayılmıyor (sadece blok)', r7 === 'block', r7);
@@ -91,7 +91,7 @@ window.runMech = function () {
     clearIn(); return [w, res, nan, minLow];
   };
   {
-    const [w1, r1] = wolfAttack('dodge'); ok('kurt: ~1 sn görünür hazırlık (çömelme + kırmızı işaret + hırlama)', r1.hazırlık >= .95 && r1.hazırlık <= 1.15 && r1.işaret, r1);
+    const [w1, r1] = wolfAttack('dodge'); ok('kurt: ~0.8 sn görünür hazırlık (çömelme + kırmızı işaret + hırlama)', r1.hazırlık >= .75 && r1.hazırlık <= .95 && r1.işaret, r1);
     ok('kurt: atlayış sırasında kaçınınca ıskalıyor ve kısa süre savunmasız', r1.can_kaybı === 0 && P.st !== 'down', r1);
     const [w2, r2, nan2, low2] = wolfAttack('hit');
     ok('kurt: isabette ragdoll düşüş, parçayı tutup ısırıyor, art arda basınca kurtuluyor', r2.can_kaybı > 0 && r2.can_kaybı < 30 && P.st === 'move', r2);

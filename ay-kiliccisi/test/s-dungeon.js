@@ -27,7 +27,7 @@ module.exports = async ({ page, shot, G, log }) => {
     const g = X.spawnMon('golem', P.x - 3, P.z, { aware: 1 }); g.st = 'chase'; const g0 = g.hp; X.foeHurt(g, 40, 1, 0, 'light0'); const gd = g0 - g.hp; g.st = 'open'; const g1 = g.hp; X.foeHurt(g, 40, 1, 0, 'light0'); const go = g1 - g.hp;
     return { wind, hpLost: 9999 - hp, blocked, gd, go } });
   log('iskelet saldırıya geçti', fight.wind === 1, JSON.stringify(fight));
-  log('kalkanlı iskelet önden hafif vuruşu blokladı', fight.blocked > 0 && fight.blocked < 10, fight.blocked);
+  log('kalkanlı iskelet önden hafif vuruşu blokladı', fight.blocked === 0, fight.blocked);
   log('golem taş deri: hafif vuruş %40, açık çekirdek %160', fight.gd === 16 && fight.go === 64, fight.gd + ' / ' + fight.go);
   // 5) skeleton crumbles and rises unless smashed with a heavy blow
   const rise = await G(() => { const X = __G.X, P = __G.P; let r = null; for (let k = 0; k < 30 && !r; k++) { const m = X.spawnMon('skel', P.x + 5, P.z + 5, { aware: 1 }); const dead = X.foeHurt(m, 9999, 1, 0, 'light0'); if (!dead && m.st === 'crumbled') r = m; else if (dead) { m.dead = 1 } }

@@ -71,7 +71,7 @@ function bossIntro(b){b.aware=1;b.st='chase';b.t=0;dunTitle(b.T.n,b.T.sub||'');s
 function monHurt(m,dmg,dx,dz,kind){if(m.dead)return false;const light=kind&&kind.startsWith&&kind.startsWith('light'),heavyK=kind==='heavy'||kind==='jumpatk'||kind==='exec'||kind==='assn'||kind==='skill';
  if(m.crumble){m.crumble=0;m.hp=0;m.dead=1;m.st='dead';m.t=0;spawnSparks(m.x,m.y+.4,m.z,22,[.85,.82,.7],5);note('Kemikler toz oldu.');return true}
  // shield: light hits and arrows from the front are blocked (a little gets through and it costs the skeleton balance)
- if(m.T.shield&&(light||kind==='arrow')&&m.st!=='stagger'&&m.st!=='hurt'&&Math.abs(angd(Math.atan2(P.x-m.x,P.z-m.z),m.yaw))<1.1){dmg=Math.round(dmg*.15);addPosture(m,9);spawnSparks(m.x+Math.sin(m.yaw)*.5,m.y+1.1,m.z+Math.cos(m.yaw)*.5,8,[1,.9,.6],3);floatText(m.x,m.y+2,m.z,'BLOK','');sfx.block();if(m.st!=='windup'&&m.st!=='strike'&&Math.random()<.45){m.st='windup';m.mv='bash';m.t=.1;m.hitN=0}}
+ if(m.T.shield&&(light||kind==='arrow')&&m.st!=='stagger'&&m.st!=='hurt'&&Math.abs(angd(Math.atan2(P.x-m.x,P.z-m.z),m.yaw))<1.1){m.blockedAt=GT.clock;if(kind==='arrow'){spawnSparks(m.x+Math.sin(m.yaw)*.5,m.y+1.1,m.z+Math.cos(m.yaw)*.5,8,[1,.9,.6],3);sfx.block()}if(m.st!=='windup'&&m.st!=='strike'&&Math.random()<.45){m.st='windup';m.mv='bash';m.t=.1;m.cn=0;m.hitN=0}return false}
  // stone skin: light hits barely scratch a golem unless its rune core is open
  if(m.T.stone){if(m.st==='open')dmg=Math.round(dmg*1.6);else if(light||kind==='arrow'){dmg=Math.round(dmg*.4);if(Math.random()<.2)floatText(m.x,m.y+2.6*m.sc,m.z,'TAŞ DERİ','')}}
  m.hp-=dmg;m.flash=1;m.aware=1;m.ls=[P.x,P.z];if(m.st==='sleep'||m.st==='idle'||m.st==='alert'){m.st=m.st==='sleep'?'rise':'chase';m.t=0}alertGroup(m,P,18,MONS);
@@ -119,13 +119,14 @@ function updateMon(m,dt){m.t+=dt;m.flash=Math.max(0,m.flash-dt*6);m.cd-=dt;const
   const tg=dunSteer(m);agentMove(m,tg[0],tg[1],T.spd*(m.phase>1?1.2:1),dt,m.rad,m.big?3:8);break}
  case'circle':{const a=Math.atan2(m.x-P.x,m.z-P.z)+.8*dt*(m.side||1),gx=P.x+Math.sin(a)*2.9,gz=P.z+Math.cos(a)*2.9;agentMove(m,gx,gz,T.spd*.55,dt,m.rad,6);agentFace(m,P.x,P.z,dt,9);if(m.t>m.dur){m.st='chase';m.t=0}break}
  case'aim':monAim(m,d,dt);break;
- case'windup':{m.spd=lp(m.spd,0,.4);const v=MV[m.mv],W=v.w*(m.cn>0?.4:1)*(m.phase>1?.85:1);if(m.t<W*.75)agentFace(m,P.x,P.z,dt,m.big?2.4:9);
+ case'windup':{m.spd=lp(m.spd,0,.4);const v=MV[m.mv],W=v.w*(m.cn>0?.4:1)*(m.phase>1?.85:1);if(m.t<W*.8)agentFace(m,P.x,P.z,dt,m.big?2.4:10);if(!m.big&&v.dmg&&!v.leap&&!v.lunge&&!v.ring&&d>v.r*.65*S)agentMove(m,P.x,P.z,T.spd*.75,dt,m.rad,10);
   if(v.ring)tele('circle',m.x+Math.sin(m.yaw)*.8*m.sc,m.z+Math.cos(m.yaw)*.8*m.sc,v.ring*S,0,0,sst(0,.4,m.t));else if(v.leap||v.lunge)tele('strip',m.x,m.z,.9*S,Math.min(d+.5,v.lunge?6:7.5),m.yaw,1);else if(v.arc&&v.arc>1.5)tele('circle',m.x+Math.sin(m.yaw)*1.2*S,m.z+Math.cos(m.yaw)*1.2*S,v.r*S,0,0,sst(0,.4,m.t));
   if(m.t>=W){m.st='strike';m.t=0;m.hitDone=false;sfx.swing();if(v.leap){m.lx=m.x;m.lz=m.z;const L=Math.min(d,v.r*S)+.3;m.lgx=m.x+Math.sin(m.yaw)*L;m.lgz=m.z+Math.cos(m.yaw)*L}monAct(m,v,d)}break}
  case'strike':{const v=MV[m.mv],A=v.a;
   if(v.leap){const u=Math.min(1,m.t/A),p=dunCollide(lp(m.lx,m.lgx,u),lp(m.lz,m.lgz,u),m.rad);m.x=p[0];m.z=p[1];m.air=Math.sin(PI*u)*1.1*S;if(!m.hitDone&&Math.hypot(P.x-m.x,P.z-m.z)<1.1*S+.3&&Math.abs(m.air)<1.2){m.hitDone=true;monHit(m,v)}}
   else if(v.lunge){const sp=v.lunge*(1-m.t/A);const p=dunCollide(m.x+Math.sin(m.yaw)*sp*dt,m.z+Math.cos(m.yaw)*sp*dt,m.rad);m.x=p[0];m.z=p[1];if(!m.hitDone&&d<1.6*S+.3&&Math.abs(angd(Math.atan2(P.x-m.x,P.z-m.z),m.yaw))<.8){m.hitDone=true;monHit(m,v)}}
-  else if(v.dmg&&!m.hitDone&&m.t>A*.5){m.hitDone=true;if(v.ring){CAM.shake=Math.max(CAM.shake,d<9?.6:.15);sfx.thud();const cx=m.x+Math.sin(m.yaw)*.8*m.sc,cz=m.z+Math.cos(m.yaw)*.8*m.sc;spawnSparks(cx,DUN.y+.2,cz,22,[.6,.55,.5],6);if(Math.hypot(P.x-cx,P.z-cz)<v.ring*S&&!P.air)monHit(m,v);if(m.boss&&m.phase>1)DRINGS.push({x:cx,z:cz,r:1,spd:7,max:14,hit:0,m})}
+  else if(v.dmg&&!m.hitDone&&!v.ring&&m.t>A*.25){if(!m.big&&d>1.1){const p=dunCollide(m.x+Math.sin(m.yaw)*3*dt,m.z+Math.cos(m.yaw)*3*dt,m.rad);m.x=p[0];m.z=p[1]}const fa=Math.abs(angd(Math.atan2(P.x-m.x,P.z-m.z),m.yaw));if(d<(v.r+.3)*S&&(fa<(v.arc||1.1)||d<.9)){m.hitDone=true;monHit(m,v)}}
+  else if(v.dmg&&v.ring&&!m.hitDone&&m.t>A*.5){m.hitDone=true;if(v.ring){CAM.shake=Math.max(CAM.shake,d<9?.6:.15);sfx.thud();const cx=m.x+Math.sin(m.yaw)*.8*m.sc,cz=m.z+Math.cos(m.yaw)*.8*m.sc;spawnSparks(cx,DUN.y+.2,cz,22,[.6,.55,.5],6);if(Math.hypot(P.x-cx,P.z-cz)<v.ring*S&&!P.air)monHit(m,v);if(m.boss&&m.phase>1)DRINGS.push({x:cx,z:cz,r:1,spd:7,max:14,hit:0,m})}
    else{if(!m.big)m.x+=Math.sin(m.yaw)*.4,m.z+=Math.cos(m.yaw)*.4;const fa=Math.abs(angd(Math.atan2(P.x-m.x,P.z-m.z),m.yaw));if(d<(v.r+.4)*S&&fa<(v.arc||1.1))monHit(m,v)}}
   if(m.t>=A){m.air=0;if(m.cn>0){m.cn--;m.st='windup';m.t=0;m.peril=0;break}m.st=v.open?'open':'recover';m.t=0;m.cd=(m.big?1.6:.9)+Math.random()*(m.phase>1?.4:1);m.peril=0}break}
  case'recover':m.spd=0;if(m.t>MV[m.mv||'slash'].rc*(m.phase>1?.7:1)){m.st='chase';m.t=0}break;
@@ -150,9 +151,8 @@ function monHit(m,v){const last=m.cn===0&&v.last;const r=hitPlayer({src:m,dmg:v.
  if(r==='hit'){if(m.T.poison){P.poisonT=Math.max(P.poisonT||0,5);floatText(P.x,P.y+2.1,P.z,'VEBA','red')}if(m.T.bleed&&Math.random()<.5){P.poisonT=Math.max(P.poisonT||0,3)}}return r}
 function monBlink(m){m.mcd.blink=GT.clock+5;for(let k=0;k<12;k++){const a=Math.random()*6.28,r=6+Math.random()*3,x=m.x+Math.sin(a)*r,z=m.z+Math.cos(a)*r;if(dunSolidAt(x,z,.5)||Math.hypot(x-P.x,z-P.z)<5)continue;
   spawnSparks(m.x,m.y+1,m.z,14,[.7,.4,1],4);m.x=x;m.z=z;spawnSparks(x,m.y+1,z,14,[.7,.4,1],4);sfx.hiss();m.st='chase';m.t=0;m.cd=.6;return}}
-function monAim(m,d,dt){m.spd=lp(m.spd,0,.4);agentFace(m,P.x,P.z,dt,8);if(m.t>.9&&!m.shot){m.shot=1;const sp=.5+d*.06,ra=Math.random()*6.28,r2=Math.sqrt(Math.random())*sp;
-  shootArrow([m.x+Math.sin(m.yaw)*.4,m.y+1.2,m.z+Math.cos(m.yaw)*.4],[P.x+Math.cos(ra)*r2,P.y+1+Math.random()*.4,P.z+Math.sin(ra)*r2],20,'foe',Math.round(8*lvDmg(m.lv)),null)}
- if(m.t>1.3){m.shot=0;m.st='chase';m.t=0;m.cd=1.5+Math.random()}}
+function monAim(m,d,dt){m.spd=lp(m.spd,0,.4);agentFace(m,P.x,P.z,dt,8);if(m.t<.55)m.aimAt=[P.x,P.z];if(m.t>.9&&!m.shot){m.shot=1;shootArrow([m.x+Math.sin(m.yaw)*.4,m.y+1.2,m.z+Math.cos(m.yaw)*.4],archerAimPoint(d,m.aimAt),20,'foe',Math.round(8*lvDmg(m.lv)),null)}
+ if(m.t>1.3){m.shot=0;m.st='chase';m.t=0;m.cd=2.2+Math.random()*1.2}}
 // ---------------------------------------------------------------- projectiles (bolts, webs, rocks) and rune rings
 function mkProj(kind,from,speed,dmg,dir){let ob=DPROJP.find(o=>!o.busy);if(!ob){ob=obj(dGeo.cube,{unlit:1,shade:0,pos:[0,0,0],cull:80});ob.dun=1;DPROJP.push(ob)}ob.busy=1;ob.vis=true;
  const p={kind,x:from[0],y:from[1],z:from[2],dmg,life:kind==='rock'?3:4,ob,lc:kind==='bolt'?[.7,.3,1.2]:kind==='web'?[.3,.3,.3]:[.4,.35,.3]};

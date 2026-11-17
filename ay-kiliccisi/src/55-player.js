@@ -58,10 +58,13 @@ function startRunAtk(){if(!canAct())return;spend(COST.run);P.st='runatk';P.t=0;P
 function startJump(){if(!canAct())return;spend(COST.jump);P.vy=6.6;P.air=true;P.st='jump';P.t=0;P.crouch=false;P.jumpAt=GT.clock;sfx.jump()}
 function startJumpAtk(){if(!canAct())return;spend(COST.jumpAtk);P.st='jumpatk';P.t=0;P.hitDone=false;P.vy=Math.min(P.vy,1.5);aimAssist(5);sfx.swing()}
 // dodge: direction from the stick relative to where the hero faces -> forward roll, back-step, or a side roll
-function startDodge(){if(!canAct())return;spend(COST.dodge);P.st='dodge';P.t=0;P.inv=iframes();P.crouch=false;P.charge=0;const l=Math.hypot(IN.wx,IN.wz);
- if(l>.3){const a=angd(Math.atan2(IN.wx,IN.wz),P.yaw);if(Math.abs(a)<.8){P.dodgeKind='fwd';P.yaw=Math.atan2(IN.wx,IN.wz)}else if(Math.abs(a)>2.35)P.dodgeKind='back';else P.dodgeKind=a>0?'left':'right';P.ddx=IN.wx/l;P.ddz=IN.wz/l}
- else{P.dodgeKind='back';P.ddx=-Math.sin(P.yaw);P.ddz=-Math.cos(P.yaw)}
- P.dodgeT={fwd:.56,back:.4,left:.5,right:.5}[P.dodgeKind];P.dodgeSp={fwd:8.4,back:7.2,left:8,right:8}[P.dodgeKind];sfx.dodge()}
+// dodge = a fast low DASH (Ghost of Tsushima style), no somersault: stick direction, or straight ahead without input.
+// Facing stays on the nearby foe so you can dash around it; two dashes can be chained; attack out of a dash = lunge slash.
+function startDodge(){if(!canAct())return;const chain=(P.dashEnd||-9)>GT.clock-.35;spend(chain?COST.dodge*1.3:COST.dodge);P.st='dodge';P.t=0;P.inv=iframes();P.crouch=false;P.charge=0;const l=Math.hypot(IN.wx,IN.wz);
+ let dx,dz;if(l>.3){dx=IN.wx/l;dz=IN.wz/l}else{dx=Math.sin(P.yaw);dz=Math.cos(P.yaw)}P.ddx=dx;P.ddz=dz;
+ const f=P.lock&&!P.lock.dead?P.lock:nearestFoe(7,PI),face=f?Math.atan2(f.x-P.x,f.z-P.z):Math.atan2(dx,dz),a=angd(Math.atan2(dx,dz),face);
+ P.dodgeKind=Math.abs(a)<.8?'fwd':Math.abs(a)>2.35?'back':a>0?'left':'right';P.yaw=f?face:Math.atan2(dx,dz);P.dodgeFace=P.yaw;
+ P.dodgeT=.3;P.dodgeSp=15.5;sfx.dodge();spawnSparks(P.x,P.y+.15,P.z,6,[.75,.82,1],2.2)}
 function startBlock(){if(P.guard<25){note('Savunma toparlanıyor…');return false}P.st='block';P.t=0;P.blockAt=GT.clock;P.crouch=false;return true}
 // --------------------------------------------------------------- damage dealing
 const ATK={light0:{r:2.75,arc:1.2,m:1,t:'hit'},light1:{r:2.75,arc:1.2,m:1.05,t:'hit'},light2:{r:2.9,arc:1.1,m:1.6,t:'big'},heavy:{r:3.2,arc:1.05,m:2.1,t:'big'},
@@ -71,7 +74,7 @@ function doHit(kind){const S=curStance(),lt=kind.startsWith('light'),A=lt?{r:S.r
   if(f.hitPts&&Math.abs(angd(Math.atan2(dx,dz),P.yaw))>A.arc+.5&&d>1)continue;if(f.alt&&f.alt()>2.2&&kind!=='jumpatk')continue;
   const sneak=!foeHostile(f)&&(f.aware||0)<.5&&f.st!=='mounted',weak=isWolf(f)?f.st==='recover':(f.open&&f.open()),air=f.st==='pounce';
   const adv=S.strong(f),crit=Math.random()*100<5+gear('crit');let dmg=weaponDmg()*(.9+rnd()*.2)*dmgMul()*(adv?1.25:1)*(cnt?1.8:1)*A.m*(kind==='heavy'?1+P.charge*.6:1)*(sneak?2:1)*(weak?1.5:1)*(air?1.4:1)*(crit?1.6:1)*(P.berserk>0?1.4:1)*(P.roarBuff>0?1.2:1);dmg=Math.round(dmg);
-  const k=dc||1,dead=foeHurt(f,dmg,dc>.3?dx/k:fx,dc>.3?dz/k:fz,kind);any=true;if(!dead)addPosture(f,(lt?11*(S.pm[P.combo]||1):({heavy:30+P.charge*25,runatk:18,jumpatk:30}[kind]||12))*(adv?1.8:1)*(cnt?1.8:1));gainRage(4);
+  const k=dc||1,dead=foeHurt(f,dmg,dc>.3?dx/k:fx,dc>.3?dz/k:fz,kind);any=true;if(f.blockedAt===GT.clock){addPosture(f,lt?9:14);const hp0=f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+1.1,f.z];spawnSparks(hp0[0],hp0[1],hp0[2],9,[1,.9,.6],3);floatText(hp0[0],hp0[1]+.4,hp0[2],'BLOK','');sfx.block();continue}if(!dead)addPosture(f,(lt?11*(S.pm[P.combo]||1):({heavy:30+P.charge*25,runatk:18,jumpatk:30}[kind]||12))*(adv?1.8:1)*(cnt?1.8:1));gainRage(4);
   const lch=gear('leech')+(P.berserk>0?8:0);if(lch>0)P.hp=Math.min(maxHP(),P.hp+dmg*lch/100);if(kind==='heavy'&&hasFx('bleed')){f.bleedT=5;f.bleedD=dmg*.08}if(hasFx('ember')&&Math.random()<.3){f.bleedT=Math.max(f.bleedT||0,2);f.bleedD=Math.max(f.bleedD||0,dmg*.06)}const hp=f.hitPts?f.hitPts()[0]:[f.x,f.y+.7*(f.sc||1)+(f.air||0),f.z];
   spawnSparks(hp[0],hp[1],hp[2],dead?22:A.t==='big'?14:7,[1,.95,.7]);floatText(hp[0],hp[1]+.4,hp[2],(sneak?'GİZLİ ':cnt?'KARŞI ':air?'KARŞI ':weak?'AÇIK ':adv?'DURUŞ ':crit?'KRİTİK ':'')+dmg,sneak||cnt||air||weak||adv||crit||A.t==='big'?'crit':'');
   if(dead)onFoeKilled(f,false)}
@@ -118,6 +121,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  let move=true;
  switch(P.st){
  case'move':{// sprint: holding KOŞ drains stamina; at zero it stops by itself and the hero walks until stamina is back to 30
+  if(SO.on){P.vx=P.vz=0;P.sprinting=false;if(SO.lead)P.yaw+=angd(Math.atan2(SO.lead.x-P.x,SO.lead.z-P.z),P.yaw)*Math.min(1,dt*8);if(atkEdge||take('atk'))SO.press=GT.clock;break}// standoff: feet planted
   if(P.exhausted&&P.sta>=30)P.exhausted=false;
   P.sprinting=P.sprintHeld&&!P.exhausted&&!P.crouch&&il>.3;
   if(P.sprinting){P.sta-=COST.sprint*dt;P.staT=.6;if(P.sta<=0){P.sta=0;P.exhausted=true;P.sprinting=false;note('Dayanıklılık bitti: yürüyorsun')}}
@@ -146,8 +150,9 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
   break}
  case'jumpatk':{slide(2);P.vy-=8*dt;if(!P.air&&!P.hitDone){P.hitDone=true;doHit('jumpatk');P.t=0;P.st='land';P.landT=.38}break}
  case'land':{slide(14);if(P.t>(P.landT||.15)){P.st='move';P.t=0}break}
- case'dodge':{const u=Math.min(1,P.t/P.dodgeT),sp=P.dodgeSp*(1-u*.7);P.vx=P.ddx*sp;P.vz=P.ddz*sp;const e=u*u*(3-2*u);
-  P.spin=P.dodgeKind==='fwd'?2*PI*e:0;P.roll=P.dodgeKind==='left'?2*PI*e:P.dodgeKind==='right'?-2*PI*e:0;if(u>=1){P.st='move';P.t=0;P.spin=0;P.roll=0}break}
+ case'dodge':{const u=Math.min(1,P.t/P.dodgeT),sp=P.dodgeSp*(1-sst(.35,1,u)*.85);P.vx=P.ddx*sp;P.vz=P.ddz*sp;P.spin=0;P.roll=0;P.yaw=P.dodgeFace;if(Math.random()<.5)spawnSparks(P.x,P.y+.1,P.z,1,[.6,.66,.8],1.2);
+  if(u>.3&&take('atk',.25)){P.dashEnd=GT.clock;startRunAtk();break}if(u>.55&&take('dodge',.25)){P.dashEnd=GT.clock;startDodge();break}
+  if(u>=1){P.st='move';P.t=0;P.dashEnd=GT.clock;P.vx*=.35;P.vz*=.35}break}
  case'block':{const sp=1.5*il;moveFree(sp,6);if(il>.05&&!nearestFoe(8,PI))P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*6);else{const f=nearestFoe(10,PI);if(f)P.yaw+=angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw)*Math.min(1,dt*8)}
   if(!IN.blockHeld){P.st='move';P.t=0}else if(take('atk')){P.st='move';startLight(0)}else if(take('dodge'))startDodge();break}
  case'parry':slide(10);if(P.t>.32){P.st=IN.blockHeld?'block':'move';P.t=0}break;
@@ -196,8 +201,10 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
  case'runatk':{rate=30;const u=P.t/.6,sl=sst(.25,.5,u);q.RaZ=.3;q.RaX=lp(-.9,.2,sl);q.RaY=lp(-1.1,1.9,sl);q.Rel=lp(.7,.05,sl);q.chY=lp(-.7,.7,sl);q.spX=.35;q.pel=.2;q.LthX=-.9;q.Lkn=.9;q.RthX=.55;q.Rkn=.3;q.LaX=.7;q.Lel=1.1;break}
  case'jump':{rate=16;const up=P.vy>0;q.pel=.15;q.LthX=up?-.9:-.5;q.Lkn=up?1.4:.9;q.RthX=up?-.2:-.35;q.Rkn=up?.9:.6;q.LaZ=.7;q.LaX=-.5;q.RaZ=.8;q.RaX=-.5;q.Rel=.8;q.spX=.1;break}
  case'jumpatk':{rate=26;q.two=1;q.RaZ=-1.4;q.RaX=lp(-1.1,1.5,sst(0,.25,P.t));q.Rel=.2;q.RaY=.2;q.chX=.45;q.spX=.35;q.pel=.3;q.LthX=-1.2;q.Lkn=1.6;q.RthX=-.6;q.Rkn=1.4;break}
- case'dodge':{rate=30;if(P.dodgeKind==='back'){q.pel=-.15;q.spX=-.25;q.LthX=.3;q.Lkn=.6;q.RthX=-.4;q.Rkn=.9;q.LaZ=.8;q.LaX=-.3;q.RaX=-.6;q.Rel=.9}
-  else{q.pel=.9;q.spX=.7;q.chX=.4;q.hdX=.5;q.LthX=q.RthX=-1.5;q.Lkn=q.Rkn=2.1;q.LaZ=.9;q.LaX=-.6;q.Lel=1.6;q.RaZ=.9;q.RaX=-.6;q.Rel=1.6}break}
+ case'dodge':{rate=34;const k=P.dodgeKind;// low dash: crouched lean into the direction, sword arm trailing
+  if(k==='back'){q.pel=-.1;q.spX=-.15;q.LthX=.35;q.Lkn=.7;q.RthX=-.55;q.Rkn=1.0;q.LaZ=.6;q.LaX=-.4;q.RaX=-.5;q.Rel=.8;q.hdX=.2}
+  else if(k==='fwd'){q.pel=.12;q.spX=.22;q.chX=.05;q.hdX=-.15;q.LthX=-1.0;q.Lkn=1.1;q.RthX=.7;q.Rkn=.8;q.LaZ=.4;q.LaX=.9;q.Lel=.5;q.RaZ=.35;q.RaX=.8;q.Rel=.35}
+  else{const s=k==='left'?1:-1;q.pel=.1;q.spX=.12;q.chY=.35*s;q.hipY=-.2*s;q.LthX=-.7;q.Lkn=1.0;q.RthX=-.2;q.Rkn=.9;q.LaZ=.7;q.LaX=.3;q.RaZ=.7;q.RaX=.4;q.Rel=.5;q.hdX=-.1}break}
  case'block':case'parry':{rate=22;q.two=1;q.RaZ=.55;q.RaX=-1.05;q.RaY=-.35;q.Rel=1.45;q.RwX=-.35;q.RwZ=.35;q.spX=.12;q.pel=.12;q.LthX=-.45;q.Lkn=.55;q.RthX=.2;q.Rkn=.35;q.hdX=-.1;
   if(P.st==='parry'){const k=1-P.t/.32;q.RaX-=.6*k;q.chX=-.2*k;q.hdX=-.3*k}break}
  case'gbreak':{rate=12;const k=Math.sin(P.t*9)*(1-P.t/1.4);q.RaZ=.2;q.RaX=-1.6;q.Rel=.3;q.LaZ=.5;q.LaX=-1.2;q.spX=-.35+k*.1;q.chX=-.2;q.hdX=-.4;q.pel=-.2;q.LthX=.3;q.Lkn=.5;q.RthX=-.3;q.Rkn=.6;break}

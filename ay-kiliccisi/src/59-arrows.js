@@ -22,9 +22,14 @@ function archerChase(g,d,dt){if(!g.archer)return false;if(g.unseen>1||d>22)retur
  if(g.cd<=0){g.st='aim';g.t=0;sfx.gobShout();return true}
  const a=Math.atan2(g.x-P.x,g.z-P.z)+.6*dt*(g.side||1),r=Math.min(14,Math.max(9,d));agentMove(g,P.x+Math.sin(a)*r,P.z+Math.cos(a)*r,3.2,dt,g.rad,6);agentFace(g,P.x,P.z,dt,8);return true}
 function archerAim(g,d,dt){g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
- if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z);const sp=.55+d*.07,ra=Math.random()*6.28,rr2=Math.sqrt(Math.random())*sp,ld=Math.random()*.45;// like a skeleton archer: often close, not always on target
-  shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],[P.x+Math.cos(ra)*rr2,P.y+1.0+Math.random()*.5,P.z+Math.sin(ra)*rr2],19,'foe',Math.round(8*lvDmg(g.lv||1)),[P.vx*ld,P.vz*ld]);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
- if(g.t>1.3){g.shot=0;g.st='chase';g.t=0;g.cd=rr(1.6,2.6)}}
+ if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z),to=archerAimPoint(d,g.aimAt);
+  shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],to,19,'foe',Math.round(8*lvDmg(g.lv||1)),null);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
+ if(g.t<.55)g.aimAt=[P.x,P.z];// the archer locks its aim early: what it shoots at is where you WERE
+ if(g.t>1.3){g.shot=0;g.st='chase';g.t=0;g.cd=rr(2.4,3.6)}}
+// human-like archery: a hit roll first (worse when you move, crouch or are far), then a near-miss or a body shot
+function archerAimPoint(d,at){const mv=Math.hypot(P.vx||0,P.vz||0),miss=cl(.6+d*.012+(mv>2?.2:0)+(P.crouch?.1:0)+(P.st==='dodge'?.3:0),.6,.9),a0=at||[P.x,P.z];
+ if(Math.random()<miss){const a=Math.random()*6.28,r=.9+Math.random()*1.4;return[a0[0]+Math.cos(a)*r,P.y+.6+Math.random()*1.4,a0[1]+Math.sin(a)*r]}
+ return[a0[0]+(Math.random()-.5)*.3,P.y+1.0+Math.random()*.4,a0[1]+(Math.random()-.5)*.3]}
 function archerPose(g,q){if(!g.archer)return;const aim=g.st==='aim',k=aim?sst(0,.35,g.t):(g.hostile()?.4:0);if(!k)return;
  q.LsX=lp(q.LsX||0,-1.5,k);q.LsZ=lp(q.LsZ||0,.1,k);q.LeX=lp(q.LeX||0,-.05,k);q.RsX=lp(q.RsX||0,-1.35,k);q.RsY=lp(q.RsY||0,.5,k);q.ReX=lp(q.ReX||0,-1.9*(aim?sst(0,.8,g.t):.3),k);q.spY=lp(q.spY||0,-.35,k)}
 function drawGobBow(g){if(!g.archer||!g.R)return;if(!g.bowOb){arrowGeom();g.bowOb=obj(bowGeo,{shade:.9,pos:[0,0,0],cull:120,out:.004,outCol:[.05,.04,.03]})}

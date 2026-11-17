@@ -179,7 +179,7 @@ window.runLoop = async function () {
     sim(40, () => { P.hp = 999; P.st = 'move'; P.alive = true; P.x = c.x; P.z = c.z + 2.6; if (c.st === 'horn') c.st = 'chase'; if (c.st === 'windup') seen[c.move || 'smash'] = Math.max(seen[c.move || 'smash'] || 0, c.t); });
     ok('Kırık Diş: üç farklı saldırı (ezme, savurma, yere vurma) ve hepsinin hazırlığı görülüyor (>0.8 sn)', Object.keys(seen).length >= 3 && Object.values(seen).every((t) => t > .8), seen);
     // stomp shockwave: jumping avoids it
-    const stomp = (jump) => { freshP(c.x, c.z + 3.5, Math.PI); c.st = 'windup'; c.move = 'stomp'; c.t = 0; c.hitDone = false; const h0 = P.hp; let air = false;
+    const stomp = (jump) => { isolate(c.x, c.z, 40); freshP(c.x, c.z + 3.5, Math.PI); c.st = 'windup'; c.move = 'stomp'; c.t = 0; c.hitDone = false; const h0 = P.hp; let air = false;
       sim(2.2, (t) => { c.yaw = 0; if (jump && c.t > .82 && !P.air && !air) { G.press('jump'); air = true; } if (c.st === 'recover') return false; }); return h0 - P.hp; };
     const dGround = stomp(false), dJump = stomp(true);
     ok('Kırık Diş: yere vurma dalgası yerdeyken vuruyor, zamanında ZIPLA ile atlanıyor', dGround > 10 && dJump === 0, { yerde: Math.round(dGround), zıplayınca: Math.round(dJump) });

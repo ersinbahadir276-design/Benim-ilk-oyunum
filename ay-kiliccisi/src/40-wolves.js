@@ -73,7 +73,7 @@ function updateWolf(w,P,dt,GS){
   w.tail=Math.sin(w.t*9)*.5;w.y=hAt(w.x,w.z);return}
  // ---------------- perception
  w.seeT=(w.seeT||rnd()*.12)-dt;if(w.seeT<=0){w.seeT=.12;w.sees=wolfSees(w,P)}const sees=w.sees,safe=Math.hypot(P.x,P.z)<150,was=w.aware;
- if(sees||hostileSt(w)&&d<4&&P.alive){w.ls=[P.x,P.z];w.unseen=0;if(!hostileSt(w))w.aware=Math.min(1,w.aware+dt*(P.crouch?.5:1)/(.22+d/32))}else{w.unseen+=dt;if(!hostileSt(w))w.aware=Math.max(0,w.aware-dt*.35)}
+ if(sees||hostileSt(w)&&d<12&&P.alive){w.ls=[P.x,P.z];w.unseen=0;if(!hostileSt(w))w.aware=Math.min(1,w.aware+dt*(P.crouch?.5:1)/(.22+d/32))}else{w.unseen+=dt;if(!hostileSt(w))w.aware=Math.max(0,w.aware-dt*.35)}
  if(sees&&was<.5&&w.aware>=.5&&!hostileSt(w)){GS.onSpotted(w);for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&!hostileSt(o)&&o.st!=='mounted'&&Math.hypot(o.x-w.x,o.z-w.z)<18){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.55)}}
  if(!hostileSt(w)&&w.calm<=0&&!sees&&((P.noise>0&&d<P.noise)||(P.sprinting&&d<9))&&w.st!=='alert'&&w.st!=='search'){w.st='alert';w.t=0;w.ls=[P.x,P.z]}
  w.tail=lp(w.tail,0,.1);
@@ -93,15 +93,15 @@ function updateWolf(w,P,dt,GS){
  case'circle':{w.crouch=lp(w.crouch,.2,.2);const a=Math.atan2(w.x-P.x,w.z-P.z)+w.strafe*.9/Math.max(d,2),R=5.6,gx=P.x+Math.sin(a)*R,gz=P.z+Math.cos(a)*R,px=w.x,pz=w.z;
   const k=Math.hypot(gx-w.x,gz-w.z)||1,p=collide(w.x+(gx-w.x)/k*3.3*dt,w.z+(gz-w.z)/k*3.3*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,3,.2);w.ph+=3*dt*4;wolfFace(w,P.x,P.z,dt,9);
   if(Math.hypot(w.x-px,w.z-pz)<3.3*dt*.3)w.strafe*=-1;
-  if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0}else if(d>10||w.unseen>3){w.st='chase';w.t=0}
+  if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0}else if(d>7.5||w.unseen>3){w.st='chase';w.t=0}
   else if(w.t>w.dur&&!tokenBusy()&&w.cd<=0&&P.st!=='down'&&P.st!=='getup'&&d<7.5){w.st='windup';w.t=0;w.dodged=false;w.resolved=false;GS.onWindup(w)}break}
  case'windup':w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,1,Math.min(1,dt*9));w.jaw=lp(w.jaw,.5,.2);w.tail=-.5;
-  if(w.t<.65){wolfFace(w,P.x,P.z,dt,10);w.ax=P.x+P.vx*.18;w.az=P.z+P.vz*.18}
-  if(w.t>=1.0){let jx=w.ax-w.x,jz=w.az-w.z,jl=Math.hypot(jx,jz)||1;const L=cl(jl+.4,2.5,8);w.sx=w.x;w.sz=w.z;w.ax=w.x+jx/jl*L;w.az=w.z+jz/jl*L;w.yaw=Math.atan2(jx,jz);w.st='pounce';w.t=0;GS.onPounce(w)}break;
+  if(w.t<.62){wolfFace(w,P.x,P.z,dt,10);const lead=(.8-w.t)+.3;w.ax=P.x+P.vx*lead;w.az=P.z+P.vz*lead}
+  if(w.t>=.8){let jx=w.ax-w.x,jz=w.az-w.z,jl=Math.hypot(jx,jz)||1;const L=cl(jl+.4,2.5,8);w.sx=w.x;w.sz=w.z;w.ax=w.x+jx/jl*L;w.az=w.z+jz/jl*L;w.yaw=Math.atan2(jx,jz);w.st='pounce';w.t=0;GS.onPounce(w)}break;
  case'pounce':{const u=Math.min(1,w.t/.5);w.x=lp(w.sx,w.ax,u);w.z=lp(w.sz,w.az,u);w.air=4*1.15*u*(1-u);w.pitch=lp(-.55,.5,u);w.crouch=lp(w.crouch,0,.3);w.jaw=.9;w.spd=0;
   const hx=w.x+Math.sin(w.yaw)*.55,hz=w.z+Math.cos(w.yaw)*.55,hd=Math.hypot(P.x-hx,P.z-hz);
   if(P.st==='dodge'&&!w.dodged&&!w.resolved){w.dodged=true;w.resolved=true;GS.onDodged(w)}// a dodge started during the leap always makes it miss
-  if(u>.18&&u<.8&&hd<1.05&&!w.resolved&&!w.dodged&&P.st!=='down'&&P.st!=='getup'&&P.st!=='dead'){const h=w.air,r=hitPlayer({src:w,dmg:4+(w.alpha?2:0),guard:30,dir:[Math.sin(w.yaw),Math.cos(w.yaw)],knock:'down',power:1,pin:true,name:'kurt'});
+  if(u>.18&&u<.85&&hd<1.15&&!w.resolved&&!w.dodged&&P.st!=='down'&&P.st!=='getup'&&P.st!=='dead'){const h=w.air,r=hitPlayer({src:w,dmg:4+(w.alpha?2:0),guard:30,dir:[Math.sin(w.yaw),Math.cos(w.yaw)],knock:'down',power:1,pin:true,name:'kurt'});
    if(r==='iframe'){if(!w.dodged){w.dodged=true;w.resolved=true;GS.onDodged(w)}}else{w.resolved=true;if(r==='hit'&&P.alive){GS.onPin(w,h);break}if(r==='block'||r==='guardbreak'){w.st='recover';w.t=0;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*6;w.kz=-Math.cos(w.yaw)*6;w.cd=rr(1.4,2);break}if(r==='parry')break}}
   if(u>=1){const p=collide(w.x,w.z,.42);w.x=p[0];w.z=p[1];w.air=0;w.pitch=0;w.st='recover';w.t=0;w.cd=rr(1.4,2.4);w.kx=Math.sin(w.yaw)*4;w.kz=Math.cos(w.yaw)*4;if(!w.dodged&&hd>1.05){w.dodged=true;GS.onMiss(w)}}break}
  case'pin':w.spd=0;w.air=0;w.crouch=lp(w.crouch,.45,.2);w.pitch=lp(w.pitch,.35,.2);w.bt-=dt;w.jaw=lp(w.jaw,.15,.3);
