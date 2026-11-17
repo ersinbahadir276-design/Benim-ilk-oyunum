@@ -12,7 +12,7 @@ Tests: `cd ay-kiliccisi && NODE_PATH=$(npm root -g) node test/harness.js test/<s
 | # | Feature | Status | What's still open |
 |---|---|---|---|
 | 1 | High-quality male protagonist | **Mostly done.** Kael is an in-game sculpted model (~21k triangles, 58 bones, gloss/metal/glow material channels, horned helm, fur mantle, cape, greatsword). | The user asked for an armor redesign but gave no design brief, so it waits on that. |
-| 2 | Realistic 3D character animations | **In progress.** Procedural poses with crossfades, arm IK (two-handed grip, reverse grip), cape bones. Foot IK on terrain (run 1). Speed-matched gait, heel-off and stride foot locking (run 2). **Terrain foot IK for every humanoid rig: villagers, guards, merchants, goblins, big goblins, skeletons, Veyra (run 3).** | No keyframe clip system. Foot locking covers only the hero's walk and run, not turning in place or crouch-walking. NPCs have terrain IK but no stride locking. Wolves, crocodile and dragon have no foot IK. No hit-reaction directionality. |
+| 2 | Realistic 3D character animations | **In progress.** Procedural poses with crossfades, arm IK (two-handed grip, reverse grip), cape bones. Foot IK on terrain (run 1). Speed-matched gait, heel-off and stride foot locking (run 2). Terrain foot IK for every humanoid rig: villagers, guards, merchants, goblins, big goblins, skeletons, Veyra (run 3). **Wolves fit the terrain: body pitch, body sink, paws placed on the ground under each paw (run 4).** | No keyframe clip system. Foot locking covers only the hero's walk and run, not turning in place or crouch-walking. NPCs have terrain IK but no stride locking. Wolves have no stride (paw) locking yet. The crocodile and dragon have no foot IK. No hit-reaction directionality. |
 | 3 | Integration of submitted GLB models | **In progress.** Done: dragon (own clips), elf body (Şeytan Kraliçe), hair GLB, skeleton proportions from berserk_armor, kawaiope and aldrich. | gwyndolin (Snake Priestess boss) not used yet. The NC/ND-licensed files can't be used. |
 | 4 | Multiple animals and creatures | **In progress.** Wolves, goblins (melee, archer, chief), crocodile, dragon, Veyra, **skeleton warriors and skeleton archers** (merged in run 3 from the parallel branches `-soup7a`/`-7qxv18`). The old game has 14 species. | Spider, golem, wraith; deer and birds in the open world; the White Wolf. |
 | 5 | Creature taming and AI | **In progress.** Vision cones, group alerts, hearing, utility-AI companion (Veyra). Taming exists in the old game (`yaban.html`). | Taming isn't in Ay Kılıççısı yet; no "pet upgrade tree". |
@@ -56,8 +56,18 @@ No feature is marked complete in the routine's sense yet.
   - New test `ay-kiliccisi/test/s-rigfik.js`: 14/14 pass. Regressions: `s-mech` 47/47, `s-loop` 71/71, `s-undead` 16/16, `s-footik` 9/9, `s-stride` 9/9, `s-perf` OK.
   - Caveat: the downhill leg reaches 99.9 % extension on steep slopes, so the knee looks straight there; the pelvis drop isn't limited by leg reach yet.
 
+### Run 4 — 2026-11-17
+- Started from `ccr-70a30f22-d98vgz` (run 3), fast-forwarded into `ccr-70a30f22-ijomsl`. The parallel armor-redesign branches (`-kpnltt`, `-xztvch`, `-lsmbh1`, `-2ak8ow`, `-wx041a`) are still a separate line and were not merged.
+- **Feature 2 (animations): wolves stand properly on slopes** (`wolfGround` + `WFIK` in `ay-kiliccisi/src/40-wolves.js`).
+  - Before: the wolf body stayed level whatever the ground did, and each leg aimed at the ground under its hip. On a 0.42 slope the downhill paws hung up to 13 cm in the air (uphill facing) or 7 cm (downhill facing).
+  - Now the body pitches to match the ground under the front and back paws (clamped to 0.55 rad, nose up uphill, nose down downhill). If a leg would still have to stretch past 96 % of its length, the body sinks (at most 22 cm). Each paw aims at the ground under the paw's own stride position, and leg angles take the body pitch into account. Everything is smoothed per wolf. It's off in the air, when dead, pinning the player or ridden. `WFIK.on=0` restores the old behaviour.
+  - Measured on a 0.42 slope as the worst paw error compared with flat ground: facing uphill 13.0 cm → 0.5 cm, facing downhill 6.8 → 0.6 cm, side slope 0.3 → 0.5 cm (already fine before). No paw sinks while trotting across the slope (worst −0.5 cm). Flat ground is unchanged.
+  - New test `ay-kiliccisi/test/s-wolfik.js`: 11/11 pass. Regressions: `s-mech` 47/47, `s-loop` 71/71, `s-rigfik` 14/14, `s-undead` 16/16, `s-perf` OK (village draw prep 2.24 ms per frame).
+  - Not checked by eye: in the test screenshot, tall grass hides the paws.
+
 ## Next priorities
-1. Animations: terrain foot IK for wolves (4-leg rig in `40-wolves.js`) and the crocodile, stride locking for walking NPCs, toe locking during heel-off, crouch-walk gait, then a keyframe clip layer for the hero's signature moves.
-2. Protagonist: armor redesign, once the user describes the look they want.
+1. Animations: paw stride locking for wolves (stop sliding at trot/gallop), terrain IK for the crocodile (16-bone rig in `48-croc.js`), stride locking for walking NPCs, crouch-walk gait for the hero, then a keyframe clip layer for signature moves.
+2. Protagonist: merge one of the parallel armor-redesign branches (or settle on a design brief with the user).
 3. GLB: build the Snake Priestess boss on the gwyndolin skeleton.
-4. Creatures: the first dungeon creatures (skeleton, spider).
+4. Creatures: the first dungeon creatures (spider, golem).
+5. Housekeeping: merge this branch into `main` so each scheduled run stops starting from scratch.

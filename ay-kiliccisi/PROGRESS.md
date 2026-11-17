@@ -100,6 +100,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] AŞAMA 1 kalan: oyuncu denge çubuğunu 'Denge' olarak göster, duruşlara özgü pozlar (hamle/saplama), kombo bitirici efektleri, yönlü saldırı; AŞAMA 2: kalkanlı/mızraklı/suikastçı/elit düşmanlar, boss girişleri
 - [ ] SIRADAKİ (kullanıcı istedi): haritayı büyüt + farklı bölgeler; mağara; büyük zindan + uzun zindan kulesi (katlar, boss); daha çok yaratık türü ve olay (manhwa RPG: iskelet, hortlak, örümcek, golem, gece baskını)
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
+- [x] Oturum 10 (zamanlanmış 4): kurtlar eğimde — gövde zemine göre eğilir, gerekirse çöker, her pati kendi altındaki zemine basar (WFIK, 40-wolves.js; s-wolfik.js 11/11)
 - [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse
 - [ ] Şeytan Kral'ın kolları ince; aşama 3 boss dövüşünde iyileştirilecek
 

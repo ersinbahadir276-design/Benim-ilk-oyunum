@@ -119,10 +119,25 @@ function updateWolf(w,P,dt,GS){
  w.y=hAt(w.x,w.z)}
 // ---------------- rendering: assign the nearest wolves to render slots and pose their parts
 function mroty(m,x,y,z,rx,ry,rz){return mmul(m,mtrs([x,y,z],[rx,ry,rz]))}
+// ---- quadruped terrain fit: the body pitches with the slope under its front and back paws (so the downhill legs
+// can reach), sinks a little where a leg would still have to over-stretch, and every paw is placed on the ground under
+// the paw itself (not under the hip). Smoothed per wolf; off in the air, dead or pinned. WFIK.on=0 = old behaviour.
+const WFIK={on:1,maxP:.55,maxD:.22,k:.25,last:null};
+function wolfGround(w,sc,H,moving,run){if(w.gp===undefined){w.gp=0;w.gd=0}
+ let tp=0,td=0;
+ if(WFIK.on&&!(w.air>.05)&&!w.dead&&w.st!=='pin'&&w.st!=='mounted'){const fx=Math.sin(w.yaw),fz=Math.cos(w.yaw),e=.41*sc,
+   hf=hAt(w.x+fx*e,w.z+fz*e),hb=hAt(w.x-fx*e,w.z-fz*e);tp=-cl(Math.atan2(hf-hb,2*e),-WFIK.maxP,WFIK.maxP);
+  // how far would each leg have to reach with that pitch? sink the body by the worst over-stretch
+  const M=mmul(mtrs([w.x,w.y+H,w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch+tp,0,0]));for(let k=0;k<12;k++)M[k]*=sc;
+  const L=(W_UP+W_LO)*.96;for(const hp of WHIP){const hw=mpt(M,hp),need=(hw[1]-hAt(hw[0],hw[2]))/sc-L;if(need>td)td=need}
+  td=Math.min(td,WFIK.maxD)*sc}
+ const k=WFIK.k;w.gp+=(tp-w.gp)*k;w.gd+=(td-w.gd)*k;if(Math.abs(w.gp)<1e-4&&!tp)w.gp=0;if(w.gd<1e-4&&!td)w.gd=0;
+ return {p:w.gp,drop:w.gd}}
 function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Math.hypot(w.x-P.x,w.z-P.z),w]).filter(a=>a[0]<150).sort((a,b)=>a[0]-b[0]).slice(0,WSLOTS);
  for(let i=0;i<WSLOTS;i++){const s=wslots[i],e=near[i],vis=!!e;if(s.sk)s.sk.vis=vis;s.body.vis=s.head.vis=s.jaw.vis=s.tail.vis=s.sh.vis=vis;for(const l of s.legs)l[0].vis=l[1].vis=vis;s.w=vis?e[1]:null;if(!vis)continue;
   const w=e[1],sc=w.sc,moving=w.spd>.3,run=w.spd>4,bob=moving?Math.abs(Math.sin(w.ph))*(run?.05:.02):Math.sin(time*2+w.ph)*.006,H=(.66-w.crouch*.2+bob)*sc,sink=w.dead>4?(w.dead-4)*.25:0;
-  let M=mmul(mtrs([w.x,w.y+H+w.air-sink+(w.roll*-.42*sc),w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll]));
+  const gnd=wolfGround(w,sc,H,moving,run);
+  let M=mmul(mtrs([w.x,w.y+H+w.air-sink+(w.roll*-.42*sc)-gnd.drop,w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch+gnd.p,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll]));
   for(let k=0;k<12;k++)M[k]*=sc;
   const tintc=w.tame?[.9,1,1.12]:w.alpha?[.5,.5,.56]:[1,1,1],fl=w.flash;
   s.body.M=M;s.head.M=mroty(M,0,.3,.76,w.hpit+(w.st==='pin'?.5+Math.sin(time*30)*.12*w.jaw:w.st==='windup'?.25:0),w.hyaw+(w.st==='pin'?Math.sin(time*26)*.3*w.jaw:0),0);
@@ -130,9 +145,10 @@ function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Mat
   for(const o of[s.body,s.head,s.jaw,s.tail]){o.col=tintc;o.flash=fl}
   for(let l=0;l<4;l++){const hp=WHIP[l],o=s.legs[l],diag=(l===0||l===3)?0:PI,phase=w.ph+(run?(l<2?0:2.4)+(l%2?.5:0):diag);let au,al;
    if(w.air>.05||w.dead){const fr=l<2;au=w.dead?(fr?-.5:.6):(fr?-1.1:1.0)*(w.st==='pounce'?1:.4);al=w.dead?.5:(fr?.5:-.3)}
-   else{const hw=mpt(M,hp),gy=hAt(hw[0],hw[2]),stride=moving?(run?.26:.14):0,sw=Math.sin(phase)*stride,lift=moving?Math.max(0,Math.cos(phase))*(run?.16:.07):0;
+   else{const hw=mpt(M,hp),stride=moving?(run?.26:.14):0,sw=Math.sin(phase)*stride,lift=moving?Math.max(0,Math.cos(phase))*(run?.16:.07):0,
+     gy=WFIK.on?hAt(hw[0]+Math.sin(w.yaw)*sw*sc,hw[2]+Math.cos(w.yaw)*sw*sc):hAt(hw[0],hw[2]);
     let hh=Math.max(.12,(hw[1]-gy)/sc-lift);const L=W_UP+W_LO,dd=Math.min(Math.hypot(hh,sw),L-.002),ga=Math.atan2(sw,hh),A=Math.acos(cl((W_UP*W_UP+dd*dd-W_LO*W_LO)/(2*W_UP*dd),-1,1)),K=Math.acos(cl((W_UP*W_UP+W_LO*W_LO-dd*dd)/(2*W_UP*W_LO),-1,1));
-    au=-(ga+hp[3]*A)-w.pitch;al=hp[3]*(PI-K)}
+    au=-(ga+hp[3]*A)-w.pitch-gnd.p;al=hp[3]*(PI-K)}
    o[0].M=mroty(M,hp[0],hp[1],hp[2],au,0,0);o[1].M=mroty(o[0].M,0,-W_UP,0,al,0,0);o[0].col=o[1].col=tintc;o[0].flash=o[1].flash=fl}
   if(s.sk){const parts=[s.body,s.head,s.jaw,s.tail,s.legs[0][0],s.legs[1][0],s.legs[2][0],s.legs[3][0],s.legs[0][1],s.legs[1][1],s.legs[2][1],s.legs[3][1]],B=s.sk.bones;
    parts.forEach((p,i)=>{const M=p.M,b=WG.bind[i],q=i*12;for(let r=0;r<3;r++){B[q+r*4]=M[r];B[q+r*4+1]=M[4+r];B[q+r*4+2]=M[8+r];B[q+r*4+3]=M[12+r]-(M[r]*b[0]+M[4+r]*b[1]+M[8+r]*b[2])}});
