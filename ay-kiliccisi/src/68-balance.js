@@ -28,7 +28,7 @@ function gobDeflect(g,kind){if(g.big||g.dead)return false;const light=kind&&kind
 // how a goblin's next swing is shaped by elite rank and the hero's habits
 function gobSwingStyle(g){const H=habits();let peril=.18,combo=.4,delay=0;
  if(g.elite){peril=.3;combo=.6;delay=.45}if(H.turtle){peril+=.2;delay+=.25}if(H.parrier){peril+=.12;combo+=.15}if(H.dodger)delay+=.4;if((g.adapt||0)>GT.clock){peril=Math.max(peril,.5);combo=Math.max(combo,.75);delay=Math.max(delay,.7)}
- return{peril:Math.min(.7,peril),combo:Math.min(.9,combo),delay:Math.min(.9,delay),three:g.elite&&Math.random()<.55}}
+ return{peril:Math.min(.7,peril),combo:Math.min(.9,combo),delay:Math.min(.9,delay),three:g.elite&&Math.random()<.65}}
 // ---------- level fairness
 const lvGapIn=src=>src&&src.lv?cl(1+.05*(src.lv-SYS.lv),.75,1.5):1;// enemy damage to the hero
 const lvGapOut=f=>f&&f.lv?cl(1+.035*(SYS.lv-f.lv),.75,1.3):1;// the hero's damage to an enemy

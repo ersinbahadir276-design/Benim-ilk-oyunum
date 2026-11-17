@@ -20,7 +20,7 @@ module.exports = async ({ G, log }) => {
       // and when the hero does nothing: dragged down
       w.st = 'armleap'; w.t = 0; w.resolved = false; w.x = P.x; w.z = P.z + 3; P.st = 'move'; P.inv = 0; let down = false; run(300, () => { if (P.st === 'down') { down = true; return false } }); out.arm.down = down; w.dead = 300; w.st = 'dead' }
     // 3) BAIT: a feinting wolf draws a swing, a packmate bites from the side at once
-    reset(); { const a = wolf(0, 6), b = wolf(5, -2); a.st = 'feint'; a.t = 0; a.baited = 0; let bait = false; run(12); __G.press('atk'); run(30, () => { if (/^(bitewind|rush|bite)$/.test(b.st)) bait = true }); out.bait = { feintSt: a.st, baited: !!a.baited, packmate: bait, bSt: b.st }; a.dead = b.dead = 300; a.st = b.st = 'dead' }
+    reset(); { const a = wolf(0, 6), b = wolf(5, -2); b.hsCd = b.alCd = b.fCd = a.hsCd = a.alCd = 1e9; a.st = 'feint'; a.t = 0; a.baited = 0; let bait = false; run(12); __G.press('atk'); run(30, () => { if (/^(bitewind|rush|bite)$/.test(b.st)) bait = true }); out.bait = { feintSt: a.st, baited: !!a.baited, packmate: bait, bSt: b.st }; a.dead = b.dead = 300; a.st = b.st = 'dead' }
     // 4) DIRT: blind for ~2.8 s when hit, shorter behind a guard, nothing when dashing through
     const dirt = (how) => { reset(); const g = gob(0, 3.5); P.yaw = Math.PI; if (how === 'block') { IN.blockHeld = true; run(4) } g.st = 'dirt'; g.t = 0; g.thrown = 0; if (how === 'dash') { run(38); P.inv = .4 } let mx = 0; run(70, () => { mx = Math.max(mx, P.blindT || 0) }); IN.blockHeld = false; const lock = P.lock; g.dead = 1; g.x = 5000; return { blind: +mx.toFixed(2), lock: !!lock } };
     out.dirt = { open: dirt('open'), block: dirt('block'), dash: dirt('dash') };

@@ -1548,7 +1548,7 @@ function dragonBreak(d){floatText(d.x,d.y+5,d.z,'YERE DÜŞTÜ','crit');if(d.fy>
 function dDown(d){d.st='downed';d.t=0;d.pitch=0;d.roll=0;dGo(d,'die',.35,1);note('[Sistem] Ejderha yerde! Boynuna tırman (ETKİLEŞ) ya da saldır.','gold')}
 // ---------- moves
 function dPickGround(d,dist,fa){const now=GT.clock,sp=dSpd(d),r=Math.random();
- if(d.phase>=3&&(d.novaCd||0)<now&&dist<10&&r<.3){d.st='nova';d.t=0;d.hitDone=false;d.novaCd=now+16;dGo(d,'taitou',.3,1.3);sfx.inhale();return}
+ if(d.phase>=3&&(d.novaCd||0)<now&&dist<12&&(r<.45||d.gm>=2)){d.st='nova';d.t=0;d.hitDone=false;d.novaCd=now+16;dGo(d,'taitou',.3,1.3);sfx.inhale();return}
  if(dist<5&&!(d.stompCd>now)){d.st='stomp';d.t=0;d.hitDone=false;d.stompCd=now+4;dangerRing(d.x,d.z,6.2,1.15/sp);dGo(d,'taitou',.25,1.3*sp);sfx.roar(.8);return}
  if(fa>1.5&&dist<10){d.st='tail';d.t=0;d.hitDone=false;d.spin=angd(Math.atan2(P.x-d.x,P.z-d.z),d.yaw)>0?1:-1;dGo(d,'walk',.25,.6);sfx.snarl();return}
  if(fa<.55&&dist>5.5&&dist<15&&(r<.45||dist>10)){d.st='bite';d.t=0;d.hitDone=false;dGo(d,'walk',.25,.5);sfx.snarl();return}
@@ -3671,7 +3671,7 @@ function gobDeflect(g,kind){if(g.big||g.dead)return false;const light=kind&&kind
 // how a goblin's next swing is shaped by elite rank and the hero's habits
 function gobSwingStyle(g){const H=habits();let peril=.18,combo=.4,delay=0;
  if(g.elite){peril=.3;combo=.6;delay=.45}if(H.turtle){peril+=.2;delay+=.25}if(H.parrier){peril+=.12;combo+=.15}if(H.dodger)delay+=.4;if((g.adapt||0)>GT.clock){peril=Math.max(peril,.5);combo=Math.max(combo,.75);delay=Math.max(delay,.7)}
- return{peril:Math.min(.7,peril),combo:Math.min(.9,combo),delay:Math.min(.9,delay),three:g.elite&&Math.random()<.55}}
+ return{peril:Math.min(.7,peril),combo:Math.min(.9,combo),delay:Math.min(.9,delay),three:g.elite&&Math.random()<.65}}
 // ---------- level fairness
 const lvGapIn=src=>src&&src.lv?cl(1+.05*(src.lv-SYS.lv),.75,1.5):1;// enemy damage to the hero
 const lvGapOut=f=>f&&f.lv?cl(1+.035*(SYS.lv-f.lv),.75,1.3):1;// the hero's damage to an enemy

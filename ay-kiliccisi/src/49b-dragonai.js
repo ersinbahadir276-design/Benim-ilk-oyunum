@@ -34,7 +34,7 @@ function dragonBreak(d){floatText(d.x,d.y+5,d.z,'YERE DÜŞTÜ','crit');if(d.fy>
 function dDown(d){d.st='downed';d.t=0;d.pitch=0;d.roll=0;dGo(d,'die',.35,1);note('[Sistem] Ejderha yerde! Boynuna tırman (ETKİLEŞ) ya da saldır.','gold')}
 // ---------- moves
 function dPickGround(d,dist,fa){const now=GT.clock,sp=dSpd(d),r=Math.random();
- if(d.phase>=3&&(d.novaCd||0)<now&&dist<10&&r<.3){d.st='nova';d.t=0;d.hitDone=false;d.novaCd=now+16;dGo(d,'taitou',.3,1.3);sfx.inhale();return}
+ if(d.phase>=3&&(d.novaCd||0)<now&&dist<12&&(r<.45||d.gm>=2)){d.st='nova';d.t=0;d.hitDone=false;d.novaCd=now+16;dGo(d,'taitou',.3,1.3);sfx.inhale();return}
  if(dist<5&&!(d.stompCd>now)){d.st='stomp';d.t=0;d.hitDone=false;d.stompCd=now+4;dangerRing(d.x,d.z,6.2,1.15/sp);dGo(d,'taitou',.25,1.3*sp);sfx.roar(.8);return}
  if(fa>1.5&&dist<10){d.st='tail';d.t=0;d.hitDone=false;d.spin=angd(Math.atan2(P.x-d.x,P.z-d.z),d.yaw)>0?1:-1;dGo(d,'walk',.25,.6);sfx.snarl();return}
  if(fa<.55&&dist>5.5&&dist<15&&(r<.45||dist>10)){d.st='bite';d.t=0;d.hitDone=false;dGo(d,'walk',.25,.5);sfx.snarl();return}
