@@ -84,6 +84,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [x] 30 m ötesinde dış çizgi çizilmiyor (telefon performansı)
 - [x] Şeytan Kral = kadın hükümdar. Kullanıcı isteği: elf modelinin kendisi (body_base_low_poly_elf, Yamato, CC BY 4.0) + sadece boynuz, saç, sade elbise; normal boy (KING.sc=1).
       `tools/sculpt/import_elf.mjs <elf.glb>` eklemleri ölçer, 16 kemiğe oturtur, cache/king.bin + king_rig.json yazar (K ve BINDS.king oyuna elle kopyalandı).
+- [~] Kahraman zırhı yeniden tasarımı başladı (oturum 8, zamanlanmış çalıştırma): hilal ay arması, uyluğu izleyen bel levhaları + bronz kenar, baldırlı baldırlık, kaska oturan alın bandı, temiz nefes yarıkları. Kalan: cuisse alt kenarı, omuzluk hacmi, kürk yaka, kask yanakları.
 - [ ] Sıradaki (kullanıcı istedi): kahraman zırhını yeniden tasarla; Arknights tarzı kız (Kawaiope iskeleti); köylüleri yeni iskelet/görünüşe geçir; kurtları wolf_puppy iskeletine geçir
 - [x] Oturum 5: kurtlar sersemletme kilidine girmiyor (saldırırken vurulsa da sürdürür, 2. vuruşta geri sıçrayıp karşı saldırı); ok sistemi (59-arrows.js): goblin okçular (her kampta 1 + yol devriyelerinde 2), kahramanın yayı (YAY / B), 3 yol devriyesi köy yakınında; kraliçe saçı/perçemi/yüzü (manhwa göz, kaş, burun, ağız)
 - [x] Oturum 6 (Master Directive, ANALIZ.md; tema kara fantezi KALIYOR, savaş Ghost of Tsushima/Sekiro tarzı): AŞAMA 1 başladı — 51-stances.js: 4 duruş (Taş başlangıç; Rüzgâr 5 kurt; Ay Kül Yele; Su Kırık Diş), duruş avantajı (hasar ×1.25, denge ×1.8), kusursuz kaçınma (0.2 sn pencere → yavaş çekim + karşı saldırı ×1.8; ileri kaçınma = KARŞILAMA), zincir savuşturma, saldırı iptali, iksir bitince 40 öfke ile iyileşme. Hata: kurt yakalamışken vurulma, ok itmesi. Kraliçe: kullanıcının saç GLB'si (import_hair.py), etek kaldırıldı. Test: s-stance.js 11/11.
@@ -127,6 +128,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 | tarisland dragon (yeni zip) | aynı ejderha | önceki dosyayla birebir aynı |
 
 ## Oturum günlüğü
+- Oturum 8 (zamanlanmış): kahraman zırhı 1. geçiş (bkz. kök PROGRESS.md). Not: tek model derlemeden önce data/models.js'deki modelleri tools/sculpt/cache/ içine çıkar.
 - Oturum 2: tasarım belgesi, PROGRESS.md, SENARYO.md; Kara Zırh kahramanı; ganimet, sunak, sandık, duruş/İNFAZ,
   öfke, yetenekler, hedef kilidi, bölge seviyeleri, bosslar, Veyra, hikâye modülleri yazıldı.
 - Oturum 4: kullanıcı modelleri çok kötü buldu → SDF heykel hattı; kahraman, 8 insan, goblinler, kurt, Veyra, timsah, Şeytan Kral, kılıç yeniden yapıldı; yeni ışık.
