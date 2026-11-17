@@ -1444,8 +1444,37 @@ function crocPose(c,time){const r=[],a=cl(c.spd/4,0,1),ph=c.ph,sw=Math.sin(ph)*.
  r[4]=eul(0,-sw*.8,0);r[5]=eul(0,-sw*1.1,0);r[6]=eul(0,-sw*1.3,0);r[7]=eul(0,-sw*1.5,0);
  const leg=(i,ph2,side)=>{const s=Math.sin(ph2),lift=Math.max(0,Math.cos(ph2))*.5*a;r[i]=eul(0,s*.6*a*side,side*(-.25+lift));r[i+1]=eul(0,0,side*(.35-lift*.6))};
  leg(8,ph,1);leg(10,ph+PI,-1);leg(12,ph+PI,1);leg(14,ph,-1);if(c.st==='dead')for(let i=8;i<16;i++)r[i]=eul(0,0,(i%4<2?1:-1)*.8);return r}
+// ---- terrain fit for the crocodile (16-bone sprawl rig). The body pitches and rolls with the ground under its
+// shoulders/hips, the neck and the three tail segments each bend so the next joint keeps its rest height above the
+// ground (no head or tail sunk into a bank), and each leg swings its upper bone up/down (splay) so the foot keeps
+// its flat-ground height above the ground under the foot itself. Off when floating, dead, or beyond CFIK.dist.
+// CFIK.on=0 = old behaviour (rigid level body).
+const CFIK={on:1,dist:60,maxP:.5,maxR:.4,maxB:.45,maxL:.7,k:.25,last:null};
+const CFOOT=[[8,9,1],[10,11,-1],[12,13,1],[14,15,-1]];
+function crocFootLocal(l,s){const back=l>=12;return[s*(MODEL.croc?(back?.27:.23):.03),MODEL.croc?-.075:-.25,MODEL.croc?.05:.06]}
+function crocFit(c,rot,x,y,z,sc){if(c.gp===undefined){c.gp=0;c.gr=0}
+ const def=c.R.def,tmp=crocFit.tmp||(crocFit.tmp=new Float32Array(MAXB*12)),gnd=(px,pz)=>crocY(px,pz);
+ const floating=waterAt(x,z)-.22>hAt(x,z)+.02,on=CFIK.on&&!c.dead&&!floating&&Math.hypot(x-P.x,z-P.z)<CFIK.dist;
+ let tp=0,tr=0;const fx=Math.sin(c.yaw),fz=Math.cos(c.yaw),rx=Math.cos(c.yaw),rz=-Math.sin(c.yaw);
+ if(on){const e=.6*sc,w=.3*sc,hf=gnd(x+fx*e,z+fz*e),hb=gnd(x-fx*e,z-fz*e),hr=gnd(x+rx*w,z+rz*w),hl=gnd(x-rx*w,z-rz*w);
+  tp=-cl(Math.atan2(hf-hb,2*e),-CFIK.maxP,CFIK.maxP);tr=cl(Math.atan2(hr-hl,2*w),-CFIK.maxR,CFIK.maxR)}
+ const k=CFIK.k;c.gp+=(tp-c.gp)*k;c.gr+=(tr-c.gr)*k;if(Math.abs(c.gp)<1e-4&&!tp)c.gp=0;if(Math.abs(c.gr)<1e-4&&!tr)c.gr=0;
+ const extra=(c.gp||c.gr)?r3m(rX(c.gp),rZ(c.gr)):null;if(!on){CFIK.last={p:c.gp,r:c.gr,on:0};return extra}
+ // rest heights above the ground (flat ground, no pitch): joints sit at the root's height + their offset
+ const y0=.24*sc,fk=()=>rigFK(def,rot,[x,y,z],c.yaw,sc,tmp,extra),bend=[],h0=[];
+ // flat-ground foot heights for this pose (before any bending)
+ rigFK(def,rot,[0,0,0],0,sc,tmp,null);for(const[u,l,s]of CFOOT)h0.push(boneW(def,l,crocFootLocal(l,s),sc)[1]+y0);const WP=def.WP;
+ // neck (bone 1 -> head joint 2) and tail (4->5, 5->6, 6->7): pre-rotate each bone about its local x
+ for(const[i,j,dir]of[[1,2,1],[4,5,-1],[5,6,-1],[6,7,-1]]){fk();const J=WP[j],want=gnd(J[0],J[2])+y0+(i===1?.05*sc:0),dy=want-J[1],len=Math.hypot(...def[j].o)*sc;
+  {const a=cl(Math.atan2(dy,len),-CFIK.maxB,CFIK.maxB);if(Math.abs(a)>1e-4){rot[i]=r3m(rX(-dir*a),rot[i]||R3I);bend.push(+a.toFixed(3))}}}
+ // legs: splay the upper bone up/down (and counter-rotate the lower one) until the foot is at its flat height
+ const legs=[];CFOOT.forEach(([u,l,s],n)=>{let d=0;for(let it=0;it<3;it++){fk();const F=boneW(def,l,crocFootLocal(l,s),sc),dy=gnd(F[0],F[2])+h0[n]-F[1];
+  const S=WP[u],reach=Math.max(.08*sc,Math.hypot(F[0]-S[0],F[2]-S[2])),a=cl(s*Math.atan2(dy,reach),-CFIK.maxL-d,CFIK.maxL-d);if(Math.abs(a)<1e-4)break;d+=a;
+  rot[u]=r3m(rot[u]||R3I,rZ(a));rot[l]=r3m(rZ(-a),rot[l]||R3I)}legs.push(+d.toFixed(3))});
+ CFIK.last={p:c.gp,r:c.gr,bend,legs,on:1};return extra}
 function drawCrocs(time){for(const c of CROCS){const d=Math.hypot(c.x-P.x,c.z-P.z);if(d>140||(c.dead&&c.deadT>25)){rigHide(c.R);continue}
-  const roll=c.dead?PI*sst(0,.8,c.t):0,extra=roll?rZ(roll):R3I;rigDraw(c.R,c.x,c.y+.24*c.sc+(roll?.05:0),c.z,c.yaw,c.sc,crocPose(c,time),1.1,extra);
+  const roll=c.dead?PI*sst(0,.8,c.t):0,y=c.y+.24*c.sc+(roll?.05:0),pose=crocPose(c,time),fit=roll?null:crocFit(c,pose,c.x,y,c.z,c.sc),extra=roll?rZ(roll):fit||R3I;
+  rigDraw(c.R,c.x,y,c.z,c.yaw,c.sc,pose,1.1,extra);
   c.R.ob.flash=c.flash;c.R.ob.col=c.st==='open'?[1.1,.9,.85]:c.st==='stagger'?[1.15,1.05,.8]:[1,1,1]}}
 function crocHead(c){return[c.x+Math.sin(c.yaw)*1.4*c.sc,c.y+.3,c.z+Math.cos(c.yaw)*1.4*c.sc]}
 // ---- 49-dragon.js
@@ -2611,7 +2640,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,CFIK,drawCrocs,crocFootLocal,boneW,crocY,waterAt,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
