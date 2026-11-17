@@ -21,7 +21,7 @@ module.exports = async ({ page, G, log }) => {
   log('suikast: fark etmiş düşmanda çalışmıyor (normal ağır saldırı)', r.aware === 'charge', j);
   log('suikast: büyük goblinde ağır yara + denge kırma, anında ölüm yok', r.big[0] === 'assn' && r.big[1] === 0 && r.big[2] && r.big[3], j);
   const s = r.still[0] / r.still[1], m = r.strafe[0] / r.strafe[1];
-  log('okçu: duran hedefte bile her ok isabet etmiyor (%35–85)', s > 0.35 && s < 0.85, JSON.stringify({ duran: r.still, oran: +s.toFixed(2) }));
+  log('okçu: duran hedefte bile her ok isabet etmiyor (%12–50; kullanıcı isteği: aimbot olmasın)', s > 0.12 && s < 0.5, JSON.stringify({ duran: r.still, oran: +s.toFixed(2) }));
   log('okçu: yana koşan hedefi çoğunlukla ıskalıyor (<%35)', m < 0.35, JSON.stringify({ kosan: r.strafe, oran: +m.toFixed(2) }));
 };
 module.exports.pauseAtStart = true;

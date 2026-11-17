@@ -23,13 +23,13 @@ function foeDist(f){if(f.hitPts){let b=1e9;for(const h of f.hitPts())b=Math.min(
 function nearestFoe(range,half){let b=null,bd=range;for(const f of foes()){const d=foeDist(f),a=Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw));if(d<bd&&(half>=PI||a<half)){bd=d;b=f}}return b}
 // --------------------------------------------------------------- hits the player receives (one place for every enemy)
 // o:{dmg,guard,src,dir:[dx,dz] push direction,knock:'flinch'|'down'|'none',pin,unblockable,parryable,name}
-function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=o.src&&o.src.lv?lvDmg(o.src.lv):1;o=Object.assign({},o,{dmg:o.dmg*lvm*100/(100+armorDef()),guard:(o.guard!==undefined?o.guard:o.dmg*1.8)*lvm*(1-gear('guard')/200)});
+function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=(o.src&&o.src.lv?lvDmg(o.src.lv):1)*lvGapIn(o.src);o=Object.assign({},o,{dmg:o.dmg*lvm*100/(100+armorDef()),guard:(o.guard!==undefined?o.guard:o.dmg*1.8)*lvm*(1-gear('guard')/200)});
  if(P.inv>0){perfectDodge(o);return'iframe'}
  const src=o.src,front=src?Math.abs(angd(Math.atan2(src.x-P.x,src.z-P.z),P.yaw))<1.95:true;
  if((P.st==='block'||P.st==='parry')&&front&&!o.unblockable){
   const parryOK=o.parryable!==false&&(o.parryFrom!==undefined?P.blockAt>=o.parryFrom-.08:GT.clock-P.blockAt<=parryWin());
   if(parryOK){P.st='parry';P.t=0;GT.stop=Math.max(GT.stop,.12);CAM.shake=Math.max(CAM.shake,.5);sfx.parry();
-   const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],18,[1,.95,.6],6);SYS.parries=(SYS.parries||0)+1;chainParry(src);P.ripT=GT.clock+.9;P.ripV=src&&src.hp!==undefined?src:null;
+   const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],18,[1,.95,.6],6);SYS.parries=(SYS.parries||0)+1;chainParry(src);habitAdd('parry');P.guard=Math.min(100,P.guard+12);/* a clean parry steadies you */P.ripT=GT.clock+.9;P.ripV=src&&src.hp!==undefined?src:null;
    // parry fatigue: the same foe parried a third time inside 6 s no longer reels — it learns, and changes its rhythm
    let reel=true;if(src&&src.hp!==undefined&&!src.boss&&src!==DRAGON){src.parN=GT.clock-(src.parAt||-9)<6?(src.parN||0)+1:1;src.parAt=GT.clock;if(src.parN>=3){reel=false;src.adapt=GT.clock+8;floatText(src.x,(src.y||0)+2.1,src.z,'ALIŞTI','')}}
    if(src&&src.hp!==undefined&&stDef().pp)addPosture(src,18*(stDef().pp-1)*(P.chain||1));
@@ -63,24 +63,24 @@ function respawn(){if(DUN.on)leaveDungeon(true);const al=SYS.altarAt!==undefined
 function canAct(cost){if(P.sta<=0){note('Dayanıklılık yetersiz');return false}return true}
 function spend(c){P.sta=Math.max(0,P.sta-c);P.staT=.85}
 function aimAssist(range=4.2){const f=P.lock&&!P.lock.dead&&foeDist(P.lock)<range+3?P.lock:nearestFoe(range,1.7);if(f)P.yaw=Math.atan2(f.x-P.x,f.z-P.z);else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
-function startLight(i){if(!canAct())return;const S=curStance(),sw=SWG[SYS.stance in SWG?SYS.stance:'stone'].L[i]||SWG.stone.L[0];spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T*(sw.fin?1.12:1);P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();P.atkStart=GT.clock;if(i===0&&(P.ripT||0)>GT.clock){P.ripT=0;P.atkT=.34;beginSwing('light',SWG.riposte,P.atkT);P.atk.rip=1;P.atk.cnt=1;P.counterT=0;if(P.ripV&&!P.ripV.dead){P.atk.tg=P.ripV;P.yaw=Math.atan2(P.ripV.x-P.x,P.ripV.z-P.z)}sfx.swing();return}
+function startLight(i){if(!canAct())return;const S=curStance(),sw=SWG[SYS.stance in SWG?SYS.stance:'stone'].L[i]||SWG.stone.L[0];spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T*(sw.fin?1.12:1);P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();P.atkStart=GT.clock;habitAdd('light');if(i===0&&(P.ripT||0)>GT.clock){P.ripT=0;P.atkT=.34;beginSwing('light',SWG.riposte,P.atkT);P.atk.rip=1;P.atk.cnt=1;P.counterT=0;if(P.ripV&&!P.ripV.dead){P.atk.tg=P.ripV;P.yaw=Math.atan2(P.ripV.x-P.x,P.ripV.z-P.z)}sfx.swing();return}
  beginSwing('light',sw,P.atkT);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startCharge(){if(!canAct())return;P.st='charge';P.t=0;P.charge=0;P.crouch=false;aimAssist();sfx.charge()}
-function startHeavy(chain){spend(COST.heavy+COST.heavyMax*P.charge);P.hvT=curStance().hvT*(chain?.9:1);P.st='heavy';P.t=0;P.hitDone=false;aimAssist(4.6);const sk=SYS.stance in SWG?SYS.stance:'stone';beginSwing('heavy',chain?SWG2[sk]:SWG[sk].H,P.hvT);if(chain){P.atk.chain=1;P.atk.mul=1.15;P.charge=0}P.spin0=P.yaw;P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
+function startHeavy(chain){habitAdd('heavy');spend(COST.heavy+COST.heavyMax*P.charge);P.hvT=curStance().hvT*(chain?.9:1);P.st='heavy';P.t=0;P.hitDone=false;aimAssist(4.6);const sk=SYS.stance in SWG?SYS.stance:'stone';beginSwing('heavy',chain?SWG2[sk]:SWG[sk].H,P.hvT);if(chain){P.atk.chain=1;P.atk.mul=1.15;P.charge=0}P.spin0=P.yaw;P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startRunAtk(){if(!canAct())return;spend(COST.run);P.st='runatk';P.t=0;P.hitDone=false;aimAssist(6);beginSwing('run',SWG.run,.6);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startJump(){if(!canAct())return;spend(COST.jump);P.vy=6.6;P.air=true;P.st='jump';P.t=0;P.crouch=false;P.jumpAt=GT.clock;sfx.jump()}
 function startJumpAtk(){if(!canAct())return;spend(COST.jumpAtk);P.st='jumpatk';P.t=0;P.hitDone=false;P.vy=Math.min(P.vy,1.5);aimAssist(5);sfx.swing()}
 // dodge: direction from the stick relative to where the hero faces -> forward roll, back-step, or a side roll
 // dodge = a fast low DASH (Ghost of Tsushima style), no somersault: stick direction, or straight ahead without input.
 // Facing stays on the nearby foe so you can dash around it; two dashes can be chained; attack out of a dash = lunge slash.
-function startDodge(){if(!canAct())return;const SD=stDef();P.dodgeN=GT.clock-(P.dodgeLast||-9)<1.1?(P.dodgeN||0)+1:1;P.dodgeLast=GT.clock;const n=P.dodgeN;
+function startDodge(){if(!canAct())return;const SD=stDef();habitAdd('dodge');P.dodgeN=GT.clock-(P.dodgeLast||-9)<1.1?(P.dodgeN||0)+1:1;P.dodgeLast=GT.clock;const n=P.dodgeN;
  // dash fatigue: the 2nd dash inside a second has shorter invulnerability, the 3rd none — dashing is not a shield you can hold
  spend(COST.dodge*(1+.35*(n-1))*(SD.dc||1));P.st='dodge';P.t=0;P.inv=(iframes()+(SD.iv||0))*[1,.55,0][Math.min(n,3)-1];if(n>=3){floatText(P.x,P.y+2,P.z,'YORGUN ATILMA','red')}P.crouch=false;P.charge=0;const l=Math.hypot(IN.wx,IN.wz);
  let dx,dz;if(l>.3){dx=IN.wx/l;dz=IN.wz/l}else{dx=Math.sin(P.yaw);dz=Math.cos(P.yaw)}P.ddx=dx;P.ddz=dz;
  const f=P.lock&&!P.lock.dead?P.lock:nearestFoe(7,PI),face=f?Math.atan2(f.x-P.x,f.z-P.z):Math.atan2(dx,dz),a=angd(Math.atan2(dx,dz),face);
  P.dodgeKind=Math.abs(a)<.8?'fwd':Math.abs(a)>2.35?'back':a>0?'left':'right';P.yaw=f?face:Math.atan2(dx,dz);P.dodgeFace=P.yaw;
  P.dodgeT=.3;P.dodgeSp=15.5;sfx.dodge();spawnSparks(P.x,P.y+.15,P.z,6,[.75,.82,1],2.2)}
-function startBlock(){if(P.guard<25){note('Savunma toparlanıyor…');return false}P.bspam=GT.clock-(P.blockRel||-9)<.4?Math.min(3,(P.bspam||0)+1):Math.max(0,(P.bspam||0)-(GT.clock-(P.blockRel||-9)>1.2?3:1));P.st='block';P.t=0;P.blockAt=GT.clock;P.crouch=false;return true}
+function startBlock(){if(P.guard<25){note('Savunma toparlanıyor…');return false}P.bspam=GT.clock-(P.blockRel||-9)<.4?Math.min(3,(P.bspam||0)+1):Math.max(0,(P.bspam||0)-(GT.clock-(P.blockRel||-9)>1.2?3:1));P.st='block';P.t=0;P.blockAt=GT.clock;P.crouch=false;habitAdd('block');return true}
 // --------------------------------------------------------------- damage dealing
 const ATK={light0:{r:2.75,arc:1.2,m:1,t:'hit'},light1:{r:2.75,arc:1.2,m:1.05,t:'hit'},light2:{r:2.9,arc:1.1,m:1.6,t:'big'},heavy:{r:3.2,arc:1.05,m:2.1,t:'big'},
  runatk:{r:3.0,arc:.95,m:1.5,t:'hit'},jumpatk:{r:2.7,arc:PI,m:1.8,t:'big'},stab:{r:1.4,arc:PI,m:99,t:'big'}};
@@ -88,7 +88,7 @@ const ATK={light0:{r:2.75,arc:1.2,m:1,t:'hit'},light1:{r:2.75,arc:1.2,m:1.05,t:'
 // separate; the feel (sparks, sound, hit-stop, shake) depends on the attack weight and the foe's material.
 function strikeFoe(f,kind,dx,dz,p,A){const S=curStance(),lt=kind.startsWith('light'),cnt=!!(A&&A.cnt),fin=A&&A.fin&&!A.wave?A.st:null,m=(lt?(S.dm[P.combo]||1):kind==='heavy'?S.hvM:(ATK[kind]||{m:1}).m)*((A&&A.mul)||1);
  const sneak=!foeHostile(f)&&(f.aware||0)<.5&&f.st!=='mounted',weak=isWolf(f)?f.st==='recover':(f.open&&f.open()),air=f.st==='pounce';
- const adv=S.strong(f),crit=Math.random()*100<5+gear('crit');let dmg=weaponDmg()*(.9+rnd()*.2)*dmgMul()*(adv?1.25:1)*(cnt?1.8:1)*m*(kind==='heavy'?1+P.charge*.6:1)*(sneak?2:1)*(weak?1.5:1)*(air?1.4:1)*(crit?1.6:1)*(P.berserk>0?1.4:1)*(P.roarBuff>0?1.2:1);dmg=Math.round(dmg);
+ const adv=S.strong(f),crit=Math.random()*100<5+gear('crit');let dmg=weaponDmg()*(.9+rnd()*.2)*dmgMul()*(adv?1.25:1)*(cnt?1.8:1)*m*(kind==='heavy'?1+P.charge*.6:1)*(sneak?2:1)*(weak?1.5:1)*(air?1.4:1)*(crit?1.6:1)*(P.berserk>0?1.4:1)*(P.roarBuff>0?1.2:1)*lvGapOut(f);dmg=Math.round(dmg);
  const dead=foeHurt(f,dmg,dx,dz,fin==='stone'?'heavy':kind);const hp=p||(f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+.7*(f.sc||1)+(f.air||0),f.z]);
  if(f.blockedAt===GT.clock){addPosture(f,lt?9:14);spawnSparks(hp[0],hp[1],hp[2],12,[1,.9,.6],4);floatText(hp[0],hp[1]+.4,hp[2],'BLOK','');sfx.clang();GT.stop=Math.max(GT.stop,.06);return false}
  if(!dead)addPosture(f,((lt?11*(S.pm[P.combo]||1):({heavy:30+P.charge*25,runatk:18,jumpatk:30}[kind]||12))*(adv?1.8:1)*(cnt?1.8:1)*(fin==='stone'?1.5:fin==='water'?1.3:1)*(A&&A.flow?1.4:1)*((A&&A.mul)||1))+(A&&A.rip?30:0));gainRage(4);

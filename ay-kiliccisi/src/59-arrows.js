@@ -45,7 +45,7 @@ function spawnPatrols(){const spots=[[0,260,0],[255,0,1.57],[-250,40,-1.57]];spo
  for(const c of CAMPSITES){const g=GOBS.find(x=>!x.big&&x.camp===c&&!x.archer&&!x.patrol);if(g)g.archer=true}}
 // ---------- the hero's bow: tap YAY — shoots at the locked target or the nearest foe in front
 let heroBow=null;
-function useBow(){if(P.st!=='move'||!P.alive)return;if((P.bowCd||0)>GT.clock)return;if(P.sta<10){note('Dayanıklılık yetersiz');return}spend(12);P.bowCd=GT.clock+.75;
+function useBow(){if(P.st!=='move'||!P.alive)return;habitAdd('bow');if((P.bowCd||0)>GT.clock)return;if(P.sta<10){note('Dayanıklılık yetersiz');return}spend(12);P.bowCd=GT.clock+.75;
  let t=P.lock&&!P.lock.dead?P.lock:null;if(!t){let bs=1e9;for(const f of foes()){const d=Math.hypot(f.x-P.x,f.z-P.z),a=Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw));if(d<34&&a<.7&&d*(1+a*3)<bs){bs=d*(1+a*3);t=f}}}
  if(t)P.yaw=Math.atan2(t.x-P.x,t.z-P.z);else P.yaw=CAM.yaw;P.st='shoot';P.t=0;P.bowT=t;P.shot=0}
 function updateShoot(dt){P.vx*=Math.exp(-dt*10);P.vz*=Math.exp(-dt*10);const t=P.bowT;if(t&&!t.dead)P.yaw+=angd(Math.atan2(t.x-P.x,t.z-P.z),P.yaw)*Math.min(1,dt*12);

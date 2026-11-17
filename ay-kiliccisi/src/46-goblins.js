@@ -20,6 +20,7 @@ function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');
   for(let k=0;k<3;k++){const a=c.gate+(k-1)*.25,p=collide(c.x+Math.cos(a)*40,c.z+Math.sin(a)*40,.4);const g=mkGob(p[0],p[1],false,grp+'p',c);g.patrol=[[c.x+Math.cos(c.gate)*40,c.z+Math.sin(c.gate)*40],[c.x+Math.cos(c.gate+1.2)*45,c.z+Math.sin(c.gate+1.2)*45],[c.x+Math.cos(c.gate-1.2)*45,c.z+Math.sin(c.gate-1.2)*45]];g.pi=k%3}});
  for(const g of GOBS){g.R=rigObj(g.big?BIGM:GOBM,{out:.014,cull:150});rigHide(g.R)}}
 function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kind.startsWith&&kind.startsWith('light');
+ if(gobDeflect(g,kind))return false;
  if(g.st==='guard'&&!g.big&&Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<1.2){if(light0||kind==='arrow'){g.blockedAt=GT.clock;g.t=Math.min(g.t,.5);g.kx=dx*2;g.kz=dz*2;if(Math.random()<.35){g.t=99;gobStartSwing(g)}return false}
   if(kind==='heavy'||kind==='runatk'||kind==='jumpatk'){g.st='stagger';g.t=0;floatText(g.x,(g.y||0)+1.9,g.z,'SAVUNMA KIRILDI','crit');sfx.break()}}g.hp-=dmg;g.flash=1;g.aware=1;g.ls=[P.x,P.z];
  if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
@@ -51,9 +52,9 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  case'chase':{if(!P.alive||Math.hypot(g.x-g.hx,g.z-g.hz)>90||g.unseen>((g.alarmT||0)>GT.clock?20:8)){g.st='return';g.t=0;g.aware=0;break}
   if(archerChase(g,d,dt))break;
   const tx=g.unseen<1?P.x:g.ls[0],tz=g.unseen<1?P.z:g.ls[1];
-  if(g.big){if(d<(g.chief?4.0:3.2)&&g.cd<=0&&P.st!=='down'){const r=Math.random();g.move=g.chief?(g.phase===2&&r<.3?'stomp':r<.6?'sweep':'smash'):'smash';if(g.move==='stomp')dangerRing(g.x,g.z,5.6,1.14);g.st='windup';g.t=0;g.hitDone=false;sfx.roar(.6);break}agentMove(g,tx,tz,g.chief&&g.phase===2?3.2:2.4,dt,g.rad,3);break}
+  if(g.big){if(d<(g.chief?4.0:3.2)&&g.cd<=0&&P.st!=='down'&&attackOK(g)){const r=Math.random();g.move=g.chief?(g.phase===2&&r<.3?'stomp':r<.6?'sweep':'smash'):'smash';if(g.move==='stomp')dangerRing(g.x,g.z,5.6,1.14);g.st='windup';g.t=0;g.hitDone=false;sfx.roar(.6);break}agentMove(g,tx,tz,g.chief&&g.phase===2?3.2:2.4,dt,g.rad,3);break}
   if(d<3.6&&g.unseen<1){const sp0=gobSlotPoint(g,3.0);if(sp0&&Math.abs(angd(g.slotA,Math.atan2(g.x-P.x,g.z-P.z)))>.9){g.st='circle';g.t=0;g.dur=1.2;break}// not on my side yet: work round first
-   if(gobTokens()<2&&g.cd<=0&&P.st!=='down'&&P.st!=='getup'){gobStartSwing(g);break}
+   if(gobTokens()<2&&g.cd<=0&&P.st!=='down'&&P.st!=='getup'&&attackOK(g)){gobStartSwing(g);break}
    if(/^(attack|heavy|runatk|charge)$/.test(P.st)&&Math.random()<dt*(GOBS.some(o=>o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10)?2:4.5)){g.st='guard';g.t=0;break}// the hero swings: raise the guard
    if(d<1.25){if(Math.random()<dt*1.5){g.st='guard';g.t=0;break}agentMove(g,g.x+(g.x-P.x)/d*2,g.z+(g.z-P.z)/d*2,3.2,dt,g.rad,4);agentFace(g,P.x,P.z,dt,10);break}// too close: step back, keep facing
    const alone=!GOBS.some(o=>o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10);if(Math.random()<dt*(alone?1.0:.4)){g.st='guard';g.t=0;break}g.st='circle';g.t=0;g.dur=rr(.35,.8);break}
@@ -84,7 +85,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  if(P.alive&&!P.air&&!g.held){const ex=g.x-P.x,ez=g.z-P.z,q=Math.hypot(ex,ez),mm=g.rad+.42;if(q<mm){const ux=q>1e-4?ex/q:-Math.sin(g.yaw),uz=q>1e-4?ez/q:-Math.cos(g.yaw),p=collide(P.x+ux*mm,P.z+uz*mm,g.rad);g.x=p[0];g.z=p[1]}}// bodies never overlap the hero
  g.y=hAt(g.x,g.z);if(g.spd>.2)g.ph+=g.spd*dt*(g.big?2.2:4.2)}
 // small goblin swing: 40% two-hit combo, 18% a red unblockable lunge (危: dash away or sideways), always with a tell
-function gobStartSwing(g){const ad=(g.adapt||0)>GT.clock;g.st='windup';g.t=0;g.hitDone=false;g.peril=Math.random()<(ad?.5:.18)?1:0;g.cn=g.peril?0:Math.random()<(ad?.75:.4)?1:0;g.delay=ad&&g.cn>0&&Math.random()<.7?1:0;// adapted: more 危, delayed second hit
+function gobStartSwing(g){const S=gobSwingStyle(g);g.st='windup';g.t=0;g.hitDone=false;g.peril=Math.random()<S.peril?1:0;g.cn=g.peril?0:Math.random()<S.combo?(S.three?2:1):0;g.delay=g.cn>0&&Math.random()<S.delay?1:0;// elite rank, adaptation and the hero's habits shape the swing
  if(g.peril){sfx.charge();floatText(g.x,(g.y||0)+2,g.z,'危','crit');spawnSparks(g.x,(g.y||0)+1.3,g.z,6,[1,.15,.1],2)}else sfx.gobShout()}
 function gobFK(g,time){const tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc,extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));g.root=[g.x,y,g.z,extra];rigFK(g.R.def,gobPose(g,time),[g.x,y,g.z],g.yaw,g.sc,g.R.ob.bones,extra)}
 function clubSeg(g){gobFK(g,GT.time);const d=g.R.def;return[boneW(d,8,[0,-.08,.3],g.sc),boneW(d,8,[0,-.08,1.75],g.sc)]}

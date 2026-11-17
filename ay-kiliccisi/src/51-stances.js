@@ -14,7 +14,7 @@ function setStance(k){if(!SYS.stances||!SYS.stances[k]||SYS.stance===k)return fa
 function cycleStance(){const have=STANCE_ORDER.filter(k=>SYS.stances&&SYS.stances[k]);if(have.length<2){note('Başka duruş yok. Yeni duruşlar: 5 kurt avla, Kül Yele, Kırık Diş.');return}setStance(have[(have.indexOf(SYS.stance)+1)%have.length])}
 function stanceHud(){const e=$('stance');if(!e)return;const S=curStance();e.textContent='◆ '+S.n;e.style.color=S.c;const b=$('bStance');if(b){b.innerHTML='<i>R2</i>'+S.n;b.style.borderColor=S.c;b.style.color=S.c}}
 // perfect dodge: the dodge began just before the blow would have landed -> time slows, the next hit is a counter
-function perfectDodge(o){if(P.st!=='dodge'||P.t>.2||(P.perfAt||-9)>GT.clock-.5)return;P.perfAt=GT.clock;P.counterT=1.6;GT.slow=.3;P.sta=Math.min(100,P.sta+25);gainRage(12);sfx.parry();floatText(P.x,P.y+2,P.z,'KUSURSUZ KAÇINMA','crit');SYS.perfDodges=(SYS.perfDodges||0)+1;
+function perfectDodge(o){if(P.st!=='dodge'||P.t>.2||(P.perfAt||-9)>GT.clock-.5)return;P.perfAt=GT.clock;P.counterT=1.6;GT.slow=.3;P.guard=Math.min(100,P.guard+8);P.sta=Math.min(100,P.sta+25);gainRage(12);sfx.parry();floatText(P.x,P.y+2,P.z,'KUSURSUZ KAÇINMA','crit');SYS.perfDodges=(SYS.perfDodges||0)+1;
  // stepping INTO the attack (forward dodge) meets it: the attacker's balance is shattered
  const s=o.src;if(s&&P.dodgeKind==='fwd'&&s.hp!==undefined&&Math.hypot(s.x-P.x,s.z-P.z)<3.2){addPosture(s,POSMAX[posKind(s)]*.7);floatText(s.x,(s.y||0)+1.8,s.z,'KARŞILAMA','crit')}}
 // chain parry: every perfect parry within 3 s of the last one hits the attacker's balance harder

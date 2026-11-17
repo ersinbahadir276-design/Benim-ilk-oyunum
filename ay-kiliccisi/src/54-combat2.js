@@ -40,7 +40,7 @@ function updateSkill(dt){const k=P.skill,t=P.t;P.vx*=Math.exp(-dt*8);P.vz*=Math.
 // ---------- lock-on
 function toggleLock(){if(P.lock){P.lock=null;note('Hedef bırakıldı');return}let best=null,bs=1e9;for(const f of foes()){const d=Math.hypot(f.x-P.x,f.z-P.z);if(d>28)continue;const a=Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw)),s=d*(1+a*2)*(foeHostile(f)?.6:1);if(a<1.3&&s<bs){bs=s;best=f}}
  if(best){P.lock=best;sfx.lock()}else note('Yakında hedef yok')}
-function updateLock(dt){const f=P.lock;if(!f)return;if(f.dead||Math.hypot(f.x-P.x,f.z-P.z)>32){P.lock=null;return}const want=Math.atan2(f.x-P.x,f.z-P.z);CAM.yaw+=angd(want,CAM.yaw)*Math.min(1,dt*5);CAM.pitch=lp(CAM.pitch,.22,Math.min(1,dt*3))}
+function updateLock(dt){const f=P.lock;if(!f)return;if(f.dead){relock();return}if(Math.hypot(f.x-P.x,f.z-P.z)>32){P.lock=null;return}const want=Math.atan2(f.x-P.x,f.z-P.z),soft=GT.time-(CAM.userT||-9)<.9;CAM.yaw+=angd(want,CAM.yaw)*Math.min(1,dt*(soft?1.2:5));/* yields while the player drags */CAM.pitch=lp(CAM.pitch,.22,Math.min(1,dt*3))}
 // boss / elite bar target: the closest hostile boss within 60 m
 function bossTarget(){let b=null,bd=60;for(const f of foes()){if(!(f.boss||f===DRAGON)||!foeHostile(f))continue;const d=Math.hypot(f.x-P.x,f.z-P.z);if(d<bd){bd=d;b=f}}return b}
 

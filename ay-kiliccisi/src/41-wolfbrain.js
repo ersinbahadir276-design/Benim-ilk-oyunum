@@ -41,8 +41,8 @@ function wolfEngage(w,d,dt,GS){w.brT=(w.brT||0)-dt;if(w.brT<=0){w.brT=.35;const 
   if(w.st==='circle'&&!tokenBusy()&&w.cd<=0&&P.alive&&P.st!=='down'&&P.st!=='getup'&&P.st!=='td'&&w.unseen<.6){
    const opp=/^(attack|heavy|charge|drink|shoot|skill|hurt|exec|assn)$/.test(P.st)||Math.abs(angd(Math.atan2(w.x-P.x,w.z-P.z),P.yaw))>1.7,
     ch=.14+(opp?.45:0)+Math.min(.35,w.t*.07)+(w.boss?.2:0)+(m.aggr-m.fear)*.15;
-   if(Math.random()<ch){if(d>3.2&&d<7.8&&(w.pcd||0)<GT.clock&&(opp||w.alpha||w.boss)&&Math.random()<(w.boss?.45:.3)&&!P.air){w.pcd=GT.clock+rr(8,12);w.st='windup';w.t=0;w.dodged=false;w.resolved=false;GS.onWindup(w)}
-    else{w.st='bitewind';w.t=0;w.resolved=false;sfx.growl()}return}}}
+   if(Math.random()<ch&&attackOK(w)){if(d>3.2&&d<7.8&&(w.pcd||0)<GT.clock&&(opp||w.alpha||w.boss)&&Math.random()<(w.boss?.45:.3)&&!P.air){w.pcd=GT.clock+rr(8,12);w.st='windup';w.t=0;w.dodged=false;w.resolved=false;GS.onWindup(w)}
+    else{w.st='bitewind';w.t=0;w.bwT=.38+(habits().dodger?rr(.1,.45):0);w.resolved=false;sfx.growl()}return}}}// a dash-happy hero gets a held, uneven tell
  if(w.unseen>=.6){w.st='chase';wolfMove(w,w.ls[0],w.ls[1],5,dt);w.crouch=lp(w.crouch,0,.2);w.hpit=lp(w.hpit||0,.35,.1);if(w.unseen>4.5){w.st='search';w.t=0}return}
  w.hpit=lp(w.hpit||0,0,.2);
  if(d>9.5){w.st='stalk';const away=P.spd>2.2&&Math.abs(angd(Math.atan2(P.vx,P.vz),Math.atan2(P.x-w.x,P.z-w.z)))<1.3,fast=d>20||away;/* the prey walking off is chased, not stalked */wolfMove(w,P.x,P.z,fast?6.6:3.4,dt,fast?7:4);w.crouch=lp(w.crouch,fast?0:.45,.15);return}// stalk in low, run only from far away
@@ -52,9 +52,9 @@ function wolfEngage(w,d,dt,GS){w.brT=(w.brT||0)-dt;if(w.brT<=0){w.brT=.35;const 
  const cs=Math.max(3.6,(P.spd||0)*1.15),p=collide(w.x+(gx-w.x)/k*cs*dt,w.z+(gz-w.z)/k*cs*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,3.4,.2);w.ph+=3*dt*4;wolfFace(w,P.x,P.z,dt,9);if(Math.hypot(w.x-px,w.z-pz)<3.6*dt*.3)w.strafe*=-1}
 // the bite: a short crouch and growl (the tell), a rush, a snap, then away again
 function wolfBite(w,d,dt,GS){const fx=P.x-w.x,fz=P.z-w.z;
- if(w.st==='bitewind'){w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,.75,Math.min(1,dt*10));w.jaw=lp(w.jaw,.55,.2);wolfFace(w,P.x,P.z,dt,12);if(w.t>.38){w.st='rush';w.t=0}return}
+ if(w.st==='bitewind'){w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,.75,Math.min(1,dt*10));w.jaw=lp(w.jaw,.55,.2);wolfFace(w,P.x,P.z,dt,12);if(w.t>(w.bwT||.38)){w.st='rush';w.t=0}return}
  if(w.st==='rush'){w.crouch=lp(w.crouch,0,.3);w.jaw=lp(w.jaw,.7,.2);wolfMove(w,P.x,P.z,9.5,dt,10);if(d<1.5){w.st='bite';w.t=0;w.bitten=0}else if(w.t>1.3){w.st='retreat';w.t=0;w.retTo=6;w.after='circle';w.cd=rr(.8,1.4)}return}
- if(w.st==='bite'){if(w.t<.16){const p=collide(w.x+Math.sin(w.yaw)*4.5*dt,w.z+Math.cos(w.yaw)*4.5*dt,.42);w.x=p[0];w.z=p[1]}w.spd=lp(w.spd,0,.5);// the snap lunges forwardw.pitch=lp(w.pitch,-.2,.4);w.jaw=w.t<.12?1:lp(w.jaw,.2,.3);wolfFace(w,P.x,P.z,dt,14);
+ if(w.st==='bite'){if(w.t<.16){const p=collide(w.x+Math.sin(w.yaw)*4.5*dt,w.z+Math.cos(w.yaw)*4.5*dt,.42);w.x=p[0];w.z=p[1]}w.spd=lp(w.spd,0,.5);/* the snap lunges forward */w.pitch=lp(w.pitch,-.2,.4);w.jaw=w.t<.12?1:lp(w.jaw,.2,.3);wolfFace(w,P.x,P.z,dt,14);
   if(!w.bitten&&w.t>.08){w.bitten=1;const fa=Math.abs(angd(Math.atan2(fx,fz),w.yaw));if(d<1.75&&fa<1.1){const r=hitPlayer({src:w,dmg:5+(w.alpha?2:0)+(w.boss?3:0),guard:16,dir:[Math.sin(w.yaw),Math.cos(w.yaw)],knock:'flinch',name:'kurt'});sfx.bite();
     if(r==='parry')return;if(r==='block'||r==='guardbreak'){w.kx=-Math.sin(w.yaw)*6;w.kz=-Math.cos(w.yaw)*6}if(r==='iframe'&&!w.dodged){w.dodged=true;GS.onMiss(w)}}else sfx.snap()}
   if(w.t>.32){w.pitch=0;w.st='retreat';w.t=0;w.retTo=rr(5,6.5);w.after='circle';w.cd=rr(1.1,2.2)}return}}
@@ -62,7 +62,7 @@ function wolfBite(w,d,dt,GS){const fx=P.x-w.x,fz=P.z-w.z;
 function wolfAway(w,d,dt){const ax=w.x-P.x,az=w.z-P.z,k=Math.hypot(ax,az)||1;
  if(w.st==='retreat'){wolfMove(w,w.x+ax/k*4,w.z+az/k*4,7,dt,9);w.crouch=lp(w.crouch,.2,.2);if(d>w.retTo||w.t>1.8){const nx=w.after||'circle';w.after=null;w.st=nx;w.t=0;if(nx==='watch'){w.cover=wolfCover(w);w.watchT=rr(4,9)}}return}
  if(w.st==='watch'){const c=w.cover||(w.cover=wolfCover(w));if(w.t<.9){w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,8)}// first it stops and stares
-  else if(Math.hypot(c[0]-w.x,c[1]-w.z)>1)wolfMove(w,c[0],c[1],3,dt,5);else{w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,6)}w.crouch=lp(w.crouch,.6,.1);w.tail=-.3;
+  else{const dx=c[0]-w.x,dz=c[1]-w.z,q=Math.hypot(dx,dz);if(q>1){const sp=Math.min(2.6,q*2),p=collide(w.x+dx/q*sp*dt,w.z+dz/q*sp*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,sp,.2);w.ph+=sp*dt*4.4}else w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,6)}/* eyes never leave the prey while it backs into cover */w.crouch=lp(w.crouch,.6,.1);w.tail=-.3;
   if(w.t>(w.watchT||6)){const m=wolfMood(w);if(m.aggr>m.fear+.15&&Math.hypot(P.x,P.z)>150&&Math.random()<.6){w.st='stalk';w.t=0}else{w.st='return';w.t=0;w.aware=0;w.calm=4}}return}
  if(w.st==='flee'){const pk=w.pack,tx=pk?pk.den[0]:w.x+ax/k*30,tz=pk?pk.den[1]:w.z+az/k*30,awayDen=Math.hypot(tx-w.x,tz-w.z)<6;wolfMove(w,awayDen?w.x+ax/k*5:tx,awayDen?w.z+az/k*5:tz,7.4,dt,6);w.crouch=lp(w.crouch,.3,.2);w.tail=-.6;
   if(w.t>7||d>38){w.st='return';w.t=0;w.aware=0;w.calm=6}}}

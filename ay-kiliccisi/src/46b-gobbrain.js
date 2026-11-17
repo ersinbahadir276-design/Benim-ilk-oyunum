@@ -30,7 +30,8 @@ function gobBrain(g,d,dt){
   if(g.hp<g.max*.4&&m.friends>=1&&!g.fellBack&&g.st==='chase'){g.fellBack=1;g.st='fallback';g.t=0;return true}}}
  return false}
 // where a goblin wants to stand in a group fight: its own side of the hero (spread out), never all in one line
-function gobSlotPoint(g,r){const grp=GOBS.filter(o=>!o.dead&&!o.big&&!o.archer&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10);if(grp.length<2||!grp.includes(g))return null;
+function gobSlotPoint(g,r){if(habits().archer)return null;// against an archer: no circling, close in
+ const grp=GOBS.filter(o=>!o.dead&&!o.big&&!o.archer&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10);if(grp.length<2||!grp.includes(g))return null;
  // evenly spaced sides, in a stable order, starting from where the first one already stands
  const i=grp.indexOf(g),base=Math.atan2(grp[0].x-P.x,grp[0].z-P.z);g.slotA=base+i*6.283/grp.length;if((g.flankT||0)>GT.clock)return[P.x+Math.sin(g.flankA)*r,P.z+Math.cos(g.flankA)*r];
  return[P.x+Math.sin(g.slotA)*r,P.z+Math.cos(g.slotA)*r]}

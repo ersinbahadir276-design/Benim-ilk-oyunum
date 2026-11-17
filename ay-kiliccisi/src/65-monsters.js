@@ -114,7 +114,7 @@ function updateMon(m,dt){m.t+=dt;m.flash=Math.max(0,m.flash-dt*6);m.cd-=dt;const
   if(T.archer||T.caster){if(d<4.5&&T.caster&&(m.mcd.blink||0)<GT.clock){monBlink(m);break}if(d<4&&!T.caster){const ax=m.x+(m.x-P.x)/d*3,az=m.z+(m.z-P.z)/d*3;agentMove(m,ax,az,3.6,dt,m.rad,6);agentFace(m,P.x,P.z,dt,8);if(d<2&&m.cd<=0)startMove(m,'slash');break}
    const vis=dunLos(m.x,m.z,P.x,P.z);if(vis&&d<16&&m.cd<=0){if(T.archer){m.st='aim';m.t=0;sfx.gobShout();break}const mv=pickMove(m,d);if(mv){startMove(m,mv);break}}
    if(!vis||d>12){const tg=dunSteer(m);agentMove(m,tg[0],tg[1],T.spd,dt,m.rad,7)}else{const a=Math.atan2(m.x-P.x,m.z-P.z)+.5*dt*(m.side||1),r=cl(d,7,11);agentMove(m,P.x+Math.sin(a)*r,P.z+Math.cos(a)*r,T.spd*.7,dt,m.rad,6);agentFace(m,P.x,P.z,dt,8)}break}
-  const vis=m.unseen<1&&dunLos(m.x,m.z,P.x,P.z);if(vis&&m.cd<=0&&P.st!=='down'&&P.st!=='getup'&&(m.big||monTokens()<2)){const mv=pickMove(m,d);if(mv){startMove(m,mv);break}}
+  const vis=m.unseen<1&&dunLos(m.x,m.z,P.x,P.z);if(vis&&m.cd<=0&&P.st!=='down'&&P.st!=='getup'&&(m.big||monTokens()<2)){const mv=pickMove(m,d);if(mv&&(MV[mv].proj||MV[mv].summon||MV[mv].storm||MV[mv].eggs||MV[mv].runes||attackOK(m))){startMove(m,mv);break}}
   if(vis&&d<2.6*S&&!m.big){m.st='circle';m.t=0;m.dur=.5+Math.random()*.9;break}
   const tg=dunSteer(m);agentMove(m,tg[0],tg[1],T.spd*(m.phase>1?1.2:1),dt,m.rad,m.big?3:8);break}
  case'circle':{const a=Math.atan2(m.x-P.x,m.z-P.z)+.8*dt*(m.side||1),gx=P.x+Math.sin(a)*2.9,gz=P.z+Math.cos(a)*2.9;agentMove(m,gx,gz,T.spd*.55,dt,m.rad,6);agentFace(m,P.x,P.z,dt,9);if(m.t>m.dur){m.st='chase';m.t=0}break}

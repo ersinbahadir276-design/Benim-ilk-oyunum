@@ -61,7 +61,7 @@ function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['ye
  if(winTab==='demirci'){const near=ROLES.smith&&Math.hypot(ROLES.smith.x-P.x,ROLES.smith.z-P.z)<5;h+='<div class="wt">DEMİRCİ HASK</div>'+(near?'':'<div class="sk">Yükseltme için köydeki demirciye git (kalenin kuzey kapısı).</div>')+
   ['weapon','armor','charm','ring'].map(k=>{const it=eqItem(k);if(!it)return'';const c=upgradeCost(it);return'<div class="item"><b '+rc(it.rar)+'>'+it.name+' +'+it.up+'</b><i>'+itemLines(it).slice(0,2).join(', ')+'</i>'+(near&&it.up<5?'<button data-up="'+it.id+'">YÜKSELT · '+c.gold+' altın, '+c.shards+' demir</button>':'')+'</div>'}).join('')+'<div class="sk">Altın: '+(SYS.gold||0)+' · Demir parçası: '+SYS.shards+' (eşya parçalayarak kazanılır)</div>'}
  if(winTab==='ayar'){h+='<div class="wt">AYARLAR</div><div class="wr"><span>Sarsıntıyı azalt</span><button id="shk">'+(SYS.lowShake?'AÇIK':'KAPALI')+'</button></div><div class="wr"><span>Otomatik kuşan</span><button id="aeq">'+(SYS.autoEq===0?'KAPALI':'AÇIK')+'</button></div>'+
-  '<div class="wt2">MODELLER VE LİSANSLAR</div><div class="cr" style="opacity:.85;font-size:11px;line-height:1.4">Kahraman Kael: iskelet oranları «Berserk Armor» (Angy97, CC BY 4.0) modelinden alındı; zırh, miğfer, pelerin ve kılıç bu oyun için kodla tasarlandı.<br>'+
+  camSettingsHtml()+'<div class="wt2">MODELLER VE LİSANSLAR</div><div class="cr" style="opacity:.85;font-size:11px;line-height:1.4">Kahraman Kael: iskelet oranları «Berserk Armor» (Angy97, CC BY 4.0) modelinden alındı; zırh, miğfer, pelerin ve kılıç bu oyun için kodla tasarlandı.<br>'+
   'Şeytan Kral: «body base low poly elf» — Yamato (Sketchfab), CC BY 4.0; saç: «Long reddish hair for game» — CarlosTorresVFX (Sketchfab), CC BY 4.0.<br>'+
   'Veyra: iskelet oranları «Kawaiope» (chained_tan, CC BY 4.0); görünüş bu oyun için kodla tasarlandı.<br>Şeytan Kral oranları: «Aldrich» (9S, CC BY 4.0) iskeletinden ölçüldü.<br>'+
   'Ejderha: «Tarisland - Dragon (High Poly)» — Doctor A. (Sketchfab), CC BY 4.0; oyuncunun eklediği model, sadeleştirildi. Not: tasarım Tarisland oyununa aittir.<br>'+
@@ -74,7 +74,7 @@ function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['ye
  $('winb').querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click',()=>{const it=SYS.inv.find(i=>i.id===winSel);if(!it)return;if(b.dataset.act==='eq')equip(it);else salvage(it);winSel=null;renderWin(P)}));
  $('winb').querySelectorAll('[data-skill]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.skill){SYS.skill=b.dataset.skill;save(P);renderWin(P)}}));
  $('winb').querySelectorAll('[data-up]').forEach(b=>b.addEventListener('click',()=>{const it=SYS.inv.find(i=>i.id===+b.dataset.up);if(it)upgrade(it);renderWin(P)}));
- const sh=$('shk');if(sh)sh.addEventListener('click',()=>{SYS.lowShake=SYS.lowShake?0:1;save(P);renderWin(P)});const ae=$('aeq');if(ae)ae.addEventListener('click',()=>{SYS.autoEq=SYS.autoEq===0?1:0;save(P);renderWin(P)});
+ camSettingsBind($('win'));const sh=$('shk');if(sh)sh.addEventListener('click',()=>{SYS.lowShake=SYS.lowShake?0:1;save(P);renderWin(P)});const ae=$('aeq');if(ae)ae.addEventListener('click',()=>{SYS.autoEq=SYS.autoEq===0?1:0;save(P);renderWin(P)});
  $('winx').addEventListener('click',()=>toggleWin(P));try{if($('wmap'))drawMap($('wmap'))}catch(e){}}
 function toggleWin(P){winOpen=!winOpen;$('win').style.display=winOpen?'flex':'none';if(winOpen)renderWin(P)}
 
