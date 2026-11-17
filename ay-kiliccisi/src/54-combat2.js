@@ -3,7 +3,7 @@
 // EXECUTED (big damage, slow-motion). Rage fills while fighting; when full, ÖFKE turns the armour red: more damage,
 // no flinching, life steal. Skills are new moves, not just numbers, and unlock through the story and levels.
 const POSMAX={wolf:70,gob:55,big:190,croc:130,dragon:650,alpha:240,chief:340};
-function posKind(f){return isWolf(f)?(f.boss?'alpha':'wolf'):f===DRAGON?'dragon':GOBS.includes(f)?(f.boss?'chief':f.big?'big':'gob'):'croc'}
+function posKind(f){if(f.pk)return f.pk;return isWolf(f)?(f.boss?'alpha':'wolf'):f===DRAGON?'dragon':GOBS.includes(f)?(f.boss?'chief':f.big?'big':'gob'):'croc'}
 function addPosture(f,amt){if(f.dead)return;const k=posKind(f),max=POSMAX[k]*(f.lv?1+.05*(f.lv-1):1);f.pos=(f.pos||0)+amt*(1+gear('pos')/100)*(hasFx('posture')?1.35:1)*(P.berserk>0?1.5:1);f.posT=2.2;
  if(f.pos>=max){f.pos=0;breakFoe(f)}}
 function posFrac(f){const k=posKind(f),max=POSMAX[k]*(f.lv?1+.05*(f.lv-1):1);return cl((f.pos||0)/max,0,1)}

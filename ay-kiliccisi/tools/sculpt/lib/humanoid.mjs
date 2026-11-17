@@ -19,7 +19,7 @@ export function humanoid(ALL, kind, S) {
   const shY = WP[3][1], headB = WP[2], hc = v3.add(headB, [0, hr * 0.95, 0]);
   const legLen = -WP[11][1];
   // ---------------------------------------------------------------- torso + clothing
-  const bt = S.bulk ?? big, chestR = [sh * 0.98 + bt * 0.06, T * 0.36, 0.12 + bt * 0.12 + (S.belly ? 0.02 : 0)], waistR = [sh * (S.waist || 0.85) + bt * 0.05 + (S.belly ? 0.05 : 0), T * 0.34, 0.11 + bt * 0.12 + (S.belly ? 0.08 : 0)];
+  const lm = S.limb || 1, tm = S.torso || 1, bt = S.bulk ?? big, chestR = [(sh * 0.98 + bt * 0.06) * tm, T * 0.36, (0.12 + bt * 0.12 + (S.belly ? 0.02 : 0)) * tm], waistR = [(sh * (S.waist || 0.85) + bt * 0.05 + (S.belly ? 0.05 : 0)) * tm, T * 0.34, (0.11 + bt * 0.12 + (S.belly ? 0.08 : 0)) * tm];
   const hunch = gob ? 0.06 + big * 0.08 : 0;
   const chest = ellipsoid([0, 0.06 + T * 0.72, hunch * 0.3], chestR, gob ? rot.x(0.25) : null), waist = ellipsoid([0, 0.06 + T * 0.3, (S.belly ? 0.03 : 0)], waistR), pelvis = ellipsoid([0, -0.01, 0], [sh * (S.waist || 0.86) + bt * 0.06, 0.12, 0.115 + bt * 0.1]);
   const torso = U(0.07, chest, waist);
@@ -27,7 +27,7 @@ export function humanoid(ALL, kind, S) {
   add({ name: 'torso', mat: S.torsoMat || 'c1', boneFn: spineW, tau: 0.05, sdf: torso });
   add({ name: 'pelvis', mat: S.pelvisMat || 'c2', bone: 'root', tau: 0.04, sdf: pelvis });
   // shoulders (deltoids) so the arm joins the torso like a body, not a tube
-  side((s, sb, eb) => add({ name: 'delt' + s, mat: S.armMat || S.torsoMat || 'c1', boneFn: () => [[N(sb), 0.6], ['spine', 0.4]], tau: 0.03, sdf: ellipsoid(at(sb, [0, -0.025, 0]), [0.052 + big * 0.075, 0.055 + big * 0.06, 0.05 + big * 0.065]) }));
+  side((s, sb, eb) => add({ name: 'delt' + s, mat: S.armMat || S.torsoMat || 'c1', boneFn: () => [[N(sb), 0.6], ['spine', 0.4]], tau: 0.03, sdf: ellipsoid(at(sb, [0, -0.025, 0]), [(0.052 + big * 0.075) * lm, (0.055 + big * 0.06) * lm, (0.05 + big * 0.065) * lm]) }));
   // neck
   add({ name: 'neck', mat: 'skin', boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (y - (headB[1] - 0.04)) / 0.08)); return [['head', t], ['spine', 1 - t]]; }, sdf: cone(v3.add(headB, [0, -0.07, gob ? 0.02 : 0]), v3.add(headB, [0, hr * 0.5, gob ? 0.03 : 0]), 0.045 + big * 0.05, 0.04 + big * 0.045) });
   if (!gob && !S.noBelt) { const by = 0.03; add({ name: 'belt', mat: 'leather', bone: 'root', rigid: true, k: 0.004, sdf: I(0.004, grow(ellipsoid([0, by, S.belly ? 0.02 : 0], [waistR[0] * 0.98, 0.1, waistR[2] * 1.0]), 0.01), I(0, plane([0, by + 0.024, 0], [0, 1, 0]), plane([0, by - 0.024, 0], [0, -1, 0]))) });
@@ -41,8 +41,8 @@ export function humanoid(ALL, kind, S) {
   // ---------------------------------------------------------------- arms and hands
   side((s, sb, eb, wb, hb, kb, fb, L) => {
     const sp = WP[sb], ep = WP[eb], wp = WP[wb];
-    add({ name: L + 'ua', mat: S.armMat || S.torsoMat || 'c1', bone: N(sb), sdf: cone(sp, ep, 0.05 + big * 0.07, 0.042 + big * 0.06) });
-    add({ name: L + 'fa', mat: S.forearmMat || S.armMat || S.torsoMat || 'c1', bone: N(eb), sdf: cone(ep, wp, 0.042 + big * 0.06, 0.033 + big * 0.048) });
+    add({ name: L + 'ua', mat: S.armMat || S.torsoMat || 'c1', bone: N(sb), sdf: cone(sp, ep, (0.05 + big * 0.07) * lm, (0.042 + big * 0.06) * lm) });
+    add({ name: L + 'fa', mat: S.forearmMat || S.armMat || S.torsoMat || 'c1', bone: N(eb), sdf: cone(ep, wp, (0.042 + big * 0.06) * lm, (0.033 + big * 0.048) * lm) });
     if (S.cuffs !== false && !gob) add({ name: L + 'cuff', mat: 'c2', bone: N(eb), rigid: true, k: 0.004, sdf: I(0.003, grow(cone(ep, wp, 0.045, 0.036), 0.004), plane(at(wb, [0, 0.05, 0]), ap(WR[wb], [0, -1, 0])), plane(at(wb, [0, 0.015, 0]), ap(WR[wb], [0, 1, 0]))) });
     // hand: palm + mitten of fingers + thumb (fingers curl with the wrist bone only)
     const hs = 1 + big * 0.9 + gob * 0.2;
@@ -51,8 +51,8 @@ export function humanoid(ALL, kind, S) {
     if (gob) add({ name: L + 'claws', mat: 'horn', bone: N(wb), rigid: true, k: 0.004, sdf: U(0, ...[-1, 0, 1].map((i) => horn([at(wb, [0, -0.125 * hs, 0.012 + i * 0.016 * hs]), at(wb, [0, -0.15 * hs, 0.025 + i * 0.018 * hs]), at(wb, [0, -0.165 * hs, 0.04 + i * 0.02 * hs])], 0.008 * hs))) });
     // legs: trousers / skin, knee, boots
     const hp = WP[hb], kp = WP[kb], ap2 = WP[fb];
-    add({ name: L + 'th', mat: S.legMat || 'c2', bone: N(hb), tau: 0.03, sdf: cone(v3.add(hp, [0, 0.02, 0]), kp, 0.07 + big * 0.08, 0.052 + big * 0.07) });
-    add({ name: L + 'sh', mat: S.legMat || 'c2', bone: N(kb), sdf: cone(kp, ap2, 0.05 + big * 0.07, 0.038 + big * 0.055) });
+    add({ name: L + 'th', mat: S.legMat || 'c2', bone: N(hb), tau: 0.03, sdf: cone(v3.add(hp, [0, 0.02, 0]), kp, (0.07 + big * 0.08) * lm, (0.052 + big * 0.07) * lm) });
+    add({ name: L + 'sh', mat: S.legMat || 'c2', bone: N(kb), sdf: cone(kp, ap2, (0.05 + big * 0.07) * lm, (0.038 + big * 0.055) * lm) });
     const fl = 0.12 + big * 0.07 + gob * 0.04, foot = U(0.03, ellipsoid(v3.add(ap2, [0, -0.02, 0.01]), [0.045 + big * 0.045, 0.045 + big * 0.03, 0.06 + big * 0.05]), cone(v3.add(ap2, [0, -0.03, 0.03]), v3.add(ap2, [0, -0.045 + big * 0.0, fl]), 0.042 + big * 0.04, 0.03 + big * 0.03));
     const footP = I(0.006, foot, plane(v3.add(ap2, [0, -0.07 - big * 0.025, 0]), [0, -1, 0]));
     if (gob) add({ name: L + 'foot', mat: 'skin', bone: N(fb), k: 0.02, sdf: footP });
@@ -62,7 +62,15 @@ export function humanoid(ALL, kind, S) {
   });
   // ---------------------------------------------------------------- head and face
   const H = (p) => v3.add(hc, p), hb = (p) => v3.add(headB, p);
-  if (!gob && !S.demon) {
+  if (S.skull) { // bare skull: deep glowing sockets, nose hole, a row of teeth, a hinged lower jaw
+    const g = hr, cran = U(g * 0.15, ellipsoid(H([0, g * 0.1, -g * 0.05]), [g * 0.86, g * 0.9, g * 0.95]), ellipsoid(H([0, -g * 0.3, g * 0.3]), [g * 0.6, g * 0.42, g * 0.6]));
+    const sockets = symX(ellipsoid(H([g * 0.33, g * 0.02, g * 0.8]), [g * 0.22, g * 0.2, g * 0.25])), noseH = ellipsoid(H([0, -g * 0.28, g * 0.88]), [g * 0.09, g * 0.13, g * 0.15]);
+    add({ name: 'head', mat: 'skin', bone: 'head', rigid: true, k: 0.015, sdf: Sub(0.008, cran, sockets, noseH, plane(H([0, -g * 0.52, 0]), [0, 1, 0])) });
+    add({ name: 'eyes', mat: 'glow', bone: 'head', rigid: true, k: 0.002, sdf: symX(sphere(H([g * 0.33, g * 0.02, g * 0.66]), g * 0.1)) });
+    add({ name: 'jawbone', mat: 'skin', bone: 'head', rigid: true, k: 0.006, sdf: I(0.006, ellipsoid(H([0, -g * 0.62, g * 0.28]), [g * 0.5, g * 0.2, g * 0.56]), plane(H([0, -g * 0.56, 0]), [0, 1, 0])) });
+    add({ name: 'teeth', mat: 'tooth', bone: 'head', rigid: true, k: 0.002, sdf: U(0, ...[-2.5, -1.5, -0.5, 0.5, 1.5, 2.5].map((i) => box(H([i * g * 0.1, -g * 0.52, g * 0.84 - Math.abs(i) * g * 0.035]), [g * 0.04, g * 0.07, g * 0.03], null, 0.003))) });
+  }
+  if (!gob && !S.demon && !S.skull) {
     const cranium = ellipsoid(H([0, hr * 0.06, -hr * 0.04]), [hr * 0.9, hr * 1.02, hr * 0.98]);
     const face = U(hr * 0.3, ellipsoid(H([0, -hr * 0.28, hr * 0.14]), [hr * 0.74, hr * 0.66, hr * 0.78]), sphere(H([0, -hr * 0.7, hr * 0.42]), hr * 0.22)); // soft egg shape, small chin: no brow ridge, no eye sockets
     const nose = ellipsoid(H([0, -hr * 0.2, hr * 0.93]), [hr * 0.07, hr * 0.09, hr * 0.09]);

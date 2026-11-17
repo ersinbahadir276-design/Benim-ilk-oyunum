@@ -2,6 +2,7 @@
 // Map: 2800 m x 2800 m. The kingdom (castle + village) stays in the middle; regions around it:
 // north: mountains with the dragon lair on a plateau; west: dense forest, a lake fed by a river;
 // south-east: swamp (crocodiles); goblin camps and ruins scattered between them.
+var DUN={on:0,y:0};// dungeon mode (64-dungeon.js): height, collision, sight and zone come from the dungeon grid
 const WS=1400,HS=7,HN=WS*2/HS+1,HGT=new Float32Array(HN*HN),GDN=new Uint8Array(HN*HN),GTN=new Uint8Array(HN*HN);
 const SPAWN=[14,0,318],LAKE=[-760,260,150],SWAMP=[760,720,330],MOUNT=[0,-1050],LAIR=[0,-1050],LAIR_Y=62,WATER_L=-2.6,WATER_S=-1.35;
 const RIVER=[[-180,-690],[-300,-520],[-470,-330],[-560,-120],[-660,80],[-735,190]];
@@ -19,16 +20,16 @@ function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  if(ds>=SWAMP[2]+22&&ds<SWAMP[2]+150)h=Math.max(h,lp(WATER_S+1.0,-40,sst(SWAMP[2]+80,SWAMP[2]+150,ds)));
  CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<60)h=lp(h,campH[i],sst(58,30,d))});
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
-function zoneAt(x,z){const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
+function zoneAt(x,z){if(DUN.on)return'dungeon';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
  if(Math.hypot(x-LAKE[0],z-LAKE[1])<LAKE[2]+25)return'lake';if(riverD(x,z)<16)return'river';if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2])return'swamp';
  for(const c of CAMPS)if(Math.hypot(x-c[0],z-c[1])<48)return'camp';for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<65)return'ruins';
  if(dm<420)return'mountain';if(x<-430)return'dense';return'forest'}
-const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',forest:'Orman'};
+const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',forest:'Orman',dungeon:'Zindan'};
 // sampled heightmap: hAt interpolates the SAME triangles the terrain mesh and the grass shader use
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
-function hAt(x,z){let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
+function hAt(x,z){if(DUN.on)return dunH(x,z);let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
  return fx+fz<1?a+(b-a)*fx+(c-a)*fz:d+(c-d)*(1-fx)+(b-d)*(1-fz)}
-const waterAt=(x,z)=>{const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+50||riverD(x,z)<25)return WATER_L;if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+30)return WATER_S;return -99};
+const waterAt=(x,z)=>{if(DUN.on)return -99;const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+50||riverD(x,z)<25)return WATER_L;if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+30)return WATER_S;return -99};
 const depthAt=(x,z)=>Math.max(0,waterAt(x,z)-hAt(x,z));
 // ---------- collision: trees/rocks (circles in a 12 m grid), buildings and walls (boxes in a 24 m grid)
 const trees=[],treeGrid=new Map(),TG=12,boxes=[],boxGrid=new Map(),BG=24,HOUSES=[],STALLS=[];
@@ -38,7 +39,7 @@ const addCircle=(c)=>addTree(c[0],c[1],c[2],8);
 function addBox(x0,z0,x1,z1,h=6){const b=[x0,z0,x1,z1,h];boxes.push(b);for(let i=Math.floor(x0/BG);i<=Math.floor(x1/BG);i++)for(let j=Math.floor(z0/BG);j<=Math.floor(z1/BG);j++){const k=bkey(i,j);let a=boxGrid.get(k);if(!a)boxGrid.set(k,a=[]);a.push(b)}return b}
 function nearBoxes(x,z,fn){const i=Math.floor(x/BG),j=Math.floor(z/BG);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const l=boxGrid.get(bkey(i+a,j+b));if(l)for(const bx of l)fn(bx)}}
 // push a circle (x,z,rad) out of trees, rocks, buildings and walls; returns [x,z]
-function collide(x,z,rad){
+function collide(x,z,rad){if(DUN.on)return dunCollide(x,z,rad);
  const cx=Math.floor(x/TG),cz=Math.floor(z/TG);
  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=treeGrid.get((cx+i+200)*1000+cz+j+200);if(!a)continue;
   for(const t of a){const dx=x-t.x,dz=z-t.z,rr2=t.r+rad,d2=dx*dx+dz*dz;if(d2<rr2*rr2&&d2>1e-8){const d=Math.sqrt(d2);x=t.x+dx/d*rr2;z=t.z+dz/d*rr2}}}
@@ -47,7 +48,7 @@ function collide(x,z,rad){
    else{const l=x-b[0],r=b[2]-x,u=z-b[1],dn=b[3]-z,m=Math.min(l,r,u,dn);if(m===l)x=b[0]-rad;else if(m===r)x=b[2]+rad;else if(m===u)z=b[1]-rad;else z=b[3]+rad}}});
  return[cl(x,-WS+12,WS-12),cl(z,-WS+12,WS-12)]}
 // line of sight between two points at eye height: tree trunks + foliage, rocks, walls/buildings taller than the eye, and hills block it
-function los(ax,az,bx,bz,eye=1.3){const dx=bx-ax,dz=bz-az,L=Math.hypot(dx,dz);if(L<.5)return true;const n=Math.ceil(L/6),seen=new Set();
+function los(ax,az,bx,bz,eye=1.3){if(DUN.on)return dunLos(ax,az,bx,bz);const dx=bx-ax,dz=bz-az,L=Math.hypot(dx,dz);if(L<.5)return true;const n=Math.ceil(L/6),seen=new Set();
  const ya=hAt(ax,az)+eye,yb=hAt(bx,bz)+eye;
  for(let s=0;s<=n;s++){const px=ax+dx*s/n,pz=az+dz*s/n,cx=Math.floor(px/TG),cz=Math.floor(pz/TG);
   if(s>0&&s<n&&hAt(px,pz)>lp(ya,yb,s/n)+.2)return false;
@@ -58,7 +59,7 @@ function los(ax,az,bx,bz,eye=1.3){const dx=bx-ax,dz=bz-az,L=Math.hypot(dx,dz);if
  for(const b of bs){if(b[4]<eye*.85)continue;let t0=0,t1=1;for(const[o,dd,lo,hi]of[[ax,dx,b[0],b[2]],[az,dz,b[1],b[3]]]){if(Math.abs(dd)<1e-9){if(o<lo||o>hi){t0=2;break}}else{let u=(lo-o)/dd,v=(hi-o)/dd;if(u>v){const q=u;u=v;v=q}t0=Math.max(t0,u);t1=Math.min(t1,v);if(t0>t1)break}}
   if(t0<=t1&&t1>.02&&t0<.98)return false}
  return true}
-function inBuilding(x,z,m){let hit=false;nearBoxes(x,z,b=>{if(b[4]>2.5&&x>b[0]-m&&x<b[2]+m&&z>b[1]-m&&z<b[3]+m)hit=true});return hit}
+function inBuilding(x,z,m){if(DUN.on)return dunSolidAt(x,z,m);let hit=false;nearBoxes(x,z,b=>{if(b[4]>2.5&&x>b[0]-m&&x<b[2]+m&&z>b[1]-m&&z<b[3]+m)hit=true});return hit}
 // ---------- forest specs (geometry is built on demand around the player and dropped far away)
 const TREES=[],TCH=new Map(),TCS=100,tchKey=(x,z)=>Math.floor((x+WS)/TCS)*100+Math.floor((z+WS)/TCS);
 function treeOK(x,z){const zn=zoneAt(x,z);if(zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='kingdom')return false;if(depthAt(x,z)>.15)return false;
@@ -239,7 +240,7 @@ function streamForest(px,pz,budget){const R1=340,R2=440;let built=0;
  for(const[k,o]of TREEGEO){const cx=Math.floor(k/100)*TCS-WS+TCS/2,cz=(k%100)*TCS-WS+TCS/2;if(Math.hypot(cx-px,cz-pz)>R2){unobj(o);freeGeo(o.geo);TREEGEO.delete(k)}}
  const ci=Math.floor((px+WS)/TCS),cj=Math.floor((pz+WS)/TCS),want=[];
  for(let i=ci-4;i<=ci+4;i++)for(let j=cj-4;j<=cj+4;j++){const k=i*100+j;if(TREEGEO.has(k)||!TCH.has(k))continue;const cx=i*TCS-WS+TCS/2,cz=j*TCS-WS+TCS/2,d=Math.hypot(cx-px,cz-pz);if(d<R1)want.push([d,k,cx,cz])}
- want.sort((a,b)=>a[0]-b[0]);for(const[d,k,cx,cz]of want){if(built>=budget)break;const g=treeChunkGeo(TCH.get(k));if(g.P.length/3>65000)continue;TREEGEO.set(k,obj(geo(g),{shade:.75,pos:[cx,0,cz],cull:310}));built++}
+ want.sort((a,b)=>a[0]-b[0]);for(const[d,k,cx,cz]of want){if(built>=budget)break;const g=treeChunkGeo(TCH.get(k));if(g.P.length/3>65000)continue;{const o=obj(geo(g),{shade:.75,pos:[cx,0,cz],cull:310});o.ow=1;TREEGEO.set(k,o)}built++}
  return built}
 // the Forgotten Knight statue (uploaded model, simplified) on the plaza pedestal
 function buildKnight(TX){const bin=atob(KNB),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);const buf=u8.buffer,M=mtrs([10,.9,50],[0,-PI/2,0]);

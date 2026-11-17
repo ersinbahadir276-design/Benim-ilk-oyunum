@@ -2,7 +2,7 @@
 // Design: every kill can drop something, stronger regions drop stronger things, rarity is visible from afar (light
 // beam colour), legendaries are tied to bosses and secrets so they are memorable. Equipment changes numbers AND looks
 // (blade colour/size, armour tint) and some legendaries change how you play.
-const RAR=[{n:'Sıradan',c:'#c9ccd6',w:60,m:1,af:[0,1]},{n:'Sağlam',c:'#7ddf7d',w:25,m:1.12,af:[1,1]},{n:'Nadir',c:'#6cb8ff',w:10,m:1.28,af:[2,2]},{n:'Destansı',c:'#c77dff',w:4,m:1.48,af:[3,3]},{n:'Efsanevi',c:'#ffa53a',w:1,m:1.75,af:[3,3]}];
+const RAR=[{n:'Sıradan',c:'#c9ccd6',w:60,m:1,af:[0,1]},{n:'Sağlam',c:'#7ddf7d',w:25,m:1.12,af:[1,1]},{n:'Nadir',c:'#6cb8ff',w:10,m:1.28,af:[2,2]},{n:'Destansı',c:'#c77dff',w:4,m:1.48,af:[3,3]},{n:'Efsanevi',c:'#ffa53a',w:1,m:1.75,af:[3,3]},{n:'Mitik',c:'#ff4d6d',w:0,m:2.1,af:[4,4]}];// Mitik: only from dungeon bosses, secret rooms and the mystery
 const AFFIX={str:{n:'Güç',v:[1,4],int:1},agi:{n:'Çeviklik',v:[1,4],int:1},vit:{n:'Dayanıklılık',v:[1,4],int:1},hp:{n:'Can',v:[10,40],int:1},dmg:{n:'Hasar %',v:[4,12]},crit:{n:'Kritik %',v:[3,9]},
  leech:{n:'Can çalma %',v:[2,5]},sta:{n:'Dayanıklılık yenilenmesi %',v:[8,20]},guard:{n:'Savunma canı %',v:[10,25]},pos:{n:'Duruş kırma %',v:[8,22]},rage:{n:'Öfke kazanımı %',v:[10,25]},exe:{n:'İnfaz hasarı %',v:[15,35]},def:{n:'Zırh',v:[4,14],int:1}};
 // bases: weapons are greatswords with their own silhouette; armour tints the plate
@@ -24,15 +24,19 @@ const UNIQ={
  dragonbone:{slot:'weapon',n:'Ejder Kemiği',dmg:58,fx:'fire',d:'Ağır saldırı yerde alev izi bırakır.',mods:{dmg:15},look:{len:1.7,wid:.075,col:[.3,.1,.06],edge:[1,.55,.2],glow:[1,.4,.1]}},
  oath:{slot:'weapon',n:"Aldren'in Yemini",dmg:52,fx:'oath',d:'Savuşturma penceresi +%50, İnfaz %20 can yeniler.',mods:{agi:4,exe:30},look:{len:1.6,wid:.062,col:[.75,.78,.85],edge:[1,1,1],glow:[.7,.85,1]}},
  heart:{slot:'charm',n:"Hırlayan'ın Kalbi",fx:'rage2',d:'Öfke iki kat hızlı dolar. Zırh fısıldıyor.',mods:{rage:100,dmg:8}},
+ boneking:{slot:'charm',rar:5,n:"Kemik Kral'ın Mührü",fx:'posture',d:'Mitik · Duruş kırma +%35; İnfaz sonrası dayanıklılık dolar.',mods:{pos:30,def:12,hp:60,vit:4}},
+ brood:{slot:'ring',rar:5,n:"Örümcek Ana'nın Gözü",fx:'bleed',d:'Mitik · Ağır saldırılar kanatır.',mods:{crit:12,agi:5,leech:4}},
+ keeper:{slot:'weapon',rar:5,n:'Mühür Bekçisinin Rün Kılıcı',dmg:72,fx:'ember',d:'Mitik · Vuruşlar küçük rün patlamaları çıkarır.',mods:{dmg:18,str:5,pos:15},look:{len:1.72,wid:.07,col:[.12,.14,.2],edge:[.5,.9,1.2],glow:[.3,.8,1.4]}},
+ crown:{slot:'charm',rar:5,n:'Kara Taç Kırığı',fx:'rage2',d:'Mitik · Öfke iki kat hızlı dolar. Taç fısıldıyor: "Bir baş daha."',mods:{dmg:15,rage:60,hp:80,crit:6}},
  veyra:{slot:'ring',n:'Kızıl Kor Mührü',fx:'ember',d:"Veyra'nın hediyesi: vuruşlar küçük alev patlamaları çıkarır.",mods:{crit:8,leech:3}}};
 let itemSeq=1;
-function rollRarity(tier){let w=RAR.map((r,i)=>r.w*(i<tier?0:1)*(i===tier?2:1));const t=w.reduce((a,b)=>a+b,0);let x=Math.random()*t;for(let i=0;i<w.length;i++){x-=w[i];if(x<=0)return i}return 0}
-function makeItem(baseKey,lv,rar,uniq){const id=itemSeq++;if(uniq){const U=UNIQ[uniq];return{id,uniq,slot:U.slot,name:U.n,rar:4,lv,dmg:U.dmg?Math.round(U.dmg*(1+.06*(lv-1))):0,def:0,mods:Object.assign({},U.mods),up:0,look:U.look||null}}
+function rollRarity(tier){if(tier>=5)return 5;let w=RAR.map((r,i)=>r.w*(i<tier?0:1)*(i===tier?2:1));const t=w.reduce((a,b)=>a+b,0);let x=Math.random()*t;for(let i=0;i<w.length;i++){x-=w[i];if(x<=0)return i}return 0}
+function makeItem(baseKey,lv,rar,uniq){const id=itemSeq++;if(uniq){const U=UNIQ[uniq];return{id,uniq,slot:U.slot,name:U.n,rar:U.rar||4,lv,dmg:U.dmg?Math.round(U.dmg*(1+.06*(lv-1))):0,def:0,mods:Object.assign({},U.mods),up:0,look:U.look||null}}
  const B=BASES[baseKey],R=RAR[rar],it={id,base:baseKey,slot:B.slot,name:B.n,rar,lv,dmg:0,def:0,mods:{},up:0,look:B.look||null};
  if(B.dmg)it.dmg=Math.round(B.dmg*(1+.07*(lv-1))*R.m);if(B.def)it.def=Math.round(B.def*(1+.06*(lv-1))*R.m);
  const keys=Object.keys(AFFIX).filter(k=>!(B.slot==='armor'&&k==='def')),n=R.af[0]+Math.floor(Math.random()*(R.af[1]-R.af[0]+1))+((B.slot==='charm'||B.slot==='ring')?1:0);
  for(let i=0;i<n;i++){const k=keys[Math.floor(Math.random()*keys.length)],A=AFFIX[k],v=lp(A.v[0],A.v[1],Math.random())*(1+.04*(lv-1))*R.m;it.mods[k]=(it.mods[k]||0)+(A.int?Math.max(1,Math.round(v)):Math.round(v))}
- const pre=['','Sağlam ','Keskin ','Lanetli ','Kadim '][rar];if(B.slot==='charm'||B.slot==='ring'){const t=Object.keys(it.mods)[0];it.name=(pre+(t?AFFIX[t].n+' ':'')+B.n).replace(' %','')}else it.name=pre+B.n;return it}
+ const pre=['','Sağlam ','Keskin ','Lanetli ','Kadim ','Mitik '][rar];if(B.slot==='charm'||B.slot==='ring'){const t=Object.keys(it.mods)[0];it.name=(pre+(t?AFFIX[t].n+' ':'')+B.n).replace(' %','')}else it.name=pre+B.n;return it}
 function randomDrop(lv,tier){const r=rollRarity(tier),pool=lv<5?['rusty','iron','plate','charm','ring']:lv<10?['iron','cleaver','plate','wolfhide','charm','ring']:lv<15?['cleaver','fang','wolfhide','bone','charm','ring']:['fang','shadow','bone','ash','charm','ring'];
  return makeItem(pool[Math.floor(Math.random()*pool.length)],lv,r)}
 // ---------- inventory state lives in SYS (saved)

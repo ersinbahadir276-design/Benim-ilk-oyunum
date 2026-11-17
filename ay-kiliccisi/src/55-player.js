@@ -9,7 +9,7 @@ const BUF={atk:-9,dodge:-9,jump:-9,inter:-9,hvy:-9};const press=(k)=>{BUF[k]=GT.
 const COST={light:[12,13,15],heavy:24,heavyMax:14,run:18,jumpAtk:16,dodge:18,jump:10,sprint:14};
 const PARRY_WIN=.24;
 // --------------------------------------------------------------- enemies the player can hit
-function foes(){const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead)out.push(g);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
+function foes(){if(DUN.on){const o=[];for(const m of MONS)if(!m.dead)o.push(m);return o}const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead)out.push(g);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
 const isWolf=w=>wolves.includes(w);
 function foeHostile(f){return isWolf(f)?hostileSt(f):f.hostile()}
 function foeHurt(f,dmg,dx,dz,kind){return isWolf(f)?wolfHurt(f,dmg,dx,dz,P):f.hurt(dmg,dx,dz,kind)}
@@ -43,8 +43,8 @@ function swordTip(){return mpt(PM,SK.GP[HB.rightHand].map((v,i)=>v+r3v(SK.GR[HB.
 function knockDown(dir,power){const l=Math.hypot(dir[0],dir[1])||1,fx=dir[0]/l,fz=dir[1]/l;// world fall direction -> model space
  const c=Math.cos(P.yaw),s=Math.sin(P.yaw);P.rag={ang:Math.max(P.rag.ang||0,.05),av:2.2+power*1.6,fx:fx*c-fz*s,fz:fx*s+fz*c,bounce:0,lag:0,lagv:-3*power};
  P.st='down';P.t=0;P.vx=fx*2.6*power;P.vz=fz*2.6*power;P.vy=0;P.air=false;P.sprintHeld=false;P.crouch=false;P.charge=0;P.struggle=0;P.jig=1;sfx.thud()}
-function die(){P.hp=0;P.st='dead';P.t=0;P.alive=false;P.berserk=0;P.lock=null;dropBag();SYS.deaths=(SYS.deaths||0)+1;if(P.pinBy){P.pinBy=null}if(P.td)cancelTakedown();if(P.rag.ang<.3)knockDown([-Math.sin(P.yaw),-Math.cos(P.yaw)],.8);P.st='dead';note('[Sistem] Öldün. Ruhun geri çağrılıyor…','red')}
-function respawn(){const al=SYS.altarAt!==undefined&&SYS.altarAt>=0?ALTARS[SYS.altarAt]:null,c=al?[al.x+1.6,al.z+1.6]:SYS.gate?[0,60]:[SPAWN[0],SPAWN[2]];SYS.flasks=SYS.flaskMax;P.x=c[0];P.z=c[1];P.hp=maxHP();P.sta=100;P.guard=100;P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;P.inv=2;P.pinBy=null;P.alive=true;P.air=false;P.vy=0;P.lift=0;CAM.tx=P.x;CAM.tz=P.z;
+function die(){P.hp=0;P.st='dead';P.t=0;P.alive=false;P.berserk=0;P.lock=null;if(!DUN.on)dropBag();SYS.deaths=(SYS.deaths||0)+1;if(DUN.on)note('[Sistem] Zindanda düştün. Ruhun yüzeye çekiliyor…','red');if(P.pinBy){P.pinBy=null}if(P.td)cancelTakedown();if(P.rag.ang<.3)knockDown([-Math.sin(P.yaw),-Math.cos(P.yaw)],.8);P.st='dead';note('[Sistem] Öldün. Ruhun geri çağrılıyor…','red')}
+function respawn(){if(DUN.on)leaveDungeon(true);const al=SYS.altarAt!==undefined&&SYS.altarAt>=0?ALTARS[SYS.altarAt]:null,c=al?[al.x+1.6,al.z+1.6]:SYS.gate?[0,60]:[SPAWN[0],SPAWN[2]];SYS.flasks=SYS.flaskMax;P.x=c[0];P.z=c[1];P.hp=maxHP();P.sta=100;P.guard=100;P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;P.inv=2;P.pinBy=null;P.alive=true;P.air=false;P.vy=0;P.lift=0;CAM.tx=P.x;CAM.tz=P.z;
  for(const w of wolves)if(!w.tame&&!w.dead){w.aware=0;if(hostileSt(w)){w.st='return';w.t=0}}for(const g of GOBS)g.calmDown&&g.calmDown();for(const c of CROCS)c.calmDown&&c.calmDown();if(DRAGON)DRAGON.calmDown();
  note('[Sistem] Yeniden doğdun.')}
 // --------------------------------------------------------------- starting actions
@@ -75,6 +75,7 @@ function doHit(kind){const S=curStance(),lt=kind.startsWith('light'),A=lt?{r:S.r
   const lch=gear('leech')+(P.berserk>0?8:0);if(lch>0)P.hp=Math.min(maxHP(),P.hp+dmg*lch/100);if(kind==='heavy'&&hasFx('bleed')){f.bleedT=5;f.bleedD=dmg*.08}if(hasFx('ember')&&Math.random()<.3){f.bleedT=Math.max(f.bleedT||0,2);f.bleedD=Math.max(f.bleedD||0,dmg*.06)}const hp=f.hitPts?f.hitPts()[0]:[f.x,f.y+.7*(f.sc||1)+(f.air||0),f.z];
   spawnSparks(hp[0],hp[1],hp[2],dead?22:A.t==='big'?14:7,[1,.95,.7]);floatText(hp[0],hp[1]+.4,hp[2],(sneak?'GİZLİ ':cnt?'KARŞI ':air?'KARŞI ':weak?'AÇIK ':adv?'DURUŞ ':crit?'KRİTİK ':'')+dmg,sneak||cnt||air||weak||adv||crit||A.t==='big'?'crit':'');
   if(dead)onFoeKilled(f,false)}
+ if(DUN.on)dunSwing(kind);
  if(any){const big=A.t==='big';GT.stop=Math.max(GT.stop,big?.12:.06);CAM.shake=Math.max(CAM.shake,big?.65:.4);sfx.hit()}
  if(kind==='jumpatk'||kind==='heavy'){const tp=swordTip();spawnSparks(tp[0],hAt(tp[0],tp[2])+.1,tp[2],6,[.8,.75,.6],3);if(hasFx('fire'))for(let i=0;i<4;i++)BURNS.push({x:P.x+Math.sin(P.yaw)*(1.2+i*.9),z:P.z+Math.cos(P.yaw)*(1.2+i*.9),t:0,life:4,mine:1})}
  return any}
@@ -83,10 +84,10 @@ function onFoeKilled(f,byPet){guildKill(f);if(isWolf(f))GS.onKill(f,byPet);else 
 // --------------------------------------------------------------- silent takedowns
 // ETKİLEŞ behind an unaware small goblin -> choke hold + sword; ZIPLA twice behind an unaware wolf -> leap + neck lock;
 // ZIPLA twice behind an unaware small goblin -> leap + reverse-grip downward stab. A wolf pounce cancels all of them.
-function tdTarget(range){let best=null,bd=range;for(const w of wolves){if(w.dead||w.tame||hostileSt(w)||w.aware>=.5||w.st==='pin')continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<bd&&behind(w,P)){bd=d;best=w}}
+function tdTarget(range){let best=null,bd=range;if(DUN.on){for(const m of MONS){if(m.dead||m.hostile()||m.aware>=.5||m.held||m.st==='sleep'&&false)continue;const d=Math.hypot(m.x-P.x,m.z-P.z);if(d<bd&&behind(m,P)){bd=d;best=m}}return best}for(const w of wolves){if(w.dead||w.tame||hostileSt(w)||w.aware>=.5||w.st==='pin')continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<bd&&behind(w,P)){bd=d;best=w}}
  for(const g of GOBS){if(g.dead||g.hostile()||g.aware>=.5||g.held)continue;const d=Math.hypot(g.x-P.x,g.z-P.z);if(d<bd&&behind(g,P)){bd=d;best=g}}return best}
-function startChoke(g){P.td={kind:'choke',v:g,t:0};P.st='td';P.t=0;P.crouch=false;g.grab('choke');sfx.grab();note('[Sistem] Boyun kilidi!','gold')}
-function startLeap(v){const back=v.yaw+PI,gx=v.x+Math.sin(back)*(isWolf(v)?.2:.25),gz=v.z+Math.cos(back)*(isWolf(v)?.2:.25);P.td={kind:'leap',v,t:0,sx:P.x,sz:P.z,sy:P.y,gx,gz};P.st='td';P.t=0;P.air=true;
+function startChoke(g){if(MONS.includes(g)){startAssassin(g);return}P.td={kind:'choke',v:g,t:0};P.st='td';P.t=0;P.crouch=false;g.grab('choke');sfx.grab();note('[Sistem] Boyun kilidi!','gold')}
+function startLeap(v){if(MONS.includes(v)){if(Math.hypot(v.x-P.x,v.z-P.z)<2.8)startAssassin(v);else note('Daha çok yaklaş: △ suikast');return}const back=v.yaw+PI,gx=v.x+Math.sin(back)*(isWolf(v)?.2:.25),gz=v.z+Math.cos(back)*(isWolf(v)?.2:.25);P.td={kind:'leap',v,t:0,sx:P.x,sz:P.z,sy:P.y,gx,gz};P.st='td';P.t=0;P.air=true;
  if(isWolf(v)){v.st='mounted';v.t=0;v.spd=0}else v.grab('pinned');sfx.jump();note(isWolf(v)?'[Sistem] Kurdun sırtına atladın!':'[Sistem] Goblinin üstüne atladın!','gold')}
 function cancelTakedown(){const td=P.td;if(!td)return;const v=td.v;P.td=null;P.ps.choke=0;
  if(isWolf(v)){if(!v.dead){v.st='recover';v.t=0;v.aware=1;v.cd=1.2}}else if(!v.dead)v.escape();note('[Sistem] Alt etme bölündü!','red')}
@@ -171,6 +172,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(P.staT>0)P.staT-=dt;else P.sta=Math.min(100,P.sta+(P.st==='block'?12:30)*dt*(1+gear('sta')/100)*(P.berserk>0?1.5:1)*(P.exhaustT>0?.5:1));
  if(P.guardT>0)P.guardT-=dt;else P.guard=Math.min(100,P.guard+(P.st==='gbreak'?0:P.guard<25?9:16)*dt);
  if(P.st==='move'||P.st==='getup')P.hp=Math.min(maxHP(),P.hp+.45*dt);
+ if(P.webT>0&&!P.td){P.x=lp(ox,P.x,.45);P.z=lp(oz,P.z,.45)}// spider web: half speed
  const mv=Math.hypot(P.x-ox,P.z-oz);P.spd=dt>0?mv/dt:0;if(P.st==='move'){SYS.walked+=mv;P.ph+=mv*(P.sprinting?2.5:P.crouch?5.2:4.3)}
  if(P.sprinting)P.noise=Math.max(P.noise,9);
  if(!SYS.gate&&Math.hypot(P.x,P.z)<46){SYS.gate=1;P.cp=[0,60]}if(!SYS.knight&&Math.hypot(P.x-10,P.z-50)<5.5)SYS.knight=1}

@@ -65,26 +65,26 @@ function mirrorX(g){for(let i=0;i<g.P.length;i+=3){g.P[i]=-g.P[i];g.N[i]=-g.N[i]
 function tint(g,c){for(let i=0;i<g.C.length;i+=3){g.C[i]*=c[0];g.C[i+1]*=c[1];g.C[i+2]*=c[2]}return g}
 // ===================== WebGL =====================
 const cv=document.getElementById('c'),gl=cv.getContext('webgl',{antialias:true,alpha:false});
-const VS=`attribute vec3 aP,aN,aC;attribute vec2 aU;attribute float aW;attribute vec4 aJ,aK,aM;uniform mat4 uVP,uM;uniform float uT,uOut,uSkin;uniform mediump float uPbr;uniform vec4 uB[66];
-varying vec3 vW,vN,vC;varying vec2 vU;varying float vD,vK;varying vec4 vM;
+const VS=`attribute vec3 aP,aN,aC;attribute vec2 aU;attribute float aW;attribute vec4 aJ,aK,aM;uniform mat4 uVP,uM;uniform float uT,uOut,uSkin;uniform mediump float uPbr;uniform vec4 uB[66];uniform vec3 uCam;uniform vec4 uPL[4];uniform vec3 uPLC[4];
+varying vec3 vV,vN,vC,vPt;varying vec2 vU;varying float vD,vK;varying vec4 vM;
 vec3 bp(int i,vec4 p){return vec3(dot(uB[i],p),dot(uB[i+1],p),dot(uB[i+2],p));}
 void main(){vec4 lp=vec4(aP,1.0);vec3 ln=aN;vM=aM;if(uSkin>0.5){vec4 n4=vec4(aN,0.0);int i0=int(aJ.x+0.5)*3,i1=int(aJ.y+0.5)*3,i2=int(aJ.z+0.5)*3,i3=int(aJ.w+0.5)*3;
- lp=vec4(bp(i0,lp)*aK.x+bp(i1,lp)*aK.y+bp(i2,lp)*aK.z+bp(i3,lp)*aK.w,1.0);ln=bp(i0,n4)*aK.x+bp(i1,n4)*aK.y+bp(i2,n4)*aK.z+bp(i3,n4)*aK.w;}vec4 w=uM*lp;vK=aW;float s=sin(uT*1.15+w.y*3.0+w.x*2.5)*0.02*aW*(1.0-uPbr);w.x+=s;w.z+=s*0.6;vec3 n=(uM*vec4(ln,0.0)).xyz;w.xyz+=n*uOut;vW=w.xyz;vN=n;vU=aU;vC=aC;gl_Position=uVP*w;vD=gl_Position.w;}`;
-const FS=`precision mediump float;uniform sampler2D uTex;uniform float uUseTex,uUnlit,uIsOut,uShade,uCut,uBlend,uAlpha,uFlash,uPbr;uniform vec3 uCol,uL,uCam,uOutCol,uFogC,uSun,uEm,uTintM;uniform vec2 uFog;
-varying vec3 vW,vN,vC;varying vec2 vU;varying float vD,vK;varying vec4 vM;
+ lp=vec4(bp(i0,lp)*aK.x+bp(i1,lp)*aK.y+bp(i2,lp)*aK.z+bp(i3,lp)*aK.w,1.0);ln=bp(i0,n4)*aK.x+bp(i1,n4)*aK.y+bp(i2,n4)*aK.z+bp(i3,n4)*aK.w;}vec4 w=uM*lp;vK=aW;float s=sin(uT*1.15+w.y*3.0+w.x*2.5)*0.02*aW*(1.0-uPbr);w.x+=s;w.z+=s*0.6;vec3 n=(uM*vec4(ln,0.0)).xyz;w.xyz+=n*uOut;vV=uCam-w.xyz;vN=n;vec3 nn=n/max(length(n),1e-4);vPt=vec3(0.0);for(int i=0;i<4;i++){vec3 dd=uPL[i].xyz-w.xyz;float L=length(dd)+0.001;float a=clamp(1.0-L/max(uPL[i].w,0.001),0.0,1.0);vPt+=uPLC[i]*a*a*(0.3+0.7*max(dot(nn,dd/L),0.0));}vU=aU;vC=aC;gl_Position=uVP*w;vD=gl_Position.w;}`;
+const FS=`precision mediump float;uniform sampler2D uTex;uniform float uUseTex,uUnlit,uIsOut,uShade,uCut,uBlend,uAlpha,uFlash,uPbr;uniform vec3 uCol,uL,uOutCol,uFogC,uSun,uEm,uTintM;uniform vec2 uFog;
+varying vec3 vV,vN,vC,vPt;varying vec2 vU;varying float vD,vK;varying vec4 vM;
 void main(){vec4 tx=vec4(1.0);if(uUseTex>0.5)tx=texture2D(uTex,vU);if(uCut>0.0&&tx.a<uCut)discard;float al=(uBlend>0.5?tx.a:1.0)*uAlpha;
 float fg=clamp((vD-uFog.x)/(uFog.y-uFog.x),0.0,1.0);
 if(uIsOut>0.5){gl_FragColor=vec4(mix(uOutCol*uSun,uFogC,fg),1.0);return;}
 vec3 base=uCol*vC*tx.rgb;
 if(uUnlit>0.5){gl_FragColor=vec4(mix(base,uFogC,fg*uShade),al);return;}
 vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;float d=dot(n,uL);
-if(uPbr>0.5){if(uUseTex>0.5)base=mix(uCol*vC,tx.rgb,tx.a*vK);base*=mix(vec3(1.0),uTintM,vM.w);float gl2=vM.x,mt=vM.y;vec3 v=normalize(uCam-vW),h=normalize(uL+v);
+if(uPbr>0.5){if(uUseTex>0.5)base=mix(uCol*vC,tx.rgb,tx.a*vK);base*=mix(vec3(1.0),uTintM,vM.w);float gl2=vM.x,mt=vM.y;vec3 v=normalize(vV),h=normalize(uL+v);
  float lt=mix(clamp((d+0.3)/1.3,0.0,1.0),smoothstep(0.0,0.2,d),0.6);float hm=n.y*0.5+0.5;vec3 amb=mix(vec3(0.34,0.29,0.25),mix(uFogC,vec3(0.56,0.63,0.82),0.55),hm)*uSun;
  vec3 df=base*(amb*0.78+uSun*lt*0.9)*(1.0-mt*0.38);float sp=pow(max(dot(n,h),0.0),mix(6.0,90.0,gl2))*gl2*1.6*lt;vec3 r=reflect(-v,n);float ek=clamp(r.y*0.5+0.5,0.0,1.0);
  vec3 cc=df+mix(vec3(0.06),base*2.3+0.05,mt)*sp*uSun+mix(vec3(0.1,0.09,0.08),vec3(0.62,0.68,0.85),ek)*uSun*mt*(0.15+gl2*0.5)*(base*1.8+0.06);
- float rm=pow(1.0-max(dot(n,v),0.0),3.0);cc+=vec3(0.22,0.3,0.5)*rm*0.2;cc=mix(cc,base*1.25+uEm*0.55,vM.z);cc=mix(cc,vec3(1.0),uFlash);gl_FragColor=vec4(mix(cc,uFogC,fg),al);return;}
+ float rm=pow(1.0-max(dot(n,v),0.0),3.0);cc+=vec3(0.22,0.3,0.5)*rm*0.2;cc+=base*vPt;cc=mix(cc,base*1.25+uEm*0.55,vM.z);cc=mix(cc,vec3(1.0),uFlash);gl_FragColor=vec4(mix(cc,uFogC,fg),al);return;}
 float lit=smoothstep(-0.03,0.05,d);vec3 sh=base*vec3(0.68,0.69,0.9);vec3 c=mix(base,sh,(1.0-lit)*uShade)*uSun;
-vec3 v=normalize(uCam-vW);float rim=pow(1.0-max(dot(n,v),0.0),3.0);c+=vec3(0.2,0.3,0.7)*rim*0.22*uShade;
+vec3 v=normalize(vV);float rim=pow(1.0-max(dot(n,v),0.0),3.0);c+=vec3(0.2,0.3,0.7)*rim*0.22*uShade;c+=base*vPt;
 c=mix(c,vec3(1.0),uFlash);gl_FragColor=vec4(mix(c,uFogC,fg),al);}`;
 const GVS=`attribute vec3 aB,aV;uniform mat4 uVP;uniform vec3 uCen;uniform float uT,uTile,uHN,uHS,uHO;uniform sampler2D uH;varying vec3 vC;varying float vD;
 float hc(vec4 t){return (t.r*255.0*256.0+t.g*255.0)/65535.0*140.0-20.0;}
@@ -106,7 +106,7 @@ function mkProg(vs,fs){const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSour
  const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p}
 function initGL(){prog=mkProg(VS,FS);try{if(gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)>0)gprog=mkProg(GVS,GFS)}catch(e){gprog=null}
  for(const a of['aP','aN','aC','aU','aW','aJ','aK','aM'])loc[a]=gl.getAttribLocation(prog,a);loc.uSkin=gl.getUniformLocation(prog,'uSkin');loc.uB=gl.getUniformLocation(prog,'uB');
- for(const u of['uVP','uM','uT','uOut','uTex','uUseTex','uUnlit','uIsOut','uShade','uCut','uBlend','uAlpha','uFlash','uCol','uL','uCam','uOutCol','uFogC','uSun','uFog','uPbr','uEm','uTintM'])loc[u]=gl.getUniformLocation(prog,u);
+ for(const u of['uVP','uM','uT','uOut','uTex','uUseTex','uUnlit','uIsOut','uShade','uCut','uBlend','uAlpha','uFlash','uCol','uL','uCam','uOutCol','uFogC','uSun','uFog','uPbr','uEm','uTintM','uPL','uPLC'])loc[u]=gl.getUniformLocation(prog,u);
  if(gprog)for(const a of['aB','aV'])gloc[a]=gl.getAttribLocation(gprog,a);if(gprog)for(const u of['uVP','uCen','uT','uTile','uFogC','uSun','uFog','uHN','uHS','uHO','uH'])gloc[u]=gl.getUniformLocation(gprog,u);
  gl.enable(gl.DEPTH_TEST)}
 // geometry buffers (shared between objects); dyn=true keeps CPU copies for skinning
@@ -117,7 +117,7 @@ function geo(g,dyn){const b=(d,u)=>{const x=gl.createBuffer();gl.bindBuffer(gl.A
 function freeGeo(ge){for(const k of['P','N','C','U','W','J','K','M','I'])if(ge[k])gl.deleteBuffer(ge[k])}
 function unobj(m){const i=objs.indexOf(m);if(i>=0){objs.splice(i,1);objsDirty=true}}
 function updGeo(ge,P,N){gl.bindBuffer(gl.ARRAY_BUFFER,ge.P);gl.bufferSubData(gl.ARRAY_BUFFER,0,P);gl.bindBuffer(gl.ARRAY_BUFFER,ge.N);gl.bufferSubData(gl.ARRAY_BUFFER,0,N)}
-const objs=[];let objsDirty=true;
+const objs=[];let objsDirty=true;const PL0=new Float32Array(16),PLC0=new Float32Array(12);
 function obj(ge,o={}){const m={geo:ge,M:o.M||MID,col:o.col||[1,1,1],tex:o.tex||null,out:o.out||0,outCol:o.outCol||[.12,.12,.22],unlit:o.unlit?1:0,shade:o.shade===undefined?1:o.shade,cut:o.cut||0,blend:o.blend?1:0,
   order:o.order||0,alpha:1,flash:0,vis:true,pbr:o.pbr?1:0,em:o.em||[1,.32,.12],tintM:[1,1,1],bones:o.bones||null,pos:o.pos||null,cull:o.cull||0,noOff:o.noOff?1:0,ds:o.ds===undefined?1:o.ds};objs.push(m);objsDirty=true;return m}
 function texture(src){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
@@ -128,9 +128,9 @@ function drawAll(VP,cam,L,time,env){
  gl.depthMask(true);gl.viewport(0,0,cv.width,cv.height);gl.clearColor(env.fogC[0],env.fogC[1],env.fogC[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  if(objsDirty){objs.sort((a,b)=>(a.blend-b.blend)||(a.order-b.order));objsDirty=false}
  gl.useProgram(prog);for(const a of['aP','aN','aC','aU','aW'])gl.enableVertexAttribArray(loc[a]);
- gl.uniformMatrix4fv(loc.uVP,false,VP);gl.uniform1f(loc.uT,time);gl.uniform3fv(loc.uL,L);gl.uniform3fv(loc.uCam,cam);gl.uniform3fv(loc.uFogC,env.fogC);gl.uniform3fv(loc.uSun,env.sun);gl.uniform2f(loc.uFog,env.fog[0],env.fog[1]);
+ gl.uniformMatrix4fv(loc.uVP,false,VP);gl.uniform1f(loc.uT,time);gl.uniform3fv(loc.uL,L);gl.uniform3fv(loc.uCam,cam);gl.uniform3fv(loc.uFogC,env.fogC);gl.uniform3fv(loc.uSun,env.sun);gl.uniform2f(loc.uFog,env.fog[0],env.fog[1]);gl.uniform4fv(loc.uPL,env.pl||PL0);gl.uniform3fv(loc.uPLC,env.plc||PLC0);
  let lastGeo=null;drawn=0;
- for(const m of objs){if(!m.vis)continue;
+ for(const m of objs){if(!m.vis||(DUN.on?m.ow:m.dun))continue;
   if(m.cull){const dx=m.pos[0]-env.focus[0],dz=m.pos[2]-env.focus[2];if(dx*dx+dz*dz>m.cull*m.cull)continue}
   const ge=m.geo;if(ge!==lastGeo){const at=(l,b,s)=>{gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.vertexAttribPointer(l,s,gl.FLOAT,false,0,0)};
    at(loc.aP,ge.P,3);at(loc.aN,ge.N,3);at(loc.aC,ge.C,3);at(loc.aU,ge.U,2);at(loc.aW,ge.W,1);if(ge.J){gl.enableVertexAttribArray(loc.aJ);at(loc.aJ,ge.J,ge.Jn)}else{gl.disableVertexAttribArray(loc.aJ);gl.vertexAttrib4f(loc.aJ,0,0,0,0)}
@@ -145,7 +145,7 @@ function drawAll(VP,cam,L,time,env){
   if(m.out>0&&!m.blend&&!(m.pos&&(m.pos[0]-cam[0])*(m.pos[0]-cam[0])+(m.pos[2]-cam[2])*(m.pos[2]-cam[2])>900)){gl.enable(gl.CULL_FACE);gl.cullFace(gl.FRONT);gl.uniform1f(loc.uIsOut,1);gl.uniform1f(loc.uOut,m.out);gl.uniform3fv(loc.uOutCol,m.outCol);gl.drawElements(gl.TRIANGLES,ge.n,gl.UNSIGNED_SHORT,0)}}
  for(const a of['aP','aN','aC','aU','aW','aJ','aK','aM'])gl.disableVertexAttribArray(loc[a]);
  gl.disable(gl.BLEND);gl.depthMask(true);gl.disable(gl.POLYGON_OFFSET_FILL);gl.disable(gl.CULL_FACE);
- if(grassGeo&&HTEX&&gprog&&grassGeo.n>0){gl.useProgram(gprog);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.uniform1i(gloc.uH,0);gl.uniform1f(gloc.uHN,HN);gl.uniform1f(gloc.uHS,HS);gl.uniform1f(gloc.uHO,-WS);gl.uniformMatrix4fv(gloc.uVP,false,VP);gl.uniform3fv(gloc.uCen,env.focus);gl.uniform1f(gloc.uT,time);gl.uniform1f(gloc.uTile,grassGeo.tile);
+ if(grassGeo&&HTEX&&gprog&&grassGeo.n>0&&!DUN.on){gl.useProgram(gprog);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.uniform1i(gloc.uH,0);gl.uniform1f(gloc.uHN,HN);gl.uniform1f(gloc.uHS,HS);gl.uniform1f(gloc.uHO,-WS);gl.uniformMatrix4fv(gloc.uVP,false,VP);gl.uniform3fv(gloc.uCen,env.focus);gl.uniform1f(gloc.uT,time);gl.uniform1f(gloc.uTile,grassGeo.tile);
   gl.uniform3fv(gloc.uFogC,env.fogC);gl.uniform3fv(gloc.uSun,env.sun);gl.uniform2f(gloc.uFog,env.fog[0],env.fog[1]);
   gl.enableVertexAttribArray(gloc.aB);gl.enableVertexAttribArray(gloc.aV);gl.bindBuffer(gl.ARRAY_BUFFER,grassGeo.B);gl.vertexAttribPointer(gloc.aB,3,gl.FLOAT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,grassGeo.V);gl.vertexAttribPointer(gloc.aV,3,gl.FLOAT,false,0,0);gl.drawArrays(gl.TRIANGLES,0,grassGeo.n);gl.disableVertexAttribArray(gloc.aB);gl.disableVertexAttribArray(gloc.aV)}}

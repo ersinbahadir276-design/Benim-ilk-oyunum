@@ -54,3 +54,16 @@ Kül kale. Azgal üç aşamalı: kılıç ve kuyruk; kanatlarını açıp gökte
 - **Ustanın Mirası:** üç harabede üç mühür → heykel açılır → efsanevi kılıç «Aldren'in Yemini».
 - **Ak Kurt:** dolunay gecesi Kara Orman'da beyaz bir kurt; evcilleştirilirse en güçlü yoldaş kurt.
 - **Soluk Avcı:** gece Kara Orman'ın derinliklerinde dolaşan gizli boss.
+
+## Zindanlar ve gizem — «Kara Taç'ın Sırrı» (oturum 9)
+Üç zindan, üç mühür. Tabletler (her katta bir tane, ayrıca gizli odalarda) tek bir hikâyeyi parça parça anlatır:
+- **Unutulmuş Mezar (Kemik Mühür)** — Kral Aldric ölülerin taçla gömülmesini yasaklamış. Bir taç bir ölüyü seçmiş:
+  **Kemik Kral**. Mühürler üçtür: Kemik, Ağ, Rün. Üçü kırılırsa Kara Taç uyanır ve kendine yeni bir baş arar.
+- **Örümcek İni (Ağ Mühür)** — Köyün ebesine soluk yüzlü bir avcı bir yumurta vermiş; ebe **Örümcek Ana**'ya dönüşmüş.
+  Kraliçe'nin askerleri de mühürleri arıyor — kırmak için değil, korumak için.
+- **Mühürlü Tapınak (Rün Mühür)** — Tapınak, takanı iblise çeviren Kara Taç'ı hapsetmek için yapılmış. Yüzyıllar önce bir
+  rahibe tacı bilerek takmış; iblisleri kuzeye sürmek için. Adı silinmiş, krallık ona sonradan "Şeytan Kraliçe" demiş.
+  Mühürleri kıran **Soluk Avcı**, tacın ilk sahibi. Son satır: Kraliçe'nin kızı (Veyra) mühürleri yeniden bağlayabilir;
+  onu zincirleyen annesi değil.
+- 12 tabletin hepsi okununca: **[Gizem çözüldü]** ve mitik «Kara Taç Kırığı». Soluk Avcı'nın gizli boss savaşı (Kara Orman,
+  gece) bu gizemin devamı olacak. Kael'in Kraliçe ile kişisel bir bağı yine YOK — o yalnızca gerçeği bulan kişi.
