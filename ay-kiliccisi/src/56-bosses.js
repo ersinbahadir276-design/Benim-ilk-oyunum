@@ -2,7 +2,7 @@
 // Bosses are learnable: every move has its own tell, phase two adds a new idea (a howl that calls the pack, a horn that
 // calls goblins, a stomp shockwave you jump over), never just more health.
 const BOSSES=[];const DEN=[-420,-225];
-function scaleWorld(){for(const w of wolves)if(!w.boss)scaleFoe(w,regionLevel(w.hx,w.hz),w.alpha?95:60);for(const g of GOBS)if(!g.boss)scaleFoe(g,regionLevel(g.hx,g.hz),g.big?260:38);
+function scaleWorld(){for(const w of wolves)if(!w.boss)scaleFoe(w,regionLevel(w.hx,w.hz),w.alpha?95:60);for(const g of GOBS)if(!g.boss)scaleFoe(g,regionLevel(g.hx,g.hz),g.skel?SKEL_HP:g.big?260:38);
  for(const c of CROCS)scaleFoe(c,regionLevel(c.hx,c.hz),120);if(DRAGON){DRAGON.lv=18}}
 function spawnBosses(){// Kül Yele: the alpha of the wolf den in the north-west forest
  const [x,z]=collide(DEN[0],DEN[1],1);const a=mkWolf(x,z,{alpha:true,yaw:0});a.boss=true;a.sc=1.75;a.title='KÜL YELE · ALFA KURT';scaleFoe(a,4,520);a.phase=1;a.howlT=0;a.ashen=true;BOSSES.push(a);

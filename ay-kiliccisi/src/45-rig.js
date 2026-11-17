@@ -68,6 +68,7 @@ function humanGeoOld(kind,onlyK){const K={villager:{H:1.0,torso:.42,ua:.27,fa:.2
   hunter:{H:1.0,torso:.41,ua:.27,fa:.25,th:.41,sh2:.4,sh:.17,hw:.09,skin:[.93,.77,.66],c1:[.24,.34,.2],c2:[.3,.24,.16],hair:[.5,.27,.1],hood:1,bow:1},
   priest:{H:1.0,torso:.4,ua:.26,fa:.24,th:.39,sh2:.38,sh:.16,hw:.085,skin:[.96,.84,.76],c1:[.9,.88,.84],c2:[.82,.8,.74],hair:[.75,.62,.4],dress:1,hood:1},
   king:{H:1.0,torso:0.534,ua:0.323,fa:0.289,th:0.396,sh2:0.444,sh:0.160,hw:0.097,skin:[.14,.08,.14],c1:[.07,.04,.07],c2:[.1,.05,.09],hair:[.05,.03,.05],big:1,king:1,dress:1},
+  skeleton:{H:1.0,torso:.42,ua:.27,fa:.25,th:.4,sh2:.39,sh:.18,hw:.09,skin:[.84,.79,.66],c1:[.3,.12,.1],c2:[.44,.27,.15],hair:[.1,.1,.1],gob:1},
   bigGoblin:{H:1.0,torso:.62,ua:.48,fa:.44,th:.5,sh2:.48,sh:.36,hw:.17,skin:[.36,.47,.25],c1:[.32,.24,.16],c2:[.26,.2,.14],gob:1,big:1,club:1}}[kind];
  if(onlyK)return K;const def=humanDef(K),P=[],sk=K.skin,c1=K.c1,c2=K.c2,big=K.big?1:0,gob=K.gob?1:0;
  // hips + lower clothing
