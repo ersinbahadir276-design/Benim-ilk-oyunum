@@ -84,7 +84,7 @@ function onFoeKilled(f,byPet){if(isWolf(f))GS.onKill(f,byPet);else if(f.onKilled
 // ETKİLEŞ behind an unaware small goblin -> choke hold + sword; ZIPLA twice behind an unaware wolf -> leap + neck lock;
 // ZIPLA twice behind an unaware small goblin -> leap + reverse-grip downward stab. A wolf pounce cancels all of them.
 function tdTarget(range){let best=null,bd=range;for(const w of wolves){if(w.dead||w.tame||hostileSt(w)||w.aware>=.5||w.st==='pin')continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<bd&&behind(w,P)){bd=d;best=w}}
- for(const g of GOBS){if(g.dead||g.hostile()||g.aware>=.5||g.held)continue;const d=Math.hypot(g.x-P.x,g.z-P.z);if(d<bd&&behind(g,P)){bd=d;best=g}}return best}
+ for(const g of GOBS){if(g.dead||g.skel||g.hostile()||g.aware>=.5||g.held)continue;const d=Math.hypot(g.x-P.x,g.z-P.z);if(d<bd&&behind(g,P)){bd=d;best=g}}return best}
 function startChoke(g){P.td={kind:'choke',v:g,t:0};P.st='td';P.t=0;P.crouch=false;g.grab('choke');sfx.grab();note('[Sistem] Boyun kilidi!','gold')}
 function startLeap(v){const back=v.yaw+PI,gx=v.x+Math.sin(back)*(isWolf(v)?.2:.25),gz=v.z+Math.cos(back)*(isWolf(v)?.2:.25);P.td={kind:'leap',v,t:0,sx:P.x,sz:P.z,sy:P.y,gx,gz};P.st='td';P.t=0;P.air=true;
  if(isWolf(v)){v.st='mounted';v.t=0;v.spd=0}else v.grab('pinned');sfx.jump();note(isWolf(v)?'[Sistem] Kurdun sırtına atladın!':'[Sistem] Goblinin üstüne atladın!','gold')}

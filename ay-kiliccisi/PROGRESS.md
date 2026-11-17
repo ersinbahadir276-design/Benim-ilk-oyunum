@@ -9,6 +9,7 @@ Testler (Playwright + yazılımsal WebGL): `NODE_PATH=$(npm root -g) node test/h
 - `s-stride.js` → adımda ayak kilidi: basan ayak kaymıyor (9 test)
 - `s-ui.js`, `s-save.js`, `s-portrait.js`, `s-perf.js` → dokunmatik, kayıt, dikey ekran, performans
 - `s-p2shots.js`, `s-p2portrait.js` → ekran görüntüleri (`test/out/`)
+- `s-undead.js` → iskelet savaşçılar (13 test + yakın çekim)
 Hikâye ve karakterler: `SENARYO.md`. Yayın: claude.ai artifact XSyZ8dWNspYrNFxSMeMqp4 (aynı adrese güncellenir).
 
 ## Tasarım kararları (oyun yönetmeni notları)
@@ -92,6 +93,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [x] Oturum 7: suikast (△ arkadan, 51-stances.js), okçu isabeti insan gibi, PlayStation düğme düzeni (□ hafif, △ ağır, ✕ zıpla, ○ kaçın, L1 blok, R1 etkileş, R2 duruş, L2 yay). Su hatası: kıyı setleri (hRaw) + su diskleri küçültüldü. Hikâye (kullanıcı isteği): Kael sıradan maceracı, Şeytan Kraliçe ile kişisel bağı yok, 'son şövalye' değil. DÜNYA 1 (21-scenery.js): kamerayı izleyen karlı dağ halkaları, 1500 kaya, 5200 çalı (ağaç parçalarında k=6), 6 çitli tarla + saman, yel değirmeni (dönen kanat), nehir başında şelale. Site: kök index.html = oyun (dist kopyası), eski oyun yaban.html; main'e PR.
 - [x] Oturum 8 (zamanlanmış görev): ayak IK (32-footik.js) — eğimde ayaklar zemine basıyor, kalça alçak ayağa iniyor, taban eğime yatıyor; havada/yerde yatarken/yüzerken kapanıyor. armIK → genel limbIK. Test: s-footik.js 9/9 (IK kapalı ±7 cm → açık 1 mm).
 - [x] Oturum 9 (zamanlanmış görev): adım kilidi. Yürüyüşte uyluk artık sinüs değil: basma evresinde doğrusal ve hıza eşli süpürüyor (adım boyu = π / faz hızı), salınım dizi istenen yerden yüksekliğe göre analitik çözülüyor, arka ayak topuğunu kaldırıp parmak ucunda dönüyor (heelB, 30-player-model.js). Yürüyüş oturunca poz süzgeci atlanıyor (gecikme 0,35 rad'dı). 32-footik.js: yere değen ayak dünyada sabitleniyor (yavaşlayınca), hâlâ hızla süpüren ayağa birkaç cm açıklık veriliyor, yeniden basışta sıçrama yok. Kayma (m / yürünen m): yürüyüş 0,93 → 0,074, koşu 0,90 → 0,032. GAIT.lin=0 / FIK.lock=0 eski davranış.
+- [x] Oturum 8b (zamanlanmış tur, 2026-11-17): **iskelet savaşçılar** (46b-skeletons.js + models/skeleton.mjs heykeli, 9,3k üçgen, ruh ateşi gözler, paslı kılıç). 3 harabede 15 tane; gündüz gömülü, gece topraktan kalkar; sıradan öldürücü vuruşta kemikler dağılır ve 3,2 sn sonra yarım canla yeniden birleşir; ağır/zıplama/yetenek/İNFAZ/suikast kesin bitirir; ölenler o gece dinlenir, şafakta toprağa dönerler. bigGoblin heykeli models.js'e geri kondu (eksikti). Test: s-undead.js 13/13.
 - [ ] DÜNYA DİREKTİFİ sırası (kullanıcı): 2) harita/bölge genişletme (karlı dağ bölgesi, liman, kasaba; WS büyütmek gerek) 3) yaşayan köyler/NPC rutinleri, han, pazar 4) Maceracılar Loncası: kayıt, rütbe F→S, görev panosu 5) AYRI zindan haritaları (çok katlı, tuzak, bulmaca) 6) zindan yaratıkları (iskelet, örümcek, golem, lanetli şövalye…) 7) ekipman türleri + Mitik nadirlik 8) görev/gizem 9) ilişki altyapısı (kişilik, hafıza, güven) 10) optimizasyon. Krallık büyütülecek (referans: katmanlı şehir + saray).
 - [ ] AŞAMA 1 kalan: oyuncu denge çubuğunu 'Denge' olarak göster, duruşlara özgü pozlar (hamle/saplama), kombo bitirici efektleri, yönlü saldırı; AŞAMA 2: kalkanlı/mızraklı/suikastçı/elit düşmanlar, boss girişleri
 - [ ] SIRADAKİ (kullanıcı istedi): haritayı büyüt + farklı bölgeler; mağara; büyük zindan + uzun zindan kulesi (katlar, boss); daha çok yaratık türü ve olay (manhwa RPG: iskelet, hortlak, örümcek, golem, gece baskını)
@@ -110,6 +112,8 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] Mağaralar (gizli geçitler)
 - [ ] Veyra yüzü: şimdiki doku düz; daha ifadeli yüz ve göz animasyonu
 - [ ] Kamera ağaç tacının içine girince saydamlaştırma
+
+- [x] Zamanlanmış çalıştırma (2026-11-17): iskelet okçular (harabe başına 2, ruh oku), kemik takırtısı sesi. Ayrıntı: kök PROGRESS.md.
 
 ## Bilinen sorunlar / test edilemeyenler
 - Gerçek Android cihazda dokunma, titreşim ve gerçek GPU performansı test edilemedi (yazılımsal WebGL ile ölçüldü).
