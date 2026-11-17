@@ -50,7 +50,7 @@ const markEls=[];
 function markFor(a,kind){if(a.dead||a.so&&SO.on&&a!==SO.lead)return null;if(a.so&&SO.on)return SO.phase==='charge'?['!','red']:null;if(a.peril&&a.st==='windup')return['危','red'];if(a.crumble)return['☠','yel'];if(a.st==='sleep')return null;
  if(kind==='wolf'){const w=a;if(w.st==='windup'||w.st==='bitewind')return['!','red'];if(w.st==='flee')return['…','yel'];if(w.tame)return['♥','tame'];if(w.calm>0)return['%'+w.trust,'tame'];if(!hostileSt(w)&&(w.aware>.25||w.st==='alert'||w.st==='search'))return['?','yel'];if(hostileSt(w)&&w.hp<w.max)return['','hpb'];return null}
  if(kind==='npc'){if(a.st==='watch')return['!','yel'];return null}
- if(a.st==='windup'||a.st==='open'||(kind==='dragon'&&(a.st==='claw'&&a.ct<2.7||a.st==='breath'&&a.ct<2.7)))return['!','red'];
+ if(a.st==='windup'||a.st==='open'||(kind==='dragon'&&dragonTell(a))||/^(hamstring|armleap|tackle|dirt)$/.test(a.st)&&a.t<.5)return['!','red'];
  if(a.open&&a.open())return['★','gold'];if(!a.hostile()&&a.aware>.25)return['?','yel'];if(a.hostile()&&a.hp<a.max&&kind!=='dragon')return['','hpb'];return null}
 function updateMarks(){let i=0;const putTxt=(a,txt,cls,h)=>{if(!txt)return;const p=project(a.x,(a.y||0)+h,a.z);if(!p)return;let e=markEls[i];if(!e){e=document.createElement('div');$('marks').appendChild(e);markEls[i]=e}i++;e.className='mark '+cls;e.style.display='block';e.style.left=p[0]+'px';e.style.top=p[1]+'px';e.textContent=txt};
  const put=(a,kind,h)=>{const m=markFor(a,kind);if(!m)return;const p=project(a.x,(a.y||0)+h+(a.air||0),a.z);if(!p)return;let e=markEls[i];if(!e){e=document.createElement('div');$('marks').appendChild(e);markEls[i]=e}i++;
@@ -76,7 +76,7 @@ const GS={onAggro(w){sfx.growl()},onWindup(w){sfx.snarl()},onPounce(w){sfx.noise
   if(P.hp<=0)die()},
  onKill(w,byPet){WKILL.push(GT.clock);SYS.kills++;SYS.meat++;addXP(w.alpha?70:30,P);note('[Sistem] Kurt öldürüldü'+(byPet?' (yoldaşın)':'')+' · +'+(w.alpha?70:30)+' XP · +1 çiğ et');GT.stop=Math.max(GT.stop,.12);save(P)}};
 // ---------- interaction: silent choke on an unaware goblin from behind, talk, feed/tame a wolf, statue
-function interact(){if(dunInteract())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
+function interact(){if(dunInteract())return;if(startRide())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
  if(startStandoff())return;
  const ai=nearAltar();if(ai>=0){restAt(ai);return}const ci=nearChest();if(ci>=0){P.yaw=Math.atan2(CHESTS[ci].x-P.x,CHESTS[ci].z-P.z);P.interactT=.6;openChest(ci);return}
  if(storyInteract())return;
@@ -90,7 +90,7 @@ function interact(){if(dunInteract())return;const v=tdTarget(1.9);if(v&&!isWolf(
 // ---------- one simulation step
 let lastZone='';
 function step(dt){GT.dt=dt;if(dt>0&&DUN.on){GT.clock+=dt;updatePlayer(dt);GT.tod=(GT.tod+dt/600)%1;updateDungeon(dt);updateFx(dt);updateLoot(dt);updatePosture(dt);updateRage(dt);updateLock(dt);foeTicks(dt);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt}
- else if(dt>0){GT.clock+=dt;updatePlayer(dt);updateStandoff(dt);
+ else if(dt>0){GT.clock+=dt;updatePlayer(dt);brawlTick(dt);updateStandoff(dt);
   for(const w of wolves)if(Math.hypot(w.x-P.x,w.z-P.z)<170||w.tame||w.dead)updateWolf(w,P,dt,GS);
   for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<180)updateGob(g,dt);for(const n of NPCS)updateNpc(n,dt);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<200)updateCroc(c,dt);
   updatePacks(dt);updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
@@ -107,7 +107,8 @@ function queueTelegraphs(){for(const w of wolves){if(w.st!=='windup'||w.dead||w.
  for(const w of wolves)if(w.st==='howl'&&!w.dead)tele('circle',w.x,w.z,3,0,0,.6);
  for(const w of wolves)if(w.st==='bitewind'&&!w.dead)tele('strip',w.x,w.z,.6,Math.min(6,Math.hypot(P.x-w.x,P.z-w.z)),Math.atan2(P.x-w.x,P.z-w.z),sst(0,.25,w.t));
  for(const c of CROCS){if(c.dead||c.st!=='open')continue;const h=crocHead(c);tele('circle',h[0]+Math.sin(c.yaw)*.4,h[2]+Math.cos(c.yaw)*.4,1.2,0,0,sst(0,.3,c.t))}
- const d=DRAGON;if(d&&!d.dead){if(d.st==='claw'&&d.ct>.6&&d.ct<2.8)tele('circle',d.x+Math.sin(d.yaw)*6.2+Math.cos(d.yaw)*-1.2,d.z+Math.cos(d.yaw)*6.2-Math.sin(d.yaw)*-1.2,2.6,0,0,sst(.6,1.2,d.ct));
+ dragonTele();brawlTele();
+ const d=null;if(d&&!d.dead){if(d.st==='claw'&&d.ct>.6&&d.ct<2.8)tele('circle',d.x+Math.sin(d.yaw)*6.2+Math.cos(d.yaw)*-1.2,d.z+Math.cos(d.yaw)*6.2-Math.sin(d.yaw)*-1.2,2.6,0,0,sst(.6,1.2,d.ct));
   if(d.st==='breath'&&d.breathA&&d.ct<4.4){const ax=d.breathA[0],az=d.breathA[1],bx=d.breathB[0],bz=d.breathB[1];tele('strip',ax,az,3.6,Math.hypot(bx-ax,bz-az),Math.atan2(bx-ax,bz-az),d.ct<2.7?1:.5)}
   if(d.st==='land'&&d.ct<.6)tele('circle',d.x,d.z,5.5,0,0,1)}}
 // ---------- camera, environment, render
@@ -120,7 +121,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  const dk=cl(Math.sin(GT.tod*2*PI)*1.7+.62,0,1),m3=(a,b,t)=>[lp(a[0],b[0],t),lp(a[1],b[1],t),lp(a[2],b[2],t)],dusk=1-Math.abs(dk-.5)*2;GT.night=dk<.35;
  const zn=zoneAt(P.x,P.z),swamp=zn==='swamp'?1:0,qf=[1,1,.85,.7][QUAL.QL];
  let fog=m3([.07,.09,.19],[.66,.8,.93],dk);fog=m3(fog,[.93,.62,.45],dusk*.35);fog=m3(fog,[.45,.5,.42],swamp*.45);
- const env={fogC:fog,sun:m3([.5,.56,.82],[1,1,1],dk),fog:[lp(35,60,dk)*(1-swamp*.4),lp(220,300,dk)*(1-swamp*.35)*qf],focus:[CAM.tx,CAM.ty,CAM.tz]};if(DUN.on)dunEnv(env);else updateScenery(GT.time,dtReal,env,eye);
+ const env={fogC:fog,sun:m3([.5,.56,.82],[1,1,1],dk),fog:[lp(35,60,dk)*(1-swamp*.4),lp(220,300,dk)*(1-swamp*.35)*qf],focus:[CAM.tx,CAM.ty,CAM.tz]};if(DUN.on)dunEnv(env);else{updateScenery(GT.time,dtReal,env,eye);dragonEnv(env)}
  const light=vnorm(vadd(vadd(vmul(L.r,-.45),vmul(L.u,.62)),vmul(L.f,-.62)));
  for(const o of pObjs){o.M=PM;o.flash=P.flash*.6;o.vis=true}if(P.inv>0&&P.st!=='dodge'&&P.st!=='getup'&&Math.floor(GT.time*14)%2===0)for(const o of pObjs)o.flash=.35;
  if(P.st==='charge'&&P.charge>=1)for(const o of pObjs)o.flash=.15+.1*Math.sin(GT.time*20);
@@ -131,7 +132,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  skinAll();if(DUN.on)drawMons(GT.time);else{drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon()}drawHeroBow();drawTrail();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks();updateThreats()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
-function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
+function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='grabbed')return GRAB.label;if(P.st==='ride')return DRAGON.thrW?'TUTUN! BLOK basılı tut':'SAPLA! Saldırıya art arda bas';if(rideTarget())return'ETKİLEŞ: BOYNUNA TIRMAN';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
  if(nearAltar()>=0)return'ETKİLEŞ: sunakta dinlen'+(SYS.altars&&SYS.altars[nearAltar()]?'':' (yak)');if(nearChest()>=0)return'ETKİLEŞ: sandığı aç';const sp=storyPrompt();if(sp)return sp;
  const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return d<2.4?'△ SUİKAST (ağır yara)':'Büyük goblin tutulamaz';if(d<2.4)return'△ SUİKAST'+(!isWolf(v)&&d<1.9?'  ·  R1: boyun kilidi':'')+'  ·  ✕✕: üstüne atla';return isWolf(v)?'✕✕: kurdun sırtına atla  ·  yaklaş: △ suikast':'✕✕: goblinin üstüne atla  ·  yaklaş: △ suikast'}
  for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<2.8)return'ETKİLEŞ: konuş';return''}
@@ -140,9 +141,9 @@ function uiTick(dt){hudT=Math.min(hudT,.1)-dt;if(hudT<=0){hudT=.1;hud(P);drawRad
   const hostile=all.some(a=>a[0])||(DRAGON&&DRAGON.hostile()&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<120),sus=all.some(a=>!a[0]&&a[1]>.25),e=$('stealth');
   e.textContent=hostile?'TEHLİKE':sus?'ŞÜPHE':P.crouch?'GİZLİ':'';e.className=hostile?'red':sus?'yel':'';
   const pr=promptText(),pe=$('prompt');pe.textContent=pr;pe.style.display=pr?'block':'none';
-  const m=$('mash');if(P.st==='down'&&P.pinBy){m.style.display='block';m.firstChild.style.width=cl(P.struggle*100,0,100)+'%'}else m.style.display='none';
+  const m=$('mash');if(P.st==='down'&&P.pinBy||P.st==='grabbed'){m.style.display='block';m.firstChild.style.width=cl(P.struggle*100,0,100)+'%'}else m.style.display='none';
   const kd=Math.hypot(P.x,P.z),b=angd(Math.atan2(-P.x,-P.z),CAM.yaw);const tg=DUN.on?null:questTarget();if(DUN.on){const Z=DUN.puzzle;$('compass').innerHTML='◆ '+DUN.D.n+' · Kat '+(DUN.fl+1)+'/'+DUN.D.floors+'<br><small>Sv.'+DUN.lv+(Z.solved?' · kapı açık':Z.kind==='rune'?' · rün bilmecesi':Z.kind==='brazier'?' · mangallar '+DUN.it.filter(i=>i.k==='brazier'&&i.lit).length+'/4':' · levhalar'+(Z.timer>0?' '+Math.ceil(Z.timer)+' sn':''))+'</small>'}else if(tg){const bb2=angd(Math.atan2(tg[0]-P.x,tg[1]-P.z),CAM.yaw),dd=Math.hypot(tg[0]-P.x,tg[1]-P.z);$('compass').innerHTML='<span style="display:inline-block;color:#ffd76a;transform:rotate('+(-bb2)+'rad)">◆</span> Görev '+Math.round(dd)+' m<br><small>'+ZNAME[zoneAt(P.x,P.z)]+' · Sv.'+regionLevel(P.x,P.z)+'</small>'}else $('compass').innerHTML=(kd<120?'Krallık':'<span style="display:inline-block;transform:rotate('+(-b)+'rad)">▲</span> Krallık '+Math.round(kd)+' m')+'<br><small>'+ZNAME[zoneAt(P.x,P.z)]+'</small>';
-  const bb=$('boss'),dr=bossTarget();if(dr){bb.style.display='block';$('bossn').textContent=(dr===DRAGON?'KÜL KANAT · EJDERHA':dr.title||'')+' · Sv.'+(dr.lv||18);$('bossf').style.width=cl(dr.hp/dr.max*100,0,100)+'%';$('bossp').style.width=posFrac(dr)*100+'%'}else bb.style.display='none';
+  const bb=$('boss'),dr=bossTarget();if(dr){bb.style.display='block';$('bossn').textContent=(dr===DRAGON?dragonTitle():dr.title||'')+' · Sv.'+(dr.lv||18);$('bossf').style.width=cl(dr.hp/dr.max*100,0,100)+'%';$('bossp').style.width=posFrac(dr)*100+'%'}else bb.style.display='none';
   $('rgf').style.width=(P.berserk>0?P.berserk/12*100:P.rage||0)+'%';$('rgf').className=P.berserk>0?'on':(P.rage>=100?'full':'');$('bRage').style.display=(P.rage>=100||P.berserk>0)?'flex':'none';$('bRage').classList.toggle('on',P.berserk>0);
   $('bFlask').innerHTML='<i>▼</i>İKSİR <b>'+SYS.flasks+'</b>';const sk=SYS.skill,cdl=sk&&P.cd&&P.cd[sk]?Math.max(0,P.cd[sk]-GT.clock):0;$('bSkill').innerHTML='<i>▲</i>'+(sk?SKILLS[sk].n.split(' ')[0].slice(0,7):'YETENEK')+(cdl>0?' <b>'+cdl.toFixed(0)+'</b>':'');$('bSkill').classList.toggle('cd',cdl>0);$('bLock').classList.toggle('on',!!P.lock);
   let nw=null,nd=3.2;for(const w of wolves){if(w.dead||w.tame)continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<nd){nd=d;nw=w}}$('bInt').classList.toggle('on',!!pr&&pr.startsWith('ETKİLEŞ')||(!!nw&&!hostileSt(nw)));
@@ -183,7 +184,7 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
  addEventListener('blur',()=>{IN.atkHeld=false;IN.blockHeld=false;P.sprintHeld=false})}
 // ---------- boot + adaptive quality (performance: measure first, then lower resolution, grass, draw distance)
 const QUAL={QL:0};
-function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=objs.length;buildPlayer(TX);buildFx();const shared=new Set(objs.slice(s0));spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();buildPacks();assignLookouts();assignChampions();veyraInit();storyInit();guildInit();buildDunEntrances();camInit();hudBind();for(const o of objs)if(!shared.has(o))o.ow=1;checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
+function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=objs.length;buildPlayer(TX);buildFx();const shared=new Set(objs.slice(s0));spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();buildPacks();assignLookouts();assignChampions();veyraInit();storyInit();guildInit();buildDunEntrances();camInit();hudBind();brawlInit();for(const o of objs)if(!shared.has(o))o.ow=1;checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
@@ -198,7 +199,8 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
  window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
-  X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
+  X:{GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
+  makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},

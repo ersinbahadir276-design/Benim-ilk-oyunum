@@ -1,6 +1,6 @@
 // ===================== goblins: small ones in fast weak groups, one big club-wielder per camp =====================
 const GOBS=[];let GOBM=null,BIGM=null;
-const GOB_HOSTILE={guard:1,hop:1,aim:1,horn:1,chase:1,circle:1,windup:1,strike:1,recover:1,stagger:1,hurt:1,escape:1};
+const GOB_HOSTILE={guard:1,hop:1,aim:1,horn:1,chase:1,circle:1,windup:1,strike:1,recover:1,stagger:1,hurt:1,escape:1,dirt:1,tackle:1,latched:1,sprawl:1,rise:1};
 function mkGob(x,z,big,group,camp){const g={big,x,z,y:hAt(x,z),yaw:rnd()*6.28,hyaw:0,hx:x,hz:z,st:'idle',t:rr(0,3),hp:big?260:38,max:big?260:38,spd:0,aware:0,ls:[x,z],unseen:9,group,camp,
   rad:big?.8:.33,sc:big?1.25:1,ph:rnd()*6,cd:rr(.5,1.5),eye:big?2.3:1.0,flash:0,kx:0,kz:0,held:null,dead:0,R:null,q:{},slot:rnd()*6.28,hitDone:false,deadT:0,swims:false};
  g.hostile=()=>!!GOB_HOSTILE[g.st];
@@ -23,7 +23,7 @@ function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kin
  if(gobDeflect(g,kind))return false;
  if(g.st==='guard'&&!g.big&&Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<1.2){if(light0||kind==='arrow'){g.blockedAt=GT.clock;g.t=Math.min(g.t,.5);g.kx=dx*2;g.kz=dz*2;if(Math.random()<.35){g.t=99;gobStartSwing(g)}return false}
   if(kind==='heavy'||kind==='runatk'||kind==='jumpatk'){g.st='stagger';g.t=0;floatText(g.x,(g.y||0)+1.9,g.z,'SAVUNMA KIRILDI','crit');sfx.break()}}g.hp-=dmg;g.flash=1;g.aware=1;g.ls=[P.x,P.z];
- if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
+ if(g.st==='playdead'){g.hp=0;floatText(g.x,(g.y||0)+1.4,g.z,'ÖLÜ TAKLİDİ!','crit')}if(g.hp<=0&&gobFeign(g,kind))return false;if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
  const kb=g.big?1.2:5;g.kx=dx*kb;g.kz=dz*kb;
  if(g.st!=='escape'&&g.st!=='choked'&&g.st!=='pinned'){g.hitN=GT.clock-(g.hitAt||-9)<2.2?(g.hitN||0)+1:1;g.hitAt=GT.clock;const light=kind&&kind.startsWith&&kind.startsWith('light');
   if(!g.big&&(g.st==='windup'||g.st==='strike')&&light){g.kx*=.15;g.kz*=.15}                                  // committed attack: armoured against light hits
@@ -37,13 +37,14 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  if(g.st==='choked'||g.st==='pinned'){g.spd=0;g.y=hAt(g.x,g.z);return}
  if(g.st==='escape'){// the get-up (or stumble free) always plays to the end, nothing interrupts it
   const T=g.from==='pinned'?1.4:1.0;if(g.t>T){g.st='chase';g.t=0;g.aware=1;alertGroup(g,P,22,GOBS)}g.y=hAt(g.x,g.z);return}
+ if(g.st==='playdead'||g.st==='rise'){gobTricks(g,d,dt);g.y=hAt(g.x,g.z);return}
  // perception
  const range=g.lookout?32:g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
  if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted&&g.lookout&&!g.alarmed){g.alarmed=1;g.st='horn';g.t=0;g.aware=1;note('[!] Gözcü seni gördü — borusuna uzanıyor!','red');sfx.gobShout()}else if(spotted){sfx.gobShout();note(g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
   if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1&&g.st!=='horn'){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
  else if(sees||d<7&&P.alive){g.ls=[P.x,P.z];g.unseen=0}else g.unseen=(g.unseen||0)+dt;// in a fight, someone 4 m away is heard and felt even outside the view cone
  g.hyaw=lp(g.hyaw,0,Math.min(1,dt*4));
- if(gobBrain(g,d,dt)){}else switch(g.st){
+ if(gobTricks(g,d,dt)||gobBrain(g,d,dt)){}else switch(g.st){
  case'idle':g.spd=lp(g.spd,0,.2);g.hyaw=Math.sin(g.t*.6+g.ph)*.6;if(g.aware>.25){g.st='alert';g.t=0}else if(g.patrol&&g.t>3){g.st='patrol';g.t=0}else if(g.t>rr(5,9)&&!g.big){g.st='wander';g.t=0;const a=rnd()*6.28;g.tx=g.hx+Math.cos(a)*rr(2,7);g.tz=g.hz+Math.sin(a)*rr(2,7)}break;
  case'wander':if(agentMove(g,g.tx,g.tz,1.3,dt,g.rad,4)<.8||g.t>9){g.st='idle';g.t=0}break;
  case'patrol':{const w=g.patrol[g.pi];if(agentMove(g,w[0],w[1],1.6,dt,g.rad,4)<1.5){g.pi=(g.pi+1)%g.patrol.length;g.st='idle';g.t=0}break}
@@ -93,7 +94,7 @@ function clubSeg(g){gobFK(g,GT.time);const d=g.R.def;return[boneW(d,8,[0,-.08,.3
 function segCapsule(A,B,C,D,r){let best=1e9;for(let i=0;i<=8;i++){const t=i/8,p=[lp(A[0],B[0],t),lp(A[1],B[1],t),lp(A[2],B[2],t)],cd=vsub(D,C),u=cl(vdot(vsub(p,C),cd)/vdot(cd,cd),0,1),q=vadd(C,vmul(cd,u));best=Math.min(best,Math.hypot(...vsub(p,q)))}return best<r+.18}
 // ---------- poses
 function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.big?0:cl((g.spd-2)/3,0,1);
- if(g.st!=='dead'&&g.st!=='choked'&&g.st!=='pinned'&&g.st!=='escape'){gaitPose(q,g.ph,A,run);q.spP=(q.spP||0)+(g.big?.25:.32);q.hdP=-.2;q.hdY=g.hyaw;q.LsZ=.25;q.RsZ=.25;q.ReX=(q.ReX||0)-.6;q.LeX=(q.LeX||0)-.4}
+ if(g.st!=='dead'&&g.st!=='choked'&&g.st!=='pinned'&&g.st!=='escape'&&g.st!=='playdead'&&g.st!=='latched'&&g.st!=='sprawl'){gaitPose(q,g.ph,A,run);q.spP=(q.spP||0)+(g.big?.25:.32);q.hdP=-.2;q.hdY=g.hyaw;q.LsZ=.25;q.RsZ=.25;q.ReX=(q.ReX||0)-.6;q.LeX=(q.LeX||0)-.4}
  const u=g.big?g.t/1.35:g.t/.5;
  switch(g.st){
  case'idle':q.spP+=Math.sin(time*1.4+g.ph)*.04;break;
@@ -114,10 +115,11 @@ function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.bi
  case'pinned':q.LsX=-2.6;q.RsX=-2.6+Math.sin(g.t*20)*.3*Math.max(0,1-g.t);q.LsZ=.4;q.RsZ=.4;q.hdP=-.6;q.jaw=.6;break;
  case'escape':{const T=g.from==='pinned'?1.4:1.0,u2=g.t/T;if(g.from==='pinned'){q.LsX=lp(-2.6,0,u2);q.RsX=lp(-2.6,0,u2);q.LhX=lp(0,-1.4,sst(0,.5,u2))*(1-sst(.6,1,u2));q.LkX=lp(0,2.2,sst(0,.5,u2))*(1-sst(.6,1,u2));q.RhX=q.LhX*.7;q.RkX=q.LkX*.7;q.spP=lp(0,.8,sst(0,.5,u2))*(1-sst(.7,1,u2))}
   else{q.spP=.5*(1-u2);q.hdP=-.4;q.LhX=-.4;q.RkX=.5}break}
+ case'dirt':case'tackle':case'latched':case'sprawl':case'playdead':case'rise':gobTrickPose(g,q);break;
  case'dead':break}
  archerPose(g,q);return humanPose(q)}
 // root tilt for lying states (face-down when pinned, on the back when dead)
-function gobRootTilt(g){if(g.st==='pinned')return 1.45;if(g.st==='escape'&&g.from==='pinned')return 1.45*(1-sst(0,.85,g.t/1.4));if(g.st==='dead')return -1.45*sst(0,.6,g.t);return 0}
+function gobRootTilt(g){{const tt=gobTrickTilt(g);if(tt!==null)return tt}if(g.st==='pinned')return 1.45;if(g.st==='escape'&&g.from==='pinned')return 1.45*(1-sst(0,.85,g.t/1.4));if(g.st==='dead')return -1.45*sst(0,.6,g.t);return 0}
 function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z);if(d>140||(g.dead&&g.deadT>20)){rigHide(g.R);if(g.bowOb)g.bowOb.vis=false;continue}
   const rot=gobPose(g,time),tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc;
   const extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);

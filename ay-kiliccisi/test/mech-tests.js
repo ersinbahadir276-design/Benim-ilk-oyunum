@@ -108,7 +108,7 @@ window.runMech = function () {
     ok('görüş: arkasındaki oyuncuyu görmüyor (7 m; koku ayrı ve yavaş)', !sawIt && maxA < .5, { farkındalık: +maxA.toFixed(3), why });
     a.yaw = Math.PI; a.seeT = 0; let spotted = -1; sim(3, (t) => { if (a.aware >= .5 && spotted < 0) spotted = t; b.yaw = b.yaw; });
     ok('görüş: önündeki oyuncuyu görüyor', spotted > 0, { fark_etme_süresi: spotted });
-    ok('görüş: gören kurt yanındakini uyarıyor, o da oyuncuya dönüyor', ['alert', 'chase', 'circle', 'windup', 'stalk', 'watch', 'bitewind', 'rush', 'bite', 'retreat'].includes(b.st) && Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))) < .5, { yanındaki: b.st, açı: +Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))).toFixed(2) });
+    ok('görüş: gören kurt yanındakini uyarıyor, o da oyuncuya dönüyor', ['alert', 'chase', 'circle', 'windup', 'stalk', 'watch', 'bitewind', 'rush', 'bite', 'retreat', 'feint', 'hamstring', 'armleap'].includes(b.st) && Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))) < .5, { yanındaki: b.st, açı: +Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))).toFixed(2) });
     // tree blocks: pick a big tree, put wolf on one side and player on the other
     const t = tree.find((t) => t.k === 1 && t.s > 1.2 && Math.hypot(t.x, t.z) > 200 && Math.hypot(t.x, t.z) < 500);
     const losTree = G.los(t.x - 4, t.z, t.x + 4, t.z, 1.0), losFree = G.los(t.x - 4, t.z + 30, t.x + 4, t.z + 30, 1.0);
@@ -167,8 +167,8 @@ window.runMech = function () {
     const d = G.DRAGON; isolate(d.x, d.z, 120); calmAll(); freshP(d.x + Math.sin(d.yaw) * 26, d.z + Math.cos(d.yaw) * 26, d.yaw + Math.PI); d.st = 'sleep'; d.t = 0; d.hp = d.max; P.hp = 5000;
     const log = []; let lastSt = '', clawWind = -1, clawImpact = -1, burns0 = G.BURNS.length, burnHurt = false, tookOff = false, landed = false, breathT = -1;
     sim(60, (t) => { if (d.st !== lastSt) { log.push(d.st + '@' + t.toFixed(1)); lastSt = d.st; } if (d.st === 'claw' && clawWind < 0) clawWind = t; if (d.st === 'claw' && d.ct > 2.65 && clawImpact < 0) clawImpact = t; if (d.st === 'takeoff') tookOff = true; if (d.st === 'breath' && d.ct > 3 && breathT < 0) breathT = t; if (d.st === 'tired') landed = true;
-      P.alive = true; P.hp = 5000; if (P.st === 'down' && !P.pinBy && P.t > 1) { P.st = 'move'; P.rag.ang = 0; } if (d.st === 'tired' || log.length > 14) return false; });
-    ok('ejderha: uyanış → yürüyüş → pençe (2 sn+ görülebilir hazırlık)', clawWind > 0 && clawImpact - clawWind > 2.2, { hazırlık: +(clawImpact - clawWind).toFixed(2) });
+      P.alive = true; P.hp = 5000; if (P.st === 'down' && !P.pinBy && P.t > 1) { P.st = 'move'; P.rag.ang = 0; } if (d.st === 'tired' || log.length > 30) return false; });
+    ok('ejderha: uyanış → yürüyüş → pençe (v21: hızlı ama okunur, ≥0.8 sn hazırlık)', clawWind > 0 && clawImpact - clawWind >= .8, { hazırlık: +(clawImpact - clawWind).toFixed(2) });
     ok('ejderha: havalanma, havada ateş püskürtme, yerde yanan iz, iniş', tookOff && breathT > 0 && G.BURNS.length > burns0 && landed, { düzen: log.join(' → '), yanan_iz: G.BURNS.length });
   }
   // ---------------------------------------------------------------- 12. map and village

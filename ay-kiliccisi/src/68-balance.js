@@ -18,7 +18,7 @@ function habitDecay(){const t=GT.clock,dt=t-HAB.t;if(dt<=0)return;const k=Math.p
 function habits(){habitDecay();return{spam:HAB.light>6&&HAB.light>HAB.heavy*3,turtle:HAB.block>5,dodger:HAB.dodge>5,parrier:HAB.parry>3,archer:HAB.bow>3}}
 // ---------- elites: one champion per goblin camp
 function assignChampions(){CAMPSITES.forEach((c,i)=>{const g=GOBS.find(o=>!o.big&&!o.archer&&!o.boss&&!o.lookout&&o.camp===c&&o.group==='camp'+i);if(!g)return;
-  g.elite=1;g.champ=1;g.sc=1.15;g.title='KAMP ŞAMPİYONU';scaleFoe(g,(g.lv||regionLevel(g.hx,g.hz))+2,230);g.pk='elite';if(g.R)g.R.ob.col=[1.25,.78,.72]})}
+  g.elite=1;g.champ=1;g.sc=1.15;g.title='KAMP ŞAMPİYONU';scaleFoe(g,(g.lv||regionLevel(g.hx,g.hz))+2,380);g.pk='elite';if(g.R)g.R.ob.col=[1.25,.78,.72]})}
 POSMAX.elite=125;
 // deflect: a champion (or any goblin against light-button spam) turns a light hit from the front and answers
 function gobDeflect(g,kind){if(g.big||g.dead)return false;const light=kind&&kind.startsWith&&kind.startsWith('light');if(!light)return false;

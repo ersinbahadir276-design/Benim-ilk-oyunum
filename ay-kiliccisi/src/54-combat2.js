@@ -2,13 +2,13 @@
 // Posture: every hit pushes a foe's balance; heavy attacks and parries push most. A broken foe staggers and can be
 // EXECUTED (big damage, slow-motion). Rage fills while fighting; when full, ÖFKE turns the armour red: more damage,
 // no flinching, life steal. Skills are new moves, not just numbers, and unlock through the story and levels.
-const POSMAX={wolf:70,gob:55,big:190,croc:130,dragon:650,alpha:240,chief:340};
+const POSMAX={wolf:95,gob:80,big:240,croc:130,dragon:1100,alpha:240,chief:340};
 function posKind(f){if(f.pk)return f.pk;return isWolf(f)?(f.boss?'alpha':'wolf'):f===DRAGON?'dragon':GOBS.includes(f)?(f.boss?'chief':f.big?'big':'gob'):'croc'}
 function addPosture(f,amt){if(f.dead)return;const k=posKind(f),max=POSMAX[k]*(f.lv?1+.05*(f.lv-1):1);f.pos=(f.pos||0)+amt*(1+gear('pos')/100)*(hasFx('posture')?1.35:1)*(P.berserk>0?1.5:1);f.posT=2.2;
  if(f.pos>=max){f.pos=0;breakFoe(f)}}
 function posFrac(f){const k=posKind(f),max=POSMAX[k]*(f.lv?1+.05*(f.lv-1):1);return cl((f.pos||0)/max,0,1)}
 function breakFoe(f){f.broken=GT.clock+2.6;sfx.break();CAM.shake=Math.max(CAM.shake,.4);const p=[f.x,(f.y||0)+1.2,f.z];spawnSparks(p[0],p[1],p[2],14,[1,.9,.5],4);floatText(p[0],p[1]+.5,p[2],'DENGE KIRILDI','crit');
- if(isWolf(f)){f.st='recover';f.t=-1.7;f.air=0;f.pitch=0}else if(f===DRAGON){if(f.st==='hover'||f.st==='breath'){f.st='land';f.t=0;dPlay(f,'down',.3,1)}else{f.st='stagger';f.t=0;dPlay(f,'taitou',.25)}}
+ if(isWolf(f)){f.st='recover';f.t=-1.7;f.air=0;f.pitch=0}else if(f===DRAGON){dragonBreak(f)}
  else{f.st='stagger';f.t=0;f.held=null}}
 function updatePosture(dt){for(const f of foes()){if(f.posT>0)f.posT-=dt;else if(f.pos>0)f.pos=Math.max(0,f.pos-dt*(POSMAX[posKind(f)]*.12))}}
 const isBroken=f=>f.broken&&GT.clock<f.broken&&!f.dead;

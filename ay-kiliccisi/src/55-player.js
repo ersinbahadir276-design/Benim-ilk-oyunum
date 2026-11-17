@@ -44,7 +44,7 @@ function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=(o.src&&
  P.hp-=o.dmg;P.flash=1;P.jig=1;CAM.shake=Math.max(CAM.shake,o.knock==='down'?.7:.4);GT.stop=Math.max(GT.stop,.06);floatText(P.x,P.y+1.6,P.z,'-'+Math.round(o.dmg),'red');sfx.hurt();
  if(P.hp<=0){die();return'hit'}
  const d=o.dir||[-Math.sin(P.yaw),-Math.cos(P.yaw)];
- const lying=P.st==='down'||P.st==='getup';// on the ground (or pinned): a hit only hurts, it never changes the pose state
+ const lying=P.st==='down'||P.st==='getup'||P.st==='grabbed'||P.st==='ride';// on the ground (or pinned): a hit only hurts, it never changes the pose state
  if(lying){if(o.knock==='down'&&!P.pinBy&&P.st==='getup')knockDown(d,o.power||1)}
  else if(o.knock==='down'&&!(P.berserk>0&&(o.power||1)<1.4)){knockDown(d,o.power||1)}else if(o.knock!=='none'&&!(P.berserk>0)&&P.st!=='drink'||o.knock==='flinch'&&P.st==='drink'){P.st='hurt';P.t=0;P.hurtDir=d;const pk=o.noPush?0:3.5;P.vx=d[0]*pk;P.vz=d[1]*pk;P.air=false}
  return'hit'}
@@ -139,7 +139,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  // attack button: tap = light, hold = charge heavy (only when standing on the ground)
  const atkTap=IN.atkUp&&!IN.atkUsed&&GT.clock-IN.atkAt<.24,atkHold=IN.atkHeld&&!IN.atkUsed&&GT.clock-IN.atkAt>=.24,atkEdge=IN.atkEdge;IN.atkUp=false;IN.atkEdge=false;
  if(atkTap)press('atk');
- const moveFree=(sp,turn=12)=>{if(il>.05){P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*turn);P.vx=lp(P.vx,wx/il*sp,Math.min(1,dt*12));P.vz=lp(P.vz,wz/il*sp,Math.min(1,dt*12))}else{P.vx=lp(P.vx,0,Math.min(1,dt*14));P.vz=lp(P.vz,0,Math.min(1,dt*14))}};
+ const moveFree=(sp,turn=12)=>{if(P.slowT>0)sp*=.55;if(il>.05){P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*turn);P.vx=lp(P.vx,wx/il*sp,Math.min(1,dt*12));P.vz=lp(P.vz,wz/il*sp,Math.min(1,dt*12))}else{P.vx=lp(P.vx,0,Math.min(1,dt*14));P.vz=lp(P.vz,0,Math.min(1,dt*14))}};
  const slide=(k)=>{P.vx*=Math.exp(-dt*k);P.vz*=Math.exp(-dt*k)};
  let move=true;
  switch(P.st){
@@ -185,6 +185,8 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  case'parry':slide(10);if(P.t>.1&&take('atk',.4)){P.st='move';startLight(0);break}if(P.t>.32){P.st=IN.blockHeld?'block':'move';P.t=0}break;// □ during the parry = riposte
  case'gbreak':slide(6);if(P.t>1.4){P.st='move';P.t=0}break;
  case'hurt':slide(8);if(P.t>.38){P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;if(P.pinBy)P.pinBy=null}break;
+ case'grabbed':move=false;updateGrabbed(dt);break;
+ case'ride':move=false;updateRide(dt);break;
  case'td':move=false;updateTakedown(dt);if(!P.td&&P.st==='td'){P.st='move';P.t=0}break;
  case'down':{const R=P.rag;slide(5);// inverted pendulum about the feet, one damped bounce on the ground
   if(R.ang<1.45){R.av+=Math.sin(Math.max(R.ang,.05))*9.5*dt;R.ang+=R.av*dt;if(R.ang>=1.45){R.ang=1.45;R.av=-R.av*.22;R.bounce++;CAM.shake=Math.max(CAM.shake,.35);sfx.thud();R.lagv+=6}}
@@ -199,7 +201,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  // integrate: horizontal velocity with collision and deep-water stop; vertical with gravity
  if(move){let nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;if(depthAt(nx,nz)>1.25){nx=P.x;nz=P.z;P.vx=P.vz=0}const p=collide(nx,nz,.34);P.x=p[0];P.z=p[1]}
  if(P.air&&P.st!=='td'){P.vy-=19*dt;P.y+=P.vy*dt;const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);if(P.y<=g&&P.vy<=0){P.y=g;P.vy=0;P.air=false;if(P.st==='jump'){P.st='land';P.t=0;P.landT=.14;sfx.land()}}}
- else if(P.st!=='td'){const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);P.y=g}
+ else if(P.st!=='td'&&!P.held){const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);P.y=g}
  // stamina regenerates after a short pause (slower while blocking); guard regenerates when not hit for a while
  if(P.staT>0)P.staT-=dt;else P.sta=Math.min(100,P.sta+(P.st==='block'?12:30)*dt*(1+gear('sta')/100)*(P.berserk>0?1.5:1)*(P.exhaustT>0?.5:1));
  if(P.guardT>0)P.guardT-=dt;else P.guard=Math.min(100,P.guard+(P.st==='gbreak'?0:P.guard<25?9:16)*dt);
@@ -237,6 +239,8 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(k2==='roar'){const k=sst(0,.35,P.t)-sst(.75,1,P.t);q.chX=-.45*k;q.hdX=-.6*k;q.LaZ=lp(1.22,.5,k);q.LaX=-.4*k;q.Lel=.8;q.RaZ=lp(1.12,.6,k);q.spX=-.2*k;q.LthX=-.4*k;q.Lkn=.6*k;q.RthX=.3*k}
   else if(k2==='dash'){q.two=1;q.RaZ=.2;q.RaX=.3;q.RaY=1.9;q.Rel=.1;q.spX=.5;q.pel=.35;q.LthX=-1.1;q.Lkn=1.2;q.RthX=.6;q.Rkn=.4;q.chY=.6}
   else if(k2==='slam'){q.two=1;const air=P.air;q.RaZ=-1.4;q.RaX=air?-1.0:1.6;q.Rel=air?.7:.05;q.RaY=.2;q.chX=air?-.3:.6;q.spX=air?-.1:.4;q.pel=air?.1:.4;q.LthX=air?-1:-1.2;q.Lkn=air?1.3:1.5;q.RthX=air?-.6:.4;q.Rkn=air?1.2:.6;q.hipY=air?0:-.15}break}
+ case'grabbed':rate=20;grabPose(q);break;
+ case'ride':rate=20;ridePose(q);break;
  case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;break}
  case'td':{rate=18;const td=P.td;if(!td)break;
   if(td.kind==='choke'){q.choke=td.t<1.4?1:Math.max(0,1-(td.t-1.4)*6);q.chokeH=.86;q.spX=.32;q.pel=.22;q.hipY=-.1;q.LthX=-.85;q.Lkn=1.15;q.RthX=-.3;q.Rkn=.8;q.chY=Math.sin(td.t*15)*.05;

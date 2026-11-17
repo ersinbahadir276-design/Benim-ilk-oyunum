@@ -2,13 +2,13 @@
 // Bosses are learnable: every move has its own tell, phase two adds a new idea (a howl that calls the pack, a horn that
 // calls goblins, a stomp shockwave you jump over), never just more health.
 const BOSSES=[];const DEN=[-420,-225];
-function scaleWorld(){for(const w of wolves)if(!w.boss)scaleFoe(w,regionLevel(w.hx,w.hz),w.alpha?170:105);for(const g of GOBS)if(!g.boss)scaleFoe(g,regionLevel(g.hx,g.hz),g.big?430:80);
+function scaleWorld(){for(const w of wolves)if(!w.boss)scaleFoe(w,regionLevel(w.hx,w.hz),w.alpha?HPK.alpha:HPK.wolf);for(const g of GOBS)if(!g.boss)scaleFoe(g,regionLevel(g.hx,g.hz),g.big?HPK.big:HPK.gob);
  for(const c of CROCS)scaleFoe(c,regionLevel(c.hx,c.hz),120);if(DRAGON){DRAGON.lv=18}}
 function spawnBosses(){// Kül Yele: the alpha of the wolf den in the north-west forest
- const [x,z]=collide(DEN[0],DEN[1],1);const a=mkWolf(x,z,{alpha:true,yaw:0});a.boss=true;a.sc=1.75;a.title='KÜL YELE · ALFA KURT';scaleFoe(a,4,520);a.phase=1;a.howlT=0;a.ashen=true;BOSSES.push(a);
- for(let i=0;i<3;i++){const p=collide(x+Math.cos(i*2.1)*7,z+Math.sin(i*2.1)*7,.6);const w=mkWolf(p[0],p[1]);scaleFoe(w,4,105);w.den=true}
+ const [x,z]=collide(DEN[0],DEN[1],1);const a=mkWolf(x,z,{alpha:true,yaw:0});a.boss=true;a.sc=1.75;a.title='KÜL YELE · ALFA KURT';scaleFoe(a,4,HPK.ashmane);a.phase=1;a.howlT=0;a.ashen=true;BOSSES.push(a);
+ for(let i=0;i<3;i++){const p=collide(x+Math.cos(i*2.1)*7,z+Math.sin(i*2.1)*7,.6);const w=mkWolf(p[0],p[1]);scaleFoe(w,4,HPK.denWolf);w.den=true}
  // Kırık Diş: replaces the big goblin of the eastern camp
- const c=CAMPSITES[0],old=GOBS.find(g=>g.big&&g.camp===c);if(old){old.boss=true;old.title='KIRIK DİŞ · GOBLİN ŞEFİ';old.sc=1.5;scaleFoe(old,7,720);old.phase=1;old.rad=1.0;old.chief=true;BOSSES.push(old);old.R.ob.col=[1.1,.85,.8]}}
+ const c=CAMPSITES[0],old=GOBS.find(g=>g.big&&g.camp===c);if(old){old.boss=true;old.title='KIRIK DİŞ · GOBLİN ŞEFİ';old.sc=1.5;scaleFoe(old,7,HPK.chief);old.phase=1;old.rad=1.0;old.chief=true;BOSSES.push(old);old.R.ob.col=[1.1,.85,.8]}}
 // status effects on foes: bleeding, the player's own fire trails, fear (fleeing after a war cry)
 function foeTicks(dt){for(const f of foes()){if(f.bleedT>0){f.bleedT-=dt;f.bleedAcc=(f.bleedAcc||0)+dt;if(f.bleedAcc>.5){f.bleedAcc=0;const d=Math.max(1,Math.round(f.bleedD||2)),dead=foeHurt(f,d,0,0,'bleed');floatText(f.x,(f.y||0)+1.3,f.z,''+d,'red');if(dead)onFoeKilled(f,false)}}
   if(f.fear&&GT.clock<f.fear&&!f.dead){const dx=f.x-P.x,dz=f.z-P.z,k=Math.hypot(dx,dz)||1;f.kx=dx/k*4.5;f.kz=dz/k*4.5;f.yaw=Math.atan2(dx,dz)}}

@@ -36,7 +36,7 @@ function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                 
   const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);if(depthAt(x,z)>0||waterAt(x,z)>-50&&hAt(x,z)<waterAt(x,z)+.6)continue;mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
-const W_HOSTILE={howl:1,chase:1,windup:1,pounce:1,pin:1,circle:1,recover:1,hurt:1,evade:1,stalk:1,bitewind:1,rush:1,bite:1,retreat:1};const hostileSt=w=>!!W_HOSTILE[w.st];
+const W_HOSTILE={howl:1,chase:1,windup:1,pounce:1,pin:1,circle:1,recover:1,hurt:1,evade:1,stalk:1,bitewind:1,rush:1,bite:1,retreat:1,hamstring:1,armleap:1,armlatch:1,feint:1};const hostileSt=w=>!!W_HOSTILE[w.st];
 const tokenBusy=()=>wolves.some(w=>!w.tame&&!w.dead&&(w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='bitewind'||w.st==='rush'||w.st==='bite'));
 // can this wolf see the player right now? only a cone in front, blocked by trees
 function wolfSees(w,P){if(!P.alive||w.calm>0)return false;const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz),R=(P.crouch?13:27)*(w.alpha?1.15:1);
@@ -87,7 +87,8 @@ function updateWolf(w,P,dt,GS){
   if(w.aware>=1&&!safe){const m=wolfMood(w);if(!w.boss&&(m.aggr<m.fear+.15||(!w.alpha&&Math.random()<.22))&&w.st!=='watch'){w.st='watch';w.t=0;w.cover=wolfCover(w);w.watchT=rr(4,9);break}// sometimes it only watches
    w.st='stalk';w.t=0;GS.onAggro(w);for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&!hostileSt(o)&&Math.hypot(o.x-w.x,o.z-w.z)<17){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.55)}}
   else if(w.t>2.2&&w.aware<.3){w.st=w.unseen>1.5&&Math.hypot(w.ls[0]-w.x,w.ls[1]-w.z)>3?'search':'idle';w.t=0}break;
- case'chase':case'stalk':case'circle':if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0;break}w.hyaw=lp(w.hyaw,0,.2);w.jaw=lp(w.jaw,.25,.1);wolfEngage(w,d,dt,GS);break;
+ case'chase':case'stalk':case'circle':if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0;break}w.hyaw=lp(w.hyaw,0,.2);w.jaw=lp(w.jaw,.25,.1);if(wolfTryTrick(w,d,dt))break;wolfEngage(w,d,dt,GS);break;
+ case'hamstring':case'armleap':case'armlatch':case'feint':if(P.st==='dead'){w.st='return';w.t=0;w.air=0;break}wolfTrick(w,d,dt,GS);break;
  case'bitewind':case'rush':case'bite':if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0;break}wolfBite(w,d,dt,GS);break;
  case'retreat':case'watch':case'flee':if(w.st==='watch'&&d<6&&w.aware>=1){w.st='circle';w.t=0;break}wolfAway(w,d,dt);break;
  case'windup':w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,1,Math.min(1,dt*9));w.jaw=lp(w.jaw,.5,.2);w.tail=-.5;
@@ -109,7 +110,7 @@ function updateWolf(w,P,dt,GS){
  case'search':w.crouch=lp(w.crouch,.1,.1);if(w.aware>=1){w.st='chase';w.t=0}else if(wolfMove(w,w.ls[0],w.ls[1],3.2,dt,4)<1.5){w.spd=lp(w.spd,0,.3);w.hyaw=Math.sin(w.t*1.8)*.9;if(w.t>6){w.st='return';w.t=0;w.aware=0}}else if(w.t>14){w.st='return';w.t=0}break;
  case'return':w.hyaw=lp(w.hyaw,0,.1);w.crouch=lp(w.crouch,0,.1);w.jaw=lp(w.jaw,0,.1);if(w.aware>.3&&!safe){w.st='alert';w.t=0}else if(wolfMove(w,w.hx,w.hz,2.6,dt,3)<2||w.t>40){w.st='idle';w.t=0}break}
  // keep wolves out of the kingdom and apart from each other
- const r=Math.hypot(w.x,w.z);if(r<165&&w.st!=='pin'){w.x*=165/r;w.z*=165/r}
+ const r=Math.hypot(w.x,w.z);if(r<165&&w.st!=='pin'&&w.st!=='armlatch'){w.x*=165/r;w.z*=165/r}
  for(const o of wolves){if(o===w||o.dead||o.st==='pin'||w.st==='pin'||w.st==='pounce')continue;const ex=w.x-o.x,ez=w.z-o.z,q=ex*ex+ez*ez;if(q<.8&&q>1e-6){const k=Math.sqrt(q);w.x+=ex/k*(.9-k)*.5;w.z+=ez/k*(.9-k)*.5}}
  w.y=hAt(w.x,w.z)}
 // ---------------- rendering: assign the nearest wolves to render slots and pose their parts
