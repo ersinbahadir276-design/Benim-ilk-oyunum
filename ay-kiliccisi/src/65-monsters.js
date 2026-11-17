@@ -92,7 +92,7 @@ function monKilled(m){const T=m.T,xp=Math.round(T.xp*(1+.08*(DUN.lv-1)));addXP(x
  for(const o of MONS)if(!o.dead&&o!==m){o.hp=0;o.dead=1;o.st='dead';o.t=0}openDunDoor();addExitPortal();if(DUN.arena)DUN.arena.ring.alpha=0;save(P)}
 // ---------------------------------------------------------------- AI
 const monTokens=()=>MONS.filter(o=>!o.dead&&!o.big&&(o.st==='windup'||o.st==='strike')).length;
-function pickMove(m,d){const S=m.sc/(m.T.sc||1)*Math.max(1,m.sc*.75);let best=null;for(const k of m.T.moves){const v=MV[k];if(v.p2&&m.phase<2)continue;if((m.mcd[k]||0)>GT.clock)continue;
+function pickMove(m,d){if((m.adapt||0)>GT.clock){for(const k of m.T.moves){const v=MV[k];if((v.peril||v.leap||v.lunge)&&(m.mcd[k]||0)<=GT.clock&&d<=v.r*Math.max(1,m.sc*.75)&&!(v.min&&d<v.min))return k}}const S=m.sc/(m.T.sc||1)*Math.max(1,m.sc*.75);let best=null;for(const k of m.T.moves){const v=MV[k];if(v.p2&&m.phase<2)continue;if((m.mcd[k]||0)>GT.clock)continue;
   const R=v.r*(v.proj||v.summon||v.storm||v.eggs||v.runes?1:S);if(d>R||(v.min&&d<v.min))continue;if(v.summon&&MONS.filter(o=>!o.dead&&o.summoned).length>=3)continue;if(!best||(v.cd&&Math.random()<.6))best=k}return best}
 function updateMon(m,dt){m.t+=dt;m.flash=Math.max(0,m.flash-dt*6);m.cd-=dt;const d=Math.hypot(P.x-m.x,P.z-m.z),T=m.T;
  if(Math.abs(m.kx)+Math.abs(m.kz)>.05&&!m.held){const p=dunCollide(m.x+m.kx*dt,m.z+m.kz*dt,m.rad);m.x=p[0];m.z=p[1];const k=Math.exp(-dt*7);m.kx*=k;m.kz*=k}

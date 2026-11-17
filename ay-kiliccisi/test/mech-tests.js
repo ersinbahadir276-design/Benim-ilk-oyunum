@@ -53,17 +53,17 @@ window.runMech = function () {
   {
     isolate(T0[0], T0[1]); const res = {};
     for (const [name, mx, mz, wantDir] of [['öne', 0, 1, [0, 1]], ['arkaya', 0, -1, [0, -1]], ['sağa', 1, 0, [-1, 0]], ['sola', -1, 0, [1, 0]]]) {
-      freshP(T0[0], T0[1], 0); const x0 = P.x, z0 = P.z; IN.mx = mx; IN.mz = mz; G.press('dodge'); sim(DT * 2); const kind = P.dodgeKind, inv = P.inv; IN.mx = IN.mz = 0; sim(.6);
+      freshP(T0[0], T0[1], 0); P.dodgeLast = -9; P.dodgeN = 0; const x0 = P.x, z0 = P.z; IN.mx = mx; IN.mz = mz; G.press('dodge'); sim(DT * 2); const kind = P.dodgeKind, inv = P.inv; IN.mx = IN.mz = 0; sim(.6);
       const dx = P.x - x0, dz = P.z - z0, L = Math.hypot(dx, dz) || 1, dot = (dx * wantDir[0] + dz * wantDir[1]) / L; res[name] = { tür: kind, mesafe: +L.toFixed(2), yön: +dot.toFixed(2), dokunulmaz: +inv.toFixed(2) };
-      ok('kaçınma ' + name + ': doğru yöne ve dokunulmazlıkla', dot > .9 && L > 1.8 && inv > .3, res[name]);
+      ok('kaçınma ' + name + ': doğru yöne ve dokunulmazlıkla (atılma: ≥0.15 sn)', dot > .9 && L > 1.8 && inv >= .15, res[name]);
     }
   }
   // ---------------------------------------------------------------- 5. block, guard meter, guard break, parry
   {
-    isolate(T0[0], T0[1]); freshP(T0[0], T0[1], 0); const src = { x: P.x, z: P.z + 2 };
+    isolate(T0[0], T0[1]); freshP(T0[0], T0[1], 0); const src = { x: P.x, z: P.z + 2 }; const gdk = (G.X.STDEF[G.SYS.stance] || {}).gd || 1; // stance defence (Taş: blocks cost less)
     IN.blockHeld = true; sim(.4); const hp0 = P.hp, g0 = P.guard; const r1 = G.hitPlayer({ src, dmg: 20, guard: 30 });
-    ok('blok: hasar candan değil savunma canından düşüyor', r1 === 'block' && P.hp === hp0 && Math.abs(P.guard - (g0 - 30)) < .01, { sonuç: r1, can: P.hp, savunma: P.guard });
-    G.hitPlayer({ src, dmg: 20, guard: 30 }); G.hitPlayer({ src, dmg: 20, guard: 30 }); const r4 = G.hitPlayer({ src, dmg: 20, guard: 30 });
+    ok('blok: hasar candan değil savunma canından düşüyor', r1 === 'block' && P.hp === hp0 && Math.abs(P.guard - (g0 - 30 * gdk)) < .01, { sonuç: r1, can: P.hp, savunma: P.guard });
+    let r4 = ''; for (let k = 0; k < 6 && r4 !== 'guardbreak'; k++) r4 = G.hitPlayer({ src, dmg: 20, guard: 30 });
     ok('blok: savunma canı bitince kırılıyor ve savunmasız kalıyor', r4 === 'guardbreak' && P.st === 'gbreak' && P.hp === hp0, { sonuç: r4, durum: P.st });
     const r5 = G.hitPlayer({ src, dmg: 10, guard: 10 }); ok('savunma kırılınca vuruş can götürüyor', r5 === 'hit' && P.hp < hp0, { sonuç: r5, can: P.hp });
     sim(1.6); const gA = P.guard; sim(2.5); ok('savunma canı yavaşça doluyor', P.guard > gA + 10 && P.st !== 'gbreak', { önce: +gA.toFixed(1), sonra: +P.guard.toFixed(1) });

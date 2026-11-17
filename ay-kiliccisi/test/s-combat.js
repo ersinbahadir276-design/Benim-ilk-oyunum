@@ -30,7 +30,7 @@ module.exports = async ({ page, shot, G, log }) => {
     X.startStandoff(T); let kills = 0, guard = 0; while (X.SO.on && guard++ < 3000) { __G.sim(1 / 60, 1); if (X.SO.phase === 'charge' && Math.hypot(X.SO.lead.x - P.x, X.SO.lead.z - P.z) < 3) __G.press('atk'); P.hp = X.maxHP() } kills = [a, b, c].filter(o => o.dead).length; out.so = { kills, n: X.SO.n };
     reset(20, 290); const d1 = gob(P.x + 1, P.z + 10), d2 = gob(P.x - 1, P.z + 11); for (const o of [d1, d2]) { o.group = 'soF'; o.st = 'idle'; o.aware = 0 } X.startStandoff(); __G.sim(1 / 60, 30); const hf = P.hp; __G.press('atk'); __G.sim(1 / 60, 3); out.soFail = { on: X.SO.on, lost: +(hf - P.hp).toFixed(1), hostile: d1.hostile() };
     return out });
-  log('atılma hızlı ve uzun (≥3 m), takla yok, ileri', R.dash.dist >= 3 && R.dash.dir > 2.5 && R.dash.spin === 0 && R.dash.inv > .3, JSON.stringify(R.dash));
+  log('atılma hızlı ve uzun (≥3 m), takla yok, ileri', R.dash.dist >= 3 && R.dash.dir > 2.5 && R.dash.spin === 0 && R.dash.inv >= .15, JSON.stringify(R.dash));
   log('atılma zincirlenir', R.chain);
   log('atılmadan saldırı = hamle (runatk)', R.dashAtk === 'runatk', R.dashAtk);
   log('goblin kahramanın içine girmiyor ve yakında vurmaya devam ediyor', R.close.minD > .65 && R.close.hits >= 5, JSON.stringify(R.close));

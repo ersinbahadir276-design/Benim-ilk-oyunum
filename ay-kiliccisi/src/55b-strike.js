@@ -6,13 +6,18 @@
 const SWG={
  stone:{L:[{a:[-1.3,.95],b:[1.0,-.6],step:.35},{a:[1.15,-.55],b:[-1.2,.75],step:.3},{a:[-1.85,.2],b:[1.6,-.15],two:1,fin:1,step:.6,max:3}],
   H:{a:[-.12,1.95],b:[0,-.95],two:1,step:.5,max:3}},
- wind:{L:[{a:[-.12,.04],b:[0,-.02],thrust:1,step:.6,max:1},{a:[1.45,.25],b:[-1.45,-.05],step:.3},{a:[-.1,.08],b:[0,-.04],thrust:1,fin:1,lunge:2.4,max:2}],
+ wind:{L:[{a:[-.12,.04],b:[0,-.02],thrust:1,step:.6,max:1},{a:[1.45,.25],b:[-1.45,-.05],step:.3},{a:[-.1,.08],b:[0,-.04],thrust:1,fin:1,lunge:2.4,max:3}],
   H:{a:[-1.25,-.75],b:[1.05,1.15],two:1,step:.4,max:3}},
  moon:{L:[{a:[1.85,.05],b:[-1.9,-.25],two:1,step:.4,max:4},{a:[0,2.05],b:[0,-1.05],two:1,fin:1,step:.5,max:3}],
   H:{a:[-1.55,.02],b:[-1.55,-.12],two:1,spin:1,max:8}},
  water:{L:[{a:[-.9,.15],b:[.75,-.22],step:.2},{a:[.85,.25],b:[-.85,-.1],step:.2},{a:[-.85,-.15],b:[.85,-.7],step:.25},{a:[-.25,-1.0],b:[.1,1.35],fin:1,step:.3}],
   H:{a:[-1.1,1.1],b:[.9,-.85],two:1,step:.45,max:3}},
- run:{a:[-1.55,.3],b:[1.45,-.25],step:0,max:3}};
+ run:{a:[-1.55,.3],b:[1.45,-.25],step:0,max:3},
+ riposte:{a:[-.15,.1],b:[0,-.05],thrust:1,step:.9,max:1}};
+// second heavy of a heavy chain (△ again during the first heavy's recovery)
+const SWG2={stone:{a:[-1.2,-.85],b:[1.0,1.05],two:1,step:.45,max:3},wind:{a:[1.6,.1],b:[-1.6,-.2],two:1,step:.5,max:4},moon:{a:[0,2.15],b:[0,-1.15],two:1,step:.6,max:3},water:{a:[1.1,1.0],b:[-.95,-.85],two:1,step:.4,max:3}};
+// stance finishers (the last light of a combo): each one does something different, not just more damage
+const FIN={stone:'KAYA KIRAN',wind:'RÜZGÂR DELİŞİ',moon:'AY HİLALİ',water:'SU AKINTISI'};
 // windows (fraction of the attack time): wind-up ends at a0, the blade is live a0..a1, then recovery
 const SWT={light:[.34,.56],fin:[.38,.6],heavy:[.4,.6],run:[.25,.5]};
 const swDir=(y,p)=>[Math.sin(y)*Math.cos(p),Math.sin(p),Math.cos(y)*Math.cos(p)];
@@ -30,7 +35,7 @@ function swingFrame(){const A=P.atk;if(!A)return null;const u=cl(P.t/A.T,0,1),sw
  return{D,H,u,two:sw.two?1:0}}
 // start an attack: pick a swing, remember where the blade is now (smooth wind-up), choose a warp target
 function beginSwing(kind,sw,T){const win=SWT[kind==='light'&&sw.fin?'fin':kind];const rh=HB.rightHand;
- P.atk={kind,sw,T,a0:win[0],a1:win[1],hits:new Set(),max:sw.max||2,prev:null,started:0,D0:vnorm(r3v(SK.GR[rh],SK.gripAx)),fin:!!sw.fin};
+ P.atk={kind,sw,T,a0:win[0],a1:win[1],hits:new Set(),max:sw.max||2,prev:null,started:0,D0:vnorm(r3v(SK.GR[rh],SK.gripAx)),fin:!!sw.fin&&kind==='light',st:SYS.stance||'stone',mul:1};
  const f=warpTarget(kind==='run'?7:4.4);P.atk.tg=f;if(f){P.yaw=Math.atan2(f.x-P.x,f.z-P.z);
   // aim the cut at the body: a low target (wolf, rat, spider) tilts the swing down, fully for thrusts
   const ty=(f.y!==undefined?f.y:hAt(f.x,f.z))+foeBodyH(f)*.5-P.y,hd=Math.max(1,foeDist(f)+foeBodyR(f)),po=cl(Math.atan2(ty-1.5,hd),-.75,.25);P.atk.pOff=po*(sw.thrust?1:.55)}}
@@ -53,12 +58,22 @@ function sweepHits(){const A=P.atk;if(!A||(P.st!=='attack'&&P.st!=='heavy'&&P.st
  const u=P.t/A.T;trailPush(u>A.a0-.06&&u<A.a1+.06);if(u<A.a0-.03||u>A.a1+.04){A.prev=null;return}
  const cur=BLADE_F.map(bladeAt),prev=A.prev||cur;A.prev=cur;
  if(!A.started){A.started=1;if(DUN.on)dunSwing(A.kind==='heavy'?'heavy':'light0');if(A.kind==='heavy'&&hasFx('fire'))for(let i=0;i<4;i++)BURNS.push({x:P.x+Math.sin(P.yaw)*(1.2+i*.9),z:P.z+Math.cos(P.yaw)*(1.2+i*.9),t:0,life:4,mine:1});P.noise=14}
+ if(A.fin&&A.st==='moon'&&!A.wave&&u>A.a1-.02)moonWave(A);if(A.fin&&A.st==='wind'&&!A.pierce&&u>(A.a0+A.a1)/2)windPierce(A);
  if(A.hits.size>=A.max)return;
  for(const f of foes()){if(A.hits.has(f))continue;if(Math.hypot(f.x-P.x,f.z-P.z)>6.5+(f.hitPts?8:0))continue;if(f.alt&&f.alt()>2.2)continue;
   let hit=null;for(let k=1;k<=3&&!hit;k++){const t=k/3;for(let j=0;j<BLADE_F.length&&!hit;j++){const p=[lp(prev[j][0],cur[j][0],t),lp(prev[j][1],cur[j][1],t),lp(prev[j][2],cur[j][2],t)];if(bodyDist(f,p)<.14)hit=p}}
   if(!hit)continue;A.hits.add(f);const tv=vsub(cur[4],prev[4]),tl=Math.hypot(tv[0],tv[2])||1,ox=f.x-P.x,oz=f.z-P.z,ol=Math.hypot(ox,oz)||1;
   const dx=(tv[0]/tl)*.5+ox/ol*.5,dz=(tv[2]/tl)*.5+oz/ol*.5,dl=Math.hypot(dx,dz)||1;
   strikeFoe(f,A.kind==='heavy'?'heavy':A.kind==='run'?'runatk':'light'+P.combo,dx/dl,dz/dl,hit,A);if(A.hits.size>=A.max)break}}
+// Ay Hilali: the cleave sends a crescent of force along the ground — foes up to 5.5 m ahead in a narrow cone take a lighter hit
+function moonWave(A){A.wave=1;const fx=Math.sin(P.yaw),fz=Math.cos(P.yaw);for(let k=1;k<=6;k++){const x=P.x+fx*k*.9,z=P.z+fz*k*.9;spawnSparks(x,hAt(x,z)+.15,z,4,[.75,.6,1],3)}sfx.thud();CAM.shake=Math.max(CAM.shake,.25);
+ const W={kind:'light',fin:0,mul:.5,st:'moon',wave:1};if(!A.named){A.named=1;floatText(P.x+fx*2,P.y+2.2,P.z+fz*2,FIN.moon,'crit')}
+ for(const f of foes()){if(A.hits.has(f))continue;const dx=f.x-P.x,dz=f.z-P.z,d=Math.hypot(dx,dz);if(d>5.5+foeBodyR(f)||d<.5)continue;if(Math.abs(angd(Math.atan2(dx,dz),P.yaw))>.55)continue;if(f.alt&&f.alt()>2.2)continue;
+  A.hits.add(f);const p=[f.x,(f.y||hAt(f.x,f.z))+foeBodyH(f)*.5,f.z];strikeFoe(f,'light'+P.combo,dx/d,dz/d,p,W)}}
+// Rüzgâr Delişi: the lunging thrust passes through — foes lined up behind the first (up to 4.8 m, narrow line) are pierced too
+function windPierce(A){A.pierce=1;const fx=Math.sin(P.yaw),fz=Math.cos(P.yaw);for(let k=2;k<=5;k++)spawnSparks(P.x+fx*k,P.y+1.2,P.z+fz*k,2,[.7,1,.8],2);
+ for(const f of foes()){if(A.hits.has(f)||A.hits.size>=A.max)continue;const dx=f.x-P.x,dz=f.z-P.z,along=dx*fx+dz*fz,side=Math.abs(dx*fz-dz*fx);if(along<.3||along>4.8+foeBodyR(f)||side>foeBodyR(f)+.45)continue;if(f.alt&&f.alt()>2.2)continue;
+  A.hits.add(f);const p=[f.x,(f.y||hAt(f.x,f.z))+foeBodyH(f)*.55,f.z],d=Math.hypot(dx,dz)||1;strikeFoe(f,'light'+P.combo,dx/d,dz/d,p,A)}}
 // ---------------- hit feel: material, hit-stop and shake by attack weight; no reaction on a miss
 function foeMat(f){if(f.T){const m=f.T.m;return m==='skeleton'||m==='skmage'?'bone':m==='knight'?'metal':m==='golem'?'stone':'flesh'}if(f===DRAGON||CROCS.includes(f))return'scale';return'flesh'}
 const MATFX={flesh:{c:[.75,.06,.05],n:7,s:3},bone:{c:[.92,.88,.76],n:9,s:3.5},metal:{c:[1,.9,.55],n:14,s:6},stone:{c:[.62,.6,.56],n:12,s:4},scale:{c:[.85,.5,.25],n:9,s:4}};

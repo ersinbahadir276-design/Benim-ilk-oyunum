@@ -60,7 +60,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  case'guard':g.spd=lp(g.spd,0,.3);agentFace(g,P.x,P.z,dt,10);if(g.t>1.1){g.st='chase';g.t=0;g.cd=Math.min(g.cd,.2)}break;
  case'circle':{const a=Math.atan2(g.x-P.x,g.z-P.z)+.9*dt*(g.side||1),gx=P.x+Math.sin(a)*2.5,gz=P.z+Math.cos(a)*2.5;agentMove(g,gx,gz,3,dt,g.rad,6);agentFace(g,P.x,P.z,dt,9);
   if(g.t>g.dur||d>3.2){g.st='chase';g.t=0}break}
- case'windup':{const T=g.big?{smash:1.35,sweep:1.05,stomp:.95}[g.move||'smash']:g.peril?.72:g.cn?.26:.46;
+ case'windup':{const T=g.big?{smash:1.35,sweep:1.05,stomp:.95}[g.move||'smash']:g.peril?.72:g.cn?.26:(g.delay?.78:.46);
   if(!g.big){if(g.t<T*.85)agentFace(g,P.x,P.z,dt,12);if(d>1.7)agentMove(g,P.x,P.z,4.3,dt,g.rad,10);else g.spd=lp(g.spd,0,.4)}else{g.spd=lp(g.spd,0,.4);if(g.t<T*.7)agentFace(g,P.x,P.z,dt,2.2)}
   if(g.t>=T){g.st='strike';g.t=0;sfx.swing();if(!g.big){const L=cl(d-1.0,0,g.peril?4:2.4);g.lv=L/.2}}break}
  case'strike':{const T=g.big?(g.move==='sweep'?.42:.38):.2,u=g.t/T;
@@ -70,7 +70,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
   else if(!g.hitDone){// the club must really touch the hero: segment (club) vs capsule (body) test every frame of the swing
    const seg=clubSeg(g),hit=segCapsule(seg[0],seg[1],[P.x,P.y+.2,P.z],[P.x,P.y+1.55,P.z],.42);if(hit){g.hitDone=true;hitPlayer({src:g,dmg:30,guard:62,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:'down',power:1.5})}}
   if(u>=1&&!g.big&&g.cn>0&&g.st==='strike'){g.cn--;g.st='windup';g.t=0;g.hitDone=false;g.peril=0;break}
-  if(u>=1){g.peril=0;if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.cd=g.big?rr(1.4,2.2):rr(.5,1.1)}break}
+  if(u>=1){g.peril=0;if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.delay=0;g.cd=g.big?rr(1.4,2.2):rr(.5,1.1)}break}
  case'recover':g.spd=0;if(g.t>(g.big?1.15:.42)){g.st='chase';g.t=0}break;
  case'stagger':g.spd=0;if(g.t>(g.big?2.1:1.5)){g.st='chase';g.t=0}break;
  case'hop':g.spd=0;agentFace(g,P.x,P.z,dt,10);if(g.t>.42){g.st='windup';g.t=.18;g.hitDone=false;sfx.gobShout()}break;
@@ -80,7 +80,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  if(P.alive&&!P.air&&!g.held){const ex=g.x-P.x,ez=g.z-P.z,q=Math.hypot(ex,ez),mm=g.rad+.42;if(q<mm){const ux=q>1e-4?ex/q:-Math.sin(g.yaw),uz=q>1e-4?ez/q:-Math.cos(g.yaw),p=collide(P.x+ux*mm,P.z+uz*mm,g.rad);g.x=p[0];g.z=p[1]}}// bodies never overlap the hero
  g.y=hAt(g.x,g.z);if(g.spd>.2)g.ph+=g.spd*dt*(g.big?2.2:4.2)}
 // small goblin swing: 40% two-hit combo, 18% a red unblockable lunge (危: dash away or sideways), always with a tell
-function gobStartSwing(g){g.st='windup';g.t=0;g.hitDone=false;g.peril=Math.random()<.18?1:0;g.cn=g.peril?0:Math.random()<.4?1:0;
+function gobStartSwing(g){const ad=(g.adapt||0)>GT.clock;g.st='windup';g.t=0;g.hitDone=false;g.peril=Math.random()<(ad?.5:.18)?1:0;g.cn=g.peril?0:Math.random()<(ad?.75:.4)?1:0;g.delay=ad&&g.cn>0&&Math.random()<.7?1:0;// adapted: more 危, delayed second hit
  if(g.peril){sfx.charge();floatText(g.x,(g.y||0)+2,g.z,'危','crit');spawnSparks(g.x,(g.y||0)+1.3,g.z,6,[1,.15,.1],2)}else sfx.gobShout()}
 function gobFK(g,time){const tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc,extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));g.root=[g.x,y,g.z,extra];rigFK(g.R.def,gobPose(g,time),[g.x,y,g.z],g.yaw,g.sc,g.R.ob.bones,extra)}
 function clubSeg(g){gobFK(g,GT.time);const d=g.R.def;return[boneW(d,8,[0,-.08,.3],g.sc),boneW(d,8,[0,-.08,1.75],g.sc)]}

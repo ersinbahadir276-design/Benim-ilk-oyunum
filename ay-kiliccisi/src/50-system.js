@@ -1,7 +1,7 @@
 // ===================== the System: stats, levels, quests, notifications, windows, save =====================
 const $=id=>document.getElementById(id);
 const SAVE_V=3,SYS={v:SAVE_V,lowShake:0,lv:1,xp:0,pts:0,str:5,agi:5,vit:5,per:5,kills:0,dodges:0,tamed:0,walked:0,gate:0,knight:0,title:'Yok',titles:[],done:{},meat:2,dodgeLv:1,intro:0,cp:null,gold:0,parries:0,takedowns:0,gkills:0,ckills:0,dragon:0,seenGob:0,seenSwamp:0,seenLair:0};
-const maxHP=()=>Math.round(110+(stat('vit')-5)*12+gear('hp')),dmgMul=()=>(1+(stat('str')-5)*.06+gear('dmg')/100)*(SYS.title==='Kurt Avcısı'?1.05:1),spdMul=()=>1+(stat('agi')-5)*.01,iframes=()=>.36+(stat('agi')-5)*.006+(SYS.dodgeLv-1)*.06,radarR=()=>30+(stat('per')-5)*4,xpNeed=()=>60*SYS.lv*SYS.lv+40;
+const maxHP=()=>Math.round(110+(stat('vit')-5)*12+gear('hp')),dmgMul=()=>(1+(stat('str')-5)*.06+gear('dmg')/100)*(SYS.title==='Kurt Avcısı'?1.05:1),spdMul=()=>1+(stat('agi')-5)*.01,iframes=()=>Math.min(.3,.2+(stat('agi')-5)*.004+(SYS.dodgeLv-1)*.03),radarR=()=>30+(stat('per')-5)*4,xpNeed=()=>60*SYS.lv*SYS.lv+40;
 const QUESTS=[
  {id:'wake',name:'Uyanış',desc:'Çimenlerin arasında 40 m yürü',goal:40,get:()=>SYS.walked,xp:20},
  {id:'hunt1',name:'İlk Av',desc:'Bir kurt öldür',goal:1,get:()=>SYS.kills,xp:60},
@@ -51,7 +51,7 @@ function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['ye
   h+=bag.map(it=>'<div class="item'+(winSel===it.id?' sel':'')+'" data-id="'+it.id+'"><b '+rc(it.rar)+'>'+it.name+(it.up?' +'+it.up:'')+'</b><i>Sv.'+it.lv+' · '+({weapon:'Silah',armor:'Zırh',charm:'Tılsım',ring:'Yüzük'})[it.slot]+'</i></div>').join('')||'<div class="sk">Çanta boş. Düşmanlar ve sandıklar eşya düşürür.</div>';
   const sel=SYS.inv.find(i=>i.id===winSel);if(sel){const cur=eqItem(sel.slot),eq=cur&&cur.id===sel.id;h+='<div class="det"><b '+rc(sel.rar)+'>'+sel.name+'</b> <small>'+RAR[sel.rar].n+' · Sv.'+sel.lv+'</small><br>'+itemLines(sel).join('<br>')+
    (cur&&!eq?'<br><small>Şu an: '+cur.name+' — '+itemLines(cur).slice(0,2).join(', ')+'</small>':'')+'<div class="btns">'+(eq?'':'<button data-act="eq">KUŞAN</button><button data-act="sal">PARÇALA</button>')+'</div></div>'}}
- if(winTab==='yetenek'){h+='<div class="wt">YETENEKLER</div><div class="sk">YETENEK düğmesi seçili yeteneği kullanır. ÖFKE çubuğu dolunca ÖFKE düğmesi belirir.</div>'+Object.entries(SKILLS).map(([k,v])=>{const on=(SYS.skills||{})[k];return'<div class="item'+(SYS.skill===k?' sel':'')+'" data-skill="'+(on?k:'')+'"><b style="color:'+(on?'#ffd76a':'#777')+'">'+v.n+(SYS.skill===k?' ✓':'')+'</b><i>'+(on?v.d+' · '+v.cost+' dayanıklılık · '+v.cd+' sn':'Kilitli: '+v.how)+'</i></div>'}).join('')+
+ if(winTab==='yetenek'){h+=combatGuideHtml()+'<div class="wt">YETENEKLER</div><div class="sk">YETENEK düğmesi seçili yeteneği kullanır. ÖFKE çubuğu dolunca ÖFKE düğmesi belirir.</div>'+Object.entries(SKILLS).map(([k,v])=>{const on=(SYS.skills||{})[k];return'<div class="item'+(SYS.skill===k?' sel':'')+'" data-skill="'+(on?k:'')+'"><b style="color:'+(on?'#ffd76a':'#777')+'">'+v.n+(SYS.skill===k?' ✓':'')+'</b><i>'+(on?v.d+' · '+v.cost+' dayanıklılık · '+v.cd+' sn':'Kilitli: '+v.how)+'</i></div>'}).join('')+
   '<div class="wt2">TEMEL HAREKETLER</div><div class="sk">[Hafif kombo] · [Ağır: SALDIR basılı] · [Koşarak] · [Zıplayarak] · [Blok + Savuşturma] · [Denge kırıp İNFAZ] · [Sessiz alt etme] · [Öfke]</div>'}
  if(winTab==='gorev'){const q=curMain();h+='<div class="wt">ANA GÖREV</div><div class="qs"><b>◆ '+q.t+'</b> — '+(typeof q.d==='function'?q.d():q.d)+'</div>'+MAIN.slice(0,SYS.main).map(m=>'<div class="qs dn">✔ '+m.t+'</div>').join('')+
   mysteryHtml()+'<div class="wt2">YAN GÖREVLER</div><div class="qs'+(SYS.q_pelts===2?' dn':'')+'">'+(SYS.q_pelts===2?'✔':'◆')+' Avcı Lena: kurt postları '+(SYS.q_pelts?(SYS.pelts||0)+'/3':'(köyde Lena ile konuş)')+'</div>'+
@@ -77,3 +77,13 @@ function renderWin(P){const tabs=[['durum','DURUM'],['envanter','ENVANTER'],['ye
  const sh=$('shk');if(sh)sh.addEventListener('click',()=>{SYS.lowShake=SYS.lowShake?0:1;save(P);renderWin(P)});const ae=$('aeq');if(ae)ae.addEventListener('click',()=>{SYS.autoEq=SYS.autoEq===0?1:0;save(P);renderWin(P)});
  $('winx').addEventListener('click',()=>toggleWin(P));try{if($('wmap'))drawMap($('wmap'))}catch(e){}}
 function toggleWin(P){winOpen=!winOpen;$('win').style.display=winOpen?'flex':'none';if(winOpen)renderWin(P)}
+
+// combat guide: the four stances (unlocked or how to unlock, attack + defence character) and the moves worth knowing
+function combatGuideHtml(){let h='<div class="wt">DURUŞLAR</div>';for(const k of STANCE_ORDER){const S=STANCES[k],on=SYS.stances&&SYS.stances[k];
+  h+='<div class="qs'+(SYS.stance===k?' sel':'')+'"><b style="color:'+(on?S.c:'#777')+'">'+(SYS.stance===k?'◆ ':'')+S.n+'</b> — '+(on?S.d+' <i style="opacity:.8">Savunma: '+((STDEF[k]||{}).t||'-')+'</i>':'Kilitli · '+S.how)+'</div>'}
+ return h+'<div class="wt2">SAVAŞ HAREKETLERİ</div><div class="qs" style="font-size:12px;line-height:1.5">'+
+  '□ hafif kombo · △ ağır (basılı tut = yükle; ağırdan sonra △ = ikinci ağır) · hafiften sonra △ = bağlantı<br>'+
+  'L1 tam vuruş anında = <b>SAVUŞTURMA</b> → hemen □ = <b>KARŞI DARBE</b>. Bloğa art arda basmak pencereyi daraltır. Aynı düşmanı 6 sn içinde 3. kez savuşturursan sarsılmaz, ritmini değiştirir.<br>'+
+  '○ <b>ATIL</b>: başında kısa dokunulmazlık; vuruşun içine doğru zamanında atılırsan <b>KUSURSUZ KAÇINMA</b> → □ karşı saldırı. 1 sn içinde 3. atılma dokunulmaz değildir.<br>'+
+  'Kombo ortasında R2 ile duruş değiştir = kombo yeni duruşta <b>AKIŞ</b> ile sürer. Kombonun son vuruşu duruşun bitiricisidir.<br>'+
+  '<b style="color:#ff5a4a">危</b> = savuşturulamaz, bloklanamaz: atıl. Kavga başlamamış gruba R1 = <b>KAFA KAFAYA</b>.</div>'}
