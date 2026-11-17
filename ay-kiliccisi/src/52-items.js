@@ -86,7 +86,7 @@ function buildSword(){const w=eqItem('weapon'),L=(w&&w.look)||BASES.rusty.look,H
  const o=addSkin(g,J,Wt,{out:.004,outCol:[.04,.04,.06],shade:.9});swordSkin={o,s:skins[skins.length-1]};}
  if(L.glow){const gg=tint(tube([Q(0,0,L0+.05),Q(0,0,L1-.3)],{r:()=>.012,flat:.5,seg:4,n:2,wide:up}),[1,1,1]),n2=gg.P.length/3,J2=new Uint8Array(n2*4),W2=new Float32Array(n2*4);for(let i=0;i<n2;i++){J2[i*4]=H.rightHand;W2[i*4]=1}
   swordSkin.og=addSkin(gg,J2,W2,{unlit:1,col:L.glow,shade:0});swordSkin.sg=skins[skins.length-1]}
- SK.tipRest=Q(0,0,L1-.05);SK.midRest=Q(0,0,L1*.55);SK.gripRest=cen;SK.gripAx=ax;SK.bladeLen=L1}
+ SK.tipRest=Q(0,0,L1-.05);SK.baseRest=Q(0,0,.2);SK.midRest=Q(0,0,L1*.55);SK.gripRest=cen;SK.gripAx=ax;SK.bladeLen=L1}
 // ---------- ground loot: light beams coloured by rarity, auto pick-up when you walk over them
 const LOOT=[];let beamGeo=null;
 function dropLoot(x,z,items,gold){for(const it of items){const a=Math.random()*6.28,r=.6+Math.random()*.9,lx=x+Math.cos(a)*r,lz=z+Math.sin(a)*r;

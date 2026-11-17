@@ -14,7 +14,9 @@ let AC=null;const sfx={on(){if(AC)return;try{AC=new (window.AudioContext||window
  grab(){this.noise(.25,600,200,.3,'lowpass')},stab(){this.noise(.18,1200,300,.45,'lowpass');this.tone(.2,140,50,.5)},struggle(){this.noise(.08,800,400,.2)},gobShout(){this.tone(.22,420,620,.18,'square')},
  roar(v=1){this.tone(1.4,90,45,.45*v,'sawtooth');this.noise(1.4,500,120,.35*v,'lowpass')},hiss(){this.noise(.6,5000,2500,.25,'highpass')},snap(){this.noise(.08,2500,800,.5);this.tone(.08,200,80,.4,'square')},
  wings(v=.6){this.noise(.3,250,80,.4*v,'lowpass')},rare(){this.tone(.25,660,990,.2,'triangle');setTimeout(()=>this.tone(.35,990,1320,.2,'triangle'),120)},anvil(){this.tone(.3,1400,900,.3,'triangle');this.noise(.1,3000,1500,.3)},drink(){this.noise(.5,300,600,.15,'lowpass')},
- rest(){this.tone(1.2,220,330,.2,'sine');this.tone(1.2,330,495,.12,'sine')},chest(){this.noise(.25,400,200,.3,'lowpass');this.tone(.3,500,800,.15,'triangle')},break(){this.tone(.3,300,90,.4,'square');this.noise(.25,2000,400,.3)},lock(){this.tone(.08,1200,1500,.12,'square')},howl(){this.tone(1.6,300,520,.3,'sawtooth');setTimeout(()=>this.tone(1.2,520,380,.25,'sawtooth'),700)},horn(){this.tone(1.3,150,140,.4,'sawtooth')},inhale(){this.noise(1.6,200,1800,.25)},fire(){this.noise(.25,700,300,.25,'lowpass')},hey(){this.tone(.25,330,280,.2,'triangle')}};
+ rest(){this.tone(1.2,220,330,.2,'sine');this.tone(1.2,330,495,.12,'sine')},chest(){this.noise(.25,400,200,.3,'lowpass');this.tone(.3,500,800,.15,'triangle')},break(){this.tone(.3,300,90,.4,'square');this.noise(.25,2000,400,.3)},lock(){this.tone(.08,1200,1500,.12,'square')},howl(){this.tone(1.6,300,520,.3,'sawtooth');setTimeout(()=>this.tone(1.2,520,380,.25,'sawtooth'),700)},horn(){this.tone(1.3,150,140,.4,'sawtooth')},inhale(){this.noise(1.6,200,1800,.25)},fire(){this.noise(.25,700,300,.25,'lowpass')},hey(){this.tone(.25,330,280,.2,'triangle')},
+ clang(){this.tone(.22,1900,1500,.22,'triangle');this.tone(.3,2600,2300,.12,'sine');this.noise(.12,6000,3000,.28,'highpass')},bone(){this.noise(.07,2600,900,.4);this.tone(.06,420,180,.25,'square')},
+ flesh(w=1){this.noise(.1+.04*w,1300,260,.42+.1*w,'lowpass');this.tone(.12,150,60,.35+.12*w)}};
 // ---------- effects: sword arcs, sparks, ground telegraphs
 function buildFx(){const g=G(),n=18;for(let i=0;i<=n;i++){const t=i/n,a=lp(-1.15,1.15,t),w=Math.sin(PI*t),r0=1.75-w*.75,r1=1.75+w*.75;
   for(const[r,c]of[[r0,[.45,.6,1]],[r1,[1,1,1]]]){g.P.push(Math.sin(a)*r,0,Math.cos(a)*r);g.N.push(0,1,0);g.C.push(c[0],c[1],c[2]);g.U.push(0,0);g.W.push(0)}
@@ -96,6 +98,7 @@ function step(dt){GT.dt=dt;if(dt>0&&DUN.on){GT.clock+=dt;updatePlayer(dt);GT.tod
   const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
  poseTarget();applyPose(P.ps);PM=playerMatrix(dt);
+ if(!P.swW&&P.st==='move'){const rh=HB.rightHand;P.idleH=SK.GP[rh].slice();P.idleD=vnorm(r3v(SK.GR[rh],SK.gripAx))}if(dt>0)sweepHits();
  if(P.pinBy){const w=P.pinBy,b=mpt(PM,SK.GP[w.part.bone]),ty=Math.atan2(b[0]-w.x,b[2]-w.z);w.yaw+=angd(ty,w.yaw)*.25;const gx=b[0]-Math.sin(w.yaw)*.95*w.sc,gz=b[2]-Math.cos(w.yaw)*.95*w.sc;w.x=lp(w.x,gx,.25);w.z=lp(w.z,gz,.25);w.y=hAt(w.x,w.z)}
  queueTelegraphs()}
 // enemies' visible tells on the ground
@@ -124,7 +127,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  for(const w of WATERS)w.alpha=w.alpha;
  if(!DUN.on)streamForest(P.x,P.z,(window.__G&&__G.fastStream)?99:1);for(const f of CAMPFIRES){const k=1+Math.sin(GT.time*13+f.x)*.12;f.o.M=mtrs([f.x,f.y+.1,f.z],[0,GT.time*.7,0]);f.o.M[5]*=k*(1+Math.sin(GT.time*9)*.15)}
  updateAltars(GT.time);if(!DUN.on)updateDunEntrances(GT.time);if(HERO.glow){const g=P.berserk>0?1.6+.4*Math.sin(GT.time*12):(P.rage>=100?1.1+.3*Math.sin(GT.time*6):1);HERO.glow.col=[g,.25*g,.15*g]}if(HERO.armor){const a=eqItem('armor'),t=HERO.armor.pbr?[1,1,1]:(a&&a.look?a.look.tint:[1,1,1]),k=P.berserk>0?.25+.15*Math.sin(GT.time*10):0;HERO.armor.col=[t[0]*(1+k),t[1]*(1-k*.4),t[2]*(1-k*.4)]}
- skinAll();if(DUN.on)drawMons(GT.time);else{drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon()}drawHeroBow();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks()}
+ skinAll();if(DUN.on)drawMons(GT.time);else{drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon()}drawHeroBow();drawTrail();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
 function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
@@ -195,6 +198,6 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
    dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
-   openWin,renderWin,uiTick,maxHP,useBow,GUILD,guildInteract,guildAccept,guildTurnIn,guildKill,cDone,fillBoard,GRANK,CINE,cineNext,cineEnd,archerAimPoint,SO,startStandoff,standoffTarget,DUN,DUNS,MONS,MT,MV,enterDungeon,leaveDungeon,dunInteract,dunPrompt,spawnMon,solvePuzzle,openDunDoor,readLore,dunSwing,genFloor,LORE,dCX,dCZ,dunLos,dunCollide,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
+   openWin,renderWin,uiTick,maxHP,useBow,GUILD,guildInteract,guildAccept,guildTurnIn,guildKill,cDone,fillBoard,GRANK,CINE,cineNext,cineEnd,archerAimPoint,swordTip,bladeAt,startLight,startHeavy,STANCES,SO,startStandoff,standoffTarget,DUN,DUNS,MONS,MT,MV,enterDungeon,leaveDungeon,dunInteract,dunPrompt,spawnMon,solvePuzzle,openDunDoor,readLore,dunSwing,genFloor,LORE,dCX,dCZ,dunLos,dunCollide,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}

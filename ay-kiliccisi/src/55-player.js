@@ -38,6 +38,8 @@ function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=o.src&&o
  if(lying){if(o.knock==='down'&&!P.pinBy&&P.st==='getup')knockDown(d,o.power||1)}
  else if(o.knock==='down'&&!(P.berserk>0&&(o.power||1)<1.4)){knockDown(d,o.power||1)}else if(o.knock!=='none'&&!(P.berserk>0)&&P.st!=='drink'||o.knock==='flinch'&&P.st==='drink'){P.st='hurt';P.t=0;P.hurtDir=d;const pk=o.noPush?0:3.5;P.vx=d[0]*pk;P.vz=d[1]*pk;P.air=false}
  return'hit'}
+// a point along the blade in world space: f=0 near the guard, f=1 at the tip (from the skinned right hand)
+function bladeAt(f){const r=vadd(SK.baseRest,vmul(vsub(SK.tipRest,SK.baseRest),f));return mpt(PM,SK.GP[HB.rightHand].map((v,i)=>v+r3v(SK.GR[HB.rightHand],vsub(r,PLD.bones[HB.rightHand].r))[i]))}
 function swordTip(){return mpt(PM,SK.GP[HB.rightHand].map((v,i)=>v+r3v(SK.GR[HB.rightHand],vsub(SK.midRest,PLD.bones[HB.rightHand].r))[i]))}
 // ragdoll-style fall: the body tips over in the push direction like an inverted pendulum, bounces once, limbs lag behind
 function knockDown(dir,power){const l=Math.hypot(dir[0],dir[1])||1,fx=dir[0]/l,fz=dir[1]/l;// world fall direction -> model space
@@ -51,10 +53,10 @@ function respawn(){if(DUN.on)leaveDungeon(true);const al=SYS.altarAt!==undefined
 function canAct(cost){if(P.sta<=0){note('Dayanıklılık yetersiz');return false}return true}
 function spend(c){P.sta=Math.max(0,P.sta-c);P.staT=.85}
 function aimAssist(range=4.2){const f=P.lock&&!P.lock.dead&&foeDist(P.lock)<range+3?P.lock:nearestFoe(range,1.7);if(f)P.yaw=Math.atan2(f.x-P.x,f.z-P.z);else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
-function startLight(i){if(!canAct())return;const S=curStance();spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T;P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();sfx.swing()}
+function startLight(i){if(!canAct())return;const S=curStance(),sw=SWG[SYS.stance in SWG?SYS.stance:'stone'].L[i]||SWG.stone.L[0];spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T*(sw.fin?1.12:1);P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();beginSwing('light',sw,P.atkT);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startCharge(){if(!canAct())return;P.st='charge';P.t=0;P.charge=0;P.crouch=false;aimAssist();sfx.charge()}
-function startHeavy(){spend(COST.heavy+COST.heavyMax*P.charge);P.hvT=curStance().hvT;P.spin0=P.yaw;P.st='heavy';P.t=0;P.hitDone=false;aimAssist(4.6);sfx.swing()}
-function startRunAtk(){if(!canAct())return;spend(COST.run);P.st='runatk';P.t=0;P.hitDone=false;aimAssist(6);sfx.swing()}
+function startHeavy(){spend(COST.heavy+COST.heavyMax*P.charge);P.hvT=curStance().hvT;P.st='heavy';P.t=0;P.hitDone=false;aimAssist(4.6);beginSwing('heavy',SWG[SYS.stance in SWG?SYS.stance:'stone'].H,P.hvT);P.spin0=P.yaw;P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
+function startRunAtk(){if(!canAct())return;spend(COST.run);P.st='runatk';P.t=0;P.hitDone=false;aimAssist(6);beginSwing('run',SWG.run,.6);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startJump(){if(!canAct())return;spend(COST.jump);P.vy=6.6;P.air=true;P.st='jump';P.t=0;P.crouch=false;P.jumpAt=GT.clock;sfx.jump()}
 function startJumpAtk(){if(!canAct())return;spend(COST.jumpAtk);P.st='jumpatk';P.t=0;P.hitDone=false;P.vy=Math.min(P.vy,1.5);aimAssist(5);sfx.swing()}
 // dodge: direction from the stick relative to where the hero faces -> forward roll, back-step, or a side roll
@@ -69,18 +71,23 @@ function startBlock(){if(P.guard<25){note('Savunma toparlanıyor…');return fal
 // --------------------------------------------------------------- damage dealing
 const ATK={light0:{r:2.75,arc:1.2,m:1,t:'hit'},light1:{r:2.75,arc:1.2,m:1.05,t:'hit'},light2:{r:2.9,arc:1.1,m:1.6,t:'big'},heavy:{r:3.2,arc:1.05,m:2.1,t:'big'},
  runatk:{r:3.0,arc:.95,m:1.5,t:'hit'},jumpatk:{r:2.7,arc:PI,m:1.8,t:'big'},stab:{r:1.4,arc:PI,m:99,t:'big'}};
-function doHit(kind){const S=curStance(),lt=kind.startsWith('light'),A=lt?{r:S.r,arc:S.arc,m:S.dm[P.combo]||1,t:P.combo>=S.combo-1?'big':'hit'}:kind==='heavy'?{r:ATK.heavy.r,arc:S.hvArc||ATK.heavy.arc,m:S.hvM,t:'big'}:ATK[kind],cnt=P.counterT>0;if(cnt)P.counterT=0;spawnArc(kind==='heavy'||kind==='jumpatk'?2:kind==='light1'?1:kind==='light2'?2:0);P.noise=14;let any=false;const fx=Math.sin(P.yaw),fz=Math.cos(P.yaw);
+// one foe struck by the hero's blade (sweep) or a slam (jump attack). Damage, posture damage and knock direction are
+// separate; the feel (sparks, sound, hit-stop, shake) depends on the attack weight and the foe's material.
+function strikeFoe(f,kind,dx,dz,p,A){const S=curStance(),lt=kind.startsWith('light'),cnt=!!(A&&A.cnt),m=lt?(S.dm[P.combo]||1):kind==='heavy'?S.hvM:(ATK[kind]||{m:1}).m;
+ const sneak=!foeHostile(f)&&(f.aware||0)<.5&&f.st!=='mounted',weak=isWolf(f)?f.st==='recover':(f.open&&f.open()),air=f.st==='pounce';
+ const adv=S.strong(f),crit=Math.random()*100<5+gear('crit');let dmg=weaponDmg()*(.9+rnd()*.2)*dmgMul()*(adv?1.25:1)*(cnt?1.8:1)*m*(kind==='heavy'?1+P.charge*.6:1)*(sneak?2:1)*(weak?1.5:1)*(air?1.4:1)*(crit?1.6:1)*(P.berserk>0?1.4:1)*(P.roarBuff>0?1.2:1);dmg=Math.round(dmg);
+ const dead=foeHurt(f,dmg,dx,dz,kind);const hp=p||(f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+.7*(f.sc||1)+(f.air||0),f.z]);
+ if(f.blockedAt===GT.clock){addPosture(f,lt?9:14);spawnSparks(hp[0],hp[1],hp[2],12,[1,.9,.6],4);floatText(hp[0],hp[1]+.4,hp[2],'BLOK','');sfx.clang();GT.stop=Math.max(GT.stop,.06);return false}
+ if(!dead)addPosture(f,(lt?11*(S.pm[P.combo]||1):({heavy:30+P.charge*25,runatk:18,jumpatk:30}[kind]||12))*(adv?1.8:1)*(cnt?1.8:1));gainRage(4);
+ const lch=gear('leech')+(P.berserk>0?8:0);if(lch>0)P.hp=Math.min(maxHP(),P.hp+dmg*lch/100);if(kind==='heavy'&&hasFx('bleed')){f.bleedT=5;f.bleedD=dmg*.08}if(hasFx('ember')&&Math.random()<.3){f.bleedT=Math.max(f.bleedT||0,2);f.bleedD=Math.max(f.bleedD||0,dmg*.06)}
+ hitFeel(f,A||{kind:kind==='jumpatk'?'heavy':kind,fin:0},hp,dead,crit);const big=kind==='heavy'||kind==='jumpatk'||(A&&A.fin);
+ floatText(hp[0],hp[1]+.4,hp[2],(sneak?'GİZLİ ':cnt?'KARŞI ':air?'KARŞI ':weak?'AÇIK ':adv?'DURUŞ ':crit?'KRİTİK ':'')+dmg,sneak||cnt||air||weak||adv||crit||big?'crit':'');
+ if(dead)onFoeKilled(f,false);return true}
+// area hit around the hero (jump attack slam): radius + cone, used where a sweep makes no sense
+function doHit(kind){const A=ATK[kind]||ATK.jumpatk,cnt=P.counterT>0;if(cnt)P.counterT=0;P.noise=14;let any=false;const fx=Math.sin(P.yaw),fz=Math.cos(P.yaw);
  for(const f of foes()){const d=foeDist(f),dx=f.x-P.x,dz=f.z-P.z,dc=Math.hypot(dx,dz);if(d>A.r)continue;if(dc>.8&&!f.hitPts&&Math.abs(angd(Math.atan2(dx,dz),P.yaw))>A.arc)continue;
-  if(f.hitPts&&Math.abs(angd(Math.atan2(dx,dz),P.yaw))>A.arc+.5&&d>1)continue;if(f.alt&&f.alt()>2.2&&kind!=='jumpatk')continue;
-  const sneak=!foeHostile(f)&&(f.aware||0)<.5&&f.st!=='mounted',weak=isWolf(f)?f.st==='recover':(f.open&&f.open()),air=f.st==='pounce';
-  const adv=S.strong(f),crit=Math.random()*100<5+gear('crit');let dmg=weaponDmg()*(.9+rnd()*.2)*dmgMul()*(adv?1.25:1)*(cnt?1.8:1)*A.m*(kind==='heavy'?1+P.charge*.6:1)*(sneak?2:1)*(weak?1.5:1)*(air?1.4:1)*(crit?1.6:1)*(P.berserk>0?1.4:1)*(P.roarBuff>0?1.2:1);dmg=Math.round(dmg);
-  const k=dc||1,dead=foeHurt(f,dmg,dc>.3?dx/k:fx,dc>.3?dz/k:fz,kind);any=true;if(f.blockedAt===GT.clock){addPosture(f,lt?9:14);const hp0=f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+1.1,f.z];spawnSparks(hp0[0],hp0[1],hp0[2],9,[1,.9,.6],3);floatText(hp0[0],hp0[1]+.4,hp0[2],'BLOK','');sfx.block();continue}if(!dead)addPosture(f,(lt?11*(S.pm[P.combo]||1):({heavy:30+P.charge*25,runatk:18,jumpatk:30}[kind]||12))*(adv?1.8:1)*(cnt?1.8:1));gainRage(4);
-  const lch=gear('leech')+(P.berserk>0?8:0);if(lch>0)P.hp=Math.min(maxHP(),P.hp+dmg*lch/100);if(kind==='heavy'&&hasFx('bleed')){f.bleedT=5;f.bleedD=dmg*.08}if(hasFx('ember')&&Math.random()<.3){f.bleedT=Math.max(f.bleedT||0,2);f.bleedD=Math.max(f.bleedD||0,dmg*.06)}const hp=f.hitPts?f.hitPts()[0]:[f.x,f.y+.7*(f.sc||1)+(f.air||0),f.z];
-  spawnSparks(hp[0],hp[1],hp[2],dead?22:A.t==='big'?14:7,[1,.95,.7]);floatText(hp[0],hp[1]+.4,hp[2],(sneak?'GİZLİ ':cnt?'KARŞI ':air?'KARŞI ':weak?'AÇIK ':adv?'DURUŞ ':crit?'KRİTİK ':'')+dmg,sneak||cnt||air||weak||adv||crit||A.t==='big'?'crit':'');
-  if(dead)onFoeKilled(f,false)}
- if(DUN.on)dunSwing(kind);
- if(any){const big=A.t==='big';GT.stop=Math.max(GT.stop,big?.12:.06);CAM.shake=Math.max(CAM.shake,big?.65:.4);sfx.hit()}
- if(kind==='jumpatk'||kind==='heavy'){const tp=swordTip();spawnSparks(tp[0],hAt(tp[0],tp[2])+.1,tp[2],6,[.8,.75,.6],3);if(hasFx('fire'))for(let i=0;i<4;i++)BURNS.push({x:P.x+Math.sin(P.yaw)*(1.2+i*.9),z:P.z+Math.cos(P.yaw)*(1.2+i*.9),t:0,life:4,mine:1})}
+  const k=dc||1;if(strikeFoe(f,kind,dc>.3?dx/k:fx,dc>.3?dz/k:fz,null,{kind:'heavy',cnt,fin:1}))any=true}
+ if(DUN.on)dunSwing(kind);const tp=swordTip();spawnSparks(tp[0],hAt(tp[0],tp[2])+.1,tp[2],10,[.7,.65,.55],3);CAM.shake=Math.max(CAM.shake,any?.4:.2);sfx.thud();
  return any}
 function onFoeKilled(f,byPet){guildKill(f);if(isWolf(f))GS.onKill(f,byPet);else if(f.onKilled)f.onKilled(byPet);
  const tier=f===DRAGON?3:f.boss?2:f.elite||(GOBS.includes(f)&&f.big)?1:0;lootFor(f,tier,isWolf(f)?2:GOBS.includes(f)?(f.big?14:4):f===DRAGON?200:6);if(isWolf(f)&&Math.random()<.35)SYS.pelts=(SYS.pelts||0)+1;if(P.lock===f)P.lock=null;questEvent('kill',f)}
@@ -136,15 +143,19 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  case'assn':{const v=P.asV;P.vx=P.vz=0;if(v&&!v.dead)P.yaw=Math.atan2(v.x-P.x,v.z-P.z);if(!P.hitDone&&P.t>.26){P.hitDone=true;assassinHit(v)}if(P.t>.7){P.st='move';P.t=0;P.asV=null}break}
  case'drink':{const sp=1.2*il;moveFree(sp,6);const heal=maxHP()*(P.healFrac||.45);if(P.t<.9)P.hp=Math.min(maxHP(),P.hp+heal*dt/.9);if(P.t>1.05){P.st='move';P.t=0}break}
  case'skill':updateSkill(dt);break;
- case'attack':{const S=curStance(),T=P.atkT||.46,u=P.t/T,last=P.combo>=S.combo-1;slide(10);if(u>.22&&u<.6){const sp=S.lunge&&last?8.5:3.4;P.vx=Math.sin(P.yaw)*sp;P.vz=Math.cos(P.yaw)*sp}
-  if(u<.2&&take('dodge')){startDodge();break}if(u<.2&&IN.blockHeld&&startBlock())break;// attack cancel during the wind-up
-  if(!P.hitDone&&u>=.36){P.hitDone=true;doHit('light'+P.combo)}if(u>.25&&take('atk',.3))P.queued=true;
-  if(u>.4&&take('dodge')){startDodge();break}if(u>.5&&IN.blockHeld&&startBlock())break;if(u>.5&&execTarget()&&P.queued){P.queued=false;startExec(execTarget());break}
-  if(u>=1){if(P.queued&&P.combo<S.combo-1)startLight(P.combo+1);else{P.st='move';P.t=0}}break}
+ case'attack':{const S=curStance(),T=P.atkT||.46,u=P.t/T,A=P.atk||{a0:.34,a1:.56};swingMove(dt);
+  const early=u<A.a0*.75,late=u>A.a1+.04;// cancel windows: wind-up (feint) or recovery, never while the blade is live
+  if((early||late)&&take('dodge')){P.atk=null;startDodge();break}if((early||late)&&IN.blockHeld&&startBlock()){P.atk=null;break}
+  if(u>A.a0&&take('atk',.35))P.queued=true;if(late&&P.queued&&execTarget()){P.queued=false;P.atk=null;startExec(execTarget());break}
+  if(late&&take('hvy',.3)){P.queued=false;P.atk=null;IN.atkUsed=true;startHeavy();break}// light -> heavy link
+  if(u>A.a1+.12&&P.queued&&P.combo<S.combo-1){startLight(P.combo+1);break}
+  if(u>=1){P.atk=null;P.st='move';P.t=0}break}
  case'charge':{slide(12);P.charge=Math.min(1,P.t/.9);if(il>.2)P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*4);if(P.t>.9&&!P.chargedFx){P.chargedFx=1;sfx.charged();const tp=swordTip();spawnSparks(tp[0],tp[1],tp[2],10,[.6,.8,1],2)}
   if(!IN.atkHeld||P.t>1.3){P.chargedFx=0;startHeavy()}else if(take('dodge')){P.chargedFx=0;startDodge()}break}
- case'heavy':{const T=P.hvT||.7,u=P.t/T;slide(10);if(curStance().hvArc){P.yaw=P.spin0+sst(.3,.75,u)*2*PI}if(u>.3&&u<.55){P.vx=Math.sin(P.yaw)*2.6;P.vz=Math.cos(P.yaw)*2.6}if(!P.hitDone&&u>=.5){P.hitDone=true;doHit('heavy')}if(u>=1){P.st='move';P.t=0;P.charge=0}break}
- case'runatk':{const T=.6,u=P.t/T,sp=lp(7.5,0,sst(.2,.75,u));P.vx=Math.sin(P.yaw)*sp;P.vz=Math.cos(P.yaw)*sp;if(!P.hitDone&&u>=.38){P.hitDone=true;doHit('runatk')}if(u>=1){P.st='move';P.t=0}break}
+ case'heavy':{const T=P.hvT||.7,u=P.t/T,A=P.atk||{a0:.4,a1:.6};if(A.sw&&A.sw.spin){slide(10);P.yaw=P.spin0+sst(A.a0-.05,A.a1+.1,u)*2*PI}else swingMove(dt);
+  if(u>A.a1+.05&&take('atk',.3))P.queued=true;if(u>A.a1+.15&&P.queued){P.queued=false;startLight(0);break}if(u>A.a1+.05&&take('dodge')){P.atk=null;startDodge();break}
+  if(u>=1){P.atk=null;P.st='move';P.t=0;P.charge=0}break}
+ case'runatk':{const T=.6,u=P.t/T;if(P.atk&&P.atk.tg)swingMove(dt);else{const sp=lp(7.5,0,sst(.2,.75,u));P.vx=Math.sin(P.yaw)*sp;P.vz=Math.cos(P.yaw)*sp}if(u>.62&&take('atk',.3)){P.atk=null;startLight(1);break}if(u>=1){P.atk=null;P.st='move';P.t=0}break}
  case'jump':{moveFree((P.sprinting?5:3.4)*il,4);if(atkEdge||take('atk')){IN.atkUsed=true;startJumpAtk()}
   else if(P.t<.55&&take('jump',.05)){const v=tdTarget(4.8);if(v&&!isWolf(v)&&v.big)note('Büyük goblin tutulamaz');else if(v)startLeap(v);else if(tdTarget(9))note('Çok uzak: hedefin arkasına daha çok yaklaş')}
   break}
@@ -191,14 +202,8 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(mv>.08)run(mv,P.sprinting&&P.spd>4.6);
   else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
   if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
- case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
-  if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
-  else if(pc===1){q.RaZ=.45;q.RaX=0;q.RaY=lp(2.15,-.55,sl);q.Rel=lp(.3,.08,sl);q.chY=lp(.6,-.55,sl);q.spY=lp(.25,-.2,sl);q.RthX=-.5;q.Rkn=.55;q.LthX=.35;q.Lkn=.25}
-  else{q.RaZ=-1.3;q.RaY=.25;q.RaX=lp(-.65,1.8,sl);q.Rel=lp(.6,.05,sl);q.chX=lp(-.2,.5,sl);q.spX=lp(-.05,.3,sl);q.LthX=-.6;q.Lkn=.7;q.RthX=.3;q.Rkn=.3;q.RwX=lp(-.3,.3,sl);q.two=.0}break}
+ case'attack':case'heavy':case'runatk':{rate=P.st==='heavy'?26:32;swingBody(q);break}
  case'charge':{rate=12;const k=P.charge;q.two=1;q.RaZ=-1.25-k*.35;q.RaY=.2;q.RaX=-.85-k*.25;q.Rel=.75;q.chX=-.25*k;q.spX=-.12*k;q.LthX=-.55;q.Lkn=.7;q.RthX=.35;q.Rkn=.35;q.pel=.1;q.hipY=-.04*k;q.RwX=-.3-k*.3;break}
- case'heavy':{rate=30;const u=P.t/(P.hvT||.7),sl=sst(.32,.55,u);q.two=1;q.RaZ=lp(-1.6,-.7,sl);q.RaY=.25;q.RaX=lp(-1.1,1.7,sl);q.Rel=lp(.75,.05,sl);q.chX=lp(-.3,.55,sl);q.spX=lp(-.15,.35,sl);q.pel=lp(.1,.25,sl);
-  q.LthX=lp(-.55,-.9,sl);q.Lkn=lp(.7,1.0,sl);q.RthX=.4;q.Rkn=.4;q.hipY=-.08*sl;q.RwX=lp(-.6,.4,sl);break}
- case'runatk':{rate=30;const u=P.t/.6,sl=sst(.25,.5,u);q.RaZ=.3;q.RaX=lp(-.9,.2,sl);q.RaY=lp(-1.1,1.9,sl);q.Rel=lp(.7,.05,sl);q.chY=lp(-.7,.7,sl);q.spX=.35;q.pel=.2;q.LthX=-.9;q.Lkn=.9;q.RthX=.55;q.Rkn=.3;q.LaX=.7;q.Lel=1.1;break}
  case'jump':{rate=16;const up=P.vy>0;q.pel=.15;q.LthX=up?-.9:-.5;q.Lkn=up?1.4:.9;q.RthX=up?-.2:-.35;q.Rkn=up?.9:.6;q.LaZ=.7;q.LaX=-.5;q.RaZ=.8;q.RaX=-.5;q.Rel=.8;q.spX=.1;break}
  case'jumpatk':{rate=26;q.two=1;q.RaZ=-1.4;q.RaX=lp(-1.1,1.5,sst(0,.25,P.t));q.Rel=.2;q.RaY=.2;q.chX=.45;q.spX=.35;q.pel=.3;q.LthX=-1.2;q.Lkn=1.6;q.RthX=-.6;q.Rkn=1.4;break}
  case'dodge':{rate=34;const k=P.dodgeKind;// low dash: crouched lean into the direction, sword arm trailing
@@ -228,7 +233,15 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
   q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
- const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}
+ const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k);
+ // arm IK for swings: the IK weight eases in/out so entering and leaving an attack never snaps the arm
+ const F=(P.st==='attack'||P.st==='heavy'||P.st==='runatk')&&P.atk?swingFrame():null;if(F){P.swF=F;P.swW=Math.min(1,(P.swW||0)+GT.dt*13)}else P.swW=Math.max(0,(P.swW||0)-GT.dt*6);
+ p.sw=P.swW>.01&&P.swF?{D:P.swF.D,H:P.swF.H,w:P.swW}:null}
+// body for a swing: torso twists with the blade, weight goes onto the lead foot at the cut, down-cuts bend forward
+function swingBody(q){for(const k of['RaX','RaY','RaZ','Rel','RwX','RwY','RwZ'])if(P.ps[k]!==undefined)q[k]=P.ps[k];// the arm base stays put; IK moves it
+ const F=swingFrame();if(!F)return;const A=P.atk,D=F.D,yaw=Math.atan2(D[0],D[2]),pit=Math.asin(cl(D[1],-1,1)),act=sst(A.a0-.08,A.a0+.05,F.u)*(1-sst(A.a1+.1,1,F.u));
+ q.chY=cl(yaw,-2,2)*.32;q.spY=cl(yaw,-2,2)*.18;q.chX=-pit*.12+act*.12;q.spX=.12+act*(.18-pit*.1);q.pel=.06+act*.1;q.hdX=-.1;q.hipY=-.05*act;
+ q.LthX=lp(-.35,-.8,act);q.Lkn=lp(.45,.75,act);q.RthX=lp(.25,.45,act);q.Rkn=lp(.25,.35,act);q.two=F.two;q.LaX=.45;q.LaZ=1.0;q.Lel=.85}
 // model matrix: yaw, scale, ragdoll tilt about the feet in the fall direction, dodge rolls; then lifted so no bone sinks into the ground
 function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);for(let k=0;k<12;k++)M[k]*=PSC;
  if(R.ang>.001){const ax=vnorm([R.fz,0,-R.fx]),A=axisAng(ax,R.ang),m4=new Float32Array([A[0],A[3],A[6],0,A[1],A[4],A[7],0,A[2],A[5],A[8],0,0,0,0,1]);M=mmul(mmul(M,mtrs([0,.06,0],[0,0,0])),mmul(m4,mtrs([0,-.06,0],[0,0,0])))}

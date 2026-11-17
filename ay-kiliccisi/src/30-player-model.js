@@ -33,6 +33,8 @@ function applyPose(q){const R=SK.R,H=HB;
  SK.root=[0,-(SK.L1+SK.L2-Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)))+q.hipY,0];skUpdate();
  // reverse grip (blade tip down, both hands): right hand to a point in front of the chest, blade axis turned straight down
  if(q.rev>.02){const h=lp(1.02,.82,cl(q.revDn||0,0,1));armIK('right',[-.02,h,.27],[-.6,.2,-.5],[0,-1,0],q.rev)}
+ // sword swings: the right hand follows the swing path and the blade points along it (55b-strike.js)
+ if(q.sw){armIK('right',q.sw.H,[-.55,-.65,-.35],q.sw.D,q.sw.w);skUpdate()}
  // left hand joins the grip (two-handed swings, charged heavy attack, guard, reverse grip)
  if(q.two>.02||q.rev>.02){const rh=HB.rightHand,g=SK.GR[rh],gp=vadd(SK.GP[rh],r3v(g,vsub(SK.gripRest,PLD.bones[rh].r))),ax=r3v(g,SK.gripAx),t=vsub(gp,vmul(ax,.085));armIK('left',t,[.6,.1,-.5],null,Math.max(q.two,q.rev))}
  // choke hold: both forearms around a neck in front of the chest
@@ -51,5 +53,5 @@ function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H
  const PG=SK.GR[SK.par[U]],r1=vnorm(vsub(B[Lo].r,B[U].r)),Gu=fromTo(r1,vnorm(vsub(E,S)));
  const r2=r3v(Gu,vnorm(vsub(B[Hd].r,B[Lo].r))),Gl=r3m(fromTo(r2,vnorm(vsub(vadd(S,vmul(u,d)),E))),Gu);
  SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
- if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
+ if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=vnorm(r3v(g,SK.gripAx)),want=axisDown,Gh=r3m(fromTo(cur,want),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
  skUpdate()}

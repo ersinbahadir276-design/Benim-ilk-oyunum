@@ -29,6 +29,6 @@ function updateStandoff(dt){if(!SO.on)return;const g=SO.lead;if(!P.alive||(P.st!
   if(pressed&&P.st==='move'){soFail(SO.feinted&&GT.clock-SO.ft<.6?'Aldatmacaya kandın':'Erken davrandın');return}
   if(SO.t>SO.wait){SO.phase='charge';SO.t=0;g.st='windup';sfx.gobShout();soUI('ŞİMDİ!','gold')}}
  else if(SO.phase==='charge'){g.yaw=want+PI;const sp=10;const p=collide(g.x-Math.sin(want)*sp*dt,g.z-Math.cos(want)*sp*dt,g.rad);g.x=p[0];g.z=p[1];g.spd=sp;g.ph+=sp*dt*4.2;g.y=hAt(g.x,g.z);g.yaw=Math.atan2(P.x-g.x,P.z-g.z);
-  if(pressed&&P.st==='move'){if(d<3.6){SO.n++;g.so=0;g.aware=0;g.st='alert';startAssassin(g);GT.slow=.5;soUI('KAFA KAFAYA ×'+SO.n,'gold');SO.phase='kill';SO.t=0}else{soFail('Erken davrandın');return}}
+  if(pressed&&P.st==='move'){if(d<3.6){SO.n++;g.so=0;g.aware=0;g.st='alert';startAssassin(g);GT.slow=.35;soUI('KAFA KAFAYA ×'+SO.n,'gold');SO.phase='kill';SO.t=0}else{soFail('Erken davrandın');return}}
   else if(d<1.3||SO.t>1.1){soFail('Geç kaldın');return}}
  else if(SO.phase==='kill'){if(P.st==='move'&&SO.t>.35){if(SO.n>=3||!SO.grp.some(o=>!o.dead&&o.so))soEnd(true);else soNext()}}}
