@@ -171,17 +171,38 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(P.staT>0)P.staT-=dt;else P.sta=Math.min(100,P.sta+(P.st==='block'?12:30)*dt*(1+gear('sta')/100)*(P.berserk>0?1.5:1)*(P.exhaustT>0?.5:1));
  if(P.guardT>0)P.guardT-=dt;else P.guard=Math.min(100,P.guard+(P.st==='gbreak'?0:P.guard<25?9:16)*dt);
  if(P.st==='move'||P.st==='getup')P.hp=Math.min(maxHP(),P.hp+.45*dt);
- const mv=Math.hypot(P.x-ox,P.z-oz);P.spd=dt>0?mv/dt:0;if(P.st==='move'){SYS.walked+=mv;P.ph+=mv*(P.sprinting?2.5:P.crouch?5.2:4.3)}
+ const mv=Math.hypot(P.x-ox,P.z-oz);P.spd=dt>0?mv/dt:0;if(P.st==='move'){SYS.walked+=mv;P.ph+=mv*gaitRate()}
  if(P.sprinting)P.noise=Math.max(P.noise,9);
  if(!SYS.gate&&Math.hypot(P.x,P.z)<46){SYS.gate=1;P.cp=[0,60]}if(!SYS.knight&&Math.hypot(P.x-10,P.z-50)<5.5)SYS.knight=1}
 // --------------------------------------------------------------- pose targets per state
+// gait: phase advances per metre walked. In stance (ph mod 2π in [π/2,3π/2]) the thigh sweeps back so the foot moves
+// linearly in body space, at exactly the speed the body moves over it (stride length = π / rate); swing is a smooth return.
+const GAIT={walk:4.3,run:2.5,crouch:5.2,lin:1,land:.82};
+function gaitRate(){return P.sprinting?GAIT.run:P.crouch?GAIT.crouch:GAIT.walk}
+function gaitAmp(rate){const L=(SK.L1+SK.L2)*.985;return Math.asin(Math.min(.9,Math.PI/(2*rate)/L))}
+// -1 = thigh fully forward (touchdown), +1 = fully back (lift-off)
+function gaitSweep(ph){if(!GAIT.lin)return-Math.sin(ph);const u=((ph-Math.PI/2)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+ if(u<=Math.PI)return-1+2*u/Math.PI;const v=(u-Math.PI)/Math.PI;return Math.cos(v*Math.PI)}
 function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph),c=Math.cos(P.ph);let rate=14;
- const run=(mv,sprint)=>{const A=(sprint?.9:.5)*mv,B=(sprint?1.55:.95)*mv;q.LthX=-s*A;q.RthX=s*A;q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
+ P.gaitT=(P.st==='move'&&!P.crouch&&P.spd>.25)?(P.gaitT||0)+GT.dt:0;
+ const run=(mv,sprint)=>{const A=(sprint?.9:.5)*mv,B=(sprint?1.55:.95)*mv;let gk=null;
+  if(GAIT.lin){const am=gaitAmp(gaitRate()),k=sst(.08,.35,mv),th=g=>lp(-Math.sin(g)*A,Math.asin(gaitSweep(g)*Math.sin(am)),k);q.LthX=th(P.ph);q.RthX=th(P.ph+Math.PI);
+   // heel-off late in stance (foot rolls onto the toes) and a toes-down foot early in swing
+   const pel=sprint?.1:.02,kst=sprint?.22:.12,clr=(sprint?.2:.11)*mv,HM=(sprint?.75:.55)*k,ext=(a,kn)=>SK.L1*Math.cos(pel+a)+SK.L2*Math.cos(pel+a+kn);
+   const ph=g=>((g-Math.PI/2)%(2*Math.PI)+2*Math.PI)%(2*Math.PI),heel=g=>{const u=ph(g);return u<=Math.PI?HM*sst(.5*Math.PI,Math.PI,u):HM*(1-sst(0,.4,(u-Math.PI)/Math.PI))};
+   q.Lhl=heel(P.ph);q.Rhl=heel(P.ph+Math.PI);
+   // swing knee from the wanted foot clearance over the stance leg (incl. its heel-off); lands on the stance bend
+   const knee=(g,a,ao,ho)=>{const u=ph(g);if(u<=Math.PI)return kst;const v=(u-Math.PI)/Math.PI,h=ext(ao,kst)+heelB(ho)-clr*Math.sin(Math.PI*Math.pow(v,.8));
+    const kp=cl(Math.acos(cl((h-SK.L1*Math.cos(pel+a))/SK.L2,-1,1))-(pel+a),kst,2.2);return lp(kp,kst,sst(GAIT.land,1,v))};
+   gk=[knee(P.ph,q.LthX,q.RthX,q.Rhl),knee(P.ph+Math.PI,q.RthX,q.LthX,q.Lhl),k]}
+  else{q.LthX=-s*A;q.RthX=s*A}q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;if(gk){q.Lkn=lp(q.Lkn,gk[0],gk[2]);q.Rkn=lp(q.Rkn,gk[1],gk[2])}q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
   q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012)};
  switch(P.st){
  case'move':case'land':{const mv=cl(P.spd/3.4,0,1);
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
-  else if(mv>.08)run(mv,P.sprinting&&P.spd>4.6);
+  else if(mv>.08){run(mv,P.sprinting&&P.spd>4.6);
+   // a slow pose filter lags and flattens the stride cycle; once the walk has settled, follow it closely
+   if(GAIT.lin)rate=lp(14,1e3,sst(.15,.45,P.gaitT))}
   else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
   if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
