@@ -101,6 +101,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] SIRADAKİ (kullanıcı istedi): haritayı büyüt + farklı bölgeler; mağara; büyük zindan + uzun zindan kulesi (katlar, boss); daha çok yaratık türü ve olay (manhwa RPG: iskelet, hortlak, örümcek, golem, gece baskını)
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
 - [x] Oturum 10 (zamanlanmış 4): kurtlar eğimde — gövde zemine göre eğilir, gerekirse çöker, her pati kendi altındaki zemine basar (WFIK, 40-wolves.js; s-wolfik.js 11/11)
+- [x] Oturum 12 (zamanlanmış 6): kurt pati kilidi — yürüyüş/koşu artık sinüs değil: pati görev oranı kadar yerde kalır ve gövdenin aldığı yol kadar doğrusal süpürülür; değdiği nokta dünyada sabitlenir (dönüş, yan yan dolanma, hız değişimi), bacak gerilirse yumuşakça bırakılır. Adım hareket yönünü izler (çemberde yan adım, kalçadan yuvarlanma). Kayma (m / m): yürüyüş 0,34 → 0,05, koşu 0,18 → 0,03, dönüş 0,37 → 0,06, yan adım 0,57 → 0,05. WFIK.lock=0 eski davranış. Test: s-wolfstride.js 10/10.
 - [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse
 - [ ] Şeytan Kral'ın kolları ince; aşama 3 boss dövüşünde iyileştirilecek
 

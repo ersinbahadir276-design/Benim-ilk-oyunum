@@ -43,7 +43,7 @@ function wolfSees(w,P){if(!P.alive||w.calm>0)return false;const dx=P.x-w.x,dz=P.
  if(d>R)return false;if(Math.abs(angd(Math.atan2(dx,dz),w.yaw+w.hyaw))>SENSE.fov)return false;return los(w.x,w.z,P.x,P.z,1.0)}
 function wolfMove(w,tx,tz,speed,dt,turn=7){const dx=tx-w.x,dz=tz-w.z,d=Math.hypot(dx,dz);if(d<.05){w.spd=lp(w.spd,0,.2);return d}
  const ty=Math.atan2(dx,dz);w.yaw+=angd(ty,w.yaw)*Math.min(1,dt*turn);const f=Math.max(.25,Math.cos(angd(ty,w.yaw))),s=speed*f;
- const p=collide(w.x+Math.sin(w.yaw)*s*dt,w.z+Math.cos(w.yaw)*s*dt,.42*w.sc);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,s,.25);w.ph+=s*dt*(speed>4?2.3:4.4);return d}
+ const p=collide(w.x+Math.sin(w.yaw)*s*dt,w.z+Math.cos(w.yaw)*s*dt,.42*w.sc);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,s,.25);w.ph+=s*dt*wolfRate(speed>4);w.grm=1;return d}
 function wolfFace(w,tx,tz,dt,rate=8){w.yaw+=angd(Math.atan2(tx-w.x,tz-w.z),w.yaw)*Math.min(1,dt*rate)}
 function wolfHurt(w,dmg,dirx,dirz,P){if(w.dead)return false;w.hp-=dmg;w.flash=1;w.kx=dirx*5.5;w.kz=dirz*5.5;w.aware=1;w.calm=0;
  if(w.hp<=0){w.dead=.001;w.st='dead';w.t=0;w.air=0;w.pitch=0;if(P.pinBy===w)P.pinBy=null;return true}
@@ -91,7 +91,7 @@ function updateWolf(w,P,dt,GS){
   else if(d<3&&(P.st==='down'||P.st==='getup')){w.st='circle';w.t=0;w.dur=rr(.8,1.4)}
   else{const bx=w.x,bz=w.z;wolfMove(w,w.unseen<.6?P.x:w.ls[0],w.unseen<.6?P.z:w.ls[1],6.6,dt);w.stuck=Math.hypot(w.x-bx,w.z-bz)<6.6*dt*.25?(w.stuck||0)+dt:0;if(w.stuck>.8){w.stuck=0;w.yaw+=w.strafe*1.3;w.kx=Math.sin(w.yaw)*6;w.kz=Math.cos(w.yaw)*6}}break;
  case'circle':{w.crouch=lp(w.crouch,.2,.2);const a=Math.atan2(w.x-P.x,w.z-P.z)+w.strafe*.9/Math.max(d,2),R=5.6,gx=P.x+Math.sin(a)*R,gz=P.z+Math.cos(a)*R,px=w.x,pz=w.z;
-  const k=Math.hypot(gx-w.x,gz-w.z)||1,p=collide(w.x+(gx-w.x)/k*3.3*dt,w.z+(gz-w.z)/k*3.3*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,3,.2);w.ph+=3*dt*4;wolfFace(w,P.x,P.z,dt,9);
+  const k=Math.hypot(gx-w.x,gz-w.z)||1,p=collide(w.x+(gx-w.x)/k*3.3*dt,w.z+(gz-w.z)/k*3.3*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,3,.2);w.ph+=3*dt*wolfRate(false)*WGAIT.side;w.grm=WGAIT.side;wolfFace(w,P.x,P.z,dt,9);
   if(Math.hypot(w.x-px,w.z-pz)<3.3*dt*.3)w.strafe*=-1;
   if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0}else if(d>10||w.unseen>3){w.st='chase';w.t=0}
   else if(w.t>w.dur&&!tokenBusy()&&w.cd<=0&&P.st!=='down'&&P.st!=='getup'&&d<7.5){w.st='windup';w.t=0;w.dodged=false;w.resolved=false;GS.onWindup(w)}break}
@@ -122,7 +122,17 @@ function mroty(m,x,y,z,rx,ry,rz){return mmul(m,mtrs([x,y,z],[rx,ry,rz]))}
 // ---- quadruped terrain fit: the body pitches with the slope under its front and back paws (so the downhill legs
 // can reach), sinks a little where a leg would still have to over-stretch, and every paw is placed on the ground under
 // the paw itself (not under the hip). Smoothed per wolf; off in the air, dead or pinned. WFIK.on=0 = old behaviour.
-const WFIK={on:1,maxP:.55,maxD:.22,k:.25,last:null};
+const WFIK={on:1,lock:1,rel:0,maxP:.55,maxD:.22,k:.25,last:null};
+// ---- paw gait + stride locking. Phase advances with distance (rate r rad per metre). Each paw is planted for a duty
+// fraction d of the cycle and sweeps back linearly by exactly the distance the body covers, so a planted paw stays put;
+// on top of that the touchdown spot is pinned in world space (turns, strafing, speed changes) until the leg would
+// over-stretch or the paw lifts. The lateral part of the pinned spot is reached by rolling the leg at the hip.
+// WFIK.lock=0 = old sine gait (no locking).
+const WGAIT={walk:{r:8.5,d:.6,lift:.08},run:{r:3.6,d:.25,lift:.17},side:1.2,maxLat:.3,maxRoll:.55,reach:.995};
+const wolfRate=run=>WFIK.lock?(run?WGAIT.run.r:WGAIT.walk.r):(run?2.3:4.4);
+// nominal paw offset along the body (local units) and lift for gait phase ph
+function wolfPaw(ph,run,sc,rm=1){const g=run?WGAIT.run:WGAIT.walk,A=g.d*PI/(g.r*rm*sc),u=((ph/(2*PI))%1+1)%1;
+ if(u<g.d)return{st:1,sw:A*(1-2*u/g.d),lift:0,v:0,A};const v=(u-g.d)/(1-g.d);return{st:0,sw:-A+2*A*sst(0,1,v),lift:Math.sin(PI*v)*g.lift,v,A}}
 function wolfGround(w,sc,H,moving,run){if(w.gp===undefined){w.gp=0;w.gd=0}
  let tp=0,td=0;
  if(WFIK.on&&!(w.air>.05)&&!w.dead&&w.st!=='pin'&&w.st!=='mounted'){const fx=Math.sin(w.yaw),fz=Math.cos(w.yaw),e=.41*sc,
@@ -135,21 +145,34 @@ function wolfGround(w,sc,H,moving,run){if(w.gp===undefined){w.gp=0;w.gd=0}
  return {p:w.gp,drop:w.gd}}
 function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Math.hypot(w.x-P.x,w.z-P.z),w]).filter(a=>a[0]<150).sort((a,b)=>a[0]-b[0]).slice(0,WSLOTS);
  for(let i=0;i<WSLOTS;i++){const s=wslots[i],e=near[i],vis=!!e;if(s.sk)s.sk.vis=vis;s.body.vis=s.head.vis=s.jaw.vis=s.tail.vis=s.sh.vis=vis;for(const l of s.legs)l[0].vis=l[1].vis=vis;s.w=vis?e[1]:null;if(!vis)continue;
-  const w=e[1],sc=w.sc,moving=w.spd>.3,run=w.spd>4,bob=moving?Math.abs(Math.sin(w.ph))*(run?.05:.02):Math.sin(time*2+w.ph)*.006,H=(.66-w.crouch*.2+bob)*sc,sink=w.dead>4?(w.dead-4)*.25:0;
+  const w=e[1],sc=w.sc,moving=w.spd>.3,run=w.spd>4,bob=moving?Math.abs(Math.sin(w.ph))*(run?(WFIK.lock?.025:.05):.02):Math.sin(time*2+w.ph)*.006,H=(.66-w.crouch*.2+bob-(run&&WFIK.lock?.04:0))*sc,sink=w.dead>4?(w.dead-4)*.25:0;
   const gnd=wolfGround(w,sc,H,moving,run);
+  // direction of travel relative to the facing (strafing while circling, backing off): the stride follows it
+  {if(w.lx===undefined){w.lx=w.x;w.lz=w.z;w.md=0}const mx=w.x-w.lx,mz=w.z-w.lz,mv=Math.hypot(mx,mz);w.lx=w.x;w.lz=w.z;
+   if(mv>1e-4&&mv<1)w.md+=angd(Math.atan2(mx,mz)-w.yaw,w.md)*.35;else if(mv>=1)w.md=0}
   let M=mmul(mtrs([w.x,w.y+H+w.air-sink+(w.roll*-.42*sc)-gnd.drop,w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch+gnd.p,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll]));
   for(let k=0;k<12;k++)M[k]*=sc;
   const tintc=w.tame?[.9,1,1.12]:w.alpha?[.5,.5,.56]:[1,1,1],fl=w.flash;
   s.body.M=M;s.head.M=mroty(M,0,.3,.76,w.hpit+(w.st==='pin'?.5+Math.sin(time*30)*.12*w.jaw:w.st==='windup'?.25:0),w.hyaw+(w.st==='pin'?Math.sin(time*26)*.3*w.jaw:0),0);
   s.jaw.M=mroty(s.head.M,0,-.055,.1,w.jaw*.75,0,0);s.tail.M=mroty(M,0,.1,-.62,w.st==='chase'||w.st==='pounce'?.5:w.st==='windup'?-.3:.1+Math.sin(time*2+w.ph)*.1,w.tail+Math.sin(time*(w.tame?10:3)+w.ph)*(w.tame?.5:.12),0);
   for(const o of[s.body,s.head,s.jaw,s.tail]){o.col=tintc;o.flash=fl}
-  for(let l=0;l<4;l++){const hp=WHIP[l],o=s.legs[l],diag=(l===0||l===3)?0:PI,phase=w.ph+(run?(l<2?0:2.4)+(l%2?.5:0):diag);let au,al;
-   if(w.air>.05||w.dead){const fr=l<2;au=w.dead?(fr?-.5:.6):(fr?-1.1:1.0)*(w.st==='pounce'?1:.4);al=w.dead?.5:(fr?.5:-.3)}
-   else{const hw=mpt(M,hp),stride=moving?(run?.26:.14):0,sw=Math.sin(phase)*stride,lift=moving?Math.max(0,Math.cos(phase))*(run?.16:.07):0,
-     gy=WFIK.on?hAt(hw[0]+Math.sin(w.yaw)*sw*sc,hw[2]+Math.cos(w.yaw)*sw*sc):hAt(hw[0],hw[2]);
-    let hh=Math.max(.12,(hw[1]-gy)/sc-lift);const L=W_UP+W_LO,dd=Math.min(Math.hypot(hh,sw),L-.002),ga=Math.atan2(sw,hh),A=Math.acos(cl((W_UP*W_UP+dd*dd-W_LO*W_LO)/(2*W_UP*dd),-1,1)),K=Math.acos(cl((W_UP*W_UP+W_LO*W_LO-dd*dd)/(2*W_UP*W_LO),-1,1));
+  for(let l=0;l<4;l++){const hp=WHIP[l],o=s.legs[l],diag=(l===0||l===3)?0:PI,phase=w.ph+(run?(l<2?0:2.4)+(l%2?.5:0):diag);let au,al,rz=0;
+   if(!w.pl)w.pl=[{},{},{},{}];if(w.air>.05||w.dead){w.pl[l].on=0;w.pl[l].skip=0;const fr=l<2;au=w.dead?(fr?-.5:.6):(fr?-1.1:1.0)*(w.st==='pounce'?1:.4);al=w.dead?.5:(fr?.5:-.3)}
+   else{const hw=mpt(M,hp),fx=Math.sin(w.yaw),fz=Math.cos(w.yaw),L=W_UP+W_LO,pl=w.pl[l];let sw,lift,lat=0,gy;
+    if(!WFIK.lock){const stride=moving?(run?.26:.14):0;sw=Math.sin(phase)*stride;lift=moving?Math.max(0,Math.cos(phase))*(run?.16:.07):0;pl.on=0}
+    else if(!moving){sw=lift=0;pl.on=0;pl.skip=0;pl.sw=pl.lt=0}
+    else{const g=wolfPaw(phase,run,sc,w.grm||1),cm=Math.cos(w.md),sm=Math.sin(w.md);sw=g.sw*cm;lat=g.sw*sm;lift=g.lift;
+     if(g.st){if(!pl.on&&!pl.skip){pl.on=1;pl.x=hw[0]+(fx*sw+fz*lat)*sc;pl.z=hw[2]+(fz*sw-fx*lat)*sc}
+      if(pl.on){const dx=pl.x-hw[0],dz=pl.z-hw[2],f=(dx*fx+dz*fz)/sc,lt=(dx*fz-dz*fx)/sc,hh0=(hw[1]-hAt(pl.x,pl.z))/sc;
+       if(Math.hypot(f,lt)>g.A*1.6+.05||Math.abs(lt)>WGAIT.maxLat||Math.hypot(hh0,f,lt)>L*WGAIT.reach){pl.on=0;pl.skip=1;WFIK.rel++;const far=Math.hypot(f-sw,lt-lat)>.4;pl.ow=far?0:f-sw;pl.ol=far?0:lt-lat}else{sw=f;lat=lt}}
+      if(pl.skip){sw+=pl.ow||0;lat+=pl.ol||0;lift=Math.min(.06,Math.hypot(pl.ow||0,pl.ol||0)*.6);pl.ow*=.72;pl.ol*=.72}}
+     else{if(pl.on||pl.skip){pl.on=0;pl.skip=0;pl.s0=pl.sw||0;pl.l0=pl.lt||0}const b=sst(0,1,g.v);sw=lp(pl.s0||0,sw,b);lat=lp(pl.l0||0,lat,b)}}
+    pl.sw=sw;pl.lt=lat;
+    gy=pl.on?hAt(pl.x,pl.z):WFIK.on?hAt(hw[0]+(fx*sw+fz*lat)*sc,hw[2]+(fz*sw-fx*lat)*sc):hAt(hw[0],hw[2]);
+    let hh=Math.max(.12,(hw[1]-gy)/sc-lift);rz=lat?cl(Math.atan2(lat,hh),-WGAIT.maxRoll,WGAIT.maxRoll):0;hh/=Math.cos(rz);
+    const dd=Math.min(Math.hypot(hh,sw),L-.002),ga=Math.atan2(sw,hh),A=Math.acos(cl((W_UP*W_UP+dd*dd-W_LO*W_LO)/(2*W_UP*dd),-1,1)),K=Math.acos(cl((W_UP*W_UP+W_LO*W_LO-dd*dd)/(2*W_UP*W_LO),-1,1));
     au=-(ga+hp[3]*A)-w.pitch-gnd.p;al=hp[3]*(PI-K)}
-   o[0].M=mroty(M,hp[0],hp[1],hp[2],au,0,0);o[1].M=mroty(o[0].M,0,-W_UP,0,al,0,0);o[0].col=o[1].col=tintc;o[0].flash=o[1].flash=fl}
+   o[0].M=mroty(M,hp[0],hp[1],hp[2],au,0,rz);o[1].M=mroty(o[0].M,0,-W_UP,0,al,0,0);o[0].col=o[1].col=tintc;o[0].flash=o[1].flash=fl}
   if(s.sk){const parts=[s.body,s.head,s.jaw,s.tail,s.legs[0][0],s.legs[1][0],s.legs[2][0],s.legs[3][0],s.legs[0][1],s.legs[1][1],s.legs[2][1],s.legs[3][1]],B=s.sk.bones;
    parts.forEach((p,i)=>{const M=p.M,b=WG.bind[i],q=i*12;for(let r=0;r<3;r++){B[q+r*4]=M[r];B[q+r*4+1]=M[4+r];B[q+r*4+2]=M[8+r];B[q+r*4+3]=M[12+r]-(M[r]*b[0]+M[4+r]*b[1]+M[8+r]*b[2])}});
    s.sk.vis=true;s.sk.col=tintc;s.sk.flash=fl;s.sk.pos=[w.x,w.y,w.z]}
