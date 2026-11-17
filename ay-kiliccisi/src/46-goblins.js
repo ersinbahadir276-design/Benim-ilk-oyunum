@@ -10,7 +10,7 @@ function mkGob(x,z,big,group,camp){const g={big,x,z,y:hAt(x,z),yaw:rnd()*6.28,hy
  g.grab=(kind)=>{g.held=kind;g.st=kind;g.t=0;g.spd=0};
  g.escape=()=>{const from=g.held;g.held=null;g.st='escape';g.t=0;g.from=from;g.aware=1;g.ls=[P.x,P.z]};
  g.calmDown=()=>{if(g.dead)return;g.aware=0;if(g.hostile()&&g.st!=='escape'){g.st='return';g.t=0}};
- g.onKilled=(byPet)=>{SYS.gkills=(SYS.gkills||0)+1;SYS.gold=(SYS.gold||0)+(g.big?20:4);addXP(g.big?120:25,P);note('[Sistem] '+(g.big?'Büyük goblin':'Goblin')+' öldürüldü · +'+(g.big?120:25)+' XP · +'+(g.big?20:4)+' altın');save(P)};
+ g.onKilled=(byPet)=>{GOBDEAD.push({x:g.x,z:g.z,t:GT.clock});SYS.gkills=(SYS.gkills||0)+1;SYS.gold=(SYS.gold||0)+(g.big?20:4);addXP(g.big?120:25,P);note('[Sistem] '+(g.big?'Büyük goblin':'Goblin')+' öldürüldü · +'+(g.big?120:25)+' XP · +'+(g.big?20:4)+' altın');save(P)};
  g.onAlerted=()=>{if(!g.hostile()&&!g.held&&!g.dead){g.st='alert';g.t=0}};
  GOBS.push(g);return g}
 function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');
@@ -28,7 +28,7 @@ function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kin
   if(!g.big&&(g.st==='windup'||g.st==='strike')&&light){g.kx*=.15;g.kz*=.15}                                  // committed attack: armoured against light hits
   else if(!g.big&&g.hitN>=2&&g.st!=='stagger'){g.hitN=0;g.st='hop';g.t=0;g.kx=dx*9;g.kz=dz*9}                   // second hit in a row: hop back, then lunge
   else if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
- alertGroup(g,P,22,GOBS);return false}
+ alertGroup(g,P,22,GOBS);if(!g.helped&&!g.big&&!g.so&&g.hp<g.max*.5)gobCallHelp(g);return false}
 const gobTokens=()=>GOBS.filter(g=>!g.dead&&!g.big&&(g.st==='windup'||g.st==='strike')).length;
 function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
  if(Math.abs(g.kx)+Math.abs(g.kz)>.05&&!g.held){const p=collide(g.x+g.kx*dt,g.z+g.kz*dt,g.rad);g.x=p[0];g.z=p[1];const k=Math.exp(-dt*7);g.kx*=k;g.kz*=k}
@@ -37,30 +37,34 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  if(g.st==='escape'){// the get-up (or stumble free) always plays to the end, nothing interrupts it
   const T=g.from==='pinned'?1.4:1.0;if(g.t>T){g.st='chase';g.t=0;g.aware=1;alertGroup(g,P,22,GOBS)}g.y=hAt(g.x,g.z);return}
  // perception
- const range=g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
- if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted){sfx.gobShout();note(g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
-  if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
+ const range=g.lookout?32:g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
+ if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted&&g.lookout&&!g.alarmed){g.alarmed=1;g.st='horn';g.t=0;g.aware=1;note('[!] Gözcü seni gördü — borusuna uzanıyor!','red');sfx.gobShout()}else if(spotted){sfx.gobShout();note(g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
+  if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1&&g.st!=='horn'){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
  else if(sees||d<7&&P.alive){g.ls=[P.x,P.z];g.unseen=0}else g.unseen=(g.unseen||0)+dt;// in a fight, someone 4 m away is heard and felt even outside the view cone
  g.hyaw=lp(g.hyaw,0,Math.min(1,dt*4));
- switch(g.st){
+ if(gobBrain(g,d,dt)){}else switch(g.st){
  case'idle':g.spd=lp(g.spd,0,.2);g.hyaw=Math.sin(g.t*.6+g.ph)*.6;if(g.aware>.25){g.st='alert';g.t=0}else if(g.patrol&&g.t>3){g.st='patrol';g.t=0}else if(g.t>rr(5,9)&&!g.big){g.st='wander';g.t=0;const a=rnd()*6.28;g.tx=g.hx+Math.cos(a)*rr(2,7);g.tz=g.hz+Math.sin(a)*rr(2,7)}break;
  case'wander':if(agentMove(g,g.tx,g.tz,1.3,dt,g.rad,4)<.8||g.t>9){g.st='idle';g.t=0}break;
  case'patrol':{const w=g.patrol[g.pi];if(agentMove(g,w[0],w[1],1.6,dt,g.rad,4)<1.5){g.pi=(g.pi+1)%g.patrol.length;g.st='idle';g.t=0}break}
  case'alert':g.spd=lp(g.spd,0,.3);agentFace(g,g.ls[0],g.ls[1],dt,5);if(g.aware>=1){g.st='chase';g.t=0}else if(g.t>3.5&&g.aware<.3){g.st='idle';g.t=0}break;
  case'return':if(agentMove(g,g.hx,g.hz,g.big?2:3,dt,g.rad,4)<1.5||g.t>30){g.st='idle';g.t=0;g.aware=0}break;
- case'chase':{if(!P.alive||Math.hypot(g.x-g.hx,g.z-g.hz)>90||g.unseen>8){g.st='return';g.t=0;g.aware=0;break}
+ case'chase':{if(!P.alive||Math.hypot(g.x-g.hx,g.z-g.hz)>90||g.unseen>((g.alarmT||0)>GT.clock?20:8)){g.st='return';g.t=0;g.aware=0;break}
   if(archerChase(g,d,dt))break;
   const tx=g.unseen<1?P.x:g.ls[0],tz=g.unseen<1?P.z:g.ls[1];
   if(g.big){if(d<(g.chief?4.0:3.2)&&g.cd<=0&&P.st!=='down'){const r=Math.random();g.move=g.chief?(g.phase===2&&r<.3?'stomp':r<.6?'sweep':'smash'):'smash';if(g.move==='stomp')dangerRing(g.x,g.z,5.6,1.14);g.st='windup';g.t=0;g.hitDone=false;sfx.roar(.6);break}agentMove(g,tx,tz,g.chief&&g.phase===2?3.2:2.4,dt,g.rad,3);break}
-  if(d<3.6&&g.unseen<1){if(gobTokens()<2&&g.cd<=0&&P.st!=='down'&&P.st!=='getup'){gobStartSwing(g);break}
-   if(d<1.25){agentMove(g,g.x+(g.x-P.x)/d*2,g.z+(g.z-P.z)/d*2,3.2,dt,g.rad,4);agentFace(g,P.x,P.z,dt,10);break}// too close: step back, keep facing
-   if(Math.random()<dt*.6){g.st='guard';g.t=0;break}g.st='circle';g.t=0;g.dur=rr(.35,.8);break}
+  if(d<3.6&&g.unseen<1){const sp0=gobSlotPoint(g,3.0);if(sp0&&Math.abs(angd(g.slotA,Math.atan2(g.x-P.x,g.z-P.z)))>.9){g.st='circle';g.t=0;g.dur=1.2;break}// not on my side yet: work round first
+   if(gobTokens()<2&&g.cd<=0&&P.st!=='down'&&P.st!=='getup'){gobStartSwing(g);break}
+   if(/^(attack|heavy|runatk|charge)$/.test(P.st)&&Math.random()<dt*(GOBS.some(o=>o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10)?2:4.5)){g.st='guard';g.t=0;break}// the hero swings: raise the guard
+   if(d<1.25){if(Math.random()<dt*1.5){g.st='guard';g.t=0;break}agentMove(g,g.x+(g.x-P.x)/d*2,g.z+(g.z-P.z)/d*2,3.2,dt,g.rad,4);agentFace(g,P.x,P.z,dt,10);break}// too close: step back, keep facing
+   const alone=!GOBS.some(o=>o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10);if(Math.random()<dt*(alone?1.0:.4)){g.st='guard';g.t=0;break}g.st='circle';g.t=0;g.dur=rr(.35,.8);break}
+  if(d<7.5&&g.unseen<1){const sp=gobSlotPoint(g,3.0);if(sp){agentMove(g,sp[0],sp[1],5.2,dt,g.rad,8);if(d<4.5)agentFace(g,P.x,P.z,dt,6);break}}// spread round the hero
   agentMove(g,tx,tz,5.6,dt,g.rad,8);break}
  case'aim':archerAim(g,d,dt);break;
  case'guard':g.spd=lp(g.spd,0,.3);agentFace(g,P.x,P.z,dt,10);if(g.t>1.1){g.st='chase';g.t=0;g.cd=Math.min(g.cd,.2)}break;
- case'circle':{const a=Math.atan2(g.x-P.x,g.z-P.z)+.9*dt*(g.side||1),gx=P.x+Math.sin(a)*2.5,gz=P.z+Math.cos(a)*2.5;agentMove(g,gx,gz,3,dt,g.rad,6);agentFace(g,P.x,P.z,dt,9);
+ case'circle':{const cur=Math.atan2(g.x-P.x,g.z-P.z),want=(g.flankT||0)>GT.clock?g.flankA:g.slotA,a=want!==undefined?cur+cl(angd(want,cur),-1.3*dt,1.3*dt):cur+.9*dt*(g.side||1),gx=P.x+Math.sin(a)*2.5,gz=P.z+Math.cos(a)*2.5;agentMove(g,gx,gz,3,dt,g.rad,6);agentFace(g,P.x,P.z,dt,9);
   if(g.t>g.dur||d>3.2){g.st='chase';g.t=0}break}
  case'windup':{const T=g.big?{smash:1.35,sweep:1.05,stomp:.95}[g.move||'smash']:g.peril?.72:g.cn?.26:(g.delay?.78:.46);
+  if(!g.big&&gobFeint(g))break;
   if(!g.big){if(g.t<T*.85)agentFace(g,P.x,P.z,dt,12);if(d>1.7)agentMove(g,P.x,P.z,4.3,dt,g.rad,10);else g.spd=lp(g.spd,0,.4)}else{g.spd=lp(g.spd,0,.4);if(g.t<T*.7)agentFace(g,P.x,P.z,dt,2.2)}
   if(g.t>=T){g.st='strike';g.t=0;sfx.swing();if(!g.big){const L=cl(d-1.0,0,g.peril?4:2.4);g.lv=L/.2}}break}
  case'strike':{const T=g.big?(g.move==='sweep'?.42:.38):.2,u=g.t/T;
@@ -70,7 +74,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
   else if(!g.hitDone){// the club must really touch the hero: segment (club) vs capsule (body) test every frame of the swing
    const seg=clubSeg(g),hit=segCapsule(seg[0],seg[1],[P.x,P.y+.2,P.z],[P.x,P.y+1.55,P.z],.42);if(hit){g.hitDone=true;hitPlayer({src:g,dmg:30,guard:62,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:'down',power:1.5})}}
   if(u>=1&&!g.big&&g.cn>0&&g.st==='strike'){g.cn--;g.st='windup';g.t=0;g.hitDone=false;g.peril=0;break}
-  if(u>=1){g.peril=0;if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.delay=0;g.cd=g.big?rr(1.4,2.2):rr(.5,1.1)}break}
+  if(u>=1){g.peril=0;if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.delay=0;g.feinted=0;g.cd=g.big?rr(1.4,2.2):rr(.5,1.1)}break}
  case'recover':g.spd=0;if(g.t>(g.big?1.15:.42)){g.st='chase';g.t=0}break;
  case'stagger':g.spd=0;if(g.t>(g.big?2.1:1.5)){g.st='chase';g.t=0}break;
  case'hop':g.spd=0;agentFace(g,P.x,P.z,dt,10);if(g.t>.42){g.st='windup';g.t=.18;g.hitDone=false;sfx.gobShout()}break;

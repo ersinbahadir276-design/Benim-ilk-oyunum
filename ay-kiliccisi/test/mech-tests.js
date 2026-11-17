@@ -77,7 +77,7 @@ window.runMech = function () {
   // ---------------------------------------------------------------- 6. wolf: 1 s wind-up, pounce, dodge/hit/pin/bites/escape, no ground clipping
   const wolfAttack = (mode) => {
     isolate(T0[0], T0[1]); freshP(T0[0], T0[1], 0); calmAll();
-    const w = G.wolves.find((w) => !w.dead && !w.tame && !w.alpha); w.x = P.x; w.z = P.z + 5.5; w.yaw = Math.PI; w.hx = w.x; w.hz = w.z; w.st = 'chase'; w.t = 0; w.aware = 1; w.cd = 0; w.unseen = 0; w.sees = true; w.ls = [P.x, P.z]; w.calm = 0;
+    const w = G.wolves.find((w) => !w.dead && !w.tame && !w.alpha); w.x = P.x; w.z = P.z + 5.5; w.yaw = Math.PI; w.hx = w.x; w.hz = w.z; w.st = 'windup'; w.t = 0; w.dodged = false; w.resolved = false; w.aware = 1; w.cd = 0; w.unseen = 0; w.sees = true; w.ls = [P.x, P.z]; w.calm = 0; w.pack = null; // the leap itself is tested (the AI now chooses it rarely)
     let windT = -1, pounceT = -1, res = {}, minLow = 9, nan = false, bites = 0, hp0 = P.hp, sawMark = false;
     sim(6, (t) => {
       if (w.st === 'windup' && windT < 0) windT = t; if (w.st === 'windup' && G.wolves.includes(w)) sawMark = true;
@@ -104,11 +104,11 @@ window.runMech = function () {
     const [a, b] = G.wolves.filter((w) => !w.dead && !w.tame).slice(0, 2);
     a.x = X; a.z = Z + 7; a.yaw = 0; a.hyaw = 0; a.st = 'idle'; a.t = -99; a.aware = 0; a.calm = 0; a.seeT = 0; a.sees = false; a.hx = a.x; a.hz = a.z;  // looking away from the player
     b.x = X + 6; b.z = Z + 9; b.yaw = 0; b.hyaw = 0; b.st = 'idle'; b.t = -99; b.aware = 0; b.calm = 0; b.seeT = 0; b.sees = false; b.hx = b.x; b.hz = b.z;
-    let maxA = 0, why = ''; sim(2.5, () => { if (a.aware > maxA && !why) why = JSON.stringify({ st: a.st, sees: a.sees, yaw: +a.yaw.toFixed(2), hy: +a.hyaw.toFixed(2), ax: +a.x.toFixed(1), az: +a.z.toFixed(1), px: +P.x.toFixed(1), pz: +P.z.toFixed(1), noise: P.noise }); a.yaw = 0; a.hyaw = 0; b.yaw = 0; b.hyaw = 0; maxA = Math.max(maxA, a.aware); });
-    ok('görüş: arkasındaki oyuncuyu görmüyor (7 m)', maxA < .05, { farkındalık: +maxA.toFixed(3), why });
+    let maxA = 0, why = '', sawIt = false; sim(2.5, () => { if (a.sees) sawIt = true; if (a.aware > maxA && !why) why = JSON.stringify({ st: a.st, sees: a.sees, yaw: +a.yaw.toFixed(2), hy: +a.hyaw.toFixed(2), ax: +a.x.toFixed(1), az: +a.z.toFixed(1), px: +P.x.toFixed(1), pz: +P.z.toFixed(1), noise: P.noise }); a.yaw = 0; a.hyaw = 0; b.yaw = 0; b.hyaw = 0; maxA = Math.max(maxA, a.aware); });
+    ok('görüş: arkasındaki oyuncuyu görmüyor (7 m; koku ayrı ve yavaş)', !sawIt && maxA < .5, { farkındalık: +maxA.toFixed(3), why });
     a.yaw = Math.PI; a.seeT = 0; let spotted = -1; sim(3, (t) => { if (a.aware >= .5 && spotted < 0) spotted = t; b.yaw = b.yaw; });
     ok('görüş: önündeki oyuncuyu görüyor', spotted > 0, { fark_etme_süresi: spotted });
-    ok('görüş: gören kurt yanındakini uyarıyor, o da oyuncuya dönüyor', ['alert', 'chase', 'circle', 'windup'].includes(b.st) && Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))) < .5, { yanındaki: b.st, açı: +Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))).toFixed(2) });
+    ok('görüş: gören kurt yanındakini uyarıyor, o da oyuncuya dönüyor', ['alert', 'chase', 'circle', 'windup', 'stalk', 'watch', 'bitewind', 'rush', 'bite', 'retreat'].includes(b.st) && Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))) < .5, { yanındaki: b.st, açı: +Math.abs(Math.atan2(Math.sin(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw), Math.cos(Math.atan2(P.x - b.x, P.z - b.z) - b.yaw))).toFixed(2) });
     // tree blocks: pick a big tree, put wolf on one side and player on the other
     const t = tree.find((t) => t.k === 1 && t.s > 1.2 && Math.hypot(t.x, t.z) > 200 && Math.hypot(t.x, t.z) < 500);
     const losTree = G.los(t.x - 4, t.z, t.x + 4, t.z, 1.0), losFree = G.los(t.x - 4, t.z + 30, t.x + 4, t.z + 30, 1.0);

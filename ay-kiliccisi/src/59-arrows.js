@@ -18,10 +18,14 @@ function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;contin
   const yaw=Math.atan2(a.vx,a.vz),pit=-Math.atan2(a.vy,Math.hypot(a.vx,a.vz));a.ob.M=mtrs([a.x,a.y,a.z],[pit,yaw,0]);a.ob.pos=[a.x,0,a.z]}}
 // ---------- goblin archers
 function archerChase(g,d,dt){if(!g.archer)return false;if(g.unseen>1||d>22)return false;
- if(d<5.5){const ax=g.x+(g.x-P.x)/d*3,az=g.z+(g.z-P.z)/d*3;agentMove(g,ax,az,4.6,dt,g.rad,6);agentFace(g,P.x,P.z,dt,6);return true}// too close: back off
+ if((g.cornered||0)>GT.clock)return false;// cornered: fight with the knife for a while
+ if(d<6){if(!g.escT){g.escT=GT.clock;g.escD=d}const e=archerEscape(g);if(GT.clock-g.escT>1.2&&d<g.escD+.6||!e&&d<2.6){g.cornered=GT.clock+3;g.escT=0;floatText(g.x,(g.y||0)+1.8,g.z,'SIKIŞTI','');return false}
+  if(e){agentMove(g,e[0],e[1],4.9,dt,g.rad,9);return true}agentFace(g,P.x,P.z,dt,6);return true}// close: run along an open escape line
+ g.escT=0;
  if(g.cd<=0){g.st='aim';g.t=0;sfx.gobShout();return true}
  const a=Math.atan2(g.x-P.x,g.z-P.z)+.6*dt*(g.side||1),r=Math.min(14,Math.max(9,d));agentMove(g,P.x+Math.sin(a)*r,P.z+Math.cos(a)*r,3.2,dt,g.rad,6);agentFace(g,P.x,P.z,dt,8);return true}
-function archerAim(g,d,dt){g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
+function archerAim(g,d,dt){if(d<4&&!g.shot){g.st='chase';g.t=0;return}// he is on top of me: drop the shot and get away
+ g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
  if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z),to=archerAimPoint(d,g.aimAt);
   shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],to,19,'foe',Math.round(8*lvDmg(g.lv||1)),null);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
  if(g.t<.55)g.aimAt=[P.x,P.z];// the archer locks its aim early: what it shoots at is where you WERE

@@ -9,7 +9,7 @@ module.exports = async ({ G, log }) => {
     X.useBow(); const st = P.st; sim(90); const wolfDmg = wh - w.hp;
     // wolf counters after two hits
     g.tp(w.x, w.z + 1.6); P.st = 'move'; w.hp = w.max = 500; w.st = 'chase'; w.aware = 1; const hp1 = P.hp = X.maxHP(); let ev = 0, wu = 0;
-    const trace = []; for (let k = 0; k < 2; k++) { X.foeHurt(w, 5, 0, 1); trace.push(w.st + ':' + w.combo + ':' + g.GT.clock.toFixed(2)); sim(5); } sim(120, () => { if (w.st === 'evade') ev = 1; if (w.st === 'windup' || w.st === 'pounce') wu = 1; });
+    const trace = []; for (let k = 0; k < 2; k++) { X.foeHurt(w, 5, 0, 1); trace.push(w.st + ':' + w.combo + ':' + g.GT.clock.toFixed(2)); sim(5); } sim(120, () => { if (w.st === 'evade') ev = 1; if (w.st === 'windup' || w.st === 'pounce' || w.st === 'bitewind' || w.st === 'rush' || w.st === 'bite') wu = 1; });
     return { archers: arch.length, patrols: pat.length, aimed, archerDmg: Math.round(archerDmg), bowState: st, wolfDmg, ev, wu, trace };
   });
   log('okçu goblinler ve yol devriyeleri var', r.archers >= 6 && r.patrols === 12, JSON.stringify(r));

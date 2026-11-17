@@ -63,7 +63,7 @@ const VLINES={kill:['Bir tane daha.','Yavaş kalıyorsun, Kara Zırh.','Bu kadar
  parry:['İyi savuşturma!','Kılıcın konuşuyor.'],revive:['Kalk! Daha bitmedi.'],down:['Ah— beni bırakma...']};
 function vSay(kind,force){const V=VEYRA;if(!V||!V.on)return;if(!force&&GT.clock-V.lastSay<22)return;V.lastSay=GT.clock;const L=VLINES[kind];note('Veyra: "'+L[Math.floor(Math.random()*L.length)]+'"','gold')}
 function vTarget(){let best=null,bs=-1e9;for(const f of foes()){if(!foeHostile(f)&&f!==P.lock)continue;const d=Math.hypot(f.x-VEYRA.x,f.z-VEYRA.z),dp=Math.hypot(f.x-P.x,f.z-P.z);if(d>20)continue;
-  const threat=(f.st==='windup'||f.st==='open'||f.st==='pin'?3:0)+(f.boss||f===DRAGON?2:0),s=threat*4-d*.6-dp*.4+(f===P.lock?6:0);if(s>bs){bs=s;best=f}}return best}
+  const threat=(f.st==='windup'||f.st==='bitewind'||f.st==='rush'||f.st==='open'||f.st==='pin'?3:0)+(f.boss||f===DRAGON?2:0),s=threat*4-d*.6-dp*.4+(f===P.lock?6:0);if(s>bs){bs=s;best=f}}return best}
 function vDamage(f,m,kind){const dmg=Math.round((14+SYS.lv*2.4)*m*(.9+Math.random()*.2)),k=Math.hypot(f.x-VEYRA.x,f.z-VEYRA.z)||1,dead=foeHurt(f,dmg,(f.x-VEYRA.x)/k,(f.z-VEYRA.z)/k,kind);addPosture(f,kind==='burst'?25:10);
  const hp=f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+.9,f.z];spawnSparks(hp[0],hp[1],hp[2],8,[1,.5,.15],4);floatText(hp[0],hp[1]+.4,hp[2],''+dmg,'');if(dead){onFoeKilled(f,true);vSay('kill');SYS.trust=(SYS.trust||0)+1}}
 function updateVeyra(dt){const V=VEYRA;if(!V||!V.on||V.hidden)return;V.t+=dt;V.think-=dt;const dP=Math.hypot(P.x-V.x,P.z-V.z);for(const k in V.cd)V.cd[k]-=dt;
@@ -73,14 +73,14 @@ function updateVeyra(dt){const V=VEYRA;if(!V||!V.on||V.hidden)return;V.t+=dt;V.t
  V.max=100+SYS.lv*12;for(const b of BURNS)if(!b.mine&&b.t<b.life&&Math.hypot(V.x-b.x,V.z-b.z)<1.2){V.hp-=dt*6}
  // enemy swings land on whoever stands in front of them: a windup that points at her hurts if she does not get out of the way
  let fight=false;for(const o of foes()){if(!foeHostile(o))continue;const dv=Math.hypot(o.x-V.x,o.z-V.z);if(dv<14)fight=true;const fr=Math.abs(angd(Math.atan2(V.x-o.x,V.z-o.z),o.yaw))<.75,reach=o.boss||o.big?3.4:isWolf(o)?2.6:2.2;
-  if(o.st==='windup'&&dv<reach+.8&&fr)o._vw=1;else if(o._vw&&o.st!=='windup'){o._vw=0;if(V.act!=='dodge'&&dv<reach&&fr&&!V.down){const dmg=Math.round((o.boss||o.big?26:isWolf(o)?12:9)*lvDmg(o.lv||1));V.hp-=dmg;V.flash=1;floatText(V.x,V.y+1.8,V.z,'-'+dmg,'red');sfx.hurt()}}}
+  if((o.st==='windup'||o.st==='bitewind')&&dv<reach+.8&&fr)o._vw=1;else if(o._vw&&o.st!=='windup'&&o.st!=='bitewind'&&o.st!=='rush'){o._vw=0;if(V.act!=='dodge'&&dv<reach&&fr&&!V.down){const dmg=Math.round((o.boss||o.big?26:isWolf(o)?12:9)*lvDmg(o.lv||1));V.hp-=dmg;V.flash=1;floatText(V.x,V.y+1.8,V.z,'-'+dmg,'red');sfx.hurt()}}}
  if(!fight&&V.hp<V.max)V.hp=Math.min(V.max,V.hp+dt*4);if(V.hp<=0){V.hp=0;V.down=true;V.downT=20;V.act=null;vSay('down',true)}
  if(P.hp<maxHP()*.35)vSay('low');
  // decide (utility scoring) every 0.25 s unless an action is running
  if(!V.act&&V.think<=0){V.think=.25;const f=vTarget();let best='follow',bs=1;
   if(P.alive&&P.hp<maxHP()*.35&&(V.cd.heal||0)<=0&&dP<10){best='heal';bs=9}
   if(f){const d=Math.hypot(f.x-V.x,f.z-V.z),n=foes().filter(o=>Math.hypot(o.x-V.x,o.z-V.z)<4).length;V.tgt=f;
-   const danger=foes().find(o=>(o.st==='windup'||o.st==='open')&&Math.hypot(o.x-V.x,o.z-V.z)<3.2&&Math.abs(angd(Math.atan2(V.x-o.x,V.z-o.z),o.yaw))<.6);
+   const danger=foes().find(o=>(o.st==='windup'||o.st==='open'||o.st==='bitewind'||o.st==='rush')&&Math.hypot(o.x-V.x,o.z-V.z)<3.2&&Math.abs(angd(Math.atan2(V.x-o.x,V.z-o.z),o.yaw))<.6);
    const cands=[['dodge',danger&&(V.cd.dodge||0)<=0?8:0],['burst',n>=3&&(V.cd.burst||0)<=0?7:0],['bolt',d>4&&d<15&&(V.cd.bolt||0)<=0?5+(f.st==='windup'?2:0):0],['slash',d<1.9?4.5:0],['close',d>=1.9?3:0]];
    for(const[k,v]of cands)if(v>bs){bs=v;best=k}if(danger&&best==='dodge')V.danger=danger}
   V.mode=best;if(best==='heal'||best==='burst'||best==='bolt'||best==='slash'||best==='dodge'){V.act=best;V.actT=0;V.hit=false}}

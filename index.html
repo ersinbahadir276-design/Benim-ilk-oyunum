@@ -852,8 +852,8 @@ function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                 
   const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);if(depthAt(x,z)>0||waterAt(x,z)>-50&&hAt(x,z)<waterAt(x,z)+.6)continue;mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
-const hostileSt=w=>w.st==='howl'||w.st==='chase'||w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='circle'||w.st==='recover'||w.st==='hurt'||w.st==='evade';
-const tokenBusy=()=>wolves.some(w=>!w.tame&&(w.st==='windup'||w.st==='pounce'||w.st==='pin'));
+const W_HOSTILE={howl:1,chase:1,windup:1,pounce:1,pin:1,circle:1,recover:1,hurt:1,evade:1,stalk:1,bitewind:1,rush:1,bite:1,retreat:1};const hostileSt=w=>!!W_HOSTILE[w.st];
+const tokenBusy=()=>wolves.some(w=>!w.tame&&!w.dead&&(w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='bitewind'||w.st==='rush'||w.st==='bite'));
 // can this wolf see the player right now? only a cone in front, blocked by trees
 function wolfSees(w,P){if(!P.alive||w.calm>0)return false;const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz),R=(P.crouch?13:27)*(w.alpha?1.15:1);
  if(d>R)return false;if(Math.abs(angd(Math.atan2(dx,dz),w.yaw+w.hyaw))>SENSE.fov)return false;return los(w.x,w.z,P.x,P.z,1.0)}
@@ -889,28 +889,23 @@ function updateWolf(w,P,dt,GS){
   w.tail=Math.sin(w.t*9)*.5;w.y=hAt(w.x,w.z);return}
  // ---------------- perception
  w.seeT=(w.seeT||rnd()*.12)-dt;if(w.seeT<=0){w.seeT=.12;w.sees=wolfSees(w,P)}const sees=w.sees,safe=Math.hypot(P.x,P.z)<150,was=w.aware;
- if(sees||hostileSt(w)&&d<12&&P.alive){w.ls=[P.x,P.z];w.unseen=0;if(!hostileSt(w))w.aware=Math.min(1,w.aware+dt*(P.crouch?.5:1)/(.22+d/32))}else{w.unseen+=dt;if(!hostileSt(w))w.aware=Math.max(0,w.aware-dt*.35)}
+ if(sees||hostileSt(w)&&d<12&&P.alive){w.ls=[P.x,P.z];w.unseen=0;if(!hostileSt(w))w.aware=Math.min(1,w.aware+dt*(P.crouch?.5:1)/(.22+d/32))}else{w.unseen+=dt;if(!hostileSt(w)&&!wolfSmell(w,d,dt))w.aware=Math.max(0,w.aware-dt*.35)}
+ if(!hostileSt(w)&&w.hp<w.max&&w.st!=='flee')w.hp=Math.min(w.max,w.hp+w.max*.01*dt);// wounds close slowly away from a fight
  if(sees&&was<.5&&w.aware>=.5&&!hostileSt(w)){GS.onSpotted(w);for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&!hostileSt(o)&&o.st!=='mounted'&&Math.hypot(o.x-w.x,o.z-w.z)<18){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.55)}}
  if(!hostileSt(w)&&w.calm<=0&&!sees&&((P.noise>0&&d<P.noise)||(P.sprinting&&d<9))&&w.st!=='alert'&&w.st!=='search'){w.st='alert';w.t=0;w.ls=[P.x,P.z]}
  w.tail=lp(w.tail,0,.1);
  switch(w.st){
+ case'rest':case'roam':case'follow':w.jaw=lp(w.jaw,0,.2);if(w.aware>.3){w.st='alert';w.t=0;w.crouch=0}else if(!wolfCalm(w,dt)){w.st='idle';w.t=0}break;
  case'idle':w.spd=lp(w.spd,0,.2);w.crouch=lp(w.crouch,w.calm>0?.5:0,.1);w.hyaw=Math.sin(w.t*.7+w.ph)*.5;w.jaw=lp(w.jaw,0,.2);
-  if(w.aware>.3){w.st='alert';w.t=0}else if(w.t>rr(3,7)&&w.calm<=0){w.st='wander';w.t=0;const a=rnd()*6.28,r=rr(4,16);w.tx=w.hx+Math.cos(a)*r;w.tz=w.hz+Math.sin(a)*r}break;
+  if(w.aware>.3){w.st='alert';w.t=0}else if(wolfCalm(w,dt)){}else if(w.t>rr(3,7)&&w.calm<=0){w.st='wander';w.t=0;const a=rnd()*6.28,r=rr(4,16);w.tx=w.hx+Math.cos(a)*r;w.tz=w.hz+Math.sin(a)*r}break;
  case'wander':w.hyaw=lp(w.hyaw,0,.1);if(w.aware>.3){w.st='alert';w.t=0}else if(wolfMove(w,w.tx,w.tz,1.5,dt,3)<1||w.t>12){w.st='idle';w.t=0}break;
  case'alert':w.spd=lp(w.spd,0,.3);w.hyaw=lp(w.hyaw,0,.2);wolfFace(w,w.ls[0],w.ls[1],dt,4);w.crouch=lp(w.crouch,.15,.2);
-  if(w.aware>=1&&!safe){w.st='chase';w.t=0;GS.onAggro(w);for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&!hostileSt(o)&&Math.hypot(o.x-w.x,o.z-w.z)<17){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.55)}}
+  if(w.aware>=1&&!safe){const m=wolfMood(w);if(!w.boss&&(m.aggr<m.fear+.15||(!w.alpha&&Math.random()<.22))&&w.st!=='watch'){w.st='watch';w.t=0;w.cover=wolfCover(w);w.watchT=rr(4,9);break}// sometimes it only watches
+   w.st='stalk';w.t=0;GS.onAggro(w);for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&!hostileSt(o)&&Math.hypot(o.x-w.x,o.z-w.z)<17){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.55)}}
   else if(w.t>2.2&&w.aware<.3){w.st=w.unseen>1.5&&Math.hypot(w.ls[0]-w.x,w.ls[1]-w.z)>3?'search':'idle';w.t=0}break;
- case'chase':w.hyaw=lp(w.hyaw,0,.2);w.crouch=lp(w.crouch,0,.2);w.jaw=lp(w.jaw,.25,.1);
-  if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0;break}
-  if(w.unseen>4.5){w.st='search';w.t=0;break}
-  if(d<6.2&&w.unseen<.6&&P.st!=='down'&&P.st!=='getup'){if(!tokenBusy()&&w.cd<=0&&!P.air&&P.st!=='td'||(!tokenBusy()&&w.cd<=0&&P.st==='td')){w.st='windup';w.t=0;w.dodged=false;w.resolved=false;GS.onWindup(w)}else{w.st='circle';w.t=0;w.dur=rr(.7,1.6)}}
-  else if(d<3&&(P.st==='down'||P.st==='getup')){w.st='circle';w.t=0;w.dur=rr(.8,1.4)}
-  else{const bx=w.x,bz=w.z;wolfMove(w,w.unseen<.6?P.x:w.ls[0],w.unseen<.6?P.z:w.ls[1],6.6,dt);w.stuck=Math.hypot(w.x-bx,w.z-bz)<6.6*dt*.25?(w.stuck||0)+dt:0;if(w.stuck>.8){w.stuck=0;w.yaw+=w.strafe*1.3;w.kx=Math.sin(w.yaw)*6;w.kz=Math.cos(w.yaw)*6}}break;
- case'circle':{w.crouch=lp(w.crouch,.2,.2);const a=Math.atan2(w.x-P.x,w.z-P.z)+w.strafe*.9/Math.max(d,2),R=5.6,gx=P.x+Math.sin(a)*R,gz=P.z+Math.cos(a)*R,px=w.x,pz=w.z;
-  const k=Math.hypot(gx-w.x,gz-w.z)||1,p=collide(w.x+(gx-w.x)/k*3.3*dt,w.z+(gz-w.z)/k*3.3*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,3,.2);w.ph+=3*dt*4;wolfFace(w,P.x,P.z,dt,9);
-  if(Math.hypot(w.x-px,w.z-pz)<3.3*dt*.3)w.strafe*=-1;
-  if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0}else if(d>7.5||w.unseen>3){w.st='chase';w.t=0}
-  else if(w.t>w.dur&&!tokenBusy()&&w.cd<=0&&P.st!=='down'&&P.st!=='getup'&&d<7.5){w.st='windup';w.t=0;w.dodged=false;w.resolved=false;GS.onWindup(w)}break}
+ case'chase':case'stalk':case'circle':if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0;break}w.hyaw=lp(w.hyaw,0,.2);w.jaw=lp(w.jaw,.25,.1);wolfEngage(w,d,dt,GS);break;
+ case'bitewind':case'rush':case'bite':if(safe||P.st==='dead'){w.st='return';w.t=0;w.aware=0;break}wolfBite(w,d,dt,GS);break;
+ case'retreat':case'watch':case'flee':if(w.st==='watch'&&d<6&&w.aware>=1){w.st='circle';w.t=0;break}wolfAway(w,d,dt);break;
  case'windup':w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,1,Math.min(1,dt*9));w.jaw=lp(w.jaw,.5,.2);w.tail=-.5;
   if(w.t<.62){wolfFace(w,P.x,P.z,dt,10);const lead=(.8-w.t)+.3;w.ax=P.x+P.vx*lead;w.az=P.z+P.vz*lead}
   if(w.t>=.8){let jx=w.ax-w.x,jz=w.az-w.z,jl=Math.hypot(jx,jz)||1;const L=cl(jl+.4,2.5,8);w.sx=w.x;w.sz=w.z;w.ax=w.x+jx/jl*L;w.az=w.z+jz/jl*L;w.yaw=Math.atan2(jx,jz);w.st='pounce';w.t=0;GS.onPounce(w)}break;
@@ -923,9 +918,9 @@ function updateWolf(w,P,dt,GS){
  case'pin':w.spd=0;w.air=0;w.crouch=lp(w.crouch,.45,.2);w.pitch=lp(w.pitch,.35,.2);w.bt-=dt;w.jaw=lp(w.jaw,.15,.3);
   if(P.pinBy!==w||P.st!=='down'){if(P.pinBy===w)P.pinBy=null;w.st='recover';w.t=0;w.pitch=0;w.cd=rr(1.5,2.5);break}
   if(w.bt<=0){w.bt=.62;w.bites++;w.jaw=1;GS.onBite(w);if(w.bites>=4){P.pinBy=null;w.st='recover';w.t=.3;w.pitch=0;w.cd=rr(2,3);w.kx=-Math.sin(w.yaw)*5;w.kz=-Math.cos(w.yaw)*5}}break;
- case'recover':w.spd=lp(w.spd,0,.2);w.crouch=lp(w.crouch,.35,.2);w.pitch=lp(w.pitch,0,.3);w.jaw=lp(w.jaw,.3,.2);w.hyaw=Math.sin(w.t*14)*.25*(1-w.t);if(w.t>1.05){w.st='chase';w.t=0;w.hyaw=0}break;
+ case'recover':w.spd=lp(w.spd,0,.2);w.crouch=lp(w.crouch,.35,.2);w.pitch=lp(w.pitch,0,.3);w.jaw=lp(w.jaw,.3,.2);w.hyaw=Math.sin(w.t*14)*.25*(1-w.t);if(w.t>1.05){w.st='circle';w.t=0;w.hyaw=0}break;
  case'evade':{w.spd=0;w.air=Math.max(0,Math.sin(Math.min(1,w.t/.4)*PI)*.45);w.crouch=lp(w.crouch,.3,.3);wolfFace(w,P.x,P.z,dt,10);
-  if(w.t>.5){w.air=0;w.st='windup';w.t=.35;w.dodged=false;w.resolved=false;GS.onWindup(w)}break}
+  if(w.t>.5){w.air=0;w.st='bitewind';w.t=.18;w.resolved=false}break}// second hit in a row: leap away, then a quick counter-bite
  case'hurt':w.spd=0;w.crouch=lp(w.crouch,.4,.4);w.jaw=.6;if(w.t>.24){w.st='chase';w.t=0;w.unseen=0;w.ls=[P.x,P.z];if(w.cd<.5)w.cd=.5}break;
  case'search':w.crouch=lp(w.crouch,.1,.1);if(w.aware>=1){w.st='chase';w.t=0}else if(wolfMove(w,w.ls[0],w.ls[1],3.2,dt,4)<1.5){w.spd=lp(w.spd,0,.3);w.hyaw=Math.sin(w.t*1.8)*.9;if(w.t>6){w.st='return';w.t=0;w.aware=0}}else if(w.t>14){w.st='return';w.t=0}break;
  case'return':w.hyaw=lp(w.hyaw,0,.1);w.crouch=lp(w.crouch,0,.1);w.jaw=lp(w.jaw,0,.1);if(w.aware>.3&&!safe){w.st='alert';w.t=0}else if(wolfMove(w,w.hx,w.hz,2.6,dt,3)<2||w.t>40){w.st='idle';w.t=0}break}
@@ -954,6 +949,75 @@ function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Mat
    parts.forEach((p,i)=>{const M=p.M,b=WG.bind[i],q=i*12;for(let r=0;r<3;r++){B[q+r*4]=M[r];B[q+r*4+1]=M[4+r];B[q+r*4+2]=M[8+r];B[q+r*4+3]=M[12+r]-(M[r]*b[0]+M[4+r]*b[1]+M[8+r]*b[2])}});
    s.sk.vis=true;s.sk.col=tintc;s.sk.flash=fl;s.sk.pos=[w.x,w.y,w.z]}
   const ss=.62*sc*(1-Math.min(.6,w.air*.35));s.sh.M=mtrs([w.x,w.y+.06,w.z],[0,w.yaw,0]);s.sh.M[0]*=ss;s.sh.M[2]*=ss;s.sh.M[8]*=ss*1.6;s.sh.M[10]*=ss*1.6;s.sh.vis=!(w.dead>4)}}
+// ---- 41-wolfbrain.js
+// ===================== WOLF BRAIN (v20 phase 3): packs, dens, scent, mood scoring, bite-and-retreat =====================
+// A pack has a den, a leader and a mode: REST (lying around the den by day), ROAM (the leader walks the territory, the
+// others follow in a loose file; more often at night) or HUNT (any member engaged). A wolf in a fight scores AGGRESSION
+// (boldness, alpha, pack mates fighting, night, the hero bleeding) against FEAR (its wounds, dead pack mates, how many
+// wolves the hero just killed, berserk). Frightened wolves back off to watch from cover or run to the den; bold ones
+// stalk in low, circle for the flank and look for an opening (the hero swinging at someone else, healing, turned away).
+// The normal attack is a short rush and a BITE followed by a retreat; the LEAP is rare (own 8-12 s cooldown) and needs
+// a reason (an opening, an alpha) — and it keeps its long, readable crouch.
+const PACKS=[],WKILL=[];
+function buildPacks(){const used=new Set();for(const w of wolves){if(used.has(w)||w.tame)continue;const mem=wolves.filter(o=>!used.has(o)&&!o.tame&&Math.hypot(o.hx-w.hx,o.hz-w.hz)<26);mem.forEach(o=>used.add(o));
+  const cx=mem.reduce((a,o)=>a+o.hx,0)/mem.length,cz=mem.reduce((a,o)=>a+o.hz,0)/mem.length,lead=mem.find(o=>o.boss)||mem.find(o=>o.alpha)||mem[0];
+  const pk={id:PACKS.length,den:[cx,cz],mem,lead,mode:'rest',t:rr(4,30),tgt:null};mem.forEach((o,i)=>{o.pack=pk;o.slot=i;if(o.bold===undefined)o.bold=rr(.45,.78)});PACKS.push(pk)}}
+function packRoamTarget(pk){const a=Math.random()*6.28,r=rr(15,62);return collide(pk.den[0]+Math.cos(a)*r,pk.den[1]+Math.sin(a)*r,.6)}
+function updatePacks(dt){for(const pk of PACKS){if(!pk.lead||pk.lead.dead||pk.lead.tame)pk.lead=pk.mem.find(o=>!o.dead&&!o.tame)||pk.lead;
+  if(Math.hypot(pk.den[0]-P.x,pk.den[1]-P.z)>300)continue;
+  if(pk.mem.some(o=>!o.dead&&!o.tame&&hostileSt(o))){pk.mode='hunt';continue}if(pk.mode==='hunt'){pk.mode='rest';pk.t=rr(10,20);pk.tgt=null}
+  pk.t-=dt;if(pk.t<=0){const roam=pk.mode==='rest'?(GT.night?.8:.45):(GT.night?.55:.3);if(Math.random()<roam){pk.mode='roam';pk.t=rr(25,50);pk.tgt=packRoamTarget(pk)}else{pk.mode='rest';pk.t=rr(18,40);pk.tgt=null}}
+  if(pk.mode==='roam'&&pk.tgt&&pk.lead&&Math.hypot(pk.lead.x-pk.tgt[0],pk.lead.z-pk.tgt[1])<3)pk.tgt=packRoamTarget(pk)}}
+// calm life: rest at the den, roam behind the leader. Returns true when it handled the wolf.
+function wolfCalm(w,dt){const pk=w.pack;if(!pk||w.calm>0)return false;w.hyaw=lp(w.hyaw,Math.sin(w.t*.6+w.ph)*.45,.05);
+ if(pk.mode==='roam'&&pk.tgt){if(w===pk.lead){w.st='roam';wolfMove(w,pk.tgt[0],pk.tgt[1],1.75,dt,3);w.crouch=lp(w.crouch,0,.1);return true}
+  const L=pk.lead,row=1+Math.floor((w.slot-1)/2),side=(w.slot%2?1:-1),ox=side*1.4*row,oz=-2.1*row,c=Math.cos(L.yaw),s=Math.sin(L.yaw),gx=L.x+ox*c+oz*s,gz=L.z-ox*s+oz*c,q=Math.hypot(gx-w.x,gz-w.z);
+  w.st='follow';if(q>1)wolfMove(w,gx,gz,q>9?5.5:q>3?2.6:1.75,dt,4);else{w.spd=lp(w.spd,0,.2);wolfFace(w,L.x+Math.sin(L.yaw)*5,L.z+Math.cos(L.yaw)*5,dt,3)}w.crouch=lp(w.crouch,0,.1);return true}
+ // rest: lie around the den
+ const a=w.slot*2.1+pk.id,gx=pk.den[0]+Math.cos(a)*(w===pk.lead?0:2.4),gz=pk.den[1]+Math.sin(a)*(w===pk.lead?0:2.4),q=Math.hypot(gx-w.x,gz-w.z);
+ const bx=w.x,bz=w.z;if(q>2.2&&(w.restStuck||0)<2){w.st='roam';wolfMove(w,gx,gz,q>12?3.4:1.9,dt,3);w.crouch=lp(w.crouch,0,.1);w.restStuck=Math.hypot(w.x-bx,w.z-bz)<.4*dt?(w.restStuck||0)+dt:0}
+ else{w.st='rest';w.spd=lp(w.spd,0,.2);w.crouch=lp(w.crouch,.85,.05);if(q<2.2)w.restStuck=0}return true}// a tree on the spot: lie down where it stands
+// scent: an unseen hero close by is smelled (less when crouching); the wolf learns roughly where, not exactly
+function wolfSmell(w,d,dt){const R=P.crouch?6:13;if(d>R||!P.alive||w.calm>0)return false;w.aware=Math.min(.95,w.aware+dt*.3*(1-d/R));if(Math.random()<dt*2)w.ls=[P.x+rr(-2.5,2.5),P.z+rr(-2.5,2.5)];return true}
+const heroThreat=()=>{const t=GT.clock;while(WKILL.length&&t-WKILL[0]>25)WKILL.shift();return WKILL.length*.25+(P.berserk>0?.25:0)};
+function wolfMood(w){const pk=w.pack,dead=pk?pk.mem.filter(o=>o.dead).length/pk.mem.length:0,eng=pk?pk.mem.filter(o=>!o.dead&&!o.tame&&hostileSt(o)).length:1;
+ const fear=(1-w.hp/w.max)*1.3+dead*.9+Math.min(.7,heroThreat()),aggr=(w.bold||.6)+(w.alpha?.25:0)+(w.boss?3:0)+.12*Math.max(0,eng-1)+(GT.night?.1:0)+(P.hp<maxHP()*.35?.25:0);return{fear,aggr}}
+// a hiding spot: the nearest tree or bush with its trunk between the wolf and the hero
+function wolfCover(w){let best=null,bd=14;const cx=Math.floor(w.x/TG),cz=Math.floor(w.z/TG);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=treeGrid.get((cx+i+200)*1000+cz+j+200);if(!a)continue;
+  for(const t of a){const d=Math.hypot(t.x-w.x,t.z-w.z);if(d<bd&&Math.hypot(t.x-P.x,t.z-P.z)>8){bd=d;best=t}}}
+ if(!best){const k=Math.hypot(w.x-P.x,w.z-P.z)||1;return[P.x+(w.x-P.x)/k*16,P.z+(w.z-P.z)/k*16]}const k=Math.hypot(best.x-P.x,best.z-P.z)||1;return[best.x+(best.x-P.x)/k*(best.r+.9),best.z+(best.z-P.z)/k*(best.r+.9)]}
+// engaged: stalk in, circle for the flank, pick an opening; or lose heart
+function wolfEngage(w,d,dt,GS){w.brT=(w.brT||0)-dt;if(w.brT<=0){w.brT=.35;const m=wolfMood(w);w.mood=m;
+  if(!w.boss&&(m.fear>m.aggr+.35||w.hp<w.max*.4&&m.fear>m.aggr-.05)){if(w.hp<w.max*.4){w.st='flee';w.t=0;w.hpit=0;sfx.hurt();return}w.st='retreat';w.t=0;w.retTo=11;w.after='watch';return}
+  // attack decision (one wolf at a time; an opening raises the odds)
+  if(w.st==='circle'&&!tokenBusy()&&w.cd<=0&&P.alive&&P.st!=='down'&&P.st!=='getup'&&P.st!=='td'&&w.unseen<.6){
+   const opp=/^(attack|heavy|charge|drink|shoot|skill|hurt|exec|assn)$/.test(P.st)||Math.abs(angd(Math.atan2(w.x-P.x,w.z-P.z),P.yaw))>1.7,
+    ch=.14+(opp?.45:0)+Math.min(.35,w.t*.07)+(w.boss?.2:0)+(m.aggr-m.fear)*.15;
+   if(Math.random()<ch){if(d>3.2&&d<7.8&&(w.pcd||0)<GT.clock&&(opp||w.alpha||w.boss)&&Math.random()<(w.boss?.45:.3)&&!P.air){w.pcd=GT.clock+rr(8,12);w.st='windup';w.t=0;w.dodged=false;w.resolved=false;GS.onWindup(w)}
+    else{w.st='bitewind';w.t=0;w.resolved=false;sfx.growl()}return}}}
+ if(w.unseen>=.6){w.st='chase';wolfMove(w,w.ls[0],w.ls[1],5,dt);w.crouch=lp(w.crouch,0,.2);w.hpit=lp(w.hpit||0,.35,.1);if(w.unseen>4.5){w.st='search';w.t=0}return}
+ w.hpit=lp(w.hpit||0,0,.2);
+ if(d>9.5){w.st='stalk';const away=P.spd>2.2&&Math.abs(angd(Math.atan2(P.vx,P.vz),Math.atan2(P.x-w.x,P.z-w.z)))<1.3,fast=d>20||away;/* the prey walking off is chased, not stalked */wolfMove(w,P.x,P.z,fast?6.6:3.4,dt,fast?7:4);w.crouch=lp(w.crouch,fast?0:.45,.15);return}// stalk in low, run only from far away
+ // circle at 5-6.5 m, working round towards the hero's back
+ if(w.st!=='circle'){w.st='circle';w.t=0}w.crouch=lp(w.crouch,.25,.15);const me=Math.atan2(w.x-P.x,w.z-P.z),back=P.yaw+PI,dir=Math.sign(angd(back,me))||w.strafe;
+ const a=me+dir*Math.min(1,.9/Math.max(d,2))*1.2,R=lp(5.2,6.6,(Math.sin(w.t*.7+w.ph)+1)/2),gx=P.x+Math.sin(a)*R,gz=P.z+Math.cos(a)*R,k=Math.hypot(gx-w.x,gz-w.z)||1,px=w.x,pz=w.z;
+ const cs=Math.max(3.6,(P.spd||0)*1.15),p=collide(w.x+(gx-w.x)/k*cs*dt,w.z+(gz-w.z)/k*cs*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,3.4,.2);w.ph+=3*dt*4;wolfFace(w,P.x,P.z,dt,9);if(Math.hypot(w.x-px,w.z-pz)<3.6*dt*.3)w.strafe*=-1}
+// the bite: a short crouch and growl (the tell), a rush, a snap, then away again
+function wolfBite(w,d,dt,GS){const fx=P.x-w.x,fz=P.z-w.z;
+ if(w.st==='bitewind'){w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,.75,Math.min(1,dt*10));w.jaw=lp(w.jaw,.55,.2);wolfFace(w,P.x,P.z,dt,12);if(w.t>.38){w.st='rush';w.t=0}return}
+ if(w.st==='rush'){w.crouch=lp(w.crouch,0,.3);w.jaw=lp(w.jaw,.7,.2);wolfMove(w,P.x,P.z,9.5,dt,10);if(d<1.5){w.st='bite';w.t=0;w.bitten=0}else if(w.t>1.3){w.st='retreat';w.t=0;w.retTo=6;w.after='circle';w.cd=rr(.8,1.4)}return}
+ if(w.st==='bite'){if(w.t<.16){const p=collide(w.x+Math.sin(w.yaw)*4.5*dt,w.z+Math.cos(w.yaw)*4.5*dt,.42);w.x=p[0];w.z=p[1]}w.spd=lp(w.spd,0,.5);// the snap lunges forwardw.pitch=lp(w.pitch,-.2,.4);w.jaw=w.t<.12?1:lp(w.jaw,.2,.3);wolfFace(w,P.x,P.z,dt,14);
+  if(!w.bitten&&w.t>.08){w.bitten=1;const fa=Math.abs(angd(Math.atan2(fx,fz),w.yaw));if(d<1.75&&fa<1.1){const r=hitPlayer({src:w,dmg:5+(w.alpha?2:0)+(w.boss?3:0),guard:16,dir:[Math.sin(w.yaw),Math.cos(w.yaw)],knock:'flinch',name:'kurt'});sfx.bite();
+    if(r==='parry')return;if(r==='block'||r==='guardbreak'){w.kx=-Math.sin(w.yaw)*6;w.kz=-Math.cos(w.yaw)*6}if(r==='iframe'&&!w.dodged){w.dodged=true;GS.onMiss(w)}}else sfx.snap()}
+  if(w.t>.32){w.pitch=0;w.st='retreat';w.t=0;w.retTo=rr(5,6.5);w.after='circle';w.cd=rr(1.1,2.2)}return}}
+// retreat (back out of reach), watch (from cover), flee (to the den, wounded)
+function wolfAway(w,d,dt){const ax=w.x-P.x,az=w.z-P.z,k=Math.hypot(ax,az)||1;
+ if(w.st==='retreat'){wolfMove(w,w.x+ax/k*4,w.z+az/k*4,7,dt,9);w.crouch=lp(w.crouch,.2,.2);if(d>w.retTo||w.t>1.8){const nx=w.after||'circle';w.after=null;w.st=nx;w.t=0;if(nx==='watch'){w.cover=wolfCover(w);w.watchT=rr(4,9)}}return}
+ if(w.st==='watch'){const c=w.cover||(w.cover=wolfCover(w));if(w.t<.9){w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,8)}// first it stops and stares
+  else if(Math.hypot(c[0]-w.x,c[1]-w.z)>1)wolfMove(w,c[0],c[1],3,dt,5);else{w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,6)}w.crouch=lp(w.crouch,.6,.1);w.tail=-.3;
+  if(w.t>(w.watchT||6)){const m=wolfMood(w);if(m.aggr>m.fear+.15&&Math.hypot(P.x,P.z)>150&&Math.random()<.6){w.st='stalk';w.t=0}else{w.st='return';w.t=0;w.aware=0;w.calm=4}}return}
+ if(w.st==='flee'){const pk=w.pack,tx=pk?pk.den[0]:w.x+ax/k*30,tz=pk?pk.den[1]:w.z+az/k*30,awayDen=Math.hypot(tx-w.x,tz-w.z)<6;wolfMove(w,awayDen?w.x+ax/k*5:tx,awayDen?w.z+az/k*5:tz,7.4,dt,6);w.crouch=lp(w.crouch,.3,.2);w.tail=-.6;
+  if(w.t>7||d>38){w.st='return';w.t=0;w.aware=0;w.calm=6}}}
 // ---- 45-rig.js
 // ===================== rigged characters: villagers, merchant, guards, goblins, crocodile =====================
 // Each part is modelled in its bone's local space and tagged with the bone index; one draw call per character.
@@ -1128,7 +1192,7 @@ function mkGob(x,z,big,group,camp){const g={big,x,z,y:hAt(x,z),yaw:rnd()*6.28,hy
  g.grab=(kind)=>{g.held=kind;g.st=kind;g.t=0;g.spd=0};
  g.escape=()=>{const from=g.held;g.held=null;g.st='escape';g.t=0;g.from=from;g.aware=1;g.ls=[P.x,P.z]};
  g.calmDown=()=>{if(g.dead)return;g.aware=0;if(g.hostile()&&g.st!=='escape'){g.st='return';g.t=0}};
- g.onKilled=(byPet)=>{SYS.gkills=(SYS.gkills||0)+1;SYS.gold=(SYS.gold||0)+(g.big?20:4);addXP(g.big?120:25,P);note('[Sistem] '+(g.big?'Büyük goblin':'Goblin')+' öldürüldü · +'+(g.big?120:25)+' XP · +'+(g.big?20:4)+' altın');save(P)};
+ g.onKilled=(byPet)=>{GOBDEAD.push({x:g.x,z:g.z,t:GT.clock});SYS.gkills=(SYS.gkills||0)+1;SYS.gold=(SYS.gold||0)+(g.big?20:4);addXP(g.big?120:25,P);note('[Sistem] '+(g.big?'Büyük goblin':'Goblin')+' öldürüldü · +'+(g.big?120:25)+' XP · +'+(g.big?20:4)+' altın');save(P)};
  g.onAlerted=()=>{if(!g.hostile()&&!g.held&&!g.dead){g.st='alert';g.t=0}};
  GOBS.push(g);return g}
 function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');
@@ -1146,7 +1210,7 @@ function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kin
   if(!g.big&&(g.st==='windup'||g.st==='strike')&&light){g.kx*=.15;g.kz*=.15}                                  // committed attack: armoured against light hits
   else if(!g.big&&g.hitN>=2&&g.st!=='stagger'){g.hitN=0;g.st='hop';g.t=0;g.kx=dx*9;g.kz=dz*9}                   // second hit in a row: hop back, then lunge
   else if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
- alertGroup(g,P,22,GOBS);return false}
+ alertGroup(g,P,22,GOBS);if(!g.helped&&!g.big&&!g.so&&g.hp<g.max*.5)gobCallHelp(g);return false}
 const gobTokens=()=>GOBS.filter(g=>!g.dead&&!g.big&&(g.st==='windup'||g.st==='strike')).length;
 function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
  if(Math.abs(g.kx)+Math.abs(g.kz)>.05&&!g.held){const p=collide(g.x+g.kx*dt,g.z+g.kz*dt,g.rad);g.x=p[0];g.z=p[1];const k=Math.exp(-dt*7);g.kx*=k;g.kz*=k}
@@ -1155,30 +1219,34 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  if(g.st==='escape'){// the get-up (or stumble free) always plays to the end, nothing interrupts it
   const T=g.from==='pinned'?1.4:1.0;if(g.t>T){g.st='chase';g.t=0;g.aware=1;alertGroup(g,P,22,GOBS)}g.y=hAt(g.x,g.z);return}
  // perception
- const range=g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
- if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted){sfx.gobShout();note(g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
-  if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
+ const range=g.lookout?32:g.big?24:20,sees=senseTick(g,P,dt,range),hostile=g.hostile();
+ if(!hostile){const spotted=fillAware(g,P,sees,dt,range);if(spotted&&g.lookout&&!g.alarmed){g.alarmed=1;g.st='horn';g.t=0;g.aware=1;note('[!] Gözcü seni gördü — borusuna uzanıyor!','red');sfx.gobShout()}else if(spotted){sfx.gobShout();note(g.big?'[!] Büyük goblin seni gördü!':'[!] Goblin seni gördü! Kampı uyarıyor.','red');alertGroup(g,P,24,GOBS)}
+  if(P.noise>0&&d<P.noise*1.2&&g.st!=='alert'){g.st='alert';g.t=0;g.ls=[P.x,P.z]}if(g.aware>=1&&g.st!=='horn'){g.st='chase';g.t=0;alertGroup(g,P,24,GOBS)}}
  else if(sees||d<7&&P.alive){g.ls=[P.x,P.z];g.unseen=0}else g.unseen=(g.unseen||0)+dt;// in a fight, someone 4 m away is heard and felt even outside the view cone
  g.hyaw=lp(g.hyaw,0,Math.min(1,dt*4));
- switch(g.st){
+ if(gobBrain(g,d,dt)){}else switch(g.st){
  case'idle':g.spd=lp(g.spd,0,.2);g.hyaw=Math.sin(g.t*.6+g.ph)*.6;if(g.aware>.25){g.st='alert';g.t=0}else if(g.patrol&&g.t>3){g.st='patrol';g.t=0}else if(g.t>rr(5,9)&&!g.big){g.st='wander';g.t=0;const a=rnd()*6.28;g.tx=g.hx+Math.cos(a)*rr(2,7);g.tz=g.hz+Math.sin(a)*rr(2,7)}break;
  case'wander':if(agentMove(g,g.tx,g.tz,1.3,dt,g.rad,4)<.8||g.t>9){g.st='idle';g.t=0}break;
  case'patrol':{const w=g.patrol[g.pi];if(agentMove(g,w[0],w[1],1.6,dt,g.rad,4)<1.5){g.pi=(g.pi+1)%g.patrol.length;g.st='idle';g.t=0}break}
  case'alert':g.spd=lp(g.spd,0,.3);agentFace(g,g.ls[0],g.ls[1],dt,5);if(g.aware>=1){g.st='chase';g.t=0}else if(g.t>3.5&&g.aware<.3){g.st='idle';g.t=0}break;
  case'return':if(agentMove(g,g.hx,g.hz,g.big?2:3,dt,g.rad,4)<1.5||g.t>30){g.st='idle';g.t=0;g.aware=0}break;
- case'chase':{if(!P.alive||Math.hypot(g.x-g.hx,g.z-g.hz)>90||g.unseen>8){g.st='return';g.t=0;g.aware=0;break}
+ case'chase':{if(!P.alive||Math.hypot(g.x-g.hx,g.z-g.hz)>90||g.unseen>((g.alarmT||0)>GT.clock?20:8)){g.st='return';g.t=0;g.aware=0;break}
   if(archerChase(g,d,dt))break;
   const tx=g.unseen<1?P.x:g.ls[0],tz=g.unseen<1?P.z:g.ls[1];
   if(g.big){if(d<(g.chief?4.0:3.2)&&g.cd<=0&&P.st!=='down'){const r=Math.random();g.move=g.chief?(g.phase===2&&r<.3?'stomp':r<.6?'sweep':'smash'):'smash';if(g.move==='stomp')dangerRing(g.x,g.z,5.6,1.14);g.st='windup';g.t=0;g.hitDone=false;sfx.roar(.6);break}agentMove(g,tx,tz,g.chief&&g.phase===2?3.2:2.4,dt,g.rad,3);break}
-  if(d<3.6&&g.unseen<1){if(gobTokens()<2&&g.cd<=0&&P.st!=='down'&&P.st!=='getup'){gobStartSwing(g);break}
-   if(d<1.25){agentMove(g,g.x+(g.x-P.x)/d*2,g.z+(g.z-P.z)/d*2,3.2,dt,g.rad,4);agentFace(g,P.x,P.z,dt,10);break}// too close: step back, keep facing
-   if(Math.random()<dt*.6){g.st='guard';g.t=0;break}g.st='circle';g.t=0;g.dur=rr(.35,.8);break}
+  if(d<3.6&&g.unseen<1){const sp0=gobSlotPoint(g,3.0);if(sp0&&Math.abs(angd(g.slotA,Math.atan2(g.x-P.x,g.z-P.z)))>.9){g.st='circle';g.t=0;g.dur=1.2;break}// not on my side yet: work round first
+   if(gobTokens()<2&&g.cd<=0&&P.st!=='down'&&P.st!=='getup'){gobStartSwing(g);break}
+   if(/^(attack|heavy|runatk|charge)$/.test(P.st)&&Math.random()<dt*(GOBS.some(o=>o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10)?2:4.5)){g.st='guard';g.t=0;break}// the hero swings: raise the guard
+   if(d<1.25){if(Math.random()<dt*1.5){g.st='guard';g.t=0;break}agentMove(g,g.x+(g.x-P.x)/d*2,g.z+(g.z-P.z)/d*2,3.2,dt,g.rad,4);agentFace(g,P.x,P.z,dt,10);break}// too close: step back, keep facing
+   const alone=!GOBS.some(o=>o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10);if(Math.random()<dt*(alone?1.0:.4)){g.st='guard';g.t=0;break}g.st='circle';g.t=0;g.dur=rr(.35,.8);break}
+  if(d<7.5&&g.unseen<1){const sp=gobSlotPoint(g,3.0);if(sp){agentMove(g,sp[0],sp[1],5.2,dt,g.rad,8);if(d<4.5)agentFace(g,P.x,P.z,dt,6);break}}// spread round the hero
   agentMove(g,tx,tz,5.6,dt,g.rad,8);break}
  case'aim':archerAim(g,d,dt);break;
  case'guard':g.spd=lp(g.spd,0,.3);agentFace(g,P.x,P.z,dt,10);if(g.t>1.1){g.st='chase';g.t=0;g.cd=Math.min(g.cd,.2)}break;
- case'circle':{const a=Math.atan2(g.x-P.x,g.z-P.z)+.9*dt*(g.side||1),gx=P.x+Math.sin(a)*2.5,gz=P.z+Math.cos(a)*2.5;agentMove(g,gx,gz,3,dt,g.rad,6);agentFace(g,P.x,P.z,dt,9);
+ case'circle':{const cur=Math.atan2(g.x-P.x,g.z-P.z),want=(g.flankT||0)>GT.clock?g.flankA:g.slotA,a=want!==undefined?cur+cl(angd(want,cur),-1.3*dt,1.3*dt):cur+.9*dt*(g.side||1),gx=P.x+Math.sin(a)*2.5,gz=P.z+Math.cos(a)*2.5;agentMove(g,gx,gz,3,dt,g.rad,6);agentFace(g,P.x,P.z,dt,9);
   if(g.t>g.dur||d>3.2){g.st='chase';g.t=0}break}
  case'windup':{const T=g.big?{smash:1.35,sweep:1.05,stomp:.95}[g.move||'smash']:g.peril?.72:g.cn?.26:(g.delay?.78:.46);
+  if(!g.big&&gobFeint(g))break;
   if(!g.big){if(g.t<T*.85)agentFace(g,P.x,P.z,dt,12);if(d>1.7)agentMove(g,P.x,P.z,4.3,dt,g.rad,10);else g.spd=lp(g.spd,0,.4)}else{g.spd=lp(g.spd,0,.4);if(g.t<T*.7)agentFace(g,P.x,P.z,dt,2.2)}
   if(g.t>=T){g.st='strike';g.t=0;sfx.swing();if(!g.big){const L=cl(d-1.0,0,g.peril?4:2.4);g.lv=L/.2}}break}
  case'strike':{const T=g.big?(g.move==='sweep'?.42:.38):.2,u=g.t/T;
@@ -1188,7 +1256,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
   else if(!g.hitDone){// the club must really touch the hero: segment (club) vs capsule (body) test every frame of the swing
    const seg=clubSeg(g),hit=segCapsule(seg[0],seg[1],[P.x,P.y+.2,P.z],[P.x,P.y+1.55,P.z],.42);if(hit){g.hitDone=true;hitPlayer({src:g,dmg:30,guard:62,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:'down',power:1.5})}}
   if(u>=1&&!g.big&&g.cn>0&&g.st==='strike'){g.cn--;g.st='windup';g.t=0;g.hitDone=false;g.peril=0;break}
-  if(u>=1){g.peril=0;if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.delay=0;g.cd=g.big?rr(1.4,2.2):rr(.5,1.1)}break}
+  if(u>=1){g.peril=0;if(g.big){CAM.shake=Math.max(CAM.shake,d<9?.35:.1);sfx.thud();const tip=clubSeg(g)[1];spawnSparks(tip[0],hAt(tip[0],tip[2])+.1,tip[2],10,[.6,.5,.4],3)}g.st='recover';g.t=0;g.delay=0;g.feinted=0;g.cd=g.big?rr(1.4,2.2):rr(.5,1.1)}break}
  case'recover':g.spd=0;if(g.t>(g.big?1.15:.42)){g.st='chase';g.t=0}break;
  case'stagger':g.spd=0;if(g.t>(g.big?2.1:1.5)){g.st='chase';g.t=0}break;
  case'hop':g.spd=0;agentFace(g,P.x,P.z,dt,10);if(g.t>.42){g.st='windup';g.t=.18;g.hitDone=false;sfx.gobShout()}break;
@@ -1235,6 +1303,49 @@ function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z)
   const rot=gobPose(g,time),tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc;
   const extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);
   g.R.ob.flash=g.flash;g.R.ob.col=g.st==='stagger'||g.open()?[1.15,1.05,.8]:[1,1,1]}}
+// ---- 46b-gobbrain.js
+// ===================== GOBLIN BRAIN (v20 phase 3): a small society — lookouts, alarms, help, morale, surrounding, feints =====================
+// Every camp keeps a LOOKOUT at its gate (longer sight, higher eyes); when it spots the hero it blows a horn and the whole
+// camp turns out. A goblin that gets hurt badly SHOUTS FOR HELP once. Goblins weigh COURAGE (friends nearby, their own camp)
+// against FEAR (wounds, friends who just died, being alone): frightened ones flee and regroup, wounded ones fall back
+// behind friends. In a group they SPREAD AROUND the hero (each has its own side) and take turns; alone they guard more.
+// Against a hero hiding behind his block they FEINT and go for his side. Archers keep distance, look for an escape line
+// when he closes in, and fight with the knife only when cornered.
+const GOBDEAD=[];
+function assignLookouts(){CAMPSITES.forEach((c,i)=>{const g=GOBS.find(o=>!o.big&&!o.archer&&!o.boss&&o.camp===c&&o.group==='camp'+i);if(!g)return;g.lookout=1;g.eye=2.0;
+  const p=collide(c.x+Math.cos(c.gate)*11,c.z+Math.sin(c.gate)*11,.4);g.x=g.hx=p[0];g.z=g.hz=p[1];g.y=hAt(g.x,g.z);g.yaw=c.gate;g.patrol=null})}
+function gobCampAlarm(g){const c=g.camp;let n=0;for(const o of GOBS){if(o.dead||o===g||o.so)continue;if((c&&o.camp===c&&Math.hypot(o.x-g.x,o.z-g.z)<80)||Math.hypot(o.x-g.x,o.z-g.z)<30){o.aware=1;o.ls=[P.x,P.z];o.unseen=0;o.alarmT=GT.clock+20;if(!o.hostile()){o.st='chase';o.t=0}n++}}
+ sfx.horn();CAM.shake=Math.max(CAM.shake,.15);note('[!] Gözcü boru çaldı — kamp ayağa kalktı ('+n+' goblin)!','red')}
+function gobCallHelp(g){g.helped=1;sfx.gobShout();let n=0;for(const o of GOBS){if(o.dead||o===g||o.hostile()||o.so)continue;if(Math.hypot(o.x-g.x,o.z-g.z)<38){o.aware=1;o.ls=[P.x,P.z];o.st='chase';o.t=0;n++}}if(n)note('[!] Goblin yardım çağırdı — '+n+' goblin geliyor!','red');floatText(g.x,(g.y||0)+1.9,g.z,'YARDIM!','')}
+// courage vs fear
+function gobMood(g){const t=GT.clock;while(GOBDEAD.length&&t-GOBDEAD[0].t>15)GOBDEAD.shift();let friends=0,dead=0;
+ for(const o of GOBS)if(o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-g.x,o.z-g.z)<12)friends++;for(const k of GOBDEAD)if(Math.hypot(k.x-g.x,k.z-g.z)<20)dead++;
+ const home=g.camp&&Math.hypot(g.x-g.camp.x,g.z-g.camp.z)<45;
+ return{fear:(1-g.hp/g.max)*1.2+dead*.35+(friends?0:.2)+(P.berserk>0?.2:0),courage:.7+friends*.15+(home?.3:0)+(g.big?1.5:0)+(g.boss?5:0)+(g.elite?.4:0),friends}}
+// runs before the normal goblin state machine; returns true when it took the goblin over for this frame
+function gobBrain(g,d,dt){
+ if(g.st==='horn'&&!g.chief){g.spd=0;agentFace(g,P.x,P.z,dt,8);if(g.t>1.2){gobCampAlarm(g);g.st='chase';g.t=0}return true}
+ if(g.st==='flee'){const c=g.camp,ax=g.x-P.x,az=g.z-P.z,k=Math.hypot(ax,az)||1,tx=c&&Math.hypot(c.x-P.x,c.z-P.z)>Math.hypot(g.x-P.x,g.z-P.z)?c.x:g.x+ax/k*8,tz=c&&Math.hypot(c.x-P.x,c.z-P.z)>Math.hypot(g.x-P.x,g.z-P.z)?c.z:g.z+az/k*8;
+  agentMove(g,tx,tz,5.8,dt,g.rad,8);if(g.t>(g.fleeT||5)){const m=gobMood(g);if(m.friends>=1&&m.fear<m.courage+.4){g.st='chase';g.t=0;floatText(g.x,(g.y||0)+1.8,g.z,'!','')}else{g.st='return';g.t=0;g.aware=0}}return true}
+ if(g.st==='fallback'){const fr=GOBS.filter(o=>o!==g&&!o.dead&&o.hostile()&&Math.hypot(o.x-g.x,o.z-g.z)<15).sort((a,b)=>Math.hypot(a.x-g.x,a.z-g.z)-Math.hypot(b.x-g.x,b.z-g.z))[0];
+  if(fr){const ax=fr.x-P.x,az=fr.z-P.z,k=Math.hypot(ax,az)||1;agentMove(g,fr.x+ax/k*3,fr.z+az/k*3,5,dt,g.rad,8)}else{const ax=g.x-P.x,az=g.z-P.z,k=Math.hypot(ax,az)||1;agentMove(g,g.x+ax/k*4,g.z+az/k*4,5,dt,g.rad,8)}
+  agentFace(g,P.x,P.z,dt,4);if(g.t>2.2){g.st='chase';g.t=0;g.cd=Math.min(g.cd,.4)}return true}
+ // morale check while fighting
+ if(g.hostile()&&!g.big&&!g.boss&&!g.so){g.mT=(g.mT||0)-dt;if(g.mT<=0){g.mT=.5;const m=gobMood(g);
+  if(m.fear>m.courage+.25&&g.st!=='windup'&&g.st!=='strike'){g.st='flee';g.t=0;g.fleeT=rr(3.5,6);sfx.gobShout();floatText(g.x,(g.y||0)+1.8,g.z,'KAÇ!','');return true}
+  if(g.hp<g.max*.4&&m.friends>=1&&!g.fellBack&&g.st==='chase'){g.fellBack=1;g.st='fallback';g.t=0;return true}}}
+ return false}
+// where a goblin wants to stand in a group fight: its own side of the hero (spread out), never all in one line
+function gobSlotPoint(g,r){const grp=GOBS.filter(o=>!o.dead&&!o.big&&!o.archer&&o.hostile()&&Math.hypot(o.x-P.x,o.z-P.z)<10);if(grp.length<2||!grp.includes(g))return null;
+ // evenly spaced sides, in a stable order, starting from where the first one already stands
+ const i=grp.indexOf(g),base=Math.atan2(grp[0].x-P.x,grp[0].z-P.z);g.slotA=base+i*6.283/grp.length;if((g.flankT||0)>GT.clock)return[P.x+Math.sin(g.flankA)*r,P.z+Math.cos(g.flankA)*r];
+ return[P.x+Math.sin(g.slotA)*r,P.z+Math.cos(g.slotA)*r]}
+// against a hero waiting behind his block: break off the swing and go for his side
+function gobFeint(g){if(g.big||g.peril||g.feinted||P.st!=='block'||g.t<.22)return false;if(Math.random()>.55){g.feinted=1;return false}
+ g.feinted=1;g.st='circle';g.t=0;g.dur=.9;g.flankT=GT.clock+1.6;g.flankA=P.yaw+(Math.random()<.5?1.9:-1.9);floatText(g.x,(g.y||0)+1.7,g.z,'ALDATMA','');sfx.gobShout();return true}
+// archer: an escape line away from the hero (8 headings, the open one that gains most distance); null when cornered
+function archerEscape(g){let best=null,bv=-1;const cur=Math.hypot(g.x-P.x,g.z-P.z);for(let k=0;k<8;k++){const a=k/8*6.283,tx=g.x+Math.sin(a)*4,tz=g.z+Math.cos(a)*4,p=collide(tx,tz,g.rad),moved=Math.hypot(p[0]-g.x,p[1]-g.z);
+  if(moved<2.5||depthAt(p[0],p[1])>.4)continue;const gain=Math.hypot(p[0]-P.x,p[1]-P.z)-cur;if(gain>bv){bv=gain;best=p}}return bv>1?best:null}
 // ---- 47-npcs.js
 // ===================== village NPCs: villagers, merchants, guards =====================
 // They live in the village, walk between houses, the well and the market; guards stand at the gates or patrol.
@@ -2220,7 +2331,7 @@ const VLINES={kill:['Bir tane daha.','Yavaş kalıyorsun, Kara Zırh.','Bu kadar
  parry:['İyi savuşturma!','Kılıcın konuşuyor.'],revive:['Kalk! Daha bitmedi.'],down:['Ah— beni bırakma...']};
 function vSay(kind,force){const V=VEYRA;if(!V||!V.on)return;if(!force&&GT.clock-V.lastSay<22)return;V.lastSay=GT.clock;const L=VLINES[kind];note('Veyra: "'+L[Math.floor(Math.random()*L.length)]+'"','gold')}
 function vTarget(){let best=null,bs=-1e9;for(const f of foes()){if(!foeHostile(f)&&f!==P.lock)continue;const d=Math.hypot(f.x-VEYRA.x,f.z-VEYRA.z),dp=Math.hypot(f.x-P.x,f.z-P.z);if(d>20)continue;
-  const threat=(f.st==='windup'||f.st==='open'||f.st==='pin'?3:0)+(f.boss||f===DRAGON?2:0),s=threat*4-d*.6-dp*.4+(f===P.lock?6:0);if(s>bs){bs=s;best=f}}return best}
+  const threat=(f.st==='windup'||f.st==='bitewind'||f.st==='rush'||f.st==='open'||f.st==='pin'?3:0)+(f.boss||f===DRAGON?2:0),s=threat*4-d*.6-dp*.4+(f===P.lock?6:0);if(s>bs){bs=s;best=f}}return best}
 function vDamage(f,m,kind){const dmg=Math.round((14+SYS.lv*2.4)*m*(.9+Math.random()*.2)),k=Math.hypot(f.x-VEYRA.x,f.z-VEYRA.z)||1,dead=foeHurt(f,dmg,(f.x-VEYRA.x)/k,(f.z-VEYRA.z)/k,kind);addPosture(f,kind==='burst'?25:10);
  const hp=f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+.9,f.z];spawnSparks(hp[0],hp[1],hp[2],8,[1,.5,.15],4);floatText(hp[0],hp[1]+.4,hp[2],''+dmg,'');if(dead){onFoeKilled(f,true);vSay('kill');SYS.trust=(SYS.trust||0)+1}}
 function updateVeyra(dt){const V=VEYRA;if(!V||!V.on||V.hidden)return;V.t+=dt;V.think-=dt;const dP=Math.hypot(P.x-V.x,P.z-V.z);for(const k in V.cd)V.cd[k]-=dt;
@@ -2230,14 +2341,14 @@ function updateVeyra(dt){const V=VEYRA;if(!V||!V.on||V.hidden)return;V.t+=dt;V.t
  V.max=100+SYS.lv*12;for(const b of BURNS)if(!b.mine&&b.t<b.life&&Math.hypot(V.x-b.x,V.z-b.z)<1.2){V.hp-=dt*6}
  // enemy swings land on whoever stands in front of them: a windup that points at her hurts if she does not get out of the way
  let fight=false;for(const o of foes()){if(!foeHostile(o))continue;const dv=Math.hypot(o.x-V.x,o.z-V.z);if(dv<14)fight=true;const fr=Math.abs(angd(Math.atan2(V.x-o.x,V.z-o.z),o.yaw))<.75,reach=o.boss||o.big?3.4:isWolf(o)?2.6:2.2;
-  if(o.st==='windup'&&dv<reach+.8&&fr)o._vw=1;else if(o._vw&&o.st!=='windup'){o._vw=0;if(V.act!=='dodge'&&dv<reach&&fr&&!V.down){const dmg=Math.round((o.boss||o.big?26:isWolf(o)?12:9)*lvDmg(o.lv||1));V.hp-=dmg;V.flash=1;floatText(V.x,V.y+1.8,V.z,'-'+dmg,'red');sfx.hurt()}}}
+  if((o.st==='windup'||o.st==='bitewind')&&dv<reach+.8&&fr)o._vw=1;else if(o._vw&&o.st!=='windup'&&o.st!=='bitewind'&&o.st!=='rush'){o._vw=0;if(V.act!=='dodge'&&dv<reach&&fr&&!V.down){const dmg=Math.round((o.boss||o.big?26:isWolf(o)?12:9)*lvDmg(o.lv||1));V.hp-=dmg;V.flash=1;floatText(V.x,V.y+1.8,V.z,'-'+dmg,'red');sfx.hurt()}}}
  if(!fight&&V.hp<V.max)V.hp=Math.min(V.max,V.hp+dt*4);if(V.hp<=0){V.hp=0;V.down=true;V.downT=20;V.act=null;vSay('down',true)}
  if(P.hp<maxHP()*.35)vSay('low');
  // decide (utility scoring) every 0.25 s unless an action is running
  if(!V.act&&V.think<=0){V.think=.25;const f=vTarget();let best='follow',bs=1;
   if(P.alive&&P.hp<maxHP()*.35&&(V.cd.heal||0)<=0&&dP<10){best='heal';bs=9}
   if(f){const d=Math.hypot(f.x-V.x,f.z-V.z),n=foes().filter(o=>Math.hypot(o.x-V.x,o.z-V.z)<4).length;V.tgt=f;
-   const danger=foes().find(o=>(o.st==='windup'||o.st==='open')&&Math.hypot(o.x-V.x,o.z-V.z)<3.2&&Math.abs(angd(Math.atan2(V.x-o.x,V.z-o.z),o.yaw))<.6);
+   const danger=foes().find(o=>(o.st==='windup'||o.st==='open'||o.st==='bitewind'||o.st==='rush')&&Math.hypot(o.x-V.x,o.z-V.z)<3.2&&Math.abs(angd(Math.atan2(V.x-o.x,V.z-o.z),o.yaw))<.6);
    const cands=[['dodge',danger&&(V.cd.dodge||0)<=0?8:0],['burst',n>=3&&(V.cd.burst||0)<=0?7:0],['bolt',d>4&&d<15&&(V.cd.bolt||0)<=0?5+(f.st==='windup'?2:0):0],['slash',d<1.9?4.5:0],['close',d>=1.9?3:0]];
    for(const[k,v]of cands)if(v>bs){bs=v;best=k}if(danger&&best==='dodge')V.danger=danger}
   V.mode=best;if(best==='heal'||best==='burst'||best==='bolt'||best==='slash'||best==='dodge'){V.act=best;V.actT=0;V.hit=false}}
@@ -2392,10 +2503,14 @@ function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;contin
   const yaw=Math.atan2(a.vx,a.vz),pit=-Math.atan2(a.vy,Math.hypot(a.vx,a.vz));a.ob.M=mtrs([a.x,a.y,a.z],[pit,yaw,0]);a.ob.pos=[a.x,0,a.z]}}
 // ---------- goblin archers
 function archerChase(g,d,dt){if(!g.archer)return false;if(g.unseen>1||d>22)return false;
- if(d<5.5){const ax=g.x+(g.x-P.x)/d*3,az=g.z+(g.z-P.z)/d*3;agentMove(g,ax,az,4.6,dt,g.rad,6);agentFace(g,P.x,P.z,dt,6);return true}// too close: back off
+ if((g.cornered||0)>GT.clock)return false;// cornered: fight with the knife for a while
+ if(d<6){if(!g.escT){g.escT=GT.clock;g.escD=d}const e=archerEscape(g);if(GT.clock-g.escT>1.2&&d<g.escD+.6||!e&&d<2.6){g.cornered=GT.clock+3;g.escT=0;floatText(g.x,(g.y||0)+1.8,g.z,'SIKIŞTI','');return false}
+  if(e){agentMove(g,e[0],e[1],4.9,dt,g.rad,9);return true}agentFace(g,P.x,P.z,dt,6);return true}// close: run along an open escape line
+ g.escT=0;
  if(g.cd<=0){g.st='aim';g.t=0;sfx.gobShout();return true}
  const a=Math.atan2(g.x-P.x,g.z-P.z)+.6*dt*(g.side||1),r=Math.min(14,Math.max(9,d));agentMove(g,P.x+Math.sin(a)*r,P.z+Math.cos(a)*r,3.2,dt,g.rad,6);agentFace(g,P.x,P.z,dt,8);return true}
-function archerAim(g,d,dt){g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
+function archerAim(g,d,dt){if(d<4&&!g.shot){g.st='chase';g.t=0;return}// he is on top of me: drop the shot and get away
+ g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,8);
  if(g.t>.9&&!g.shot){g.shot=1;const hy=hAt(g.x,g.z),to=archerAimPoint(d,g.aimAt);
   shootArrow([g.x+Math.sin(g.yaw)*.4,hy+1.0,g.z+Math.cos(g.yaw)*.4],to,19,'foe',Math.round(8*lvDmg(g.lv||1)),null);ARROWS.find(a=>a.on&&a.owner==='foe'&&!a.lv&&(a.lv=g.lv||1))}
  if(g.t<.55)g.aimAt=[P.x,P.z];// the archer locks its aim early: what it shoots at is where you WERE
@@ -2475,7 +2590,7 @@ function project(x,y,z){const m=VPm,w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=.1)retur
 function floatText(x,y,z,txt,cls){const s=project(x,y,z);if(!s)return;const d=document.createElement('div');d.className='dmg '+(cls||'');d.textContent=txt;d.style.left=s[0]+'px';d.style.top=s[1]+'px';$('marks').appendChild(d);setTimeout(()=>{if(d.parentNode)d.parentNode.removeChild(d)},800)}
 const markEls=[];
 function markFor(a,kind){if(a.dead||a.so&&SO.on&&a!==SO.lead)return null;if(a.so&&SO.on)return SO.phase==='charge'?['!','red']:null;if(a.peril&&a.st==='windup')return['危','red'];if(a.crumble)return['☠','yel'];if(a.st==='sleep')return null;
- if(kind==='wolf'){const w=a;if(w.st==='windup')return['!','red'];if(w.tame)return['♥','tame'];if(w.calm>0)return['%'+w.trust,'tame'];if(!hostileSt(w)&&(w.aware>.25||w.st==='alert'||w.st==='search'))return['?','yel'];if(hostileSt(w)&&w.hp<w.max)return['','hpb'];return null}
+ if(kind==='wolf'){const w=a;if(w.st==='windup'||w.st==='bitewind')return['!','red'];if(w.st==='flee')return['…','yel'];if(w.tame)return['♥','tame'];if(w.calm>0)return['%'+w.trust,'tame'];if(!hostileSt(w)&&(w.aware>.25||w.st==='alert'||w.st==='search'))return['?','yel'];if(hostileSt(w)&&w.hp<w.max)return['','hpb'];return null}
  if(kind==='npc'){if(a.st==='watch')return['!','yel'];return null}
  if(a.st==='windup'||a.st==='open'||(kind==='dragon'&&(a.st==='claw'&&a.ct<2.7||a.st==='breath'&&a.ct<2.7)))return['!','red'];
  if(a.open&&a.open())return['★','gold'];if(!a.hostile()&&a.aware>.25)return['?','yel'];if(a.hostile()&&a.hp<a.max&&kind!=='dragon')return['','hpb'];return null}
@@ -2501,7 +2616,7 @@ const GS={onAggro(w){sfx.growl()},onWindup(w){sfx.snarl()},onPounce(w){sfx.noise
   P.pinBy=w;P.struggle=0;w.st='pin';w.t=0;w.bites=0;w.bt=.5;w.air=0;w.kx=w.kz=0;CAM.shake=.8;spawnSparks(P.x,P.y+.8,P.z,8,[.8,.75,.6],3);note('[Sistem] Kurt '+PARTN[key]+' saldırdı! Düğmelere art arda basarak kurtul.','red')},
  onBite(w){const dmg=2+(w.alpha?1:0)+(rnd()<.3?1:0);P.hp-=dmg;P.jig=1;P.flash=.5;CAM.shake=Math.max(CAM.shake,.3);sfx.bite();const b=mpt(PM,SK.GP[w.part.bone]);floatText(b[0],b[1]+.3,b[2],'-'+dmg,'red');spawnSparks(b[0],b[1],b[2],4,[.9,.2,.2],2.5);
   if(P.hp<=0)die()},
- onKill(w,byPet){SYS.kills++;SYS.meat++;addXP(w.alpha?70:30,P);note('[Sistem] Kurt öldürüldü'+(byPet?' (yoldaşın)':'')+' · +'+(w.alpha?70:30)+' XP · +1 çiğ et');GT.stop=Math.max(GT.stop,.12);save(P)}};
+ onKill(w,byPet){WKILL.push(GT.clock);SYS.kills++;SYS.meat++;addXP(w.alpha?70:30,P);note('[Sistem] Kurt öldürüldü'+(byPet?' (yoldaşın)':'')+' · +'+(w.alpha?70:30)+' XP · +1 çiğ et');GT.stop=Math.max(GT.stop,.12);save(P)}};
 // ---------- interaction: silent choke on an unaware goblin from behind, talk, feed/tame a wolf, statue
 function interact(){if(dunInteract())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
  if(startStandoff())return;
@@ -2520,7 +2635,7 @@ function step(dt){GT.dt=dt;if(dt>0&&DUN.on){GT.clock+=dt;updatePlayer(dt);GT.tod
  else if(dt>0){GT.clock+=dt;updatePlayer(dt);updateStandoff(dt);
   for(const w of wolves)if(Math.hypot(w.x-P.x,w.z-P.z)<170||w.tame||w.dead)updateWolf(w,P,dt,GS);
   for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<180)updateGob(g,dt);for(const n of NPCS)updateNpc(n,dt);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<200)updateCroc(c,dt);
-  updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
+  updatePacks(dt);updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
   updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt;
   const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
@@ -2532,6 +2647,7 @@ function step(dt){GT.dt=dt;if(dt>0&&DUN.on){GT.clock+=dt;updatePlayer(dt);GT.tod
 function queueTelegraphs(){for(const w of wolves){if(w.st!=='windup'||w.dead||w.tame)continue;const L=cl(Math.hypot(w.ax-w.x,w.az-w.z)+.4,2.5,8);tele('strip',w.x,w.z,.9,L,Math.atan2(w.ax-w.x,w.az-w.z),sst(0,.3,w.t))}
  for(const g of GOBS){if(g.dead||g.st!=='windup')continue;if(g.big&&g.move==='stomp')tele('circle',g.x,g.z,5.6,0,0,1);else if(g.big&&g.move==='sweep')tele('circle',g.x+Math.sin(g.yaw)*1.2,g.z+Math.cos(g.yaw)*1.2,3.2,0,0,sst(0,.4,g.t));else if(g.big)tele('circle',g.x+Math.sin(g.yaw)*2.3*g.sc/1.25,g.z+Math.cos(g.yaw)*2.3*g.sc/1.25,1.35,0,0,sst(0,.4,g.t));else tele('strip',g.x,g.z,.7,1.8,g.yaw,1)}
  for(const w of wolves)if(w.st==='howl'&&!w.dead)tele('circle',w.x,w.z,3,0,0,.6);
+ for(const w of wolves)if(w.st==='bitewind'&&!w.dead)tele('strip',w.x,w.z,.6,Math.min(6,Math.hypot(P.x-w.x,P.z-w.z)),Math.atan2(P.x-w.x,P.z-w.z),sst(0,.25,w.t));
  for(const c of CROCS){if(c.dead||c.st!=='open')continue;const h=crocHead(c);tele('circle',h[0]+Math.sin(c.yaw)*.4,h[2]+Math.cos(c.yaw)*.4,1.2,0,0,sst(0,.3,c.t))}
  const d=DRAGON;if(d&&!d.dead){if(d.st==='claw'&&d.ct>.6&&d.ct<2.8)tele('circle',d.x+Math.sin(d.yaw)*6.2+Math.cos(d.yaw)*-1.2,d.z+Math.cos(d.yaw)*6.2-Math.sin(d.yaw)*-1.2,2.6,0,0,sst(.6,1.2,d.ct));
   if(d.st==='breath'&&d.breathA&&d.ct<4.4){const ax=d.breathA[0],az=d.breathA[1],bx=d.breathB[0],bz=d.breathB[1];tele('strip',ax,az,3.6,Math.hypot(bx-ax,bz-az),Math.atan2(bx-ax,bz-az),d.ct<2.7?1:.5)}
@@ -2605,7 +2721,7 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
  addEventListener('blur',()=>{IN.atkHeld=false;IN.blockHeld=false;P.sprintHeld=false})}
 // ---------- boot + adaptive quality (performance: measure first, then lower resolution, grass, draw distance)
 const QUAL={QL:0};
-function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=objs.length;buildPlayer(TX);buildFx();const shared=new Set(objs.slice(s0));spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();guildInit();buildDunEntrances();for(const o of objs)if(!shared.has(o))o.ow=1;checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
+function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=objs.length;buildPlayer(TX);buildFx();const shared=new Set(objs.slice(s0));spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();buildPacks();assignLookouts();veyraInit();storyInit();guildInit();buildDunEntrances();for(const o of objs)if(!shared.has(o))o.ow=1;checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
@@ -2625,7 +2741,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
    BOSSES,MAIN,curMain,questTarget,questEvent,storyInteract,chooseFate,showManhwa,PANELS,get VEYRA(){return VEYRA},get KING(){return KING},
    dbg:{get PLD(){return PLD},humanGeo,faceTex,promptText,get hudT(){return hudT},crocDef,get VEYM(){return VEYM},WHIP,W_UP,W_LO},
-   openWin,renderWin,uiTick,maxHP,useBow,GUILD,guildInteract,guildAccept,guildTurnIn,guildKill,cDone,fillBoard,GRANK,CINE,cineNext,cineEnd,archerAimPoint,swordTip,bladeAt,parryWin,gobStartSwing,STDEF,startLight,startHeavy,STANCES,SO,startStandoff,standoffTarget,DUN,DUNS,MONS,MT,MV,enterDungeon,leaveDungeon,dunInteract,dunPrompt,spawnMon,solvePuzzle,openDunDoor,readLore,dunSwing,genFloor,LORE,dCX,dCZ,dunLos,dunCollide,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
+   openWin,renderWin,uiTick,maxHP,useBow,GUILD,guildInteract,guildAccept,guildTurnIn,guildKill,cDone,fillBoard,GRANK,CINE,cineNext,cineEnd,GOBDEAD,gobMood,gobCampAlarm,PACKS,WKILL,packRoamTarget,updateWolf,GS,wolfMood,archerAimPoint,swordTip,bladeAt,parryWin,gobStartSwing,STDEF,startLight,startHeavy,STANCES,SO,startStandoff,standoffTarget,DUN,DUNS,MONS,MT,MV,enterDungeon,leaveDungeon,dunInteract,dunPrompt,spawnMon,solvePuzzle,openDunDoor,readLore,dunSwing,genFloor,LORE,dCX,dCZ,dunLos,dunCollide,startAssassin,STANCES,setStance,cycleStance,checkStances,curStance,foes,foeHurt,onFoeKilled,interact,save,load,addXP},
   tp(x,z){P.x=x;P.z=z;P.y=hAt(x,z);P.air=false;CAM.tx=x;CAM.tz=z;streamForest(x,z,999)},sim(dt,n){for(let i=0;i<n;i++){GT.time+=dt;step(dt)}}};
  step(0);requestAnimationFrame(frame)}
 // ---- 62-cine.js

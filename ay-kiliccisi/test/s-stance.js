@@ -24,7 +24,7 @@ module.exports = async ({ G, log }) => {
     // resolve heal with no flasks
     fresh(...T0); SYS.flasks = 0; P.hp = 20; P.rage = 60; X.drinkFlask(); const ds = P.st; sim(1.3); o.heal = [ds, Math.round(P.hp), Math.round(P.rage)]; SYS.flasks = 3;
     // pinned by a wolf + arrow hit: stays pinned/down, no knockback, wolf lets go cleanly afterwards
-    fresh(...T0); const w = g.wolves.find((x) => !x.dead && !x.boss && !x.tame && Math.hypot(x.x - P.x, x.z - P.z) > 100); w.x = P.x; w.z = P.z + 5.5; w.hx = w.x; w.hz = w.z; w.hp = w.max = 500; w.yaw = Math.PI; w.st = 'chase'; w.aware = 1; w.cd = 0; w.unseen = 0; w.sees = true; w.ls = [P.x, P.z];
+    fresh(...T0); const w = g.wolves.find((x) => !x.dead && !x.boss && !x.tame && Math.hypot(x.x - P.x, x.z - P.z) > 100); w.x = P.x; w.z = P.z + 5.5; w.hx = w.x; w.hz = w.z; w.hp = w.max = 500; w.yaw = Math.PI; w.st = 'windup'; w.t = 0; w.dodged = false; w.resolved = false; w.pack = null; w.aware = 1; w.cd = 0; w.unseen = 0; w.sees = true; w.ls = [P.x, P.z];
     let pinned = false; sim(6, () => { P.hp = 200; if (P.pinBy) { pinned = true; return false; } }); const x0 = P.x, z0 = P.z; g.hitPlayer({ src: { x: P.x + 5, z: P.z }, dmg: 5, dir: [1, 0], knock: 'flinch', noPush: 1 }); const stAfter = P.st; sim(.3); const moved = Math.hypot(P.x - x0, P.z - z0);
     sim(8, () => { P.hp = 200; IN.mash = 1; if (P.st === 'move') return false; }); o.pin = { pinned, stAfter, moved: +moved.toFixed(2), end: P.st, pinBy: !!P.pinBy, ang: +P.rag.ang.toFixed(2), wolf: w.st };
     // arrow push on an upright player
