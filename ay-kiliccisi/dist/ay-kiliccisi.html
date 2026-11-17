@@ -674,7 +674,7 @@ const POSE0={hipY:0,pel:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:
 function applyPose(q){const R=SK.R,H=HB;
  R[H.hips]=rX(q.pel);R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),rY(q.hdY));
  R[H.leftUpperLeg]=r3m(rX(q.LthX),rZ(q.LthZ));R[H.rightUpperLeg]=r3m(rX(q.RthX),rZ(q.RthZ));R[H.leftLowerLeg]=rX(q.Lkn);R[H.rightLowerLeg]=rX(q.Rkn);
- R[H.leftFoot]=rX(cl(-(q.pel+q.LthX+q.Lkn),-.9,.9));R[H.rightFoot]=rX(cl(-(q.pel+q.RthX+q.Rkn),-.9,.9));
+ R[H.leftFoot]=rX(cl(-(q.pel+q.LthX+q.Lkn)+(q.ftX||0),-.9,.9));R[H.rightFoot]=rX(cl(-(q.pel+q.RthX+q.Rkn)+(q.ftX||0),-.9,.9));
  R[H.leftUpperArm]=r3m(rY(q.LaY),r3m(rX(q.LaX),rZ(-q.LaZ)));R[H.leftLowerArm]=rY(-q.Lel);R[H.leftHand]=r3m(rX(q.LwX),rY(q.LwY));
  R[H.rightUpperArm]=r3m(rY(q.RaY),r3m(rX(q.RaX),rZ(q.RaZ)));R[H.rightLowerArm]=rY(q.Rel);R[H.rightHand]=r3m(rX(q.RwX),r3m(rY(q.RwY),rZ(q.RwZ)));
  const e=(th,kn)=>SK.L1*Math.cos(q.pel+th)+SK.L2*Math.cos(q.pel+th+kn);
@@ -794,6 +794,39 @@ function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape
  const mk=(list,o)=>{if(!list.length)return;const g=merge(list);const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);let off=0;for(const p of list){J.set(p.J4,off*4);Wt.set(p.W4,off*4);off+=p.P.length/3}
   if(!g.N||g.N.length!==g.P.length)normals(g);return addSkin(g,J,Wt,o)};
  HERO.armor=mk(parts.armor,{out:.004,outCol:OUT,shade:.95});HERO.cape=mk(parts.cape,{out:0,shade:.8,ds:1});HERO.glow=mk(parts.glow,{unlit:1,col:[1,.25,.15],shade:0})}
+// ---- 32-anim.js
+// ===================== hero animation layers: foot IK on slopes, turn banking, head stabilisation =====================
+// poseTarget() (55-player.js) builds the key pose; these layers are applied on top, every frame, without touching P.ps
+// (P.ps is the smoothed key pose and is also saved by the story scenes, so terrain corrections must not leak into it).
+const ANIM={l:0,r:0,hip:0,fl:0,fr:0,w:0,yr:0,pyaw:null};
+// states whose feet are planted on the terrain
+const FOOT_IK_OFF={dodge:1,down:1,dead:1,td:1,getup:1,jump:1,jumpatk:1};
+// solve the leg (sagittal plane) so the foot rises by `h` while keeping its forward offset. th/kn are the thigh and knee
+// angles of the key pose, pel the pelvis pitch. Returns [th,kn]. Same angle convention as applyPose (e = L1·cos + L2·cos).
+function legLift(th,kn,pel,h){const L1=SK.L1,L2=SK.L2,a=pel+th,b=a+kn,u=L1*Math.sin(a)+L2*Math.sin(b),e=L1*Math.cos(a)+L2*Math.cos(b)-h;
+ const d=cl(Math.hypot(u,e),.25*(L1+L2),L1+L2-1e-4),k=Math.acos(cl((d*d-L1*L1-L2*L2)/(2*L1*L2),-1,1)),a2=Math.atan2(u,e)-Math.atan2(L2*Math.sin(k),L1+L2*Math.cos(k));
+ return[a2-pel,k]}
+// terrain height under each foot, relative to the hero's root, from last frame's bone positions
+function footHeights(){if(!PM)return null;const H=HB,l=mpt(PM,SK.GP[H.leftFoot]),r=mpt(PM,SK.GP[H.rightFoot]),c=mpt(PM,[0,0,0]),f=mpt(PM,[0,0,.2]),fx=f[0]-c[0],fz=f[2]-c[2];
+ const sl=(hAt(P.x+fx,P.z+fz)-hAt(P.x-fx,P.z-fz))/.4;// rise per metre along the facing direction
+ return{l:cl(hAt(l[0],l[2])-P.y,-.32,.32),r:cl(hAt(r[0],r[2])-P.y,-.32,.32),slope:Math.atan(sl)}}
+// returns the pose actually drawn this frame
+function animLayers(ps,dt){const q=Object.assign({},ps);dt=dt||0;if(ANIM.off)return q;
+ // ---- turn banking: lean into turns while running (centripetal), from the smoothed yaw rate
+ if(ANIM.pyaw===null)ANIM.pyaw=P.yaw;const yr=dt>0?angd(P.yaw,ANIM.pyaw)/dt:0;ANIM.pyaw=P.yaw;ANIM.yr=lp(ANIM.yr,cl(yr,-8,8),Math.min(1,dt*8));
+ const mv=P.st==='move'&&!P.crouch?cl(P.spd/5,0,1):0;q.spZ=(q.spZ||0)+cl(ANIM.yr*.045*mv,-.22,.22);
+ // ---- foot IK: plant both feet on uneven ground; the hips drop by the lower foot, the uphill knee bends
+ const on=!P.air&&!FOOT_IK_OFF[P.st]&&P.rag.ang<.05&&P.y<=hAt(P.x,P.z)+.03;
+ ANIM.w=lp(ANIM.w,on?1:0,Math.min(1,dt*10));const fh=on?footHeights():null;
+ const tl=fh?fh.l:0,tr=fh?fh.r:0,k=Math.min(1,dt*14);ANIM.l=lp(ANIM.l,tl,k);ANIM.r=lp(ANIM.r,tr,k);ANIM.fl=lp(ANIM.fl,fh?fh.slope:0,k);
+ if(ANIM.w>.01){const lo=Math.min(ANIM.l,ANIM.r),w=ANIM.w,pel=q.pel||0;
+  // the root formula in applyPose grounds the most extended leg at y=0; lifting each leg by (h - lowest) and dropping the
+  // hips by the lowest foot puts both soles on the terrain
+  const[lt,lk]=legLift(q.LthX,q.Lkn,pel,(ANIM.l-lo)*w),[rt,rk]=legLift(q.RthX,q.Rkn,pel,(ANIM.r-lo)*w);
+  q.LthX=lt;q.Lkn=lk;q.RthX=rt;q.Rkn=rk;q.hipY=(q.hipY||0)+lo*w;
+  // soles follow the slope (toes up when the ground rises ahead)
+  q.ftX=-ANIM.fl*w*.8}
+ return q}
 // ---- 40-wolves.js
 // ===================== wolves: model, perception, behaviour =====================
 const WG={},wolves=[],wslots=[],WSLOTS=9,W_UP=.32,W_LO=.3;
@@ -1894,12 +1927,17 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
 // --------------------------------------------------------------- pose targets per state
 function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph),c=Math.cos(P.ph);let rate=14;
  const run=(mv,sprint)=>{const A=(sprint?.9:.5)*mv,B=(sprint?1.55:.95)*mv;q.LthX=-s*A;q.RthX=s*A;q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
-  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012)};
+  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012);
+  // weight transfer: the spine rolls over the stance leg;
+  // the head counters the torso twist and lean so the gaze stays on the horizon
+  q.spZ=-s*(sprint?.035:.05)*mv;q.hdY=-(q.chY+q.spY)*.7;q.hdX=-q.spX*.45};
  switch(P.st){
  case'move':case'land':{const mv=cl(P.spd/3.4,0,1);
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
   else if(mv>.08)run(mv,P.sprinting&&P.spd>4.6);
-  else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
+  else{// ready stance: soft knees, slow breathing (chest + shoulders), weight drifting from leg to leg, glance around
+   const br=Math.sin(t*1.6),ws=Math.sin(t*.37),wl=Math.max(0,ws),wr=Math.max(0,-ws);q.pel=.03;q.chX=br*.025;q.hdX=-br*.02;q.hdY=Math.sin(t*.5)*.12;
+   q.LthX=-.06-wl*.05;q.Lkn=.1+wl*.09;q.RthX=-.06-wr*.05;q.Rkn=.1+wr*.09;q.spZ=ws*.03;q.LaZ=1.22+br*.02;q.LaX=.05+br*.02;q.RaZ=1.12+br*.015;q.RaX=-.3+Math.sin(t*1.6+.6)*.02}
   if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
@@ -2348,7 +2386,7 @@ function step(dt){GT.dt=dt;if(dt>0){GT.clock+=dt;updatePlayer(dt);
   updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt;
   const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
- poseTarget();applyPose(P.ps);PM=playerMatrix(dt);
+ poseTarget();applyPose(animLayers(P.ps,dt));PM=playerMatrix(dt);
  if(P.pinBy){const w=P.pinBy,b=mpt(PM,SK.GP[w.part.bone]),ty=Math.atan2(b[0]-w.x,b[2]-w.z);w.yaw+=angd(ty,w.yaw)*.25;const gx=b[0]-Math.sin(w.yaw)*.95*w.sc,gz=b[2]-Math.cos(w.yaw)*.95*w.sc;w.x=lp(w.x,gx,.25);w.z=lp(w.z,gz,.25);w.y=hAt(w.x,w.z)}
  queueTelegraphs()}
 // enemies' visible tells on the ground
@@ -2440,7 +2478,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,ANIM,get PLD(){return PLD},wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
