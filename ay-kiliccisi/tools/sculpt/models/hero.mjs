@@ -26,10 +26,19 @@ export default function hero(ALL) {
   const bodyE = ellipsoid([0, 1.48, -0.005], [0.27, 0.27, 0.2]);
   const taper = symX(plane([0.285, 1.66, 0], [0.36, -0.13, 0]));
   const neckHole = cone([0, 1.6, 0.02], [0, 1.9, 0.04], 0.098, 0.13), armHoles = symX(sphere([0.315, 1.645, 0], 0.1));
-  const cuirSolid = I(0.012, lens, bodyE, taper, slab(1.3, 1.69));
+  // sculpted chest: two pectoral plates and a raised central keel over the lens, so the breastplate reads as a torso, not a barrel
+  const pecs = symX(I(0.01, ellipsoid([0.088, 1.5, 0.075], [0.125, 0.098, 0.13], rot.z(-0.18)), plane([0, 1.42, 0], [0, -1, -0.35])));
+  const keel = I(0.006, cone([0, 1.62, 0.17], [0, 1.33, 0.185], 0.022, 0.018), plane([0, 0, 0.17], [0, 0, -1]));
+  const cuirSolid = I(0.012, U(0.03, lens, pecs, keel), bodyE, taper, slab(1.3, 1.69));
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
-  const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
+  const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles); // engraving is a bronze inlay decal now (grooves read as holes on the sculpted chest)
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  // crescent-moon crest (the game is "Ay Kılıççısı"): raised bronze relief with a moonstone that glows in its hollow
+  const moonC = [0, 1.47, 0];
+  const crescent = I(0.002, Sub(0.003, cone(v3.add(moonC, [0, 0, -0.1]), v3.add(moonC, [0, 0, 0.4]), 0.072), cone(v3.add(moonC, [0.03, 0.02, -0.1]), v3.add(moonC, [0.03, 0.02, 0.4]), 0.062)),
+    grow(cuirSolid, 0.007), plane([0, 0, 0.1], [0, 0, -1]));
+  C({ name: 'moonCrest', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: crescent });
+  C({ name: 'moonstone', mat: 'glow', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, ellipsoid([0.016, 1.482, 0.2], [0.016, 0.019, 0.02]), grow(cuirSolid, 0.009)) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
@@ -43,6 +52,14 @@ export default function hero(ALL) {
   for (let i = 0; i < 3; i++) { const y1 = 1.105 - i * 0.062, e = ellipsoid([0.1, 1.0, 0.02], [0.15 + i * 0.006, 0.3, 0.16 + i * 0.006]);
     L({ name: 'tasset' + i, mat: i === 2 ? 'trim' : 'plate', tau: 0.02, k: 0.004, sdf: I(0.005, shell(e, 0.007), slab(y1 - 0.07, y1), zcut(-0.02, -1), xcut(0.012, -1)), boneFn: () => [['leftUpperLeg', 0.55 + i * 0.15], ['Hips', 0.45 - i * 0.15]] }); }
 
+  // crimson tabard hanging from the belt between the tassets (same cloth as the cape), bronze-edged, notched hem
+  const tabFold = (x, y, z) => 0.006 * Math.sin(x * 70 + 0.6) * Math.max(0, Math.min(1, (1.08 - y) / 0.3));
+  const tabHem = { d: (x, y, z) => (0.7 + Math.abs(x) * 0.9 + 0.02 * Math.max(0, noise(x * 40, 2.3, 0))) - y, bb: [-1, 0.6, -1, 1, 2, 1] };
+  const tabBody = I(0.004, disp(box([0, 0.92, 0.19], [0.085, 0.22, 0.006], rot.x(-0.1), 0.004), tabFold, 0.007), tabHem, slab(0.6, 1.1));
+  const tabFn = (x, y) => { const d = Math.max(0, Math.min(1, (1.08 - y) / 0.3)); return [['Hips', 1 - d * 0.7], ['leftUpperLeg', d * 0.35], ['rightUpperLeg', d * 0.35]]; };
+  C({ name: 'tabard', mat: 'cloth', tau: 0.03, k: 0.006, sdf: tabBody, boneFn: tabFn });
+  C({ name: 'tabardTrim', mat: 'trim', tau: 0.03, k: 0.003, sdf: I(0.002, shell(tabBody, 0.0035), U(0, grow(I(0, shell(box([0, 0.92, 0.19], [0.085, 0.22, 0.03], rot.x(-0.1)), 0.012)), 0), grow(shell(tabHem, 0.012), 0))), boneFn: tabFn });
+
   // ------------------------------------------------------------ gorget and wolf-fur mantle
   C({ name: 'gorget', mat: 'plate', tau: 0.03, k: 0.006, sdf: Sub(0.006, U(0.004, ...[0, 1].map((i) => I(0.004, shell(cone([0, 1.6, 0], [0, 1.79, 0.015], 0.125 - i * 0.022, 0.092 - i * 0.016), 0.007), slab(1.64 + i * 0.065, 1.7 + i * 0.065)))), cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.07, 0.066)),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (y - 1.65) / 0.12)); return [['Neck', t], ['UpperChest', 1 - t]]; } });
@@ -50,7 +67,7 @@ export default function hero(ALL) {
   for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2, cx = Math.sin(a) * 0.2, cz = Math.cos(a) * 0.165 - 0.025, back = Math.cos(a) < 0.2;
     tufts.push(ellipsoid([cx, 1.695 + 0.012 * Math.sin(i * 2.7), cz], [0.07, 0.05, 0.07], rot.y(a)));
     if (back || Math.abs(Math.sin(a)) > 0.7) { const o = [Math.sin(a) * 0.255, 1.66, Math.cos(a) * 0.21 - 0.03]; tufts.push(horn([o, v3.add(o, [Math.sin(a) * 0.04, -0.07, Math.cos(a) * 0.04]), v3.add(o, [Math.sin(a) * 0.05, -0.14 - (i % 3) * 0.02, Math.cos(a) * 0.06])], 0.034, 0.006)); } }
-  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.011 * fbm(x * 55, y * 12, z * 55, 3) + 0.005 * noise(x * 170, y * 25, z * 170), 0.018);
+  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.01 * fbm(x * 48, y * 12, z * 48, 3) + 0.0022 * noise(x * 150, y * 25, z * 150), 0.015);
   C({ name: 'fur', mat: 'fur', bone: 'UpperChest', tau: 0.012, k: 0.02, sdf: Sub(0.01, fur, cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.082, 0.078)) });
 
   // ------------------------------------------------------------ pauldrons
@@ -131,8 +148,8 @@ export default function hero(ALL) {
   for (const p of P.slice()) if (p.side) P.push({ ...p, side: 0, name: p.name + 'R', sdf: mirrorX(p.sdf), bone: p.bone && swap(p.bone), boneFn: p.boneFn && ((x, y, z) => p.boneFn(-x, y, z).map(([b, w]) => [swap(b), w])) });
 
   return {
-    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
-    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
+    name: 'hero', voxel: 0.005, tris: 24000, err: 0.0014, bones, parts: P,
+    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }, { mat: 'trim', sdf: grow(engr, 0.0015), onPart: ['cuirass'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
       trim: { col: [0.42, 0.3, 0.13], gloss: 0.72, metal: 1, wear: 0.55, edge: [1.0, 0.82, 0.45], var: 0.12, freq: 30, tint: 0 },
