@@ -12,9 +12,9 @@ Tests: `cd ay-kiliccisi && NODE_PATH=$(npm root -g) node test/harness.js test/<s
 | # | Feature | Status | What's still open |
 |---|---|---|---|
 | 1 | High-quality male protagonist | **Mostly done.** Kael is an in-game sculpted model (~21k triangles, 58 bones, gloss/metal/glow material channels, horned helm, fur mantle, cape, greatsword). | The user asked for an armor redesign but gave no design brief, so it waits on that. |
-| 2 | Realistic 3D character animations | **In progress.** Procedural poses with crossfades, arm IK (two-handed grip, reverse grip), cape bones. Foot IK on terrain (run 1). **Speed-matched gait, heel-off and stride foot locking (run 2).** | No keyframe clip system. Foot locking covers only the hero's walk and run, not turning in place or crouch-walking. Animals and NPCs have no foot IK or locking. No hit-reaction directionality. |
+| 2 | Realistic 3D character animations | **In progress.** Procedural poses with crossfades, arm IK (two-handed grip, reverse grip), cape bones. Foot IK on terrain (run 1). Speed-matched gait, heel-off and stride foot locking (run 2). **Terrain foot IK for every humanoid rig: villagers, guards, merchants, goblins, big goblins, skeletons, Veyra (run 3).** | No keyframe clip system. Foot locking covers only the hero's walk and run, not turning in place or crouch-walking. NPCs have terrain IK but no stride locking. Wolves, crocodile and dragon have no foot IK. No hit-reaction directionality. |
 | 3 | Integration of submitted GLB models | **In progress.** Done: dragon (own clips), elf body (Şeytan Kraliçe), hair GLB, skeleton proportions from berserk_armor, kawaiope and aldrich. | gwyndolin (Snake Priestess boss) not used yet. The NC/ND-licensed files can't be used. |
-| 4 | Multiple animals and creatures | **In progress.** Wolves, goblins (melee, archer, chief), crocodile, dragon, Veyra. The old game has 14 species. | Dungeon creatures (skeleton, spider, golem, wraith), deer and birds in the open world, the White Wolf. |
+| 4 | Multiple animals and creatures | **In progress.** Wolves, goblins (melee, archer, chief), crocodile, dragon, Veyra, **skeleton warriors and skeleton archers** (merged in run 3 from the parallel branches `-soup7a`/`-7qxv18`). The old game has 14 species. | Spider, golem, wraith; deer and birds in the open world; the White Wolf. |
 | 5 | Creature taming and AI | **In progress.** Vision cones, group alerts, hearing, utility-AI companion (Veyra). Taming exists in the old game (`yaban.html`). | Taming isn't in Ay Kılıççısı yet; no "pet upgrade tree". |
 | 6 | Open world, combat, inventory, progression | **Combat, inventory and progression done.** 4 stances, parry, perfect dodge, assassination, posture/execution, loot rarities, smith, skills, quests, saves. 2.8 km map. | World expansion (snow region, harbour, town), dungeons and towers, Adventurers' Guild. |
 | 7 | Android performance and mobile controls | **In progress.** PlayStation-style touch layout, landscape and portrait, outlines culled beyond 30 m, perf test. | Not tested on a real device. No graphics-quality menu, no HUD editor, no LOD. |
@@ -45,8 +45,19 @@ No feature is marked complete in the routine's sense yet.
   - `s-loop`: 4 of 6 runs passed 71/71. The other 2 each failed one different, unrelated test (Kırık Diş stomp jump, Gölge Adımı dash distance). The old build passed 3/3, so treat this as possible load-related flakiness and keep an eye on it.
   - Toggles for comparison: `GAIT.lin=0` restores the old sine gait, `FIK.lock=0` turns off locking.
 
+### Run 3 — 2026-11-17
+- **Merged the two parallel routine lines into this branch**: the animation line (`-7ynivm`: foot IK + stride locking) and the undead line (`-soup7a` → `-7qxv18`: skeleton warriors + skeleton archers, bone-rattle sfx). Only the two PROGRESS files conflicted; the build was regenerated. Their run logs are kept in `ay-kiliccisi/PROGRESS.md` (sessions 8, 8b, 9). **Next runs should start from this branch (`ccr-70a30f22-d98vgz`), not from `main`.**
+- **Feature 2 (animations): terrain foot IK for all humanoid rigs** (`rigFootIK` in `ay-kiliccisi/src/45-rig.js`).
+  - One extra FK pass finds where each ankle lands. Each ankle is moved by the ground height under it (relative to the ground under the root), and the pelvis drops to the lower foot.
+  - An analytic two-bone solve in the hip's sagittal plane re-bends the thigh and knee. Thigh and shin lengths come from the bone offsets, so it works for any `humanDef`-style rig, including Veyra's 20-bone rig. The foot keeps its pose pitch and tilts with the slope along the facing direction (≤0.35 rad), easing off as the foot lifts.
+  - Wired into `drawGobs` (goblins, big goblins, goblin archers, skeletons), `drawNpcs` (villagers, merchants, guards) and `drawVeyra`. It only runs within 45 m (`RFIK.dist`). It's skipped while lying, dead, rising from the ground or reforming, and for Veyra when chained or downed. `RFIK.on=0` turns it off for comparison.
+  - Measured side-on to a 0.42 slope, as the worst ankle error: villager 4.0 cm → 0.1 cm, guard 4.6 → 0.1, goblin 2.9 → 0.0, skeleton 3.7 → 0.1, big goblin 10.5 → 0.1. No foot sinks during a full walk cycle uphill or downhill. Flat ground is unchanged (bit-identical pose).
+  - Cost: village draw prep 1.88 → 2.06 ms per frame on this CPU (`s-perf`).
+  - New test `ay-kiliccisi/test/s-rigfik.js`: 14/14 pass. Regressions: `s-mech` 47/47, `s-loop` 71/71, `s-undead` 16/16, `s-footik` 9/9, `s-stride` 9/9, `s-perf` OK.
+  - Caveat: the downhill leg reaches 99.9 % extension on steep slopes, so the knee looks straight there; the pelvis drop isn't limited by leg reach yet.
+
 ## Next priorities
-1. Animations: terrain foot IK and stride locking for wolves and humanoid NPCs, lock the toe (not the ankle) during heel-off, crouch-walk gait, then a keyframe clip layer for the hero's signature moves.
+1. Animations: terrain foot IK for wolves (4-leg rig in `40-wolves.js`) and the crocodile, stride locking for walking NPCs, toe locking during heel-off, crouch-walk gait, then a keyframe clip layer for the hero's signature moves.
 2. Protagonist: armor redesign, once the user describes the look they want.
 3. GLB: build the Snake Priestess boss on the gwyndolin skeleton.
 4. Creatures: the first dungeon creatures (skeleton, spider).

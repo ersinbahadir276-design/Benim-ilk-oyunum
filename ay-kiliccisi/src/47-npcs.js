@@ -40,4 +40,4 @@ function drawNpcs(time){for(const n of NPCS){const d=Math.hypot(n.x-P.x,n.z-P.z)
   if(n.kind==='merchant'&&n.st!=='walk'){q.LsX=-.6+Math.sin(time*1.7+n.ph)*.25;q.LeX=-1.1;q.RsX=-.3;q.ReX=-.9}
   if(n.st==='idle'&&!n.post)q.spP=Math.sin(time*1.3+n.ph)*.03;
   if(n.st==='watch'){q.spP=-.05;q.LsX=-.2;q.LeX=-.6}
-  const K=NPCM[n.kind].K,hipH=(K.th+K.sh2+.06)*n.sc;rigDraw(n.R,n.x,n.y+hipH+(q.bob||0),n.z,n.yaw,n.sc,humanPose(q),.4,null)}}
+  const K=NPCM[n.kind].K,hipH=(K.th+K.sh2+.06)*n.sc,rot=humanPose(q);let y=n.y+hipH+(q.bob||0);if(d<RFIK.dist)y+=rigFootIK(n.R.def,rot,n.x,y,n.z,n.yaw,n.sc,n.y,null);rigDraw(n.R,n.x,y,n.z,n.yaw,n.sc,rot,.4,null)}}

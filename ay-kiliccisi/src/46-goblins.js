@@ -102,5 +102,6 @@ function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.bi
 function gobRootTilt(g){if(g.st==='pinned')return 1.45;if(g.st==='reform')return -1.45*(1-sst(0,.55,g.t/SKEL_REFORM));if(g.st==='escape'&&g.from==='pinned')return 1.45*(1-sst(0,.85,g.t/1.4));if(g.st==='dead')return -1.45*sst(0,.6,g.t);return 0}
 function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z);if(d>140||(g.dead&&g.deadT>20)){rigHide(g.R);if(g.bowOb)g.bowOb.vis=false;continue}
   const rot=gobPose(g,time),tilt=gobRootTilt(g),K=g.skel?SKM.K:g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc;
-  const extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)))-skelSink(g);rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);
+  const extra=tilt?rX(tilt):R3I;let y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)))-skelSink(g);
+  if(!tilt&&d<RFIK.dist&&g.st!=='dead'&&g.st!=='rise'&&g.st!=='reform'&&!skelSink(g))y+=rigFootIK(g.R.def,rot,g.x,y,g.z,g.yaw,g.sc,g.y,extra);rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);
   g.R.ob.flash=g.flash;g.R.ob.col=g.st==='stagger'||g.open()?[1.15,1.05,.8]:g.skel&&g.st==='rise'?[.75,1.05,1.3]:[1,1,1]}}

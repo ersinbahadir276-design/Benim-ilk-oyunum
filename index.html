@@ -1161,6 +1161,31 @@ function gaitPose(q,ph,a,run){const s=Math.sin(ph),c=Math.cos(ph),A=a*(.55+run*.
  q.LfX=(q.LfX||0)-Math.max(0,-c)*.25*a;q.RfX=(q.RfX||0)-Math.max(0,c)*.25*a;q.LsX=(q.LsX||0)+s*A*.8;q.RsX=(q.RsX||0)-s*A*.8;q.LeX=(q.LeX||0)-.25-run*.9*a;q.ReX=(q.ReX||0)-.25-run*.9*a;
  q.spY=(q.spY||0)+s*.12*a;q.spP=(q.spP||0)+run*.18*a;q.bob=-Math.abs(s)*(.02+run*.04)*a;return q}
 function lerpPose(p,q,k){for(const n in q){if(n in p)p[n]+=(q[n]-p[n])*k;else p[n]=q[n]}for(const n in p)if(!(n in q))p[n]+=(0-p[n])*k;return p}
+// ---------- terrain foot IK for humanoid rigs (goblins, skeletons, villagers, guards, Veyra)
+// rot = humanPose() output (edited in place). One FK pass finds where the ankles land; each ankle is moved by the
+// ground height under it relative to the ground under the root, the pelvis drops to the lower foot, an analytic
+// two-bone solve in the hip's sagittal plane rebends thigh + knee, and the foot is re-levelled and tilted to the slope.
+// Returns the pelvis drop (add it to the root y). Thigh/shin lengths come from the bone offsets; gy = ground under root.
+const RFIK={on:1,dist:45,maxTilt:.35,last:null};
+function rigFootIK(def,rot,x,y,z,yaw,sc,gy,extra){if(!RFIK.on)return 0;
+ const tmp=rigFootIK.tmp||(rigFootIK.tmp=new Float32Array(MAXB*12));rigFK(def,rot,[x,y,z],yaw,sc,tmp,extra);
+ const WP=def.WP,WR=def.WR,legs=[];
+ for(const[t,s,f]of[[9,10,11],[12,13,14]]){const F=WP[f],d=cl(hAt(F[0],F[2])-gy,-.45*sc,.45*sc);legs.push({t,s,f,F:F.slice(),d})}
+ const drop=cl(Math.min(legs[0].d,legs[1].d),-.4*sc,.04*sc);if(Math.abs(legs[0].d)+Math.abs(legs[1].d)<.004)return 0;
+ const a=Math.hypot(...def[10].o),b=Math.hypot(...def[11].o),fw=[Math.sin(yaw),Math.cos(yaw)],dbg=[];
+ for(const L of legs){// target ankle in the hips' local frame (unscaled), relative to the hip joint after the pelvis drop
+  const H=WP[L.t],T=[L.F[0],L.F[1]+L.d,L.F[2]],R0=WR[0],v=[(T[0]-H[0])/sc,(T[1]-H[1]-drop)/sc,(T[2]-H[2])/sc];
+  const tl=[R0[0]*v[0]+R0[3]*v[1]+R0[6]*v[2],R0[1]*v[0]+R0[4]*v[1]+R0[7]*v[2],R0[2]*v[0]+R0[5]*v[1]+R0[8]*v[2]];
+  // old angles from the pose (eul(x,0,z) = rX(x)*rZ(z)): recover pitch of thigh and knee
+  const rt=rot[L.t]||R3I,rk=rot[L.s]||R3I,hx0=Math.atan2(rt[7],rt[4]),hz0=Math.atan2(-rt[1],rt[0]),kx0=Math.atan2(rk[7],rk[4]);
+  const Lr=cl(Math.hypot(tl[1],tl[2]),Math.abs(a-b)+.01,(a+b)*.999),kx=Math.max(0,PI-Math.acos(cl((a*a+b*b-Lr*Lr)/(2*a*b),-1,1)));
+  const fy=-a-b*Math.cos(kx),fz=-b*Math.sin(kx),hx=Math.atan2(tl[2],tl[1])-Math.atan2(fz,fy);
+  rot[L.t]=r3m(rX(hx),rZ(hz0));rot[L.s]=rX(kx);
+  // foot: keep its old pitch relative to the hips, then tilt with the slope along the facing direction
+  const e=.25,slope=(hAt(T[0]+fw[0]*e,T[2]+fw[1]*e)-hAt(T[0]-fw[0]*e,T[2]-fw[1]*e))/(2*e),rf=rot[L.f]||R3I,fx0=Math.atan2(rf[7],rf[4]);
+  const lift=cl((L.F[1]-gy-.12*sc)/(.1*sc),0,1),tilt=-cl(Math.atan(slope),-RFIK.maxTilt,RFIK.maxTilt)*(1-lift);
+  rot[L.f]=rX(fx0+(hx0+kx0)-(hx+kx)+tilt);dbg.push({d:L.d,tilt})}
+ RFIK.last={drop,dbg};return drop}
 // ---- 46-goblins.js
 // ===================== goblins: small ones in fast weak groups, one big club-wielder per camp =====================
 const GOBS=[];let GOBM=null,BIGM=null,SKM=null;
@@ -1266,7 +1291,8 @@ function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.bi
 function gobRootTilt(g){if(g.st==='pinned')return 1.45;if(g.st==='reform')return -1.45*(1-sst(0,.55,g.t/SKEL_REFORM));if(g.st==='escape'&&g.from==='pinned')return 1.45*(1-sst(0,.85,g.t/1.4));if(g.st==='dead')return -1.45*sst(0,.6,g.t);return 0}
 function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z);if(d>140||(g.dead&&g.deadT>20)){rigHide(g.R);if(g.bowOb)g.bowOb.vis=false;continue}
   const rot=gobPose(g,time),tilt=gobRootTilt(g),K=g.skel?SKM.K:g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc;
-  const extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)))-skelSink(g);rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);
+  const extra=tilt?rX(tilt):R3I;let y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)))-skelSink(g);
+  if(!tilt&&d<RFIK.dist&&g.st!=='dead'&&g.st!=='rise'&&g.st!=='reform'&&!skelSink(g))y+=rigFootIK(g.R.def,rot,g.x,y,g.z,g.yaw,g.sc,g.y,extra);rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);
   g.R.ob.flash=g.flash;g.R.ob.col=g.st==='stagger'||g.open()?[1.15,1.05,.8]:g.skel&&g.st==='rise'?[.75,1.05,1.3]:[1,1,1]}}
 // ---- 46b-skeletons.js
 // ===================== skeleton warriors: the dead of the old ruins rise at night =====================
@@ -1351,7 +1377,7 @@ function drawNpcs(time){for(const n of NPCS){const d=Math.hypot(n.x-P.x,n.z-P.z)
   if(n.kind==='merchant'&&n.st!=='walk'){q.LsX=-.6+Math.sin(time*1.7+n.ph)*.25;q.LeX=-1.1;q.RsX=-.3;q.ReX=-.9}
   if(n.st==='idle'&&!n.post)q.spP=Math.sin(time*1.3+n.ph)*.03;
   if(n.st==='watch'){q.spP=-.05;q.LsX=-.2;q.LeX=-.6}
-  const K=NPCM[n.kind].K,hipH=(K.th+K.sh2+.06)*n.sc;rigDraw(n.R,n.x,n.y+hipH+(q.bob||0),n.z,n.yaw,n.sc,humanPose(q),.4,null)}}
+  const K=NPCM[n.kind].K,hipH=(K.th+K.sh2+.06)*n.sc,rot=humanPose(q);let y=n.y+hipH+(q.bob||0);if(d<RFIK.dist)y+=rigFootIK(n.R.def,rot,n.x,y,n.z,n.yaw,n.sc,n.y,null);rigDraw(n.R,n.x,y,n.z,n.yaw,n.sc,rot,.4,null)}}
 // ---- 48-croc.js
 // ===================== crocodiles (swamp): rush along the ground, open the jaws wide, snap =====================
 // No jumping: the body always follows the ground/water surface. The jaw opening is the tell: block right when it is
@@ -2210,7 +2236,7 @@ function drawVeyra(time){const V=VEYRA;if(!V||!V.R)return;if(!V.on&&!V.forceShow
  else if(V.act==='heal'){q.LsX=-1.4;q.LeX=-.5;q.RsX=-1.2;q.hdP=.1}
  if(V.forcePose)Object.assign(q,V.forcePose);
  const r=humanPose(q);const sw=Math.sin(time*2.2+V.ph)*.08,sv=V.spd*.06;r[15]=eul(.15+sv*.6+sw*.3,0,sw*.3);r[19]=eul(.1+sv*.4,0,sw*.4);r[16]=eul(-(q.LhX||0)*.4-(q.RhX||0)*.4+sv*.2,0,0);r[17]=eul(.1+sv*.5,0,0);r[18]=eul(.3+Math.sin(time*3)*.2,Math.sin(time*2.4)*.5,0);
- const hipH=veyraProportions().legY+.02;rigDraw(V.R,V.x,V.y+hipH+(q.bob||0)+dy,V.z,V.yaw,1,r,.38,tilt?rX(tilt):null);V.R.ob.flash=0}
+ const hipH=veyraProportions().legY+.02;let vy=V.y+hipH+(q.bob||0)+dy;if(!tilt&&!dy&&!V.down&&Math.hypot(V.x-P.x,V.z-P.z)<RFIK.dist)vy+=rigFootIK(V.R.def,r,V.x,vy,V.z,V.yaw,1,V.y,null);rigDraw(V.R,V.x,vy,V.z,V.yaw,1,r,.38,tilt?rX(tilt):null);V.R.ob.flash=0}
 // ---- 58-story.js
 // ===================== story: main quest chain, village roles, side quests, manhwa panels, Veyra's choice =====================
 // Panels are real in-engine shots (actors posed, camera placed, mood lighting) with speech balloons, narration boxes,
@@ -2569,7 +2595,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,

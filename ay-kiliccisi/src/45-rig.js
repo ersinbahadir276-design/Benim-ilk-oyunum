@@ -161,3 +161,28 @@ function gaitPose(q,ph,a,run){const s=Math.sin(ph),c=Math.cos(ph),A=a*(.55+run*.
  q.LfX=(q.LfX||0)-Math.max(0,-c)*.25*a;q.RfX=(q.RfX||0)-Math.max(0,c)*.25*a;q.LsX=(q.LsX||0)+s*A*.8;q.RsX=(q.RsX||0)-s*A*.8;q.LeX=(q.LeX||0)-.25-run*.9*a;q.ReX=(q.ReX||0)-.25-run*.9*a;
  q.spY=(q.spY||0)+s*.12*a;q.spP=(q.spP||0)+run*.18*a;q.bob=-Math.abs(s)*(.02+run*.04)*a;return q}
 function lerpPose(p,q,k){for(const n in q){if(n in p)p[n]+=(q[n]-p[n])*k;else p[n]=q[n]}for(const n in p)if(!(n in q))p[n]+=(0-p[n])*k;return p}
+// ---------- terrain foot IK for humanoid rigs (goblins, skeletons, villagers, guards, Veyra)
+// rot = humanPose() output (edited in place). One FK pass finds where the ankles land; each ankle is moved by the
+// ground height under it relative to the ground under the root, the pelvis drops to the lower foot, an analytic
+// two-bone solve in the hip's sagittal plane rebends thigh + knee, and the foot is re-levelled and tilted to the slope.
+// Returns the pelvis drop (add it to the root y). Thigh/shin lengths come from the bone offsets; gy = ground under root.
+const RFIK={on:1,dist:45,maxTilt:.35,last:null};
+function rigFootIK(def,rot,x,y,z,yaw,sc,gy,extra){if(!RFIK.on)return 0;
+ const tmp=rigFootIK.tmp||(rigFootIK.tmp=new Float32Array(MAXB*12));rigFK(def,rot,[x,y,z],yaw,sc,tmp,extra);
+ const WP=def.WP,WR=def.WR,legs=[];
+ for(const[t,s,f]of[[9,10,11],[12,13,14]]){const F=WP[f],d=cl(hAt(F[0],F[2])-gy,-.45*sc,.45*sc);legs.push({t,s,f,F:F.slice(),d})}
+ const drop=cl(Math.min(legs[0].d,legs[1].d),-.4*sc,.04*sc);if(Math.abs(legs[0].d)+Math.abs(legs[1].d)<.004)return 0;
+ const a=Math.hypot(...def[10].o),b=Math.hypot(...def[11].o),fw=[Math.sin(yaw),Math.cos(yaw)],dbg=[];
+ for(const L of legs){// target ankle in the hips' local frame (unscaled), relative to the hip joint after the pelvis drop
+  const H=WP[L.t],T=[L.F[0],L.F[1]+L.d,L.F[2]],R0=WR[0],v=[(T[0]-H[0])/sc,(T[1]-H[1]-drop)/sc,(T[2]-H[2])/sc];
+  const tl=[R0[0]*v[0]+R0[3]*v[1]+R0[6]*v[2],R0[1]*v[0]+R0[4]*v[1]+R0[7]*v[2],R0[2]*v[0]+R0[5]*v[1]+R0[8]*v[2]];
+  // old angles from the pose (eul(x,0,z) = rX(x)*rZ(z)): recover pitch of thigh and knee
+  const rt=rot[L.t]||R3I,rk=rot[L.s]||R3I,hx0=Math.atan2(rt[7],rt[4]),hz0=Math.atan2(-rt[1],rt[0]),kx0=Math.atan2(rk[7],rk[4]);
+  const Lr=cl(Math.hypot(tl[1],tl[2]),Math.abs(a-b)+.01,(a+b)*.999),kx=Math.max(0,PI-Math.acos(cl((a*a+b*b-Lr*Lr)/(2*a*b),-1,1)));
+  const fy=-a-b*Math.cos(kx),fz=-b*Math.sin(kx),hx=Math.atan2(tl[2],tl[1])-Math.atan2(fz,fy);
+  rot[L.t]=r3m(rX(hx),rZ(hz0));rot[L.s]=rX(kx);
+  // foot: keep its old pitch relative to the hips, then tilt with the slope along the facing direction
+  const e=.25,slope=(hAt(T[0]+fw[0]*e,T[2]+fw[1]*e)-hAt(T[0]-fw[0]*e,T[2]-fw[1]*e))/(2*e),rf=rot[L.f]||R3I,fx0=Math.atan2(rf[7],rf[4]);
+  const lift=cl((L.F[1]-gy-.12*sc)/(.1*sc),0,1),tilt=-cl(Math.atan(slope),-RFIK.maxTilt,RFIK.maxTilt)*(1-lift);
+  rot[L.f]=rX(fx0+(hx0+kx0)-(hx+kx)+tilt);dbg.push({d:L.d,tilt})}
+ RFIK.last={drop,dbg};return drop}

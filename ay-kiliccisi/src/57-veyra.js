@@ -104,4 +104,4 @@ function drawVeyra(time){const V=VEYRA;if(!V||!V.R)return;if(!V.on&&!V.forceShow
  else if(V.act==='heal'){q.LsX=-1.4;q.LeX=-.5;q.RsX=-1.2;q.hdP=.1}
  if(V.forcePose)Object.assign(q,V.forcePose);
  const r=humanPose(q);const sw=Math.sin(time*2.2+V.ph)*.08,sv=V.spd*.06;r[15]=eul(.15+sv*.6+sw*.3,0,sw*.3);r[19]=eul(.1+sv*.4,0,sw*.4);r[16]=eul(-(q.LhX||0)*.4-(q.RhX||0)*.4+sv*.2,0,0);r[17]=eul(.1+sv*.5,0,0);r[18]=eul(.3+Math.sin(time*3)*.2,Math.sin(time*2.4)*.5,0);
- const hipH=veyraProportions().legY+.02;rigDraw(V.R,V.x,V.y+hipH+(q.bob||0)+dy,V.z,V.yaw,1,r,.38,tilt?rX(tilt):null);V.R.ob.flash=0}
+ const hipH=veyraProportions().legY+.02;let vy=V.y+hipH+(q.bob||0)+dy;if(!tilt&&!dy&&!V.down&&Math.hypot(V.x-P.x,V.z-P.z)<RFIK.dist)vy+=rigFootIK(V.R.def,r,V.x,vy,V.z,V.yaw,1,V.y,null);rigDraw(V.R,V.x,vy,V.z,V.yaw,1,r,.38,tilt?rX(tilt):null);V.R.ob.flash=0}
