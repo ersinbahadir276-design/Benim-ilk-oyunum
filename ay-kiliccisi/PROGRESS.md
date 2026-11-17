@@ -134,3 +134,4 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
   öfke çubuğu, boss adı + duruş çubuğu, hızlı yolculuk, manhwa görünümü (sabit oranlı paneller, sıra kuyruğu),
   görev pusulası, yeni sesler. Düzeltilenler: açılış sırası (Veyra/hikâye), kese ve mühür toplama artık oyun
   adımında, kavgada 4 m algı, Veyra'ya düşman vuruşu, Kırık Diş yere vurma halkası. s-loop.js 71/71.
+- Zamanlanmış tur 1 (2026-11-17): kahraman zırhı 1. geçiş — kas zırhı göğüs kabartması, daha dar bel (V silueti), baldır şişkinliği, miğfer alın çubukları düzeltildi. Yalnız `hero` modeli yeniden üretildi. Ayrıntı: kök PROGRESS.md.
