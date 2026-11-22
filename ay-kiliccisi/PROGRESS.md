@@ -68,7 +68,7 @@ yumuşak birleşim, kesme düzlemleri, gürültü ile kürk/kumaş. Voksel ızga
 meshoptimizer sadeleştirme (~20k üçgen) → köşe başına: SDF normali, malzeme rengi + gürültü + kenar aşınması +
 oyuk kiri + gömülü gölge (AO), malzeme kanalı (parlaklık, metal, ışıma, renklenebilir), 4 kemik ağırlığı.
 Çıktı: `data/models.js` (gzip+base64), oyunda `decodeModels()` (10-engine.js) açar → `MODEL[ad]`.
-Çalıştırma: `cd tools/sculpt && npm install` (bir kez), sonra `node --max-old-space-size=6000 tools/sculpt/build.mjs [ad]`.
+Çalıştırma: `cd tools/sculpt && npm install` (bir kez), **sonra `node tools/sculpt/seed_cache.mjs`** (önbellek git'te yok; bunu yapmadan tek model derlersen `data/models.js` yalnızca o modeli içerir ve diğer 14 model, kraliçe dahil, silinir), sonra `node --max-old-space-size=6000 tools/sculpt/build.mjs [ad]` (kahraman ≈ 55 sn).
 İskeletler: `test/s-skel.js` oyundan `tools/sculpt/skeletons.json` üretir. İnceleme: `node test/view.js <ad> <çıktı>`.
 Motor: 4 ağırlıklı GPU deri (aJ/aK vec4), malzeme kanalı aM, `obj({pbr:1})` → yeni ışık (gök/zemin ortamı,
 metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
@@ -94,6 +94,29 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
 - [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse
 - [ ] Şeytan Kral'ın kolları ince; aşama 3 boss dövüşünde iyileştirilecek
+
+## Otomatik geliştirme rutini (zamanlanmış görev) — özellik listesi
+Her çalışmada en üstteki bitmemiş maddeden devam edilir. Bitmemiş madde tamamlandı diye işaretlenmez.
+- [ ] Yüksek kaliteli erkek kahraman (Kael) — heykel modeli var; zırh yeniden tasarımı sürüyor (aşağıdaki günlük)
+- [ ] Gerçekçi 3B karakter animasyonları — şu an hepsi kodla poz; anahtar kareli klip + harmanlama sistemi yok
+- [ ] Gönderilen GLB modellerin entegrasyonu — kraliçe gövdesi + saç, ejderha girdi; kahraman/Veyra GLB'leri yalnızca iskelet oranı
+- [ ] Çok sayıda hayvan ve yaratık — kurt, goblin, timsah, ejderha; geyik/kuş/iskelet/örümcek yok
+- [ ] Yaratık evcilleştirme ve yapay zekâ — kurt besleme var; evcil yoldaş sistemi yok
+- [ ] Açık dünya, savaş, envanter, ilerleme — büyük ölçüde var (bkz. yol haritası); zindan/lonca eksik
+- [ ] Android performansı ve mobil kontroller — dokunmatik düzen var; gerçek cihaz testi yok, LOD yok
+
+### Rutin günlüğü
+- **2026-11-22 (rutin 1) — kahraman zırhı yeniden tasarımı, 1. tur** (`tools/sculpt/models/hero.mjs`):
+  kask altındaki yırtık görünen çift halkalı çene (bevor) tek düzgün çene plakasına çevrildi; alındaki ortada birleşen
+  bronz çubukların bıraktığı nokta kaldırıldı; boyunluk halkaları alçaltıldı (kule gibi duruyordu); omuzluklar %12
+  küçültüldü, rastgele dikenler yerine bronz kenarlı boyun siperleri (haute-piece) + geriye kıvrık tek diken; göğüs
+  zırhına V uçlu, bronz kenarlı, perçinli karın plakası (plackart) eklendi; kalçalıkların kalın altın alt bandı
+  çelik + ince bronz şeride çevrildi. 20 940 üçgen (öncekiyle aynı bütçe). `seed_cache.mjs` eklendi (yukarıdaki uyarı).
+  Testler: s-mech 47/47, s-loop 71/71, s-stance 11/11, s-ui 7/7; s-hero ekran görüntüleri sorunsuz (deri yırtılması yok).
+  Kök `index.html` yeni dist ile güncellendi.
+- **Sıradaki öncelikler:** (1) kahraman 2. tur: göğsün hâlâ kutu gibi görünen ön yüzü (göğüs kası şekli / orta sırt),
+  omuzluğun önündeki açık delik, kürk yakanın sivri üçgenleri; kullanıcıdan istenen zırh tarzı netleşirse ona göre;
+  (2) ardından anahtar kareli animasyon klip sistemi (kahraman yürüme/koşu/saldırı için klip + harmanlama).
 
 ### Aşama 3 — sonraki oturumlar (öncelik sırası)
 - [ ] Şeytan Kral Azgal: savaşılabilir model (aldrich iskelet oranları), Kül Kale bölgesi, 3 aşamalı final
