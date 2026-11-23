@@ -2436,10 +2436,11 @@ function updateVeyra(dt){const V=VEYRA;if(!V||!V.on||V.hidden)return;V.t+=dt;V.t
  if(dP>60){V.x=P.x-Math.sin(P.yaw)*2;V.z=P.z-Math.cos(P.yaw)*2}
  // burning ground hurts her too; down state and revive
  if(V.down){V.downT-=dt;if(V.downT<=0||(P.alive&&dP<2.2&&BUF.inter>GT.clock-.2)){V.down=false;V.hp=V.max*.45;vSay('revive',true);SYS.trust=(SYS.trust||0)+2}V.y=hAt(V.x,V.z);return}
+ if(V.kx||V.kz){V.x+=V.kx*dt;V.z+=V.kz*dt;const e=Math.exp(-9*dt);V.kx*=e;V.kz*=e;if(Math.abs(V.kx)+Math.abs(V.kz)<.02)V.kx=V.kz=0;const p=collide(V.x,V.z,V.rad);V.x=p[0];V.z=p[1]}
  V.max=100+SYS.lv*12;for(const b of BURNS)if(!b.mine&&b.t<b.life&&Math.hypot(V.x-b.x,V.z-b.z)<1.2){V.hp-=dt*6}
  // enemy swings land on whoever stands in front of them: a windup that points at her hurts if she does not get out of the way
  let fight=false;for(const o of foes()){if(!foeHostile(o))continue;const dv=Math.hypot(o.x-V.x,o.z-V.z);if(dv<14)fight=true;const fr=Math.abs(angd(Math.atan2(V.x-o.x,V.z-o.z),o.yaw))<.75,reach=o.boss||o.big?3.4:isWolf(o)?2.6:2.2;
-  if(o.st==='windup'&&dv<reach+.8&&fr)o._vw=1;else if(o._vw&&o.st!=='windup'){o._vw=0;if(V.act!=='dodge'&&dv<reach&&fr&&!V.down){const dmg=Math.round((o.boss||o.big?26:isWolf(o)?12:9)*lvDmg(o.lv||1));V.hp-=dmg;V.flash=1;floatText(V.x,V.y+1.8,V.z,'-'+dmg,'red');sfx.hurt()}}}
+  if(o.st==='windup'&&dv<reach+.8&&fr)o._vw=1;else if(o._vw&&o.st!=='windup'){o._vw=0;if(V.act!=='dodge'&&dv<reach&&fr&&!V.down){const dmg=Math.round((o.boss||o.big?26:isWolf(o)?12:9)*lvDmg(o.lv||1));vHurt(dmg,(V.x-o.x)/(dv||1),(V.z-o.z)/(dv||1),o.boss||o.big?1:isWolf(o)?.67:.5)}}}
  if(!fight&&V.hp<V.max)V.hp=Math.min(V.max,V.hp+dt*4);if(V.hp<=0){V.hp=0;V.down=true;V.downT=20;V.act=null;vSay('down',true)}
  if(P.hp<maxHP()*.35)vSay('low');
  // decide (utility scoring) every 0.25 s unless an action is running
@@ -2461,15 +2462,36 @@ function updateVeyra(dt){const V=VEYRA;if(!V||!V.on||V.hidden)return;V.t+=dt;V.t
  else{const a=P.yaw+PI+.7,gx=P.x+Math.sin(a)*2.3,gz=P.z+Math.cos(a)*2.3,q=Math.hypot(gx-V.x,gz-V.z);if(q>1)run(gx,gz,q>8?7.5:q>3?4.5:2.2);else{V.spd=lp(V.spd,0,.2);agentFace(V,P.x+Math.sin(P.yaw)*4,P.z+Math.cos(P.yaw)*4,dt,3)}
   if(Math.random()<dt*.01)vSay('idle')}
  V.y=hAt(V.x,V.z);if(V.spd>.2)V.ph+=V.spd*dt*4.6;if((SYS.trust||0)>=40)unlockSkill('slam')}
-function drawVeyra(time){const V=VEYRA;if(!V||!V.R)return;if(!V.on&&!V.forceShow)V.y=hAt(V.x,V.z);const vis=(V.on||V.st==='chained'&&SYS.main>=7)&&!V.hidden&&Math.hypot(V.x-P.x,V.z-P.z)<150;if(!vis&&!V.forceShow){rigHide(V.R);return}
- const q={};const A=cl(V.spd/4,0,1);gaitPose(q,V.ph,A,cl((V.spd-3)/3,0,1));q.hdY=V.hyaw||0;q.RsX=(q.RsX||0)-.35;q.ReX=(q.ReX||0)-.7;q.RwX=.2;let tilt=0,dy=0;
+// ---------- directional hit reaction (same sign convention as gobHurtPose / hitReact):
+// hrF>0 = pushed forward (hit from behind), hrS>0 = pushed to her right. A spring envelope like the wolves' (WREACT):
+// 70 ms snap toward the push, then a damped rebound, settled by 0.75 s. Heavy hits (bosses, big goblins) cancel a
+// heal or fire bolt that has not fired yet; a hit during an action only gives a smaller flinch. VREACT.on=0 = old behaviour.
+const VREACT={on:1,slide:2.6,spine:.48,head:.5,roll:.38,twist:.25,step:.45,knee:.25,arms:.35,hair:.6,tail:.7};
+function vHurt(dmg,dx,dz,a){const V=VEYRA;V.hp-=dmg;V.flash=1;floatText(V.x,V.y+1.8,V.z,'-'+dmg,'red');sfx.hurt();if(!VREACT.on)return;
+ const l=Math.hypot(dx,dz);if(l<1e-3)return;dx/=l;dz/=l;const fx=Math.sin(V.yaw),fz=Math.cos(V.yaw),busy=V.act&&!(a>=.9&&(V.act==='heal'||V.act==='bolt')&&!V.hit);
+ if(!busy&&V.act){V.act=null;V.think=Math.max(V.think,.35)}
+ V.hrT=GT.clock;V.hrF=dx*fx+dz*fz;V.hrS=dx*fz-dz*fx;V.hrA=(a||.6)*(busy?.4:1);V.kx=dx*VREACT.slide*V.hrA;V.kz=dz*VREACT.slide*V.hrA;if(!busy)V.spd*=.3}
+function vReactEnv(V){if(!VREACT.on||V.hrT===undefined||V.down||V.st==='chained')return 0;const t=GT.clock-V.hrT;if(t<0||t>.75)return 0;
+ if(t<.07)return sst(0,1,t/.07)*V.hrA;const u=t-.07;return Math.exp(-u*6)*Math.cos(u*8.5)*V.hrA}
+function vReactPose(V,q,k){const R=VREACT,f=V.hrF,sd=V.hrS,back=Math.max(0,-f),fwd=Math.max(0,f),kp=Math.max(0,k),ad=(n,v)=>{q[n]=(q[n]||0)+v};
+ ad('spP',(-R.spine*back+R.spine*1.1*fwd)*k);ad('hdP',(-R.head*back+R.head*.8*fwd)*k);ad('hipP',(-.1*back+.12*fwd)*k);
+ ad('spR',-sd*R.roll*k);ad('hdR',-sd*R.roll*.8*k);ad('spY',sd*R.twist*k);
+ ad('LsZ',R.arms*kp);ad('RsZ',R.arms*kp);ad('LsX',(-.5*back+.4*fwd)*kp);ad('RsX',(-.5*back+.4*fwd)*kp);
+ const lead=sd>.3?'R':sd<-.3?'L':'R';ad(lead+'hX',(R.step*back-R.step*fwd)*kp);ad('LkX',R.knee*kp);ad('RkX',R.knee*kp)}
+function veyraPose(V,time){const q={};const A=cl(V.spd/4,0,1);gaitPose(q,V.ph,A,cl((V.spd-3)/3,0,1));q.hdY=V.hyaw||0;q.RsX=(q.RsX||0)-.35;q.ReX=(q.ReX||0)-.7;q.RwX=.2;let tilt=0,dy=0;
  if(V.st==='chained'){q.LsX=-2.6;q.RsX=-2.6;q.LsZ=.45;q.RsZ=.45;q.LeX=-.3;q.ReX=-.3;q.LhX=-1.5;q.LkX=2.3;q.RhX=-.3;q.RkX=2.4;q.hdP=.5;q.spP=.25;dy=-.48}
  else if(V.down){q.LhX=-1.4;q.LkX=2.2;q.RhX=-.2;q.RkX=2.3;q.spP=.5;q.hdP=.6;q.LsX=.5;q.RsX=.3;dy=-.46}
  else if(V.act==='slash'){const k=sst(0,.28,V.actT);q.RsX=lp(-2.5,.6,k);q.RsY=lp(.4,-.6,k);q.ReX=-.2;q.spY=lp(.5,-.5,k);q.LhX=-.5;q.LkX=.6}
  else if(V.act==='bolt'){q.LsX=-1.5;q.LeX=-.1;q.LsY=.2;q.spY=.3}else if(V.act==='burst'){const k=sst(0,.8,V.actT);q.LsX=-2.8*k;q.RsX=-2.8*k;q.LsZ=.6;q.RsZ=.6;q.spP=-.2*k;q.hdP=-.3*k}
  else if(V.act==='heal'){q.LsX=-1.4;q.LeX=-.5;q.RsX=-1.2;q.hdP=.1}
+ const rk=vReactEnv(V);if(rk)vReactPose(V,q,rk);
  if(V.forcePose)Object.assign(q,V.forcePose);
- const r=humanPose(q);const sw=Math.sin(time*2.2+V.ph)*.08,sv=V.spd*.06;r[15]=eul(.15+sv*.6+sw*.3,0,sw*.3);r[19]=eul(.1+sv*.4,0,sw*.4);r[16]=eul(-(q.LhX||0)*.4-(q.RhX||0)*.4+sv*.2,0,0);r[17]=eul(.1+sv*.5,0,0);r[18]=eul(.3+Math.sin(time*3)*.2,Math.sin(time*2.4)*.5,0);
+ // hair, skirt and tail lag behind the body: on a hit they swing against the push
+ const hl=rk*VREACT.hair,hf=rk?V.hrF*(V.hrF>0?-.8:1):0,hs=rk?V.hrS:0;
+ const r=humanPose(q);const sw=Math.sin(time*2.2+V.ph)*.08,sv=V.spd*.06;r[15]=eul(.15+sv*.6+sw*.3-hf*hl,0,sw*.3+hs*hl*.6);r[19]=eul(.1+sv*.4-hf*hl*.7,0,sw*.4+hs*hl*.5);r[16]=eul(-(q.LhX||0)*.4-(q.RhX||0)*.4+sv*.2-hf*hl*.4,0,0);r[17]=eul(.1+sv*.5-hf*hl*.4,0,0);r[18]=eul(.3+Math.sin(time*3)*.2-hf*rk*VREACT.tail*.5,Math.sin(time*2.4)*.5-hs*rk*VREACT.tail,0);
+ return {q,r,tilt,dy}}
+function drawVeyra(time){const V=VEYRA;if(!V||!V.R)return;if(!V.on&&!V.forceShow)V.y=hAt(V.x,V.z);const vis=(V.on||V.st==='chained'&&SYS.main>=7)&&!V.hidden&&Math.hypot(V.x-P.x,V.z-P.z)<150;if(!vis&&!V.forceShow){rigHide(V.R);return}
+ const{q,r,tilt,dy}=veyraPose(V,time);
  const hipH=veyraProportions().legY+.02;let vy=V.y+hipH+(q.bob||0)+dy;if(!tilt&&!dy&&!V.down&&Math.hypot(V.x-P.x,V.z-P.z)<RFIK.dist)vy+=rigFootIK(V.R.def,r,V.x,vy,V.z,V.yaw,1,V.y,null);rigDraw(V.R,V.x,vy,V.z,V.yaw,1,r,.38,tilt?rX(tilt):null);V.R.ob.flash=0}
 // ---- 58-story.js
 // ===================== story: main quest chain, village roles, side quests, manhwa panels, Veyra's choice =====================
@@ -2831,7 +2853,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={HREACT,WREACT,wolfReact,wolfReactEnv,wolfHurt,GREACT,gobHurtPose,gobPose,gobHurt,P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,WGAIT,wolfRate,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,CFIK,CREACT,crocReact,crocReactEnv,drawCrocs,crocFootLocal,boneW,crocY,waterAt,get DRAGON(){return DRAGON},dSample,dMatrix,dBone,drawDragon,DRG,DFIK,dFit,dSkinMats,dLimbs,updateDragon,BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,CAPE,press,
+ window.__G={VREACT,vHurt,updateVeyra,foeHostile,vReactEnv,veyraPose,drawVeyra,HREACT,WREACT,wolfReact,wolfReactEnv,wolfHurt,GREACT,gobHurtPose,gobPose,gobHurt,P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,WGAIT,wolfRate,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,CFIK,CREACT,crocReact,crocReactEnv,drawCrocs,crocFootLocal,boneW,crocY,waterAt,get DRAGON(){return DRAGON},dSample,dMatrix,dBone,drawDragon,DRG,DFIK,dFit,dSkinMats,dLimbs,updateDragon,BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,CAPE,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
