@@ -225,6 +225,8 @@ function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);fo
  if(R.ang>.001){const ax=vnorm([R.fz,0,-R.fx]),A=axisAng(ax,R.ang),m4=new Float32Array([A[0],A[3],A[6],0,A[1],A[4],A[7],0,A[2],A[5],A[8],0,0,0,0,1]);M=mmul(mmul(M,mtrs([0,.06,0],[0,0,0])),mmul(m4,mtrs([0,-.06,0],[0,0,0])))}
  if(P.st==='dodge'&&P.spin)M=mmul(mmul(M,mtrs([0,.42,0],[P.spin,0,0])),mtrs([0,-.42,0],[0,0,0]));
  if(P.st==='dodge'&&P.roll)M=mmul(mmul(M,mtrs([0,.42,0],[0,0,P.roll])),mtrs([0,-.42,0],[0,0,0]));
+ // terrain foot IK (32-footik.js): plant feet, drop the pelvis to the lower foot
+ M[13]+=footIK(M,dt||0);
  // ground clearance: lowest body point must stay above the terrain (prevents sinking while lying, rolling, kneeling)
 const lying=P.st==='down'||P.st==='dead'||P.st==='getup'||P.st==='dodge'||P.st==='td'||P.rag.ang>.05;
  let need=0;const H=HB,chk=[[H.head,.11],[H.upperChest,.1],[H.hips,.09],[H.leftHand,.03],[H.rightHand,.03],[H.leftLowerArm,.04],[H.rightLowerArm,.04],[H.leftLowerLeg,.05],[H.rightLowerLeg,.05],[H.leftFoot,.03],[H.rightFoot,.03]];

@@ -794,6 +794,47 @@ function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape
  const mk=(list,o)=>{if(!list.length)return;const g=merge(list);const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);let off=0;for(const p of list){J.set(p.J4,off*4);Wt.set(p.W4,off*4);off+=p.P.length/3}
   if(!g.N||g.N.length!==g.P.length)normals(g);return addSkin(g,J,Wt,o)};
  HERO.armor=mk(parts.armor,{out:.004,outCol:OUT,shade:.95});HERO.cape=mk(parts.cape,{out:0,shade:.8,ds:1});HERO.glow=mk(parts.glow,{unlit:1,col:[1,.25,.15],shade:0})}
+// ---- 32-footik.js
+// ===================== Kael: terrain foot IK (feet planted on slopes, steps and rocks) =====================
+// The pose system animates the legs on flat ground. After the pose is applied and the world matrix is known,
+// each ankle is measured against the real terrain under it: the pelvis drops to the lower foot, the other leg
+// bends more (two-bone IK, knee keeps the animation's bend direction) and the sole tilts to the slope.
+// Offsets are smoothed so steps never pop; the whole thing fades out in the air, while lying, rolling or swimming.
+const FIK={L:0,R:0,pel:0,w:0,tL:R3I,tR:R3I,on:1,maxOff:.42,maxTilt:.5};
+// generic two-bone IK in model space (used by the legs; armIK keeps its own grip logic)
+function limbIK(U,Lo,Hd,target,pole){const B=PLD.bones,S=SK.GP[U],L1=Math.hypot(...vsub(B[Lo].r,B[U].r)),L2=Math.hypot(...vsub(B[Hd].r,B[Lo].r));
+ const st=vsub(target,S),d=cl(Math.hypot(...st),.05,L1+L2-.002),u=vnorm(st),pv=vsub(pole,vmul(u,vdot(pole,u))),v=vnorm(Math.hypot(...pv)>1e-4?pv:[0,0,1]);
+ const ca=cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1),sa=Math.sqrt(1-ca*ca),E=vadd(S,vadd(vmul(u,L1*ca),vmul(v,L1*sa)));
+ const PG=SK.GR[SK.par[U]],Gu0=SK.GR[U],Gu=r3m(fromTo(vnorm(r3v(Gu0,vnorm(vsub(B[Lo].r,B[U].r)))),vnorm(vsub(E,S))),Gu0);
+ const Gl0=r3m(Gu,SK.R[Lo]),Gl=r3m(fromTo(vnorm(r3v(Gl0,vnorm(vsub(B[Hd].r,B[Lo].r)))),vnorm(vsub(vadd(S,vmul(u,d)),E))),Gl0);
+ SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl)}
+// terrain normal (world) by central differences
+function terrNormal(x,z){const e=.25;return vnorm([hAt(x-e,z)-hAt(x+e,z),2*e,hAt(x,z-e)-hAt(x,z+e)])}
+// world -> model direction for a yaw-only matrix (column-major, uniform scale PSC)
+const m2l=(M,v)=>[(M[0]*v[0]+M[1]*v[1]+M[2]*v[2])/PSC,(M[4]*v[0]+M[5]*v[1]+M[6]*v[2])/PSC,(M[8]*v[0]+M[9]*v[1]+M[10]*v[2])/PSC];
+// how much the IK should act this frame (0..1)
+function footIKWeight(){if(!FIK.on||P.air)return 0;const s=P.st;
+ if(s==='down'||s==='dead'||s==='getup'||s==='dodge'||s==='td'||s==='jump'||P.pinBy||(P.rag&&P.rag.ang>.02))return 0;
+ if(typeof waterAt==='function'&&waterAt(P.x,P.z)-1.25>hAt(P.x,P.z)+.02)return 0; // swimming: body held by the water, not the ground
+ return 1}
+// M: player world matrix (yaw only at this point). Returns the pelvis drop (<=0) to add to M[13].
+function footIK(M,dt){const H=HB,k=dt>0?1-Math.exp(-dt*14):1,wT=footIKWeight();FIK.w+=(wT-FIK.w)*(dt>0?1-Math.exp(-dt*8):1);
+ const base=M[13],side=[['left','L'],['right','R']],info={};
+ for(const[S,K]of side){const a=mpt(M,SK.GP[H[S+'Foot']]),g=hAt(a[0],a[2]);info[K]={off:cl(g-base,-FIK.maxOff,FIK.maxOff),x:a[0],z:a[2],h:SK.GP[H[S+'Foot']][1]-SK.root[1]}}
+ // a foot high in its swing (ankle well above its rest height) follows the terrain only partly
+ const rest=PLD.bones[H.leftFoot].r[1];for(const K of['L','R']){const f=info[K],lift=f.h-rest;f.plant=1-sst(.06,.3,lift);f.off*=lp(.6,1,f.plant)}
+ const pelT=Math.min(0,info.L.off,info.R.off);
+ FIK.pel+=(pelT-FIK.pel)*k;FIK.L+=(info.L.off-FIK.L)*k;FIK.R+=(info.R.off-FIK.R)*k;
+ const W=FIK.w;if(W<.002)return 0;
+ for(const[S,K]of side){const U=H[S+'UpperLeg'],Lo=H[S+'LowerLeg'],Ft=H[S+'Foot'],f=info[K];
+  const lift=(FIK[K]-FIK.pel)*W;
+  // keep the foot's world orientation from the animation, then tilt it to the slope (only when planted)
+  const G0=SK.GR[Ft];
+  if(Math.abs(lift)>.002){const A=SK.GP[Ft],tgt=[A[0],A[1]+lift,A[2]],pole=vadd(vsub(SK.GP[Lo],vmul(vadd(SK.GP[U],A),.5)),[0,0,.12]);limbIK(U,Lo,Ft,tgt,pole);skUpdate()}
+  const n=m2l(M,terrNormal(f.x,f.z)),ang=Math.acos(cl(n[1],-1,1)),lim=Math.min(ang,FIK.maxTilt)*f.plant*W;
+  const tilt=ang>1e-3?axisAng(vnorm(vcross([0,1,0],n)),lim):R3I;FIK['t'+K]=tilt;
+  SK.R[Ft]=r3m(r3t(SK.GR[Lo]),r3m(tilt,G0))}
+ skUpdate();return FIK.pel*W}
 // ---- 40-wolves.js
 // ===================== wolves: model, perception, behaviour =====================
 const WG={},wolves=[],wslots=[],WSLOTS=9,W_UP=.32,W_LO=.3;
@@ -1942,6 +1983,8 @@ function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);fo
  if(R.ang>.001){const ax=vnorm([R.fz,0,-R.fx]),A=axisAng(ax,R.ang),m4=new Float32Array([A[0],A[3],A[6],0,A[1],A[4],A[7],0,A[2],A[5],A[8],0,0,0,0,1]);M=mmul(mmul(M,mtrs([0,.06,0],[0,0,0])),mmul(m4,mtrs([0,-.06,0],[0,0,0])))}
  if(P.st==='dodge'&&P.spin)M=mmul(mmul(M,mtrs([0,.42,0],[P.spin,0,0])),mtrs([0,-.42,0],[0,0,0]));
  if(P.st==='dodge'&&P.roll)M=mmul(mmul(M,mtrs([0,.42,0],[0,0,P.roll])),mtrs([0,-.42,0],[0,0,0]));
+ // terrain foot IK (32-footik.js): plant feet, drop the pelvis to the lower foot
+ M[13]+=footIK(M,dt||0);
  // ground clearance: lowest body point must stay above the terrain (prevents sinking while lying, rolling, kneeling)
 const lying=P.st==='down'||P.st==='dead'||P.st==='getup'||P.st==='dodge'||P.st==='td'||P.rag.ang>.05;
  let need=0;const H=HB,chk=[[H.head,.11],[H.upperChest,.1],[H.hips,.09],[H.leftHand,.03],[H.rightHand,.03],[H.leftLowerArm,.04],[H.rightLowerArm,.04],[H.leftLowerLeg,.05],[H.rightLowerLeg,.05],[H.leftFoot,.03],[H.rightFoot,.03]];
@@ -2440,7 +2483,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,footIK,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
