@@ -32,6 +32,11 @@ _(Henüz hiçbir ana özellik tamamen bitmiş sayılmıyor — aşağıdaki duru
 - Oyun döngüsü (`60-game.js`) ve hikâye panelleri (`58-story.js`) bağlandı; `__G.CAPE` test için açıldı.
 - Yeni test `ay-kiliccisi/test/s-cape.js`: 9/9 geçti (asılı durma, uzamama, depar sırasında kalkıp arkada
   kalma, bacakların içinden geçmeme, dönüşte savrulma, durunca yerine oturma, ışınlanma, ağır saldırı).
+- Regresyonda bulunan ve düzeltilen hata: `s-ui` kayıt testi yeni derlemede aralıklı düştü (4 denemede 2).
+  Sebep: oyun yalnızca `pagehide`/`visibilitychange` ile kaydediyordu; yüklü sayfada yeniden yüklemede bu olay
+  hiç gelmedi. Android de arka plandaki sekmeleri olay göndermeden kapatabilir. Çözüm (`60-game.js`): SYS
+  değiştiyse 2 sn'de bir otomatik kayıt. `s-ui` artık 8 test (2 sn içinde kendiliğinden kayıt dahil), 3 kez üst üste 8/8.
+- Testler: s-cape 9/9, s-mech 47/47, s-loop 71/71, s-stance 11/11, s-ui 8/8 (×3), s-save 1/1, s-perf hatasız.
 
 ## Sonraki öncelikler
 1. Özellik 1 devam: kahraman zırhı yeniden tasarımı (kullanıcı isteği; `tools/sculpt/models/hero.mjs`),
