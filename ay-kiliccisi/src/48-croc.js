@@ -6,7 +6,7 @@ const CROC_HOSTILE={rush:1,open:1,snap:1,recover:1,stagger:1,hurt:1};
 function mkCroc(x,z){const c={x,z,y:0,yaw:rnd()*6.28,hyaw:0,hx:x,hz:z,st:'idle',t:rr(0,3),hp:120,max:120,spd:0,aware:0,ls:[x,z],unseen:9,group:'swamp',rad:.7,sc:1.15,ph:rnd()*6,cd:0,eye:.35,
   flash:0,kx:0,kz:0,jaw:0,dead:0,deadT:0,R:null,swims:true,openAt:-9,hitDone:false};
  c.hostile=()=>!!CROC_HOSTILE[c.st];c.open=()=>c.st==='stagger';
- c.hurt=(dmg,dx,dz)=>{if(c.dead)return false;c.hp-=dmg;c.flash=1;c.aware=1;c.ls=[P.x,P.z];if(c.hp<=0){c.hp=0;c.dead=1;c.st='dead';c.t=0;return true}c.kx=dx*2;c.kz=dz*2;if(c.st!=='stagger'&&c.st!=='snap'&&c.st!=='open'){c.st='hurt';c.t=0}alertGroup(c,P,25,CROCS);return false};
+ c.hurt=(dmg,dx,dz)=>{if(c.dead)return false;c.hp-=dmg;c.flash=1;c.aware=1;c.ls=[P.x,P.z];if(c.hp<=0){c.hp=0;c.dead=1;c.st='dead';c.t=0;return true}c.kx=dx*2;c.kz=dz*2;crocReact(c,dmg,dx,dz);if(c.st!=='stagger'&&c.st!=='snap'&&c.st!=='open'){c.st='hurt';c.t=0}alertGroup(c,P,25,CROCS);return false};
  c.onParried=()=>{c.st='stagger';c.t=0;c.flash=1;c.jaw=0;c.kx=-Math.sin(c.yaw)*4;c.kz=-Math.cos(c.yaw)*4};
  c.calmDown=()=>{if(!c.dead){c.aware=0;if(c.hostile()){c.st='return';c.t=0}}};
  c.onKilled=()=>{SYS.ckills=(SYS.ckills||0)+1;SYS.meat+=2;addXP(90,P);note('[Sistem] Timsah öldürüldü · +90 XP · +2 çiğ et');save(P)};
@@ -75,8 +75,31 @@ function crocFit(c,rot,x,y,z,sc){if(c.gp===undefined){c.gp=0;c.gr=0}
   const S=WP[u],reach=Math.max(.08*sc,Math.hypot(F[0]-S[0],F[2]-S[2])),a=cl(s*Math.atan2(dy,reach),-CFIK.maxL-d,CFIK.maxL-d);if(Math.abs(a)<1e-4)break;d+=a;
   rot[u]=r3m(rot[u]||R3I,rZ(a));rot[l]=r3m(rZ(-a),rot[l]||R3I)}legs.push(+d.toFixed(3))});
  CFIK.last={p:c.gp,r:c.gr,bend,legs,on:1};return extra}
+// ===== directional hit reaction (CREACT): the crocodile recoils along the push instead of a silent 0.35 s pause =====
+// c.hurt stores the push direction in the croc's own frame (hrF: +forward, hrS: +right) and a strength; the draw adds a
+// short spring-like envelope (snap in ~70 ms, small rebound, settled by ~0.75 s). Applied AFTER the terrain fit so the
+// fit does not undo it. Front hit → head thrown up and back, body nose-up, jaw gapes (hiss); hit from behind →
+// tail whips up, body shoved forward, head dips; side hit → body slides and rolls away while head and tail lag behind
+// (the spine bows into a C, the head stays turned at the attacker). A croc that shrugs a hit off mid-bite (open/snap)
+// gets a third of it. CREACT.on=0 → old behaviour.
+const CREACT={on:1,shift:.12,pitch:.04,roll:.07,head:.34,dip:.1,tailUp:.07,bowN:.24,bowT:.05,jaw:.35};
+function crocReact(c,dmg,dirx,dirz){if(!CREACT.on||c.dead)return;const fx=Math.sin(c.yaw),fz=Math.cos(c.yaw),n=Math.hypot(dirx,dirz)||1;
+ c.hrF=(dirx*fx+dirz*fz)/n;c.hrS=(dirx*fz-dirz*fx)/n;c.hrX=dirx/n;c.hrZ=dirz/n;
+ c.hrA=cl(.6+dmg/Math.max(1,c.max||1)*3,.6,1)*((c.st==='open'||c.st==='snap')?.35:1);c.hrT=GT.clock}
+function crocReactEnv(c){if(!CREACT.on||c.hrT===undefined||c.dead)return 0;const t=GT.clock-c.hrT;if(t<0||t>.75)return 0;
+ if(t<.07)return sst(0,1,t/.07)*c.hrA;const u=t-.07;return Math.exp(-u*6)*Math.cos(u*8.5)*c.hrA}
+function crocReactPose(c,rot,rk){const K=CREACT,back=Math.max(0,-c.hrF),fwd=Math.max(0,c.hrF),S=c.hrS;
+ const post=(i,m)=>{rot[i]=r3m(rot[i]||R3I,m)};
+ // the front legs hang off the neck bone (1), so the neck only yaws (bow); the lift/dip is done by the head bone (2)
+ post(1,eul(0,-S*K.bowN*rk,0));post(2,eul(-(K.head*back-K.dip*fwd)*rk,-S*K.bowN*.5*rk,0));
+ // tail: whips up from behind, bows against a side push
+ [4,5,6].forEach((i,n)=>post(i,eul(K.tailUp*fwd*rk*(1-n*.25),S*K.bowT*rk*(1+n*.3),0)));
+ c.jawR=K.jaw*Math.max(back,Math.abs(S)*.6)*Math.max(0,rk)}
 function drawCrocs(time){for(const c of CROCS){const d=Math.hypot(c.x-P.x,c.z-P.z);if(d>140||(c.dead&&c.deadT>25)){rigHide(c.R);continue}
-  const roll=c.dead?PI*sst(0,.8,c.t):0,y=c.y+.24*c.sc+(roll?.05:0),pose=crocPose(c,time),fit=roll?null:crocFit(c,pose,c.x,y,c.z,c.sc),extra=roll?rZ(roll):fit||R3I;
-  rigDraw(c.R,c.x,y,c.z,c.yaw,c.sc,pose,1.1,extra);
+  const roll=c.dead?PI*sst(0,.8,c.t):0,y=c.y+.24*c.sc+(roll?.05:0),pose=crocPose(c,time),fit=roll?null:crocFit(c,pose,c.x,y,c.z,c.sc);let extra=roll?rZ(roll):fit||R3I;
+  const rk=roll?0:crocReactEnv(c);let rx=c.x,rz=c.z;c.jawR=0;
+  if(rk){crocReactPose(c,pose,rk);const sh=rk*CREACT.shift*c.sc;rx+=c.hrX*sh;rz+=c.hrZ*sh;extra=r3m(extra,r3m(rX(c.hrF*CREACT.pitch*rk),rZ(-c.hrS*CREACT.roll*rk)));
+   if(c.jawR>0)pose[3]=r3m(pose[3]||R3I,eul(c.jawR,0,0))}
+  rigDraw(c.R,rx,y,rz,c.yaw,c.sc,pose,1.1,extra);
   c.R.ob.flash=c.flash;c.R.ob.col=c.st==='open'?[1.1,.9,.85]:c.st==='stagger'?[1.15,1.05,.8]:[1,1,1]}}
 function crocHead(c){return[c.x+Math.sin(c.yaw)*1.4*c.sc,c.y+.3,c.z+Math.cos(c.yaw)*1.4*c.sc]}
