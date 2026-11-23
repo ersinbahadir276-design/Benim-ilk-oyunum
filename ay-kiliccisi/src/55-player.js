@@ -175,6 +175,14 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(P.sprinting)P.noise=Math.max(P.noise,9);
  if(!SYS.gate&&Math.hypot(P.x,P.z)<46){SYS.gate=1;P.cp=[0,60]}if(!SYS.knight&&Math.hypot(P.x-10,P.z-50)<5.5)SYS.knight=1}
 // --------------------------------------------------------------- pose targets per state
+// combat-ready idle: staggered stance with soft knees, slow breathing (chest + shoulders), a weight shift from
+// foot to foot every few seconds, sword held low and forward, and an occasional glance around.
+function idlePose(q,t){const b=Math.sin(t*1.7),w=Math.sin(t*.42)+.35*Math.sin(t*1.13+1),g=Math.sin(t*.23);
+ const glance=sst(.75,.95,g)-sst(-.95,-.75,g);
+ q.pel=.05;q.hipY=-.012;q.spX=.05+b*.012;q.chX=-.03-b*.028;q.hdX=-.05+b*.01;q.hdY=glance*.55+Math.sin(t*.5)*.08;q.chY=glance*.12;
+ q.LthX=-.2;q.Lkn=.24;q.RthX=.04;q.Rkn=.06;q.LthZ=.15+w*.02;q.RthZ=-.13+w*.02;q.pelZ=-w*.03;q.spZ=w*.035;
+ q.LaZ=1.08+b*.025;q.LaX=.16;q.Lel=.42;q.LwX=-.1;
+ q.RaZ=1.0+b*.02;q.RaX=-.48;q.RaY=.12;q.Rel=.72;q.RwX=-.12}
 // gait: phase advances per metre walked. In stance (ph mod 2π in [π/2,3π/2]) the thigh sweeps back so the foot moves
 // linearly in body space, at exactly the speed the body moves over it (stride length = π / rate); swing is a smooth return.
 const GAIT={walk:4.3,run:2.5,crouch:5.2,lin:1,land:.82};
@@ -196,14 +204,20 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
     const kp=cl(Math.acos(cl((h-SK.L1*Math.cos(pel+a))/SK.L2,-1,1))-(pel+a),kst,2.2);return lp(kp,kst,sst(GAIT.land,1,v))};
    gk=[knee(P.ph,q.LthX,q.RthX,q.Rhl),knee(P.ph+Math.PI,q.RthX,q.LthX,q.Lhl),k]}
   else{q.LthX=-s*A;q.RthX=s*A}q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;if(gk){q.Lkn=lp(q.Lkn,gk[0],gk[2]);q.Rkn=lp(q.Rkn,gk[1],gk[2])}q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
-  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012)};
+  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012);
+  // gait detail: swing-side hip drop, gaze held level against the torso lean, body banks into turns;
+  // heel strike / toe-off roll only for the old sine gait (the linear gait has its own heel-off and foot lock)
+  if(!GAIT.lin){const roll=(sprint?.55:.38)*mv;q.LfX=roll*(Math.max(0,-s)*Math.max(0,c)*1.6-Math.max(0,s)*Math.max(0,-c)*.8);q.RfX=roll*(Math.max(0,s)*Math.max(0,-c)*1.6-Math.max(0,-s)*Math.max(0,c)*.8)}
+  q.pelZ=c*(sprint?.05:.035)*mv;q.spZ=-q.pelZ*.6+bank*mv;q.hdX=-q.spX*.55;q.hdY=-q.chY*.5};
+ // turn rate (rad/s) for banking
+ const dt=GT.dt||1/60,yr=P._pyaw===undefined?0:angd(P.yaw,P._pyaw)/Math.max(dt,1e-3);P._pyaw=P.yaw;P._yr=(P._yr||0)+(cl(yr,-6,6)-(P._yr||0))*Math.min(1,dt*6);const bank=cl(-P._yr*.035,-.14,.14);
  switch(P.st){
  case'move':case'land':{const mv=cl(P.spd/3.4,0,1);
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
   else if(mv>.08){run(mv,P.sprinting&&P.spd>4.6);
    // a slow pose filter lags and flattens the stride cycle; once the walk has settled, follow it closely
    if(GAIT.lin)rate=lp(14,1e3,sst(.15,.45,P.gaitT))}
-  else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
+  else idlePose(q,t)
   if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
