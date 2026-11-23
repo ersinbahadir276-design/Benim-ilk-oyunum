@@ -117,6 +117,28 @@ export default function hero(ALL) {
   C({ name: 'horns', mat: 'horn', bone: 'Head', rigid: true, k: 0.014, sdf: symX(disp(horn(hornPts, 0.037, 0.004), (x, y, z) => 0.0028 * Math.sin(Math.hypot(x - 0.11, y - 1.97, z - 0.02) * 115), 0.003)) });
   C({ name: 'helmRivets', mat: 'rivet', bone: 'Head', rigid: true, k: 0, sdf: symX(U(0, sphere([0.115, 1.925, 0.05], 0.0085), sphere([0.115, 1.89, -0.04], 0.0085), sphere([0.11, 1.97, -0.06], 0.0085))) });
 
+  // ------------------------------------------------------------ moon identity: crescent on the breastplate, crimson tabard
+  // (the "Ay Kılıççısı" sign), a leather baldric across the cuirass and two belt pouches — breaks up the plain chest and gives a readable silhouette.
+  const zcol = (cx, cy, r) => cone([cx, cy, -0.5], [cx, cy, 0.5], r, r); // cylinder along z (front/back projection)
+  const crescent = (cx, cy, r) => Sub(0.002, zcol(cx, cy, r), zcol(cx + r * 0.42, cy + r * 0.3, r * 0.86));
+  const chestMoon = I(0.002, grow(cuirSolid, 0.0055), crescent(0, 1.5, 0.052), zcut(0.1, -1));
+  C({ name: 'chestMoon', mat: 'silver', bone: 'UpperChest', rigid: true, k: 0.002, sdf: chestMoon });
+  const bN = v3.norm([0.727, -0.686, 0]), band = (off, w) => I(0, plane(v3.add([0, 1.48, 0], v3.mul(bN, off + w)), bN), plane(v3.add([0, 1.48, 0], v3.mul(bN, off - w)), v3.mul(bN, -1)));
+  C({ name: 'baldric', mat: 'leather', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.002, I(0.003, grow(cuirSolid, 0.0075), band(0.075, 0.021), slab(1.31, 1.66)), grow(cuirSolid, 0.001), chestMoon) });
+  C({ name: 'baldricRing', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, shell(zcol(0.009, 1.38, 0.02), 0.0045), grow(cuirSolid, 0.011), zcut(0.05, -1)) });
+  const tabY0 = 1.09, tabY1 = 0.64;
+  const tabFolds = (x, y, z) => { const t = Math.max(0, Math.min(1, (tabY0 - y) / (tabY0 - tabY1))); return t * (0.007 * Math.sin(x * 70 + 0.8) + 0.004 * fbm(x * 12, y * 6, 0.5, 2)); };
+  const tabHem = { d: (x, y, z) => (tabY1 + 0.018 * Math.max(0, fbm(x * 30, 0.7, 0.2, 2)) + 0.012 * Math.abs(Math.sin(x * 38))) - y, bb: [-1, tabY1, -1, 1, 3, 1] };
+  const tabSides = symX(plane([0.07, tabY0, 0], [1, -0.045, 0]));
+  const tabSheet = disp(ellipsoid([0, 1.0, -0.02], [0.2, 0.5, 0.238]), tabFolds, 0.012);
+  const tabard = I(0.004, shell(tabSheet, 0.0055), tabSides, tabHem, slab(0, tabY0), zcut(0.05, -1));
+  const tabFn = (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.05) / 0.1)), d = Math.max(0, Math.min(1, (1.07 - y) / 0.32)) * 0.62; return [['Hips', 1 - d], ['leftUpperLeg', d * t + 1e-3], ['rightUpperLeg', d * (1 - t) + 1e-3]]; };
+  C({ name: 'tabard', mat: 'cloth', tau: 0.03, k: 0.004, sdf: tabard, boneFn: tabFn });
+  C({ name: 'tabardHem', mat: 'trim', tau: 0.03, k: 0.003, sdf: I(0.003, shell(tabSheet, 0.0068), tabSides, slab(tabY0 - 0.03, tabY0 - 0.012), zcut(0.05, -1)), boneFn: tabFn });
+  const pouch = (c, ry) => U(0.008, box(c, [0.034, 0.042, 0.022], rot.y(ry), 0.012), box(v3.add(c, [0, 0.03, 0]), [0.038, 0.016, 0.026], rot.y(ry), 0.008));
+  C({ name: 'pouches', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: U(0, pouch([-0.19, 1.075, 0.1], -0.9), pouch([0.2, 1.075, -0.08], 2.1)) });
+  C({ name: 'pouchClasps', mat: 'trim', bone: 'Hips', rigid: true, k: 0, sdf: U(0, sphere([-0.215, 1.1, 0.125], 0.008), sphere([0.226, 1.1, -0.1], 0.008)) });
+
   // ------------------------------------------------------------ tattered cape (folds shaped before the shell so the cloth never tears into strips)
   const y0 = 1.63, y1 = 0.5;
   const folds = (x, y, z) => { const t = Math.max(0, Math.min(1, (y0 - y) / (y0 - y1))), a = Math.atan2(x, -z); return t * (0.016 * Math.sin(a * 9 + 1.2 * fbm(x * 3, y * 2, 0, 2)) + 0.008 * fbm(x * 9, y * 4, z * 9, 2)); };
@@ -142,6 +164,7 @@ export default function hero(ALL) {
       fur: { col: [0.3, 0.27, 0.24], col2: [0.12, 0.11, 0.1], freq: 40, freq2: 14, var: 0.32, gloss: 0.04, dirt: 0.6 },
       cloth: { col: [0.42, 0.06, 0.07], col2: [0.24, 0.035, 0.04], freq2: 5, var: 0.15, freq: 30, gloss: 0.12, dirt: 0.55, grad: [0.5, 1.2, [0.5, 0.5, 0.5]] },
       horn: { col: [0.36, 0.32, 0.28], col2: [0.6, 0.55, 0.46], freq2: 9, var: 0.18, freq: 60, gloss: 0.45, dirt: 0.5 },
+      silver: { col: [0.66, 0.68, 0.74], gloss: 0.86, metal: 1, wear: 0.35, edge: [0.95, 0.96, 1.0], var: 0.06, freq: 30, tint: 0 },
       glow: { col: [1.0, 0.34, 0.12], em: 1, gloss: 0 },
     },
   };
