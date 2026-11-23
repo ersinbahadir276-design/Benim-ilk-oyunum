@@ -107,6 +107,24 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] Veyra yüzü: şimdiki doku düz; daha ifadeli yüz ve göz animasyonu
 - [ ] Kamera ağaç tacının içine girince saydamlaştırma
 
+## Zamanlanmış geliştirme rutini — özellik listesi
+Her çalıştırmada listedeki ilk bitmemiş özellik ilerletilir. [x] yalnızca gerçekten bittiğinde.
+- [ ] Yüksek kaliteli erkek kahraman (Kael) — sürüyor
+  - [x] Çalıştırma 1 (2026-11-23): zırh yeniden tasarımı 1. adım — kas zırhı göğüslük (göğüs + karın plakaları, ortada sternum oluğu),
+        köşeli miğfer (yanak yüzeyleri, iki eğik göz yarığı + burun koruyucu omurga, T yarık kaldırıldı), daha yassı omuzluklar + sırt çizgisi,
+        daha ince üst kol zırhı. `tools/sculpt/models/hero.mjs`; 20 972 üçgen. mech 47/47, loop 71/71.
+  - [ ] Sıradaki: kürk yaka keskin/sivri görünüyor (daha yumuşak tutam), göğüs yüzeyinde sadeleştirme köşeleri (yerel üçgen bütçesi),
+        bacak arkası düz örgü (diz arkası/baldır plakası), eldivenlere parmak ayrımı, pelerine ikinci katman; kahraman yüzü (miğfersiz sahneler için)
+- [ ] Gerçekçi 3B karakter animasyonları
+- [ ] Gönderilen GLB modellerinin entegrasyonu (assets/models: hero.glb, hero_anims1/2.glb, fox.glb, dragon.glb)
+- [ ] Çok sayıda hayvan ve yaratık
+- [ ] Yaratık evcilleştirme ve yapay zekâ
+- [ ] Açık dünya, savaş, envanter, ilerleme sistemleri
+- [ ] Android performansı ve mobil kontroller
+
+Not: `tools/sculpt/cache/` git'te yok. Tek modeli yeniden üretmeden önce mevcut `data/models.js`'i önbelleğe aç
+(her `KEY:"base64"` satırını gunzip edip `cache/KEY.bin` yaz) — yoksa elf GLB'si olmadan `king` modeli kaybolur.
+
 ## Bilinen sorunlar / test edilemeyenler
 - Gerçek Android cihazda dokunma, titreşim ve gerçek GPU performansı test edilemedi (yazılımsal WebGL ile ölçüldü).
 - Ses yalnızca kodla üretiliyor (WebAudio); kulakla dinlenemedi.
@@ -134,3 +152,4 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
   öfke çubuğu, boss adı + duruş çubuğu, hızlı yolculuk, manhwa görünümü (sabit oranlı paneller, sıra kuyruğu),
   görev pusulası, yeni sesler. Düzeltilenler: açılış sırası (Veyra/hikâye), kese ve mühür toplama artık oyun
   adımında, kavgada 4 m algı, Veyra'ya düşman vuruşu, Kırık Diş yere vurma halkası. s-loop.js 71/71.
+- Rutin çalıştırma 1 (2026-11-23): kahraman zırhı 1. adım (kas zırhı, köşeli miğfer, yassı omuzluk); kök index.html güncellendi.
