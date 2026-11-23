@@ -12,7 +12,7 @@ const KC={iron:[.17,.18,.21],mid:[.25,.26,.3],edge:[.42,.43,.49],dark:[.08,.08,.
 // sculpted hero (tools/sculpt/models/hero.mjs): one CPU-skinned mesh with gloss/metal/glow channels
 function heroMesh(TX){const m=MODEL.hero;if(!m)return heroMeshOld(TX);const nv=m.nv,J=new Uint8Array(nv*4);for(let i=0;i<nv*4;i++)J[i]=m.J[i];
  const ob=addSkin({P:m.P,N:m.N,C:m.C,M:m.M,U:new Float32Array(nv*2),W:new Float32Array(nv),I:m.I},J,m.K,{out:.0035,outCol:[.03,.03,.045],shade:1,pbr:1});
- HERO.armor=ob;HERO.cape=null;HERO.glow={set col(v){ob.em=v},get col(){return ob.em}}}
+ HERO.armor=ob;HERO.cape=null;HERO.glow={set col(v){ob.em=v;if(HERO.overlay)HERO.overlay.em=v},get col(){return ob.em}}}
 function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape:[],glow:[]};
  // weights: fn(x,y,z) -> [[bone,w],...]
  const W=(g,fn)=>{const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);for(let i=0;i<nv;i++){const l=fn(g.P[i*3],g.P[i*3+1],g.P[i*3+2]);for(let k=0;k<l.length&&k<4;k++){J[i*4+k]=l[k][0];Wt[i*4+k]=l[k][1]}}g.J4=J;g.W4=Wt;return g};
