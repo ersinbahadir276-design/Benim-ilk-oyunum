@@ -23,7 +23,7 @@ function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');SKM=h
 function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;g.hp-=dmg;g.flash=1;g.aware=1;g.ls=[P.x,P.z];
  if(g.hp<=0&&g.skel&&skelCollapse(g,kind))return false;
  if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
- const kb=g.big?1.2:5;g.kx=dx*kb;g.kz=dz*kb;
+ const kb=g.big?1.2:5;g.kx=dx*kb;g.kz=dz*kb;{const l=Math.hypot(dx,dz);if(l>1e-3){const fx=Math.sin(g.yaw),fz=Math.cos(g.yaw);g.hf=(dx*fx+dz*fz)/l;g.hs=(dx*fz-dz*fx)/l}else{g.hf=-1;g.hs=0}}
  if(g.st!=='escape'&&g.st!=='choked'&&g.st!=='pinned'){if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
  alertGroup(g,P,22,GOBS);return false}
 const gobTokens=()=>GOBS.filter(g=>!g.dead&&!g.big&&(g.st==='windup'||g.st==='strike')).length;
@@ -73,6 +73,12 @@ function clubSeg(g){gobFK(g,GT.time);const d=g.R.def;return[boneW(d,8,[0,-.08,.3
 // closest distance between segment AB (club) and segment CD (body axis) < r
 function segCapsule(A,B,C,D,r){let best=1e9;for(let i=0;i<=8;i++){const t=i/8,p=[lp(A[0],B[0],t),lp(A[1],B[1],t),lp(A[2],B[2],t)],cd=vsub(D,C),u=cl(vdot(vsub(p,C),cd)/vdot(cd,cd),0,1),q=vadd(C,vmul(cd,u));best=Math.min(best,Math.hypot(...vsub(p,q)))}return best<r+.18}
 // ---------- poses
+// directional recoil (see hitReact in 55-player.js): g.hf>0 = pushed forward (hit from behind), g.hs = pushed to its right
+function gobHurtPose(g,q){const k=sst(0,.06,g.t)*(1-sst(.1,.3,g.t)),f=g.hf,sd=g.hs,back=Math.max(0,-f),fwd=Math.max(0,f),st=sst(.03,.15,g.t)*(1-sst(.2,.3,g.t));
+ q.spP=(-.5*back+.55*fwd)*k;q.hdP=(-.55*back+.45*fwd)*k;q.hipP=(-.12*back+.12*fwd)*k;q.spR=GREACT.side*sd*.4*k;q.hdR=GREACT.side*sd*.3*k;q.spY=.25*sd*k;
+ q.RsX=-1.1*k-.2;q.LsX=-1.0*k-.2;q.RsZ=.35+.3*k;q.LsZ=.35+.3*k;
+ const lead=sd>.3?'R':sd<-.3?'L':'R';q[lead+'hX']=(.5*back-.5*fwd)*st;q.LkX=.2+.3*st;q.RkX=.2+.3*st}
+const GREACT={side:-1};
 function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.big?0:cl((g.spd-2)/3,0,1);
  if(g.st!=='dead'&&g.st!=='choked'&&g.st!=='pinned'&&g.st!=='escape'){gaitPose(q,g.ph,A,run);q.spP=(q.spP||0)+(g.big?.25:.32);q.hdP=-.2;q.hdY=g.hyaw;q.LsZ=.25;q.RsZ=.25;q.ReX=(q.ReX||0)-.6;q.LeX=(q.LeX||0)-.4}
  const u=g.big?g.t/1.35:g.t/.5;
@@ -89,7 +95,8 @@ function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.bi
   else{q.RsX=lp(-2.4,.8,k);q.RsY=lp(0,.6,k);q.RsZ=.3;q.ReX=-.2;q.spP=.55;q.spY=lp(-.5,.5,k);q.LhX=-.7;q.LkX=.9;q.RhX=.4;q.RkX=.3}break}
  case'recover':if(g.big){q.RsX=.5;q.RsZ=.25;q.ReX=-.2;q.LsX=.3;q.spP=.75;q.hipP=.25;q.hdP=.3;q.LhX=-.7;q.LkX=.9}else{q.spP=.4}break;
  case'horn':{q.LsX=-2.2;q.LeX=-1.6;q.LsZ=.2;q.hdP=-.4;q.spP=-.2;q.RsX=-.3;break}
- case'stagger':case'hurt':{const k=Math.sin(g.t*14)*.3;q.spP=-.4+k*.3;q.hdP=-.5;q.RsX=-1.6;q.LsX=-1.4;q.LsZ=.6;q.RsZ=.6;q.hipP=-.15;q.LhX=.3;q.RkX=.5;break}
+ case'hurt':if(HREACT.on&&g.hf!==undefined){gobHurtPose(g,q);break}
+ case'stagger':{const k=Math.sin(g.t*14)*.3;q.spP=-.4+k*.3;q.hdP=-.5;q.RsX=-1.6;q.LsX=-1.4;q.LsZ=.6;q.RsZ=.6;q.hipP=-.15;q.LhX=.3;q.RkX=.5;break}
  case'choked':{const k=Math.sin(g.t*17);q.hdP=-.6;q.spP=-.35;q.RsX=-1.8+k*.5;q.LsX=-1.6-k*.5;q.LsZ=.7;q.RsZ=.7;q.LeX=-1.5;q.ReX=-1.5;q.LhX=.25+k*.3;q.RhX=-.2-k*.3;q.LkX=.4;q.RkX=.5;q.jaw=.8;break}
  case'pinned':q.LsX=-2.6;q.RsX=-2.6+Math.sin(g.t*20)*.3*Math.max(0,1-g.t);q.LsZ=.4;q.RsZ=.4;q.hdP=-.6;q.jaw=.6;break;
  case'escape':{const T=g.from==='pinned'?1.4:1.0,u2=g.t/T;if(g.from==='pinned'){q.LsX=lp(-2.6,0,u2);q.RsX=lp(-2.6,0,u2);q.LhX=lp(0,-1.4,sst(0,.5,u2))*(1-sst(.6,1,u2));q.LkX=lp(0,2.2,sst(0,.5,u2))*(1-sst(.6,1,u2));q.RhX=q.LhX*.7;q.RkX=q.LkX*.7;q.spP=lp(0,.8,sst(0,.5,u2))*(1-sst(.7,1,u2))}

@@ -12,7 +12,7 @@ Tests: `cd ay-kiliccisi && NODE_PATH=$(npm root -g) node test/harness.js test/<s
 | # | Feature | Status | What's still open |
 |---|---|---|---|
 | 1 | High-quality male protagonist | **Mostly done.** Kael is an in-game sculpted model (~21k triangles, 58 bones, gloss/metal/glow material channels, horned helm, fur mantle, cape, greatsword). | The user asked for an armor redesign but gave no design brief, so it waits on that. |
-| 2 | Realistic 3D character animations | **In progress.** Procedural poses with crossfades, arm IK (two-handed grip, reverse grip), cape bones. Foot IK on terrain (run 1). Speed-matched gait, heel-off and stride foot locking (run 2). Terrain foot IK for every humanoid rig: villagers, guards, merchants, goblins, big goblins, skeletons, Veyra (run 3). **Wolves fit the terrain: body pitch, body sink, paws placed on the ground under each paw (run 4).** Crocodiles fit the terrain: body pitch + roll, neck and tail bend along the ground, each foot reaches the ground (run 5). Wolf paw gait + stride locking: duty-factor gait, paws pinned in world space through turns and sideways circling (run 6). **Dragon fits the terrain: body pitch/roll/sink, two-bone IK on all four limbs of the GLB skeleton (run 7).** | No keyframe clip system of our own (the dragon uses its GLB clips). Foot locking covers only the hero's walk and run, not turning in place or crouch-walking. NPCs have terrain IK but no stride locking. The crocodile and the dragon have no stride locking (dragon paws still slide a little in its walk clip on slopes). No hit-reaction directionality. |
+| 2 | Realistic 3D character animations | **In progress.** Procedural poses with crossfades, arm IK (two-handed grip, reverse grip), cape bones. Foot IK on terrain (run 1). Speed-matched gait, heel-off and stride foot locking (run 2). Terrain foot IK for every humanoid rig: villagers, guards, merchants, goblins, big goblins, skeletons, Veyra (run 3). **Wolves fit the terrain: body pitch, body sink, paws placed on the ground under each paw (run 4).** Crocodiles fit the terrain: body pitch + roll, neck and tail bend along the ground, each foot reaches the ground (run 5). Wolf paw gait + stride locking: duty-factor gait, paws pinned in world space through turns and sideways circling (run 6). **Dragon fits the terrain: body pitch/roll/sink, two-bone IK on all four limbs of the GLB skeleton (run 7).** Combat-ready idle with breathing and weight shift, swing-side hip drop, banking into turns (merged from `-qfnm9q`, run 8). **Directional hit reactions for the hero, goblins and skeletons (run 8).** | No keyframe clip system of our own (the dragon uses its GLB clips). Foot locking covers only the hero's walk and run, not turning in place or crouch-walking. NPCs have terrain IK but no stride locking. The crocodile and the dragon have no stride locking (dragon paws still slide a little in its walk clip on slopes). Hit reactions are directional for the hero, goblins and skeletons (run 8) but not yet for wolves, NPCs, Veyra or bosses. |
 | 3 | Integration of submitted GLB models | **In progress.** Done: dragon (own clips), elf body (Şeytan Kraliçe), hair GLB, skeleton proportions from berserk_armor, kawaiope and aldrich. | gwyndolin (Snake Priestess boss) not used yet. The NC/ND-licensed files can't be used. |
 | 4 | Multiple animals and creatures | **In progress.** Wolves, goblins (melee, archer, chief), crocodile, dragon, Veyra, **skeleton warriors and skeleton archers** (merged in run 3 from the parallel branches `-soup7a`/`-7qxv18`). The old game has 14 species. | Spider, golem, wraith; deer and birds in the open world; the White Wolf. |
 | 5 | Creature taming and AI | **In progress.** Vision cones, group alerts, hearing, utility-AI companion (Veyra). Taming exists in the old game (`yaban.html`). | Taming isn't in Ay Kılıççısı yet; no "pet upgrade tree". |
@@ -95,9 +95,33 @@ No feature is marked complete in the routine's sense yet.
   - New test `ay-kiliccisi/test/s-dragonik.js`: 12/12 pass. Regressions: `s-mech` 47/47 (dragon pattern test included), `s-loop` 71/71, `s-wolfik` 11/11, `s-crocik` 14/14, `s-perf` OK (dragon area draw prep 1.88 ms per frame).
   - Checked by eye: one screenshot pair (fit on/off) — with the fit on, the downhill front claw reaches the ground; trees partly hide the body.
 
+### Run 8 — 2026-11-23
+- **Housekeeping: the two routine lines are merged again.** Runs on 11-22/23 (`-p9gtgx` armor pass, `-qfnm9q` "Run 1" hero idle/gait) had restarted from `main` and written a fresh root `PROGRESS.md`. This branch (`ccr-70a30f22-em2gpp`) fast-forwarded `-ul9yx5` (runs 1–7) and merged `-qfnm9q`.
+  - Conflicts in `30-player-model.js` and `55-player.js` were resolved by hand. The stride-locked linear gait and heel-off are kept. From `-qfnm9q`, these were added: `idlePose` (staggered combat stance, breathing, weight shift, glances), swing-side hip drop (`pelZ`), level gaze and banking into turns. Heel-strike roll (`LfX/RfX`) now applies only to the old sine gait (`GAIT.lin=0`), because the linear gait has its own heel-off and foot lock. The foot bone also cancels the stance spread and the hip tilt now.
+  - The `s-anim` walk check now also counts heel-off as foot roll: 7/7.
+  - The armor branches (`-p9gtgx`, `-djto1n`, `-kpnltt`, …) are **still not merged**, because they rebuild `data/models.js` from the sculpt cache.
+- **Feature 2 (animations): directional hit reactions.**
+  - Before: every hit that landed played the same recoil (arch back, arms forward), even a hit from behind. Goblins and skeletons also always leaned back.
+  - Hero (`hitReact`, `hurtPose`, `flinchAdd`, `HREACT` in `55-player.js`): `hitPlayer` stores the push direction in the hero's own frame, plus a strength set by the damage. The `hurt` state snaps toward the push in about 70 ms and settles by 0.38 s:
+    - From the front: the torso arches and the head whips back.
+    - From behind: the torso folds and the head drops forward.
+    - From the side: the torso bends sideways, twists away, and the hips tilt.
+    - In every direction, one leg takes a stagger step toward the push, the knees give a little, and the arms trail opposite the push.
+    - States that don't flinch (berserk, attacking, drinking) get a smaller additive flinch on top of their pose.
+    - `HREACT.on=0` restores the old recoil.
+  - Goblins and skeletons (`gobHurtPose`, `GREACT` in `46-goblins.js`): `gobHurt` stores the push direction in the goblin's own frame. `hurt` now bends toward it, with spine/head pitch and roll, a twist and a stagger step. The parried `stagger` pose is unchanged.
+  - Measured as how far the head moves relative to the hips along the push direction, at its peak:
+    - Hero: front 18 cm, behind 19 cm (the old pose moved it −12 cm, against the push), left/right 9 cm.
+    - Goblin: 23 / 10 / 10 / 10 cm.
+    - Skeleton: 37 / 15 / 16 / 16 cm.
+    - Berserk flinch: 2.3 cm.
+    - Feet stay on the ground: 6.6–15 cm ankle height. No NaN.
+  - New test `ay-kiliccisi/test/s-hitreact.js`: 11/11 pass. Regressions: `s-mech` 47/47, `s-loop` 71/71, `s-anim` 7/7, `s-stride` 9/9, `s-footik` 9/9, `s-rigfik` 14/14, `s-undead` 16/16, `s-stance` 11/11, `s-perf` OK.
+  - Checked by eye: one screenshot of a hit from the left, mid-recoil. The torso bends away from the hit. It wasn't watched in motion.
+
 ## Next priorities
-1. Housekeeping first: merge this branch into `main` (or tell the routine which branch to start from) so runs stop restarting from `main`.
-2. Animations: stride locking for walking NPCs, the crocodile and the dragon; crouch-walk and turn-in-place gait for the hero; then a keyframe clip layer for signature moves.
+1. Housekeeping first: merge this branch (`ccr-70a30f22-em2gpp`) into `main`, or tell the routine which branch to start from. Runs keep restarting from `main` and duplicating work. Until then, each run should start by merging the newest `ccr-*` branch.
+2. Animations: directional hit reactions for wolves, villagers/guards, Veyra and bosses; stride locking for walking NPCs, the crocodile and the dragon; crouch-walk and turn-in-place gait for the hero; anticipation/follow-through in attacks; then a keyframe clip layer for signature moves.
 3. Protagonist: merge one of the parallel armor-redesign branches (latest: `-djto1n`) or settle on a design brief with the user.
 4. GLB: build the Snake Priestess boss on the gwyndolin skeleton.
 5. Creatures: the first dungeon creatures (spider, golem).

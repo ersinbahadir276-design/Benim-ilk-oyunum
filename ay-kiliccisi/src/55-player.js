@@ -34,7 +34,8 @@ function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=o.src&&o
  P.hp-=o.dmg;P.flash=1;P.jig=1;CAM.shake=Math.max(CAM.shake,o.knock==='down'?.7:.4);GT.stop=Math.max(GT.stop,.06);floatText(P.x,P.y+1.6,P.z,'-'+Math.round(o.dmg),'red');sfx.hurt();
  if(P.hp<=0){die();return'hit'}
  const d=o.dir||[-Math.sin(P.yaw),-Math.cos(P.yaw)];
- const lying=P.st==='down'||P.st==='getup';// on the ground (or pinned): a hit only hurts, it never changes the pose state
+ const lying=P.st==='down'||P.st==='getup';
+ if(!lying&&o.knock!=='down')hitReact(d,o.dmg);// on the ground (or pinned): a hit only hurts, it never changes the pose state
  if(lying){if(o.knock==='down'&&!P.pinBy&&P.st==='getup')knockDown(d,o.power||1)}
  else if(o.knock==='down'&&!(P.berserk>0&&(o.power||1)<1.4)){knockDown(d,o.power||1)}else if(o.knock!=='none'&&!(P.berserk>0)&&P.st!=='drink'||o.knock==='flinch'&&P.st==='drink'){P.st='hurt';P.t=0;P.hurtDir=d;const pk=o.noPush?0:3.5;P.vx=d[0]*pk;P.vz=d[1]*pk;P.air=false}
  return'hit'}
@@ -105,7 +106,7 @@ function updateTakedown(dt){const td=P.td,v=td.v;td.t+=dt;
   if(td.t>.62&&!td.done){td.done=true;sfx.stab();CAM.shake=.55;GT.stop=.12;const dead=v.hurt(999,0,0,'stab');spawnSparks(v.x,v.y+.25,v.z,18,[.8,.15,.15],3);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
   if(td.t>1.75){P.td=null;P.st='move';P.t=0}}}
 // --------------------------------------------------------------- per-frame update
-function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-dt*3);P.noise=0;P.t+=dt;P.jig=Math.max(0,P.jig-dt*2.2);
+function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-dt*3);P.noise=0;P.t+=dt;P.jig=Math.max(0,P.jig-dt*2.2);if(P.hr)P.hr.t+=dt;
  const cy=CAM.yaw,fx=Math.sin(cy),fz=Math.cos(cy);let ix=IN.mx+IN.kx,iz=IN.mz+IN.kz,il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il;il=1}
  const wx=fx*iz-fz*ix,wz=fz*iz+fx*ix;IN.wx=wx;IN.wz=wz;const ox=P.x,oz=P.z;P.sprinting=false;
  const ground=()=>hAt(P.x,P.z);
@@ -175,6 +176,27 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(P.sprinting)P.noise=Math.max(P.noise,9);
  if(!SYS.gate&&Math.hypot(P.x,P.z)<46){SYS.gate=1;P.cp=[0,60]}if(!SYS.knight&&Math.hypot(P.x-10,P.z-50)<5.5)SYS.knight=1}
 // --------------------------------------------------------------- pose targets per state
+// directional hit reactions. hitReact stores the push direction in the hero's own frame: f>0 = pushed forward
+// (hit from behind), f<0 = pushed back (hit from the front), sd>0 = pushed to the hero's right.
+// The 'hurt' state plays a full recoil toward the push (snap in ~70 ms, settle by .38 s) with a stagger step;
+// any other state (berserk, attacking, drinking) gets a smaller additive flinch layered on top of its pose.
+const HREACT={on:1,snap:.07,dur:.38,flinch:.32};
+function hitReact(d,dmg){const fx=Math.sin(P.yaw),fz=Math.cos(P.yaw),l=Math.hypot(d[0],d[1])||1;
+ P.hr={t:0,f:(d[0]*fx+d[1]*fz)/l,sd:(d[0]*fz-d[1]*fx)/l,m:cl((dmg||8)/18,.45,1),alt:Math.random()<.5?1:-1}}
+const hrCurve=(t,dur)=>sst(0,HREACT.snap,t)*(1-sst(HREACT.snap+.03,dur,t));
+function hurtPose(q,t){const h=P.hr||{f:-1,sd:0,m:.7,alt:1},k=hrCurve(t,HREACT.dur)*h.m,f=h.f,sd=h.sd,back=Math.max(0,-f),fwd=Math.max(0,f);
+ // torso bends with the push: back = arch + head whips back; forward = fold + head drops; side = lateral bend + twist away
+ q.spX=(-.38*back+.42*fwd)*k;q.chX=(-.28*back+.3*fwd)*k;q.hdX=(-.45*back+.35*fwd)*k;q.pel=(.1+.12*fwd-.05*back)*k;
+ q.spZ=-.5*sd*k;q.pelZ=.1*sd*k;q.hdY=.3*sd*k;q.spY=.22*sd*k+.08*h.alt*k*(1-Math.abs(sd));q.hipY=-.05*k;
+ // stagger: one leg steps out toward the push and both knees give a little
+ const st=sst(.04,.2,t)*(1-sst(.24,.42,t))*h.m,lead=sd>.3?'R':sd<-.3?'L':h.alt>0?'R':'L';
+ q[lead+'thX']=(.42*back-.45*fwd)*st;q[(lead==='R'?'L':'R')+'thX']=(-.12*back+.12*fwd)*st;q.Lkn=.18+.3*st;q.Rkn=.18+.3*st;
+ if(Math.abs(sd)>.3){if(sd>0)q.RthZ=-.04-.22*sd*st;else q.LthZ=.04-.22*sd*st}
+ // arms fly opposite to the push (they lag the torso), sword arm keeps the blade
+ q.LaZ=lp(1.22,.75,k);q.LaX=(.55*back-.6*fwd)*k-.1;q.Lel=.25+.6*k;q.RaX=-.3+(.45*back-.5*fwd)*k;q.RaZ=1.12-.25*k;q.Rel=.55+.35*k}
+function flinchAdd(q){const h=P.hr;if(!h||h.t>.3||P.st==='down'||P.st==='dead'||P.st==='getup'||P.st==='td')return;
+ const k=hrCurve(h.t,.3)*h.m*HREACT.flinch,back=Math.max(0,-h.f),fwd=Math.max(0,h.f);
+ q.spX+=(-.38*back+.42*fwd)*k;q.chX+=(-.28*back+.3*fwd)*k;q.hdX+=(-.5*back+.4*fwd)*k;q.spZ+=-.34*h.sd*k;q.hdY+=.3*h.sd*k}
 // combat-ready idle: staggered stance with soft knees, slow breathing (chest + shoulders), a weight shift from
 // foot to foot every few seconds, sword held low and forward, and an occasional glance around.
 function idlePose(q,t){const b=Math.sin(t*1.7),w=Math.sin(t*.42)+.35*Math.sin(t*1.13+1),g=Math.sin(t*.23);
@@ -242,7 +264,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(k2==='roar'){const k=sst(0,.35,P.t)-sst(.75,1,P.t);q.chX=-.45*k;q.hdX=-.6*k;q.LaZ=lp(1.22,.5,k);q.LaX=-.4*k;q.Lel=.8;q.RaZ=lp(1.12,.6,k);q.spX=-.2*k;q.LthX=-.4*k;q.Lkn=.6*k;q.RthX=.3*k}
   else if(k2==='dash'){q.two=1;q.RaZ=.2;q.RaX=.3;q.RaY=1.9;q.Rel=.1;q.spX=.5;q.pel=.35;q.LthX=-1.1;q.Lkn=1.2;q.RthX=.6;q.Rkn=.4;q.chY=.6}
   else if(k2==='slam'){q.two=1;const air=P.air;q.RaZ=-1.4;q.RaX=air?-1.0:1.6;q.Rel=air?.7:.05;q.RaY=.2;q.chX=air?-.3:.6;q.spX=air?-.1:.4;q.pel=air?.1:.4;q.LthX=air?-1:-1.2;q.Lkn=air?1.3:1.5;q.RthX=air?-.6:.4;q.Rkn=air?1.2:.6;q.hipY=air?0:-.15}break}
- case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;break}
+ case'hurt':{rate=30;if(HREACT.on)hurtPose(q,P.t);else{const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k}break}
  case'td':{rate=18;const td=P.td;if(!td)break;
   if(td.kind==='choke'){q.choke=td.t<1.4?1:Math.max(0,1-(td.t-1.4)*6);q.chokeH=.86;q.spX=.32;q.pel=.22;q.hipY=-.1;q.LthX=-.85;q.Lkn=1.15;q.RthX=-.3;q.Rkn=.8;q.chY=Math.sin(td.t*15)*.05;
    if(td.t>1.35){const u=sst(1.35,1.6,td.t);q.RaZ=.25;q.RaX=lp(-.4,-1.3,u);q.RaY=lp(-.6,.2,u);q.Rel=lp(1.6,.15,u)}}
@@ -254,6 +276,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
   q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
+ if(HREACT.on&&P.st!=='hurt')flinchAdd(q);
  const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}
 // model matrix: yaw, scale, ragdoll tilt about the feet in the fall direction, dodge rolls; then lifted so no bone sinks into the ground
 function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);for(let k=0;k<12;k++)M[k]*=PSC;
