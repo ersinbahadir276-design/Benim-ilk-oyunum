@@ -2,7 +2,7 @@
 // Every region has a level; enemies there scale with it. Altars are checkpoints (rest = heal, refill flasks,
 // enemies come back) and fast-travel points. Dying drops your gold at the spot; reach it to get it back.
 function regionLevel(x,z){if(DUN.on)return DUN.lv;const zn=zoneAt(x,z),r=Math.hypot(x,z);
- if(zn==='kingdom')return 1;if(zn==='lair')return 18;if(zn==='mountain')return 14;if(zn==='ruins')return 11;if(zn==='swamp'||zn==='lake'||zn==='river')return 9;
+ if(zn==='kingdom')return 1;if(zn==='lair')return 18;if(zn==='snow')return 16;if(zn==='mountain')return 14;if(zn==='ruins')return 11;if(zn==='swamp'||zn==='lake'||zn==='river')return 9;
  if(zn==='camp'){let b=0,bd=1e9;CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<bd){bd=d;b=i}});return[5,9,7,12][b]}
  if(zn==='dense')return Math.round(lp(8,12,sst(450,1300,r)));return Math.max(1,Math.round(lp(1,7,sst(150,1250,r))))}
 const lvMul=lv=>1+.2*(lv-1),lvDmg=lv=>1+.11*(lv-1);

@@ -11,7 +11,20 @@ const HILL=(x,z)=>Math.sin(x*.013)*4+Math.cos(z*.016)*4+Math.sin((x+z)*.031)*2+M
 function segD(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=cl(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t)}
 function riverD(x,z){let d=1e9;for(let i=0;i<RIVER.length-1;i++)d=Math.min(d,segD(x,z,RIVER[i],RIVER[i+1]));return d}
 const campH=CAMPS.map(c=>HILL(c[0],c[1])*.6);
+// v26 terrain: value noise for rolling hills, flat-topped rocky MESAS with cliffs, a snowy range (Karlı Sırtlar) in the
+// north-west and a real plateau + cliff for the waterfall at the river's head.
+const SNOW=[-930,-1050,330];
+const vhash=(i,j)=>{const s=Math.sin(i*127.1+j*311.7)*43758.5453;return s-Math.floor(s)};
+function vnoise(x,z){const i=Math.floor(x),j=Math.floor(z),fx=x-i,fz=z-j,u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz);return lp(lp(vhash(i,j),vhash(i+1,j),u),lp(vhash(i,j+1),vhash(i+1,j+1),u),v)}
+function fbm(x,z){return vnoise(x,z)*.5+vnoise(x*2.03+17,z*2.03+9)*.27+vnoise(x*4.1+5,z*4.1+31)*.15+vnoise(x*8.3+3,z*8.3+7)*.08}
+const FALLHEAD=(()=>{const a=RIVER[0],b=RIVER[1],dl=Math.hypot(a[0]-b[0],a[1]-b[1]),ux=(a[0]-b[0])/dl,uz=(a[1]-b[1])/dl;return{x:a[0],z:a[1],ux,uz,lip:16,top:WATER_L+19}})();
+// flattened building sites (the harbour town, the arena): level ground so houses do not float
+const FLATS=[[-528,262,30],[40,338,16]],FLATC=new Map();let noFlat=false;
+const FLATH=(cx,cz)=>{const k=cx+','+cz;if(!FLATC.has(k)){noFlat=true;FLATC.set(k,hRaw(cx,cz));noFlat=false}return FLATC.get(k)};
+function fallFrame(x,z){const F=FALLHEAD,dx=x-F.x,dz=z-F.z;return[dx*F.ux+dz*F.uz,dx*-F.uz+dz*F.ux]}
 function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
+ {const wild=sst(150,380,r);h+=(fbm(x*.0055,z*.0055)-.5)*2*17*wild;/* rolling hills */const m=fbm(x*.011+40,z*.011-13);h+=sst(.64,.69,m)*11*wild*sst(.5,.9,fbm(x*.003,z*.003)+.4);/* mesas: flat tops, steep sides */
+  const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+80){const rid=1-Math.abs(fbm(x*.012,z*.012)*2-1);h+=sst(SNOW[2]+80,SNOW[2]-120,dsn)*(28+rid*rid*48)}}
  const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<420){const ridge=Math.abs(Math.sin(x*.021+Math.sin(z*.017)*1.6))*Math.cos(z*.019+.4);h+=72*sst(420,95,dm)+ridge*9*sst(420,160,dm)*sst(60,140,dm);if(dm<120)h=lp(h,LAIR_Y,sst(120,62,dm))}
  const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+70)h=lp(h,-6.4+Math.sin(x*.04)*.8,sst(LAKE[2]+60,LAKE[2]-25,dl));
  if(dl>=LAKE[2]+42&&dl<LAKE[2]+170)h=Math.max(h,lp(WATER_L+1.4,-40,sst(LAKE[2]+90,LAKE[2]+170,dl)));
@@ -19,12 +32,14 @@ function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  const ds=Math.hypot(x-SWAMP[0],z-SWAMP[1]);if(ds<SWAMP[2]+60)h=lp(h,-1.15+1.15*Math.sin(x*.05+Math.sin(z*.04)*2)*Math.cos(z*.06)+.45*Math.sin(x*.17)*Math.cos(z*.13),sst(SWAMP[2]+50,SWAMP[2]-80,ds));
  if(ds>=SWAMP[2]+22&&ds<SWAMP[2]+150)h=Math.max(h,lp(WATER_S+1.0,-40,sst(SWAMP[2]+80,SWAMP[2]+150,ds)));
  CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<60)h=lp(h,campH[i],sst(58,30,d))});
+ {const F=FALLHEAD,[al,w]=fallFrame(x,z);if(al>F.lip-6&&al<170&&Math.abs(w)<95){const k=sst(95,60,Math.abs(w))*sst(170,120,al)*sst(F.lip-.5,F.lip+2.5,al);let ph=F.top+1.5+fbm(x*.03,z*.03)*3;if(Math.abs(w)<5.5)ph=F.top-1.4;h=lp(h,ph,k)}}
+ if(!noFlat)for(const [cx,cz,R] of FLATS){const d=Math.hypot(x-cx,z-cz);if(d<R+25)h=lp(h,FLATH(cx,cz),sst(R+25,R,d))}
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
-function zoneAt(x,z){if(DUN.on)return'dungeon';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
+function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
  if(Math.hypot(x-LAKE[0],z-LAKE[1])<LAKE[2]+25)return'lake';if(riverD(x,z)<16)return'river';if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2])return'swamp';
  for(const c of CAMPS)if(Math.hypot(x-c[0],z-c[1])<48)return'camp';for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<65)return'ruins';
  if(dm<420)return'mountain';if(x<-430)return'dense';return'forest'}
-const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',forest:'Orman',dungeon:'Zindan'};
+const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',forest:'Orman',dungeon:'Zindan'};
 // sampled heightmap: hAt interpolates the SAME triangles the terrain mesh and the grass shader use
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){if(DUN.on)return dunH(x,z);let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
@@ -73,19 +88,24 @@ function buildWorld(){
  for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-WS+i*HS,z=-WS+j*HS,o=j*HN+i,h=HGT[o],r=Math.hypot(x,z),road=Math.min(Math.abs(x),Math.abs(z)),zn=zoneAt(x,z);
   let d=(.1+.9*sst(125,300,r))*(r>74?1:0)*sst(2.6,5,road+Math.max(0,r-720)),t=0;
   if(zn==='swamp'){d*=.55;t=1}else if(zn==='mountain'||zn==='lair'){d*=.7*sst(40,8,h);t=.55}else if(zn==='camp'){d*=.3;t=.6}else if(zn==='ruins'){d*=.6;t=.3}else if(zn==='dense')d*=.75;
+  {const gx=(hAt(x+3,z)-hAt(x-3,z))/6,gz=(hAt(x,z+3)-hAt(x,z-3))/6;d*=sst(.95,.45,Math.hypot(gx,gz))}/* no grass on cliffs and steep rock */
+  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+40)d*=sst(SNOW[2]-30,SNOW[2]+40,dsn)}/* none in the snow */
   if(depthAt(x,z)>.05)d=0;GDN[o]=Math.round(cl(d,0,1)*255);GTN[o]=Math.round(t*255);const q=Math.round(cl((h+20)/140,0,1)*65535);hb[o*4]=q>>8;hb[o*4+1]=q&255;hb[o*4+2]=GDN[o];hb[o*4+3]=GTN[o]}
  if(gprog&&gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)>0){HTEX=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,HN,HN,0,gl.RGBA,gl.UNSIGNED_BYTE,hb);
   for(const[k,v]of[[gl.TEXTURE_MIN_FILTER,gl.NEAREST],[gl.TEXTURE_MAG_FILTER,gl.NEAREST],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v)}
  // ---------- terrain (8x8 chunks of 50x50 cells, colours by region)
- const NC=50,gcol=(x,z,h)=>{const r=Math.hypot(x,z),n=.5+.5*Math.sin(x*.21+Math.sin(z*.17)*2)*Math.cos(z*.19),f=sst(260,420,r),zn=zoneAt(x,z);
+ const NC=50,gcol=(x,z,h,nn)=>{const r=Math.hypot(x,z),n=.5+.5*Math.sin(x*.21+Math.sin(z*.17)*2)*Math.cos(z*.19),f=sst(260,420,r),zn=zoneAt(x,z);
   let c=[lp(.30,.19,f)+n*.05,lp(.47,.34,f)+n*.07,lp(.22,.16,f)+n*.03];
   if(zn==='dense')c=[.13+n*.04,.25+n*.05,.12+n*.03];else if(zn==='swamp'||Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+40)c=[.24+n*.05,.27+n*.05,.15+n*.03];
   else if(zn==='camp')c=[.38+n*.05,.33+n*.05,.22];else if(zn==='ruins')c=[.33+n*.04,.38+n*.05,.24];
   const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<430){const rock=[.4+n*.06,.39+n*.05,.38+n*.05];c=mix3(c,rock,sst(6,22,h)*sst(430,250,dm));c=mix3(c,[.9,.92,.96],sst(44,56,h));if(dm<120)c=mix3(c,[.24,.2,.2],sst(110,60,dm))}
+  {const sl=nn?1-nn[1]:0;/* slope: grass -> dirt -> rock */c=mix3(c,[.36+n*.04,.28+n*.03,.19],sst(.12,.24,sl));c=mix3(c,[.42+n*.05,.4+n*.04,.37+n*.04],sst(.3,.48,sl))}
+  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+60)c=mix3(c,[.88+n*.05,.9+n*.05,.95],sst(SNOW[2]+60,SNOW[2]-40,dsn)*sst(.6,.35,nn?1-nn[1]:0)*.92+sst(SNOW[2]+60,SNOW[2],dsn)*.0)}
+  if(h>38&&Math.hypot(x-MOUNT[0],z-MOUNT[1])>140)c=mix3(c,[.9,.92,.96],sst(38,52,h));
   const wd=waterAt(x,z)-h;if(waterAt(x,z)>-90&&wd>-1.2)c=mix3(c,[.5,.46,.33],sst(-1.2,.2,wd)*.8);return c};
  for(let cx=0;cx<8;cx++)for(let cz=0;cz<8;cz++){const g=G(),i0=cx*NC,j0=cz*NC;
   for(let j=0;j<=NC;j++)for(let i=0;i<=NC;i++){const gi=Math.min(i0+i,HN-1),gj=Math.min(j0+j,HN-1),x=-WS+gi*HS,z=-WS+gj*HS,h=HGT[gj*HN+gi],e=HS,
-    n=vnorm([hAt(x-e,z)-hAt(x+e,z),2*e,hAt(x,z-e)-hAt(x,z+e)]),c=gcol(x,z,h);g.P.push(x,h,z);g.N.push(n[0],n[1],n[2]);g.U.push(0,0);g.C.push(c[0],c[1],c[2]);g.W.push(0)}
+    n=vnorm([hAt(x-e,z)-hAt(x+e,z),2*e,hAt(x,z-e)-hAt(x,z+e)]),c=gcol(x,z,h,n);g.P.push(x,h,z);g.N.push(n[0],n[1],n[2]);g.U.push(0,0);g.C.push(c[0],c[1],c[2]);g.W.push(0)}
   for(let j=0;j<NC;j++)for(let i=0;i<NC;i++){const a=j*(NC+1)+i,b=a+1,c=a+NC+1,d=c+1;g.I.push(a,c,b,b,c,d)}
   obj(geo(g),{shade:.55,pos:[-WS+(i0+NC/2)*HS,0,-WS+(j0+NC/2)*HS],cull:620,ds:0})}
  // ---------- ground overlays: village dirt, courtyard stone, roads (four roads to the edge of the old forest, north road up to the mountains)
@@ -175,8 +195,8 @@ function buildWorld(){
  makeGrass(21000,46);
 }
 function mkRng(seed){let a=seed>>>0;return()=>{a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
-function rock(g,x,y,z,s,R){const o=g.P.length/3,c=[.45+R()*.08,.44+R()*.06,.43+R()*.06],N=7;g.P.push(x,y+s*1.1,z);g.N.push(0,1,0);g.C.push(c[0]*1.1,c[1]*1.1,c[2]*1.1);g.U.push(0,0);g.W.push(0);
- for(let k=0;k<=N;k++){const a=k/N*2*PI,rr2=s*(.8+.4*Math.sin(k*2.7+x)),px=x+Math.cos(a)*rr2,pz=z+Math.sin(a)*rr2;g.P.push(px,y+s*.35,pz);const n=vnorm([Math.cos(a),.6,Math.sin(a)]);g.N.push(n[0],n[1],n[2]);g.C.push(c[0],c[1],c[2]);g.U.push(0,0);g.W.push(0);
+function rock(g,x,y,z,s,R){const o=g.P.length/3,c=[.45+R()*.08,.44+R()*.06,.43+R()*.06],N=7,top=R()<.7?[.27+R()*.05,.4+R()*.06,.18]:[.42,.36,.27];g.P.push(x,y+s*1.1,z);g.N.push(0,1,0);g.C.push(top[0],top[1],top[2]);/* moss / grass cap */g.U.push(0,0);g.W.push(0);
+ for(let k=0;k<=N;k++){const a=k/N*2*PI,rr2=s*(.8+.4*Math.sin(k*2.7+x)),px=x+Math.cos(a)*rr2,pz=z+Math.sin(a)*rr2;g.P.push(px,y+s*.35,pz);const n=vnorm([Math.cos(a),.6,Math.sin(a)]);g.N.push(n[0],n[1],n[2]);g.C.push(lp(c[0],top[0],.45),lp(c[1],top[1],.45),lp(c[2],top[2],.45));g.U.push(0,0);g.W.push(0);
   g.P.push(px*1.0+Math.cos(a)*s*.15,y-.3,pz+Math.sin(a)*s*.15);g.N.push(Math.cos(a),0,Math.sin(a));g.C.push(c[0]*.8,c[1]*.8,c[2]*.8);g.U.push(0,0);g.W.push(0);
   if(k){const p=o+1+(k-1)*2,q=o+1+k*2;g.I.push(o,q,p,p,q,q+1,p,q+1,p+1)}}}
 function rockObjs(g){// split into ~60k-vertex objects

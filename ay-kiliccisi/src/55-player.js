@@ -203,7 +203,8 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  case'dead':{const R=P.rag;slide(5);if(R.ang<1.45){R.av+=Math.sin(Math.max(R.ang,.05))*9.5*dt;R.ang=Math.min(1.45,R.ang+R.av*dt)}if(P.t>3.6)respawn();break}}
  IN.mash=0;
  // integrate: horizontal velocity with collision and deep-water stop; vertical with gravity
- if(move){let nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;if(depthAt(nx,nz)>1.25){nx=P.x;nz=P.z;P.vx=P.vz=0}const p=collide(nx,nz,.34);P.x=p[0];P.z=p[1]}
+ if(move){let nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;if(depthAt(nx,nz)>1.25){nx=P.x;nz=P.z;P.vx=P.vz=0}
+  {const dd=Math.hypot(nx-P.x,nz-P.z);if(!P.air&&dd>1e-4&&(hAt(nx,nz)-hAt(P.x,P.z))/dd>1.35){nx=P.x;nz=P.z}}/* cliffs and mesa walls cannot be walked up */const p=collide(nx,nz,.34);P.x=p[0];P.z=p[1]}
  if(P.air&&P.st!=='td'){P.vy-=19*dt;P.y+=P.vy*dt;const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);if(P.y<=g&&P.vy<=0){P.y=g;P.vy=0;P.air=false;if(P.st==='jump'){P.st='land';P.t=0;P.landT=.14;sfx.land()}}}
  else if(P.st!=='td'&&!P.held){const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);P.y=g}
  // stamina regenerates after a short pause (slower while blocking); guard regenerates when not hit for a while

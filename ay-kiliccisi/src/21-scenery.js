@@ -41,6 +41,7 @@ function buildScenery(){const R=mkRng(31337),r=(a,b)=>a+(b-a)*R();
   obj(geo(g),{shade:.8,pos:[cx,0,cz],cull:700});
   const w=G(),W=5,seg=10;for(let j=0;j<seg;j++){const y0=lp(top,WATER_L,j/seg),y1=lp(top,WATER_L,(j+1)/seg),o0=3+Math.pow(j/seg,2)*4.5,o1=3+Math.pow((j+1)/seg,2)*4.5,P3=(s2,y,o)=>[cx+px*s2-ux*o+ux*9,y,cz+pz*s2-uz*o+uz*9];
    for(let k=-2;k<2;k++){const f=.84+.16*(k&1)-.05*(j%2),v0=w.P.length/3;quad(w,P3(k*W/2,y0,o0),P3((k+1)*W/2,y0,o0),P3((k+1)*W/2,y1,o1),P3(k*W/2,y1,o1),[.78*f,.9*f,1*f]);for(let q=v0;q<v0+4;q++)w.W[q]=6+((q+j)%3)*4}}
+  {const F=FALLHEAD,y=F.top-.55,Pq=(al,s2)=>[F.x+F.ux*al-F.uz*s2,y,F.z+F.uz*al+F.ux*s2];for(let al=F.lip;al<160;al+=8)quad(w,Pq(al,-5.4),Pq(al,5.4),Pq(al+8,5.4),Pq(al+8,-5.4),[.42,.58,.7])}/* the upper river on the plateau feeding the falls */
   FALLS=obj(geo(w),{unlit:1,blend:1,noOff:1,shade:.5,pos:[cx,0,cz],cull:700,ds:1,col:[1,1,1]});FALLS.alpha=.82;FALLS.at=[cx-ux*-1,WATER_L,cz-uz*-1,ux,uz]}
  // ---------- far mountains: two jagged rings with snow caps
  {const g=G(),sun=vnorm([.5,.7,.45]),peak=(ang,rad,hh,br,seed)=>{const RR=mkRng(seed),n=9,cx=Math.cos(ang)*rad,cz=Math.sin(ang)*rad,rings=[[1,0],[.62,.34],[.3,.68]],V=[];

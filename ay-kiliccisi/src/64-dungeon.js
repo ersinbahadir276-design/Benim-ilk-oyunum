@@ -11,10 +11,14 @@ const DUNS={
  cave:{id:'cave',n:'Örümcek İni',x:-782,z:612,lv:10,floors:3,theme:'cave',seed:202,boss:'brood',puzzles:['brazier','plates','rune'],
   mobs:[['spider','spider'],['spiderling','spiderling','spiderling','spiderling','spiderling'],['rat','rat','rat','rat'],['ghoul','spider'],['spider','spiderling','spiderling']],deep:[['spider','spider','spider'],['golem'],['ghoul','ghoul','spider'],['skmage','spider']]},
  temple:{id:'temple',n:'Mühürlü Tapınak',x:44,z:-608,lv:15,floors:3,theme:'temple',seed:303,boss:'keeper',puzzles:['plates','rune','brazier'],
-  mobs:[['golem'],['knight','skelS'],['skmage','skel','skelA'],['ghoul','ghoul','ghoul'],['knight']],deep:[['knight','knight'],['golem','skmage'],['skelS','skelS','skmage'],['golem']]}};
+  mobs:[['golem'],['knight','skelS'],['skmage','skel','skelA'],['ghoul','ghoul','ghoul'],['knight']],deep:[['knight','knight'],['golem','skmage'],['skelS','skelS','skmage'],['golem']]},
+ // v26: the SHADOW TOWER in the snowy range — five floors, the layout changes every day (random floors), a mix of every horror below
+ tower:{id:'tower',n:'Gölge Kulesi',x:-780,z:-985,lv:19,floors:5,theme:'tower',seed:404,daily:1,boss:'keeper',puzzles:['rune','plates','brazier'],
+  mobs:[['knight','skmage'],['golem','skelA'],['ghoul','ghoul','spider'],['skelS','skelS','skelA'],['spider','spider','skmage']],deep:[['knight','knight','skmage'],['golem','golem'],['ghoul','ghoul','ghoul','ghoul'],['knight','golem']]}};
 const THEME={crypt:{fl:[.3,.29,.28],wa:[.34,.32,.3],moss:[.2,.27,.16],fog:[.012,.012,.02],sun:[.33,.33,.42]},
  cave:{fl:[.22,.19,.16],wa:[.28,.24,.2],moss:[.25,.22,.3],fog:[.016,.012,.014],sun:[.33,.3,.34]},
- temple:{fl:[.36,.35,.4],wa:[.4,.39,.45],moss:[.5,.42,.2],fog:[.01,.014,.024],sun:[.34,.36,.46]}};
+ temple:{fl:[.36,.35,.4],wa:[.4,.39,.45],moss:[.5,.42,.2],fog:[.01,.014,.024],sun:[.34,.36,.46]},
+ tower:{fl:[.26,.25,.3],wa:[.3,.28,.36],moss:[.35,.2,.45],fog:[.014,.01,.022],sun:[.3,.28,.4]}};
 const GLYPH=[['☾','Ay'],['◉','Göz'],['♛','Taç'],['✦','Yıldız']];
 const LORE={
  crypt0:['Mezar Bekçisinin Notu','«Kral Aldric\'in emri: ölüleri yedi kat toprağın altına gömün. Hiçbiri taç takmış olarak gömülmesin. Hiçbiri.»'],
@@ -195,7 +199,7 @@ function dunTitle(big,small){let e=document.getElementById('dtitle');if(!e){e=do
  e.innerHTML='<div style="font-size:30px;letter-spacing:6px">'+big+'</div><div style="font-size:15px;opacity:.85;margin-top:6px">'+small+'</div>';e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>{e.style.opacity=0},2600)}
 function clearDunFloor(){for(const o of DUN.objs){unobj(o);if(o.geo&&o.geo.own)freeGeo(o.geo)}DUN.objs=[];for(const m of MONS)monFree(m);MONS.length=0;DPROJ.length=0;for(const p of DPROJP)p.vis=false;
  for(let i=LOOT.length-1;i>=0;i--)if(LOOT[i].dun){unobj(LOOT[i].ob);LOOT.splice(i,1)}}
-function enterDungeon(id,fl,arriveDown){const D=DUNS[id];dunFade(()=>{if(DUN.on)clearDunFloor();else{SYS.dret=[P.x,P.z];DUN.ret=[D.x,D.z]}
+function enterDungeon(id,fl,arriveDown){const D=DUNS[id];if(D.daily)D.seed=404+Math.floor((GT.clock||0)/600)%97;/* random floors: the tower changes every in-game day */dunFade(()=>{if(DUN.on)clearDunFloor();else{SYS.dret=[P.x,P.z];DUN.ret=[D.x,D.z]}
   DUN.on=1;DUN.id=id;DUN.fl=fl;DUN.D=D;DUN.lv=D.lv+fl*2;const F=buildDunFloor(D,fl);spawnDunMonsters(D,F);
   const at=arriveDown&&!F.last?[dCX(F.end.cx)+2.2,dCZ(F.end.cy)+.2]:[dCX(F.start.cx),dCZ(F.start.cy)+2.6];const p=dunCollide(at[0],at[1],.5);
   P.x=p[0];P.z=p[1];P.y=DUN.y;P.vx=P.vz=0;P.air=false;P.lock=null;CAM.tx=P.x;CAM.tz=P.z;CAM.ty=P.y+1.5;
@@ -216,6 +220,9 @@ function buildDunEntrances(){dunGeoms();for(const k in DUNS){const D=DUNS[k];cle
    const R=mkRng(77);for(let n=0;n<14;n++){const a=-.2+n/13*(PI+.4),r=2.6+R()*.8,x=Math.cos(a)*r,z=-1.2-Math.sin(a)*1.6,h=1.5+R()*2.6,w=.7+R()*.6;box(g,x-w,.0,z-w,x+w,h,z+w,[st[0]*(.8+R()*.4),st[1]*(.8+R()*.4),st[2]*(.8+R()*.4)])}
    box(g,-2.4,.25,-3.8,2.4,3.6,-2.2,st);box(g,-1.4,.25,-2.4,1.4,2.4,.4,blk);box(g,-2.2,2.4,-2.4,2.2,3.4,.5,st);for(let n=0;n<6;n++){const x=-1.8+n*.7;box(g,x-.05,.25,1.2+(n%2)*.4,x+.3,.31,1.3+(n%2)*.4,bone)}
    for(const s of[-1,1]){const w=G();w.P.push(s*1.35,2.4,.45,s*.2,2.4,.45,s*1.35,1.1,.45);w.N.push(0,0,1,0,0,1,0,0,1);w.C.push(.85,.85,.82,.85,.85,.82,.85,.85,.82);w.U.push(0,0,0,0,0,0);w.W.push(0,0,0);w.I.push(0,1,2);const m=merge([g,w]);g.P=m.P;g.N=m.N;g.C=m.C;g.U=m.U;g.W=m.W;g.I=m.I}}
+  else if(T==='tower'){// a black tower: five storeys tapering up, lit slit windows, a crown of spikes
+   const tw=[.2,.19,.24],tr=[.12,.11,.15],gl=[.75,.4,1.3];for(let s=0;s<6;s++){const w=3.2-s*.38,y0=.25+s*4.6;box(g,-w,y0,-w-1.2,w,y0+4.6,w-1.2,s%2?tw:tr);box(g,-w-.2,y0+4.3,-w-1.4,w+.2,y0+4.6,w-1.0,tr);box(g,-.18,y0+1.8,w-1.21,.18,y0+3,w-1.15,gl)}
+   box(g,-1.0,.25,1.95,1.0,2.6,2.05,blk);for(let k=0;k<6;k++){const a=k/6*2*PI;box(g,Math.cos(a)*1.2-.12,27.8,Math.sin(a)*1.2-1.32,Math.cos(a)*1.2+.12,30,Math.sin(a)*1.2-1.08,tr)}}
   else{// a white shrine with columns, a gold band and a sealed rune door that stands open
    box(g,-2.8,.25,-3.6,2.8,.55,1.0,st);for(const s of[-1,1])for(const zz of[.6,-1.4,-3.2]){box(g,s*2.4-.28,.55,zz-.28,s*2.4+.28,3.8,zz+.28,st);box(g,s*2.4-.36,3.5,zz-.36,s*2.4+.36,3.8,zz+.36,gold)}
    box(g,-3.0,3.8,-3.8,3.0,4.25,1.2,st);box(g,-2.6,4.25,-3.4,2.6,4.6,.8,gold);box(g,-2.0,4.6,-3.0,2.0,4.95,.4,st);box(g,-1.2,.55,-3.2,1.2,3.0,-2.6,st);box(g,-.9,.55,-2.62,.9,2.6,-2.5,blk);box(g,-1.6,.55,-2.8,-1.2,3.2,-2.4,dk);box(g,1.2,.55,-2.8,1.6,3.2,-2.4,dk)}
