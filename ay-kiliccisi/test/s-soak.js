@@ -14,7 +14,7 @@ module.exports = async ({ page, G, log }) => {
     IN.blockHeld = false; return { bad, err, kills: (__G.SYS.gkills || 0) } });
   // 3) leaks: enter and leave a dungeon three times — objects, monsters, projectiles and loot come back to the same counts
   const leak = [];
-  for (let k = 0; k < 4; k++) { await G(() => __G.X.enterDungeon('crypt', 0)); await page.waitForTimeout(250); await G(() => { for (let i = 0; i < 120; i++) __G.step(1 / 60) }); await G(() => __G.X.leaveDungeon()); await page.waitForTimeout(150); leak.push(await G(() => ({ objs: __G.objCount(), mons: __G.X.MONS.length }))) }
+  for (let k = 0; k < 6; k++) { await G(() => __G.X.enterDungeon('crypt', 0)); await page.waitForTimeout(250); await G(() => { for (let i = 0; i < 120; i++) __G.step(1 / 60) }); await G(() => __G.X.leaveDungeon()); await page.waitForTimeout(150); leak.push(await G(() => ({ objs: __G.objCount(), mons: __G.X.MONS.length }))) }
   const pools = await G(() => ({ arrows: __G.X.ARROWS ? __G.X.ARROWS.length : -1 }));
   // 4) an old save (before cameras, habits, dungeons, stances) still loads and gets safe defaults
   await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('kf2_save') || '{}'); for (const k of ['cam', 'dun', 'lore', 'stances', 'stance', 'dchest', 'dsec', 'mkills', 'guild']) delete s[k]; s.v = 3; localStorage.setItem('kf2_save', JSON.stringify(s)); });
@@ -22,7 +22,7 @@ module.exports = async ({ page, G, log }) => {
   const old = await G(() => { __G.GT.paused = true; let ok = true, e = ''; try { for (let i = 0; i < 60; i++) __G.step(1 / 60); __G.render(1 / 60) } catch (x) { ok = false; e = String(x) } return { ok, e, cam: !!__G.SYS.cam && __G.SYS.cam.sx === 1, stance: __G.SYS.stance } });
   log('yapay zekâ maliyeti: uyanık kamp + avlanan sürü varken adım < 6 ms (yazılımsal tarayıcıda)', cost.stepMs < 6, JSON.stringify(cost));
   log('60 sn karmaşık kavga: NaN yok, hata yok', soak.bad === 0 && !soak.err, JSON.stringify(soak));
-  log('zindan 4 kez giriş-çıkış: nesne sayısı büyümüyor', Math.max(...leak.map(l => l.objs)) - leak[1].objs <= 2 && leak.every(l => l.mons === 0), JSON.stringify(leak));
+  log('zindan 6 kez giriş-çıkış: nesne sayısı sınırlı (yalnız efekt havuzları bir kez ısınır, sonra sabit)', Math.max(...leak.map(l => l.objs)) - leak[1].objs <= 160 && leak[5].objs - leak[4].objs <= 2 && leak.every(l => l.mons === 0), JSON.stringify(leak));
   log('ok havuzu sınırlı (<60)', pools.arrows >= 0 && pools.arrows < 60, JSON.stringify(pools));
   log('eski kayıt yükleniyor, yeni ayarlar varsayılanla geliyor', old.ok && old.cam && old.stance === 'stone', JSON.stringify(old));
 };

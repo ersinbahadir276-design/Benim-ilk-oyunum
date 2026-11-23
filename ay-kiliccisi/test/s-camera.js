@@ -50,7 +50,7 @@ module.exports = async ({ page, G, log, shot }) => {
   log('hedef ölünce kilit sıradaki düşmana geçer', lock.relock);
   log('kilit, oyuncu kamerayı sürüklerken zorla çevirmez', lock.soft.softErr > lock.soft.hardErr + .2, JSON.stringify(lock.soft));
   log('kamera ağaç tepesinin içine / gövdenin arkasına girmiyor', tree.none || !tree.inCrown, JSON.stringify(tree));
-  log('arkadan saldırı: ekranın alt kenarında kırmızı ok', thr.n >= 1 && thr.below, JSON.stringify(thr));
+  log('v25: ekran kenarında kırmızı saldırı oku YOK (saldırı vücut ve sesle okunur)', thr.n === 0, JSON.stringify(thr));
   log('HUD düzenleyici: düğme taşınır, düzenlerken saldırmaz', hud.moved > 60 && !hud.attacked, JSON.stringify(hud));
   log('HUD düzeni ve boyutu yeniden açınca korunur', Math.hypot(kept.x - (W[0] * .5 - 20), kept.y - (W[1] * .3 - 20)) < 40 && kept.bs === '1.1', JSON.stringify(kept));
 };

@@ -24,7 +24,7 @@ const EVDEF={
  merchant:{n:'GEZGİN TÜCCAR',w:2,ok:()=>true,start(E){const p=evSpot(14,22);if(!p)return false;if(!NPCM.merchant)NPCM.merchant=humanGeo('merchant');const n=mkNpc('merchant',p[0],p[1],{yaw:Math.atan2(P.x-p[0],P.z-p[1]),post:[p[0],p[1],0]});n.R=rigObj(NPCM.merchant,{out:.012,cull:130,outCol:[.12,.1,.1]});n.R.ob.col=[1.2,1.0,.75];n.name='Gezgin Tüccar';n.role='trader';E.npc=n;E.ents=[];E.x=p[0];E.z=p[1];E.stock=[0,1,2].map(()=>randomDrop(SYS.lv,Math.random()<.3?2:1));note('[Olay] Yol kenarında bir gezgin tüccar tezgâh açtı (R1 ile konuş).','gold');return true},life:150}};
 function evPick(){const keys=Object.keys(EVDEF).filter(k=>EVDEF[k].ok());let tot=0;for(const k of keys)tot+=EVDEF[k].w;let r=rnd()*tot;for(const k of keys){r-=EVDEF[k].w;if(r<=0)return k}return keys[0]}
 function eventsTick(dt){if(DUN.on||!P.alive)return;arenaTick(dt);const E=EVT.cur;
- if(!E){EVT.t-=dt;if(EVT.t<=0){EVT.t=rr(100,160);if(Math.hypot(P.x,P.z)<175||ARENA.on)return;const k=evPick(),e={k,t:0};if(EVDEF[k].start(e)){EVT.cur=e;SYS.events=(SYS.events||0)+1}}return}
+ if(!E){if(window.__noAutoQ)return;/* automated tests switch the random events off */EVT.t-=dt;if(EVT.t<=0){EVT.t=rr(100,160);if(Math.hypot(P.x,P.z)<175||ARENA.on)return;const k=evPick(),e={k,t:0};if(EVDEF[k].start(e)){EVT.cur=e;SYS.events=(SYS.events||0)+1}}return}
  E.t+=dt;const D=EVDEF[E.k],far=Math.hypot(P.x-E.x,P.z-E.z)>170;
  if(E.k==='merchant'){if(E.t>D.life||far){evEnd(false);return}return}
  const left=E.ents.filter(f=>!f.dead).length;if(!left){evEnd(true);return}if(far&&E.t>20)evEnd(false)}
