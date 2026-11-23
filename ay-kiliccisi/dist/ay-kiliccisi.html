@@ -315,7 +315,20 @@ const HILL=(x,z)=>Math.sin(x*.013)*4+Math.cos(z*.016)*4+Math.sin((x+z)*.031)*2+M
 function segD(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=cl(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t)}
 function riverD(x,z){let d=1e9;for(let i=0;i<RIVER.length-1;i++)d=Math.min(d,segD(x,z,RIVER[i],RIVER[i+1]));return d}
 const campH=CAMPS.map(c=>HILL(c[0],c[1])*.6);
+// v26 terrain: value noise for rolling hills, flat-topped rocky MESAS with cliffs, a snowy range (Karlı Sırtlar) in the
+// north-west and a real plateau + cliff for the waterfall at the river's head.
+const SNOW=[-930,-1050,330];
+const vhash=(i,j)=>{const s=Math.sin(i*127.1+j*311.7)*43758.5453;return s-Math.floor(s)};
+function vnoise(x,z){const i=Math.floor(x),j=Math.floor(z),fx=x-i,fz=z-j,u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz);return lp(lp(vhash(i,j),vhash(i+1,j),u),lp(vhash(i,j+1),vhash(i+1,j+1),u),v)}
+function fbm(x,z){return vnoise(x,z)*.5+vnoise(x*2.03+17,z*2.03+9)*.27+vnoise(x*4.1+5,z*4.1+31)*.15+vnoise(x*8.3+3,z*8.3+7)*.08}
+const FALLHEAD=(()=>{const a=RIVER[0],b=RIVER[1],dl=Math.hypot(a[0]-b[0],a[1]-b[1]),ux=(a[0]-b[0])/dl,uz=(a[1]-b[1])/dl;return{x:a[0],z:a[1],ux,uz,lip:16,top:WATER_L+19}})();
+// flattened building sites (the harbour town, the arena): level ground so houses do not float
+const FLATS=[[-528,262,30],[40,338,16]],FLATC=new Map();let noFlat=false;
+const FLATH=(cx,cz)=>{const k=cx+','+cz;if(!FLATC.has(k)){noFlat=true;FLATC.set(k,hRaw(cx,cz));noFlat=false}return FLATC.get(k)};
+function fallFrame(x,z){const F=FALLHEAD,dx=x-F.x,dz=z-F.z;return[dx*F.ux+dz*F.uz,dx*-F.uz+dz*F.ux]}
 function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
+ {const wild=sst(330,620,r);/* the starting lands stay gentle; the wild rises further out */h+=(fbm(x*.0055,z*.0055)-.5)*2*17*wild;/* rolling hills */const m=fbm(x*.011+40,z*.011-13);h+=sst(.64,.69,m)*11*wild*sst(.5,.9,fbm(x*.003,z*.003)+.4);/* mesas: flat tops, steep sides */
+  const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+80){const rid=1-Math.abs(fbm(x*.012,z*.012)*2-1);h+=sst(SNOW[2]+80,SNOW[2]-120,dsn)*(28+rid*rid*48)}}
  const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<420){const ridge=Math.abs(Math.sin(x*.021+Math.sin(z*.017)*1.6))*Math.cos(z*.019+.4);h+=72*sst(420,95,dm)+ridge*9*sst(420,160,dm)*sst(60,140,dm);if(dm<120)h=lp(h,LAIR_Y,sst(120,62,dm))}
  const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+70)h=lp(h,-6.4+Math.sin(x*.04)*.8,sst(LAKE[2]+60,LAKE[2]-25,dl));
  if(dl>=LAKE[2]+42&&dl<LAKE[2]+170)h=Math.max(h,lp(WATER_L+1.4,-40,sst(LAKE[2]+90,LAKE[2]+170,dl)));
@@ -323,12 +336,14 @@ function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  const ds=Math.hypot(x-SWAMP[0],z-SWAMP[1]);if(ds<SWAMP[2]+60)h=lp(h,-1.15+1.15*Math.sin(x*.05+Math.sin(z*.04)*2)*Math.cos(z*.06)+.45*Math.sin(x*.17)*Math.cos(z*.13),sst(SWAMP[2]+50,SWAMP[2]-80,ds));
  if(ds>=SWAMP[2]+22&&ds<SWAMP[2]+150)h=Math.max(h,lp(WATER_S+1.0,-40,sst(SWAMP[2]+80,SWAMP[2]+150,ds)));
  CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<60)h=lp(h,campH[i],sst(58,30,d))});
+ {const F=FALLHEAD,[al,w]=fallFrame(x,z);if(al>F.lip-6&&al<170&&Math.abs(w)<95){const k=sst(95,60,Math.abs(w))*sst(170,120,al)*sst(F.lip-.5,F.lip+2.5,al);let ph=F.top+1.5+fbm(x*.03,z*.03)*3;if(Math.abs(w)<5.5)ph=F.top-1.4;h=lp(h,ph,k)}}
+ if(!noFlat)for(const [cx,cz,R] of FLATS){const d=Math.hypot(x-cx,z-cz);if(d<R+25)h=lp(h,FLATH(cx,cz),sst(R+25,R,d))}
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
-function zoneAt(x,z){if(DUN.on)return'dungeon';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
+function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
  if(Math.hypot(x-LAKE[0],z-LAKE[1])<LAKE[2]+25)return'lake';if(riverD(x,z)<16)return'river';if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2])return'swamp';
  for(const c of CAMPS)if(Math.hypot(x-c[0],z-c[1])<48)return'camp';for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<65)return'ruins';
  if(dm<420)return'mountain';if(x<-430)return'dense';return'forest'}
-const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',forest:'Orman',dungeon:'Zindan'};
+const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',forest:'Orman',dungeon:'Zindan'};
 // sampled heightmap: hAt interpolates the SAME triangles the terrain mesh and the grass shader use
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){if(DUN.on)return dunH(x,z);let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
@@ -377,19 +392,24 @@ function buildWorld(){
  for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-WS+i*HS,z=-WS+j*HS,o=j*HN+i,h=HGT[o],r=Math.hypot(x,z),road=Math.min(Math.abs(x),Math.abs(z)),zn=zoneAt(x,z);
   let d=(.1+.9*sst(125,300,r))*(r>74?1:0)*sst(2.6,5,road+Math.max(0,r-720)),t=0;
   if(zn==='swamp'){d*=.55;t=1}else if(zn==='mountain'||zn==='lair'){d*=.7*sst(40,8,h);t=.55}else if(zn==='camp'){d*=.3;t=.6}else if(zn==='ruins'){d*=.6;t=.3}else if(zn==='dense')d*=.75;
+  {const gx=(hAt(x+3,z)-hAt(x-3,z))/6,gz=(hAt(x,z+3)-hAt(x,z-3))/6;d*=sst(.95,.45,Math.hypot(gx,gz))}/* no grass on cliffs and steep rock */
+  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+40)d*=sst(SNOW[2]-30,SNOW[2]+40,dsn)}/* none in the snow */
   if(depthAt(x,z)>.05)d=0;GDN[o]=Math.round(cl(d,0,1)*255);GTN[o]=Math.round(t*255);const q=Math.round(cl((h+20)/140,0,1)*65535);hb[o*4]=q>>8;hb[o*4+1]=q&255;hb[o*4+2]=GDN[o];hb[o*4+3]=GTN[o]}
  if(gprog&&gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)>0){HTEX=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,HN,HN,0,gl.RGBA,gl.UNSIGNED_BYTE,hb);
   for(const[k,v]of[[gl.TEXTURE_MIN_FILTER,gl.NEAREST],[gl.TEXTURE_MAG_FILTER,gl.NEAREST],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v)}
  // ---------- terrain (8x8 chunks of 50x50 cells, colours by region)
- const NC=50,gcol=(x,z,h)=>{const r=Math.hypot(x,z),n=.5+.5*Math.sin(x*.21+Math.sin(z*.17)*2)*Math.cos(z*.19),f=sst(260,420,r),zn=zoneAt(x,z);
+ const NC=50,gcol=(x,z,h,nn)=>{const r=Math.hypot(x,z),n=.5+.5*Math.sin(x*.21+Math.sin(z*.17)*2)*Math.cos(z*.19),f=sst(260,420,r),zn=zoneAt(x,z);
   let c=[lp(.30,.19,f)+n*.05,lp(.47,.34,f)+n*.07,lp(.22,.16,f)+n*.03];
   if(zn==='dense')c=[.13+n*.04,.25+n*.05,.12+n*.03];else if(zn==='swamp'||Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2]+40)c=[.24+n*.05,.27+n*.05,.15+n*.03];
   else if(zn==='camp')c=[.38+n*.05,.33+n*.05,.22];else if(zn==='ruins')c=[.33+n*.04,.38+n*.05,.24];
   const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<430){const rock=[.4+n*.06,.39+n*.05,.38+n*.05];c=mix3(c,rock,sst(6,22,h)*sst(430,250,dm));c=mix3(c,[.9,.92,.96],sst(44,56,h));if(dm<120)c=mix3(c,[.24,.2,.2],sst(110,60,dm))}
+  {const sl=nn?1-nn[1]:0;/* slope: grass -> dirt -> rock */c=mix3(c,[.36+n*.04,.28+n*.03,.19],sst(.12,.24,sl));c=mix3(c,[.42+n*.05,.4+n*.04,.37+n*.04],sst(.3,.48,sl))}
+  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+60)c=mix3(c,[.88+n*.05,.9+n*.05,.95],sst(SNOW[2]+60,SNOW[2]-40,dsn)*sst(.6,.35,nn?1-nn[1]:0)*.92+sst(SNOW[2]+60,SNOW[2],dsn)*.0)}
+  if(h>38&&Math.hypot(x-MOUNT[0],z-MOUNT[1])>140)c=mix3(c,[.9,.92,.96],sst(38,52,h));
   const wd=waterAt(x,z)-h;if(waterAt(x,z)>-90&&wd>-1.2)c=mix3(c,[.5,.46,.33],sst(-1.2,.2,wd)*.8);return c};
  for(let cx=0;cx<8;cx++)for(let cz=0;cz<8;cz++){const g=G(),i0=cx*NC,j0=cz*NC;
   for(let j=0;j<=NC;j++)for(let i=0;i<=NC;i++){const gi=Math.min(i0+i,HN-1),gj=Math.min(j0+j,HN-1),x=-WS+gi*HS,z=-WS+gj*HS,h=HGT[gj*HN+gi],e=HS,
-    n=vnorm([hAt(x-e,z)-hAt(x+e,z),2*e,hAt(x,z-e)-hAt(x,z+e)]),c=gcol(x,z,h);g.P.push(x,h,z);g.N.push(n[0],n[1],n[2]);g.U.push(0,0);g.C.push(c[0],c[1],c[2]);g.W.push(0)}
+    n=vnorm([hAt(x-e,z)-hAt(x+e,z),2*e,hAt(x,z-e)-hAt(x,z+e)]),c=gcol(x,z,h,n);g.P.push(x,h,z);g.N.push(n[0],n[1],n[2]);g.U.push(0,0);g.C.push(c[0],c[1],c[2]);g.W.push(0)}
   for(let j=0;j<NC;j++)for(let i=0;i<NC;i++){const a=j*(NC+1)+i,b=a+1,c=a+NC+1,d=c+1;g.I.push(a,c,b,b,c,d)}
   obj(geo(g),{shade:.55,pos:[-WS+(i0+NC/2)*HS,0,-WS+(j0+NC/2)*HS],cull:620,ds:0})}
  // ---------- ground overlays: village dirt, courtyard stone, roads (four roads to the edge of the old forest, north road up to the mountains)
@@ -479,8 +499,8 @@ function buildWorld(){
  makeGrass(21000,46);
 }
 function mkRng(seed){let a=seed>>>0;return()=>{a=(a+0x6d2b79f5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
-function rock(g,x,y,z,s,R){const o=g.P.length/3,c=[.45+R()*.08,.44+R()*.06,.43+R()*.06],N=7;g.P.push(x,y+s*1.1,z);g.N.push(0,1,0);g.C.push(c[0]*1.1,c[1]*1.1,c[2]*1.1);g.U.push(0,0);g.W.push(0);
- for(let k=0;k<=N;k++){const a=k/N*2*PI,rr2=s*(.8+.4*Math.sin(k*2.7+x)),px=x+Math.cos(a)*rr2,pz=z+Math.sin(a)*rr2;g.P.push(px,y+s*.35,pz);const n=vnorm([Math.cos(a),.6,Math.sin(a)]);g.N.push(n[0],n[1],n[2]);g.C.push(c[0],c[1],c[2]);g.U.push(0,0);g.W.push(0);
+function rock(g,x,y,z,s,R){const o=g.P.length/3,c=[.45+R()*.08,.44+R()*.06,.43+R()*.06],N=7,top=R()<.7?[.27+R()*.05,.4+R()*.06,.18]:[.42,.36,.27];g.P.push(x,y+s*1.1,z);g.N.push(0,1,0);g.C.push(top[0],top[1],top[2]);/* moss / grass cap */g.U.push(0,0);g.W.push(0);
+ for(let k=0;k<=N;k++){const a=k/N*2*PI,rr2=s*(.8+.4*Math.sin(k*2.7+x)),px=x+Math.cos(a)*rr2,pz=z+Math.sin(a)*rr2;g.P.push(px,y+s*.35,pz);const n=vnorm([Math.cos(a),.6,Math.sin(a)]);g.N.push(n[0],n[1],n[2]);g.C.push(lp(c[0],top[0],.45),lp(c[1],top[1],.45),lp(c[2],top[2],.45));g.U.push(0,0);g.W.push(0);
   g.P.push(px*1.0+Math.cos(a)*s*.15,y-.3,pz+Math.sin(a)*s*.15);g.N.push(Math.cos(a),0,Math.sin(a));g.C.push(c[0]*.8,c[1]*.8,c[2]*.8);g.U.push(0,0);g.W.push(0);
   if(k){const p=o+1+(k-1)*2,q=o+1+k*2;g.I.push(o,q,p,p,q,q+1,p,q+1,p+1)}}}
 function rockObjs(g){// split into ~60k-vertex objects
@@ -595,6 +615,7 @@ function buildScenery(){const R=mkRng(31337),r=(a,b)=>a+(b-a)*R();
   obj(geo(g),{shade:.8,pos:[cx,0,cz],cull:700});
   const w=G(),W=5,seg=10;for(let j=0;j<seg;j++){const y0=lp(top,WATER_L,j/seg),y1=lp(top,WATER_L,(j+1)/seg),o0=3+Math.pow(j/seg,2)*4.5,o1=3+Math.pow((j+1)/seg,2)*4.5,P3=(s2,y,o)=>[cx+px*s2-ux*o+ux*9,y,cz+pz*s2-uz*o+uz*9];
    for(let k=-2;k<2;k++){const f=.84+.16*(k&1)-.05*(j%2),v0=w.P.length/3;quad(w,P3(k*W/2,y0,o0),P3((k+1)*W/2,y0,o0),P3((k+1)*W/2,y1,o1),P3(k*W/2,y1,o1),[.78*f,.9*f,1*f]);for(let q=v0;q<v0+4;q++)w.W[q]=6+((q+j)%3)*4}}
+  {const F=FALLHEAD,y=F.top-.55,Pq=(al,s2)=>[F.x+F.ux*al-F.uz*s2,y,F.z+F.uz*al+F.ux*s2];for(let al=F.lip;al<160;al+=8)quad(w,Pq(al,-5.4),Pq(al,5.4),Pq(al+8,5.4),Pq(al+8,-5.4),[.42,.58,.7])}/* the upper river on the plateau feeding the falls */
   FALLS=obj(geo(w),{unlit:1,blend:1,noOff:1,shade:.5,pos:[cx,0,cz],cull:700,ds:1,col:[1,1,1]});FALLS.alpha=.82;FALLS.at=[cx-ux*-1,WATER_L,cz-uz*-1,ux,uz]}
  // ---------- far mountains: two jagged rings with snow caps
  {const g=G(),sun=vnorm([.5,.7,.45]),peak=(ang,rad,hh,br,seed)=>{const RR=mkRng(seed),n=9,cx=Math.cos(ang)*rad,cz=Math.sin(ang)*rad,rings=[[1,0],[.62,.34],[.3,.68]],V=[];
@@ -629,7 +650,7 @@ function alertGroup(src,P,radius,list){for(const o of list){if(o===src||o.dead||
   o.aware=Math.max(o.aware||0,.6);o.ls=[P.x,P.z];o.heard=1.2;if(o.onAlerted)o.onAlerted(P)}}
 // helpers shared by all agents
 function agentFace(a,tx,tz,dt,rate=8){a.yaw+=angd(Math.atan2(tx-a.x,tz-a.z),a.yaw)*Math.min(1,dt*rate)}
-function agentMove(a,tx,tz,speed,dt,rad,turn=7){const dx=tx-a.x,dz=tz-a.z,d=Math.hypot(dx,dz);if(d<.05){a.spd=lp(a.spd||0,0,Math.min(1,dt*10));return d}
+function agentMove(a,tx,tz,speed,dt,rad,turn=7){speed*=(a.spdMul||1);const dx=tx-a.x,dz=tz-a.z,d=Math.hypot(dx,dz);if(d<.05){a.spd=lp(a.spd||0,0,Math.min(1,dt*10));return d}
  const ty=Math.atan2(dx,dz);a.yaw+=angd(ty,a.yaw)*Math.min(1,dt*turn);const f=Math.max(.25,Math.cos(angd(ty,a.yaw))),s=Math.min(speed*f,d/Math.max(dt,1e-3));
  let nx=a.x+Math.sin(a.yaw)*s*dt,nz=a.z+Math.cos(a.yaw)*s*dt;if(!a.swims&&depthAt(nx,nz)>.6){nx=a.x;nz=a.z}const p=collide(nx,nz,rad);
  const moved=Math.hypot(p[0]-a.x,p[1]-a.z);a.x=p[0];a.z=p[1];a.spd=lp(a.spd||0,moved/Math.max(dt,1e-3),Math.min(1,dt*10));
@@ -875,7 +896,7 @@ function wolfHurt(w,dmg,dirx,dirz,P){if(w.dead)return false;w.hp-=dmg;w.flash=1;
   else{w.st='hurt';w.t=0;w.air=0;w.pitch=0}}
  for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&Math.hypot(o.x-w.x,o.z-w.z)<16&&!hostileSt(o)){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.6)}
  return false}
-function updateWolf(w,P,dt,GS){
+function updateWolf(w,P,dt,GS){if(w.clash&&!w.dead&&clashTick(w,dt))return;
  w.flash=Math.max(0,w.flash-dt*6);w.calm=Math.max(0,w.calm-dt);w.cd-=dt;w.t+=dt;
  if(Math.abs(w.kx)+Math.abs(w.kz)>.05&&w.st!=='pin'){const p=collide(w.x+w.kx*dt,w.z+w.kz*dt,.42);w.x=p[0];w.z=p[1];const k=Math.exp(-dt*7);w.kx*=k;w.kz*=k}
  const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz);
@@ -1209,7 +1230,7 @@ function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');
   for(let k=0;k<3;k++){const a=c.gate+(k-1)*.25,p=collide(c.x+Math.cos(a)*40,c.z+Math.sin(a)*40,.4);const g=mkGob(p[0],p[1],false,grp+'p',c);g.patrol=[[c.x+Math.cos(c.gate)*40,c.z+Math.sin(c.gate)*40],[c.x+Math.cos(c.gate+1.2)*45,c.z+Math.sin(c.gate+1.2)*45],[c.x+Math.cos(c.gate-1.2)*45,c.z+Math.sin(c.gate-1.2)*45]];g.pi=k%3}});
  for(const g of GOBS){g.R=rigObj(g.big?BIGM:GOBM,{out:.014,cull:150});rigHide(g.R)}}
 function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kind.startsWith&&kind.startsWith('light');
- if(gobDeflect(g,kind))return false;
+ if(gobDeflect(g,kind))return false;if(g.shield&&shieldBlock(g,kind))return false;
  if(g.st==='guard'&&!g.big&&Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<1.2){if(light0||kind==='arrow'){g.blockedAt=GT.clock;g.t=Math.min(g.t,.5);g.kx=dx*2;g.kz=dz*2;if(Math.random()<.35){g.t=99;gobStartSwing(g)}return false}
   if(kind==='heavy'||kind==='runatk'||kind==='jumpatk'){g.st='stagger';g.t=0;floatText(g.x,(g.y||0)+1.9,g.z,'SAVUNMA KIRILDI','crit');sfx.break()}}g.hp-=dmg;g.flash=1;g.aware=1;g.ls=[P.x,P.z];
  if(g.st==='playdead'){g.hp=0;floatText(g.x,(g.y||0)+1.4,g.z,'ÖLÜ TAKLİDİ!','crit')}if(g.hp<=0&&gobFeign(g,kind))return false;if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
@@ -1220,7 +1241,7 @@ function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kin
   else if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
  alertGroup(g,P,22,GOBS);if(!g.helped&&!g.big&&!g.so&&g.hp<g.max*.5)gobCallHelp(g);return false}
 const gobTokens=()=>GOBS.filter(g=>!g.dead&&!g.big&&(g.st==='windup'||g.st==='strike')).length;
-function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
+function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}if(g.ally&&!g.dead){allyTick(g,dt);return}if(g.clash&&!g.dead&&clashTick(g,dt))return;g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
  if(Math.abs(g.kx)+Math.abs(g.kz)>.05&&!g.held){const p=collide(g.x+g.kx*dt,g.z+g.kz*dt,g.rad);g.x=p[0];g.z=p[1];const k=Math.exp(-dt*7);g.kx*=k;g.kz*=k}
  if(g.dead){g.deadT+=dt;if(g.deadT>140&&d>100&&!g.free){Object.assign(g,{dead:0,hp:g.max,x:g.hx,z:g.hz,st:'idle',aware:0,deadT:0,held:null})}g.y=hAt(g.x,g.z);return}
  if(g.st==='choked'||g.st==='pinned'){g.spd=0;g.y=hAt(g.x,g.z);return}
@@ -1277,7 +1298,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
 // small goblin swing: 40% two-hit combo, 18% a red unblockable lunge (危: dash away or sideways), always with a tell
 function gobStartSwing(g){const S=gobSwingStyle(g);g.st='windup';g.t=0;g.hitDone=false;g.peril=Math.random()<S.peril?1:0;g.cn=g.peril?0:Math.random()<S.combo?(S.three?2:1):0;g.delay=g.cn>0&&Math.random()<S.delay?1:0;// elite rank, adaptation and the hero's habits shape the swing
  if(g.peril){sfx.charge();floatText(g.x,(g.y||0)+2,g.z,'危','crit');spawnSparks(g.x,(g.y||0)+1.3,g.z,6,[1,.15,.1],2)}else sfx.gobShout()}
-function gobFK(g,time){const tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc,extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));g.root=[g.x,y,g.z,extra];rigFK(g.R.def,gobPose(g,time),[g.x,y,g.z],g.yaw,g.sc,g.R.ob.bones,extra)}
+function gobFK(g,time){const tilt=gobRootTilt(g),K=(g.rigM||(g.big?BIGM:GOBM)).K,hipH=(K.th+K.sh2+.06)*g.sc,extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));g.root=[g.x,y,g.z,extra];rigFK(g.R.def,gobPose(g,time),[g.x,y,g.z],g.yaw,g.sc,g.R.ob.bones,extra)}
 function clubSeg(g){gobFK(g,GT.time);const d=g.R.def;return[boneW(d,8,[0,-.08,.3],g.sc),boneW(d,8,[0,-.08,1.75],g.sc)]}
 // closest distance between segment AB (club) and segment CD (body axis) < r
 function segCapsule(A,B,C,D,r){let best=1e9;for(let i=0;i<=8;i++){const t=i/8,p=[lp(A[0],B[0],t),lp(A[1],B[1],t),lp(A[2],B[2],t)],cd=vsub(D,C),u=cl(vdot(vsub(p,C),cd)/vdot(cd,cd),0,1),q=vadd(C,vmul(cd,u));best=Math.min(best,Math.hypot(...vsub(p,q)))}return best<r+.18}
@@ -1310,7 +1331,7 @@ function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.bi
 // root tilt for lying states (face-down when pinned, on the back when dead)
 function gobRootTilt(g){{const tt=gobTrickTilt(g);if(tt!==null)return tt}if(g.st==='pinned')return 1.45;if(g.st==='escape'&&g.from==='pinned')return 1.45*(1-sst(0,.85,g.t/1.4));if(g.st==='dead')return -1.45*sst(0,.6,g.t);return 0}
 function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z);if(d>140||(g.dead&&g.deadT>20)){rigHide(g.R);if(g.bowOb)g.bowOb.vis=false;continue}
-  const rot=gobPose(g,time),tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc;
+  const rot=gobPose(g,time),tilt=gobRootTilt(g),K=(g.rigM||(g.big?BIGM:GOBM)).K,hipH=(K.th+K.sh2+.06)*g.sc;
   const extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);
   g.R.ob.flash=g.flash;g.R.ob.col=g.st==='stagger'||g.open()?[1.15,1.05,.8]:[1,1,1]}}
 // ---- 46b-gobbrain.js
@@ -1922,7 +1943,7 @@ function drinkFlask(){if(P.st!=='move'||!P.alive)return;P.healFrac=.45;if(SYS.fl
 // Every region has a level; enemies there scale with it. Altars are checkpoints (rest = heal, refill flasks,
 // enemies come back) and fast-travel points. Dying drops your gold at the spot; reach it to get it back.
 function regionLevel(x,z){if(DUN.on)return DUN.lv;const zn=zoneAt(x,z),r=Math.hypot(x,z);
- if(zn==='kingdom')return 1;if(zn==='lair')return 18;if(zn==='mountain')return 14;if(zn==='ruins')return 11;if(zn==='swamp'||zn==='lake'||zn==='river')return 9;
+ if(zn==='kingdom')return 1;if(zn==='lair')return 18;if(zn==='snow')return 16;if(zn==='mountain')return 14;if(zn==='ruins')return 11;if(zn==='swamp'||zn==='lake'||zn==='river')return 9;
  if(zn==='camp'){let b=0,bd=1e9;CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<bd){bd=d;b=i}});return[5,9,7,12][b]}
  if(zn==='dense')return Math.round(lp(8,12,sst(450,1300,r)));return Math.max(1,Math.round(lp(1,7,sst(150,1250,r))))}
 const lvMul=lv=>1+.2*(lv-1),lvDmg=lv=>1+.11*(lv-1);
@@ -2045,7 +2066,7 @@ const stDef=()=>STDEF[SYS.stance]||{};
 // the parry window the hero has right now: stance, and spamming the block button shrinks it (a parry is a decision, not a reflex)
 function parryWin(){return PARRY_WIN*(stDef().pw||1)*Math.max(.35,1-.22*(P.bspam||0))}
 // --------------------------------------------------------------- enemies the player can hit
-function foes(){if(DUN.on){const o=[];for(const m of MONS)if(!m.dead)o.push(m);return o}const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead)out.push(g);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
+function foes(){if(DUN.on){const o=[];for(const m of MONS)if(!m.dead)o.push(m);return o}const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead&&!g.ally)out.push(g);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
 const isWolf=w=>wolves.includes(w);
 function foeHostile(f){return isWolf(f)?hostileSt(f):f.hostile()}
 function foeHurt(f,dmg,dx,dz,kind){return isWolf(f)?wolfHurt(f,dmg,dx,dz,P):f.hurt(dmg,dx,dz,kind)}
@@ -2064,7 +2085,7 @@ function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=(o.src&&
    // parry fatigue: the same foe parried a third time inside 6 s no longer reels — it learns, and changes its rhythm
    let reel=true;if(src&&src.hp!==undefined&&!src.boss&&src!==DRAGON){src.parN=GT.clock-(src.parAt||-9)<6?(src.parN||0)+1:1;src.parAt=GT.clock;if(src.parN>=3){reel=false;src.adapt=GT.clock+8;floatText(src.x,(src.y||0)+2.1,src.z,'ALIŞTI','')}}
    if(src&&src.hp!==undefined&&stDef().pp)addPosture(src,18*(stDef().pp-1)*(P.chain||1));
-   if(reel&&src&&GOBS.includes(src)&&!src.big&&!src.elite&&!src.boss&&!src.rock&&Math.random()<.3){src.st='unarmed';src.t=0;floatText(src.x,(src.y||0)+2,src.z,'SİLAHI DÜŞTÜ','gold');note('[Sistem] Goblinin silahı elinden uçtu — kaçıp yerden taş arıyor.','gold')}else if(reel){note('[Sistem] Tam zamanlı savuşturma! Düşman sarsıldı.','gold');if(src&&src.onParried)src.onParried();else if(src&&isWolf(src))wolfParried(src)}else note('[Sistem] Savuşturdun ama düşman sarsılmadı — ritmini değiştirecek.','');
+   if(reel&&src&&GOBS.includes(src)&&!src.big&&!src.elite&&!src.boss&&!src.rock&&(o.crit||SYS.stance==='moon')&&Math.random()<.35){/* Moon is the parry stance: its perfect parries knock weapons away */src.st='unarmed';src.t=0;floatText(src.x,(src.y||0)+2,src.z,'SİLAHI DÜŞTÜ','gold');note('[Sistem] Goblinin silahı elinden uçtu — kaçıp yerden taş arıyor.','gold')}else if(reel){note('[Sistem] Tam zamanlı savuşturma! Düşman sarsıldı.','gold');if(src&&src.onParried)src.onParried();else if(src&&isWolf(src))wolfParried(src)}else note('[Sistem] Savuşturdun ama düşman sarsılmadı — ritmini değiştirecek.','');
    return'parry'}
   const gd=(o.guard!==undefined?o.guard:o.dmg*1.8)*(stDef().gd||1);P.guard-=gd;P.gcT=GT.clock+.7;P.guardT=1.2;sfx.block();const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],8,[1,.9,.6],4);CAM.shake=Math.max(CAM.shake,.25);
   const pd=o.dir||[0,0];P.vx=pd[0]*3;P.vz=pd[1]*3;floatText(P.x,P.y+1.7,P.z,'BLOK','');
@@ -2234,7 +2255,8 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  case'dead':{const R=P.rag;slide(5);if(R.ang<1.45){R.av+=Math.sin(Math.max(R.ang,.05))*9.5*dt;R.ang=Math.min(1.45,R.ang+R.av*dt)}if(P.t>3.6)respawn();break}}
  IN.mash=0;
  // integrate: horizontal velocity with collision and deep-water stop; vertical with gravity
- if(move){let nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;if(depthAt(nx,nz)>1.25){nx=P.x;nz=P.z;P.vx=P.vz=0}const p=collide(nx,nz,.34);P.x=p[0];P.z=p[1]}
+ if(move){let nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;if(depthAt(nx,nz)>1.25){nx=P.x;nz=P.z;P.vx=P.vz=0}
+  {const dd=Math.hypot(nx-P.x,nz-P.z);if(!P.air&&dd>1e-4&&(hAt(nx,nz)-hAt(P.x,P.z))/dd>1.35){nx=P.x;nz=P.z}}/* cliffs and mesa walls cannot be walked up */const p=collide(nx,nz,.34);P.x=p[0];P.z=p[1]}
  if(P.air&&P.st!=='td'){P.vy-=19*dt;P.y+=P.vy*dt;const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);if(P.y<=g&&P.vy<=0){P.y=g;P.vy=0;P.air=false;if(P.st==='jump'){P.st='land';P.t=0;P.landT=.14;sfx.land()}}}
  else if(P.st!=='td'&&!P.held){const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);P.y=g}
  // stamina regenerates after a short pause (slower while blocking); guard regenerates when not hit for a while
@@ -2782,7 +2804,7 @@ const GS={onAggro(w){sfx.growl()},onWindup(w){sfx.snarl()},onPounce(w){sfx.noise
   if(P.hp<=0)die()},
  onKill(w,byPet){WKILL.push(GT.clock);SYS.kills++;SYS.meat++;addXP(w.alpha?70:30,P);note('[Sistem] Kurt öldürüldü'+(byPet?' (yoldaşın)':'')+' · +'+(w.alpha?70:30)+' XP · +1 çiğ et');GT.stop=Math.max(GT.stop,.12);save(P)}};
 // ---------- interaction: silent choke on an unaware goblin from behind, talk, feed/tame a wolf, statue
-function interact(){if(dunInteract())return;if(eventInteract()||arenaStart()||townInteract())return;if(startRide())return;if(startThrow())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
+function interact(){if(dunInteract())return;if(eventInteract()||arenaStart()||townInteract()||hireMerc())return;if(startRide())return;if(startThrow())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
  if(startStandoff())return;
  const ai=nearAltar();if(ai>=0){restAt(ai);return}const ci=nearChest();if(ci>=0){P.yaw=Math.atan2(CHESTS[ci].x-P.x,CHESTS[ci].z-P.z);P.interactT=.6;openChest(ci);return}
  if(storyInteract())return;
@@ -2796,7 +2818,7 @@ function interact(){if(dunInteract())return;if(eventInteract()||arenaStart()||to
 // ---------- one simulation step
 let lastZone='';
 function step(dt){GT.dt=dt;if(dt>0&&DUN.on){GT.clock+=dt;updatePlayer(dt);GT.tod=(GT.tod+dt/600)%1;updateDungeon(dt);updateFx(dt);updateLoot(dt);updatePosture(dt);updateRage(dt);updateLock(dt);foeTicks(dt);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt}
- else if(dt>0){GT.clock+=dt;updatePlayer(dt);brawlTick(dt);updateThrown(dt);eventsTick(dt);townTick(dt);updateStandoff(dt);
+ else if(dt>0){GT.clock+=dt;updatePlayer(dt);brawlTick(dt);updateThrown(dt);eventsTick(dt);townTick(dt);nightTick(dt);envSlam(dt);updateStandoff(dt);
   for(const w of wolves)if(Math.hypot(w.x-P.x,w.z-P.z)<170||w.tame||w.dead)updateWolf(w,P,dt,GS);
   for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<180)updateGob(g,dt);for(const n of NPCS)updateNpc(n,dt);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<200)updateCroc(c,dt);
   updatePacks(dt);updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
@@ -2830,10 +2852,10 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  for(const w of WATERS)w.alpha=w.alpha;
  if(!DUN.on)streamForest(P.x,P.z,(window.__G&&__G.fastStream)?99:1);for(const f of CAMPFIRES){const k=1+Math.sin(GT.time*13+f.x)*.12;f.o.M=mtrs([f.x,f.y+.1,f.z],[0,GT.time*.7,0]);f.o.M[5]*=k*(1+Math.sin(GT.time*9)*.15)}
  updateAltars(GT.time);if(!DUN.on)updateDunEntrances(GT.time);if(HERO.glow){const g=P.berserk>0?1.6+.4*Math.sin(GT.time*12):(P.rage>=100?1.1+.3*Math.sin(GT.time*6):1);HERO.glow.col=[g,.25*g,.15*g]}if(HERO.armor){const a=eqItem('armor'),t=HERO.armor.pbr?[1,1,1]:(a&&a.look?a.look.tint:[1,1,1]),k=P.berserk>0?.25+.15*Math.sin(GT.time*10):0;HERO.armor.col=[t[0]*(1+k),t[1]*(1-k*.4),t[2]*(1-k*.4)]}
- skinAll();if(DUN.on)drawMons(GT.time);else{drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon()}drawHeroBow();drawTrail();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks();updateThreats()}
+ skinAll();if(DUN.on)drawMons(GT.time);else{drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawShields();drawNpcs(GT.time);drawCrocs(GT.time);drawDragon()}drawHeroBow();drawTrail();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks();updateThreats()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
-function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='grabbed')return GRAB.label;if(P.st==='ride')return DRAGON.thrW?'TUTUN! BLOK basılı tut':'SAPLA! Saldırıya art arda bas';if(rideTarget())return'ETKİLEŞ: BOYNUNA TIRMAN';{const ep=eventPrompt()||townPrompt();if(ep)return ep}if(P.st==='move'&&!execTarget()&&throwTarget())return'ETKİLEŞ: YAKALA-FIRLAT';if(P.st==='block'&&P.gcT>GT.clock)return'△: SİPER KARŞILIĞI';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
+function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='grabbed')return GRAB.label;if(P.st==='ride')return DRAGON.thrW?'TUTUN! BLOK basılı tut':'SAPLA! Saldırıya art arda bas';if(rideTarget())return'ETKİLEŞ: BOYNUNA TIRMAN';{const ep=eventPrompt()||townPrompt()||mercPrompt();if(ep)return ep}if(P.st==='move'&&!execTarget()&&throwTarget())return'ETKİLEŞ: YAKALA-FIRLAT';if(P.st==='block'&&P.gcT>GT.clock)return'△: SİPER KARŞILIĞI';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
  if(nearAltar()>=0)return'ETKİLEŞ: sunakta dinlen'+(SYS.altars&&SYS.altars[nearAltar()]?'':' (yak)');if(nearChest()>=0)return'ETKİLEŞ: sandığı aç';const sp=storyPrompt();if(sp)return sp;
  const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return d<2.4?'△ SUİKAST (ağır yara)':'Büyük goblin tutulamaz';if(d<2.4)return'△ SUİKAST'+(!isWolf(v)&&d<1.9?'  ·  R1: boyun kilidi':'')+'  ·  ✕✕: üstüne atla';return isWolf(v)?'✕✕: kurdun sırtına atla  ·  yaklaş: △ suikast':'✕✕: goblinin üstüne atla  ·  yaklaş: △ suikast'}
  for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<2.8)return'ETKİLEŞ: konuş';return''}
@@ -2885,7 +2907,7 @@ function bindInput(){const btn=(id,down,up)=>{const el=$(id);el.addEventListener
  addEventListener('blur',()=>{IN.atkHeld=false;IN.blockHeld=false;P.sprintHeld=false})}
 // ---------- boot + adaptive quality (performance: measure first, then lower resolution, grass, draw distance)
 const QUAL={QL:0};
-function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=objs.length;buildPlayer(TX);buildFx();const shared=new Set(objs.slice(s0));spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();buildPacks();assignLookouts();assignChampions();veyraInit();storyInit();guildInit();buildDunEntrances();camInit();hudBind();brawlInit();buildArena();buildTown();for(const o of objs)if(!shared.has(o))o.ow=1;checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
+function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=objs.length;buildPlayer(TX);buildFx();const shared=new Set(objs.slice(s0));spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();buildPacks();assignLookouts();assignChampions();veyraInit();storyInit();guildInit();buildDunEntrances();camInit();hudBind();brawlInit();buildArena();buildTown();buildGuildHall();for(const o of objs)if(!shared.has(o))o.ow=1;checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
@@ -2900,7 +2922,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
  window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
-  X:{objsRef:()=>objs,TELE,queueTelegraphs,markFor,parryWin,heroPoise,TOWN,townInteract,EVT,EVDEF,ARENA,arenaStart,eventsTick,evEnd,eventInteract,startDraw,releaseDraw,drawLevel,startKick,kickTarget,startGuardCounter,throwTarget,startThrow,THROWN,GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
+  X:{HUM,mkHuman,hireMerc,nightTick,clashTick,envSlam,shieldBlock,DUNS,objsRef:()=>objs,TELE,queueTelegraphs,markFor,parryWin,heroPoise,TOWN,townInteract,EVT,EVDEF,ARENA,arenaStart,eventsTick,evEnd,eventInteract,startDraw,releaseDraw,drawLevel,startKick,kickTarget,startGuardCounter,throwTarget,startThrow,THROWN,GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
   makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
@@ -3027,10 +3049,14 @@ const DUNS={
  cave:{id:'cave',n:'Örümcek İni',x:-782,z:612,lv:10,floors:3,theme:'cave',seed:202,boss:'brood',puzzles:['brazier','plates','rune'],
   mobs:[['spider','spider'],['spiderling','spiderling','spiderling','spiderling','spiderling'],['rat','rat','rat','rat'],['ghoul','spider'],['spider','spiderling','spiderling']],deep:[['spider','spider','spider'],['golem'],['ghoul','ghoul','spider'],['skmage','spider']]},
  temple:{id:'temple',n:'Mühürlü Tapınak',x:44,z:-608,lv:15,floors:3,theme:'temple',seed:303,boss:'keeper',puzzles:['plates','rune','brazier'],
-  mobs:[['golem'],['knight','skelS'],['skmage','skel','skelA'],['ghoul','ghoul','ghoul'],['knight']],deep:[['knight','knight'],['golem','skmage'],['skelS','skelS','skmage'],['golem']]}};
+  mobs:[['golem'],['knight','skelS'],['skmage','skel','skelA'],['ghoul','ghoul','ghoul'],['knight']],deep:[['knight','knight'],['golem','skmage'],['skelS','skelS','skmage'],['golem']]},
+ // v26: the SHADOW TOWER in the snowy range — five floors, the layout changes every day (random floors), a mix of every horror below
+ tower:{id:'tower',n:'Gölge Kulesi',x:-780,z:-985,lv:19,floors:5,theme:'tower',seed:404,daily:1,boss:'keeper',puzzles:['rune','plates','brazier'],
+  mobs:[['knight','skmage'],['golem','skelA'],['ghoul','ghoul','spider'],['skelS','skelS','skelA'],['spider','spider','skmage']],deep:[['knight','knight','skmage'],['golem','golem'],['ghoul','ghoul','ghoul','ghoul'],['knight','golem']]}};
 const THEME={crypt:{fl:[.3,.29,.28],wa:[.34,.32,.3],moss:[.2,.27,.16],fog:[.012,.012,.02],sun:[.33,.33,.42]},
  cave:{fl:[.22,.19,.16],wa:[.28,.24,.2],moss:[.25,.22,.3],fog:[.016,.012,.014],sun:[.33,.3,.34]},
- temple:{fl:[.36,.35,.4],wa:[.4,.39,.45],moss:[.5,.42,.2],fog:[.01,.014,.024],sun:[.34,.36,.46]}};
+ temple:{fl:[.36,.35,.4],wa:[.4,.39,.45],moss:[.5,.42,.2],fog:[.01,.014,.024],sun:[.34,.36,.46]},
+ tower:{fl:[.26,.25,.3],wa:[.3,.28,.36],moss:[.35,.2,.45],fog:[.014,.01,.022],sun:[.3,.28,.4]}};
 const GLYPH=[['☾','Ay'],['◉','Göz'],['♛','Taç'],['✦','Yıldız']];
 const LORE={
  crypt0:['Mezar Bekçisinin Notu','«Kral Aldric\'in emri: ölüleri yedi kat toprağın altına gömün. Hiçbiri taç takmış olarak gömülmesin. Hiçbiri.»'],
@@ -3211,7 +3237,7 @@ function dunTitle(big,small){let e=document.getElementById('dtitle');if(!e){e=do
  e.innerHTML='<div style="font-size:30px;letter-spacing:6px">'+big+'</div><div style="font-size:15px;opacity:.85;margin-top:6px">'+small+'</div>';e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>{e.style.opacity=0},2600)}
 function clearDunFloor(){for(const o of DUN.objs){unobj(o);if(o.geo&&o.geo.own)freeGeo(o.geo)}DUN.objs=[];for(const m of MONS)monFree(m);MONS.length=0;DPROJ.length=0;for(const p of DPROJP)p.vis=false;
  for(let i=LOOT.length-1;i>=0;i--)if(LOOT[i].dun){unobj(LOOT[i].ob);LOOT.splice(i,1)}}
-function enterDungeon(id,fl,arriveDown){const D=DUNS[id];dunFade(()=>{if(DUN.on)clearDunFloor();else{SYS.dret=[P.x,P.z];DUN.ret=[D.x,D.z]}
+function enterDungeon(id,fl,arriveDown){const D=DUNS[id];if(D.daily)D.seed=404+Math.floor((GT.clock||0)/600)%97;/* random floors: the tower changes every in-game day */dunFade(()=>{if(DUN.on)clearDunFloor();else{SYS.dret=[P.x,P.z];DUN.ret=[D.x,D.z]}
   DUN.on=1;DUN.id=id;DUN.fl=fl;DUN.D=D;DUN.lv=D.lv+fl*2;const F=buildDunFloor(D,fl);spawnDunMonsters(D,F);
   const at=arriveDown&&!F.last?[dCX(F.end.cx)+2.2,dCZ(F.end.cy)+.2]:[dCX(F.start.cx),dCZ(F.start.cy)+2.6];const p=dunCollide(at[0],at[1],.5);
   P.x=p[0];P.z=p[1];P.y=DUN.y;P.vx=P.vz=0;P.air=false;P.lock=null;CAM.tx=P.x;CAM.tz=P.z;CAM.ty=P.y+1.5;
@@ -3232,6 +3258,9 @@ function buildDunEntrances(){dunGeoms();for(const k in DUNS){const D=DUNS[k];cle
    const R=mkRng(77);for(let n=0;n<14;n++){const a=-.2+n/13*(PI+.4),r=2.6+R()*.8,x=Math.cos(a)*r,z=-1.2-Math.sin(a)*1.6,h=1.5+R()*2.6,w=.7+R()*.6;box(g,x-w,.0,z-w,x+w,h,z+w,[st[0]*(.8+R()*.4),st[1]*(.8+R()*.4),st[2]*(.8+R()*.4)])}
    box(g,-2.4,.25,-3.8,2.4,3.6,-2.2,st);box(g,-1.4,.25,-2.4,1.4,2.4,.4,blk);box(g,-2.2,2.4,-2.4,2.2,3.4,.5,st);for(let n=0;n<6;n++){const x=-1.8+n*.7;box(g,x-.05,.25,1.2+(n%2)*.4,x+.3,.31,1.3+(n%2)*.4,bone)}
    for(const s of[-1,1]){const w=G();w.P.push(s*1.35,2.4,.45,s*.2,2.4,.45,s*1.35,1.1,.45);w.N.push(0,0,1,0,0,1,0,0,1);w.C.push(.85,.85,.82,.85,.85,.82,.85,.85,.82);w.U.push(0,0,0,0,0,0);w.W.push(0,0,0);w.I.push(0,1,2);const m=merge([g,w]);g.P=m.P;g.N=m.N;g.C=m.C;g.U=m.U;g.W=m.W;g.I=m.I}}
+  else if(T==='tower'){// a black tower: five storeys tapering up, lit slit windows, a crown of spikes
+   const tw=[.2,.19,.24],tr=[.12,.11,.15],gl=[.75,.4,1.3];for(let s=0;s<6;s++){const w=3.2-s*.38,y0=.25+s*4.6;box(g,-w,y0,-w-1.2,w,y0+4.6,w-1.2,s%2?tw:tr);box(g,-w-.2,y0+4.3,-w-1.4,w+.2,y0+4.6,w-1.0,tr);box(g,-.18,y0+1.8,w-1.21,.18,y0+3,w-1.15,gl)}
+   box(g,-1.0,.25,1.95,1.0,2.6,2.05,blk);for(let k=0;k<6;k++){const a=k/6*2*PI;box(g,Math.cos(a)*1.2-.12,27.8,Math.sin(a)*1.2-1.32,Math.cos(a)*1.2+.12,30,Math.sin(a)*1.2-1.08,tr)}}
   else{// a white shrine with columns, a gold band and a sealed rune door that stands open
    box(g,-2.8,.25,-3.6,2.8,.55,1.0,st);for(const s of[-1,1])for(const zz of[.6,-1.4,-3.2]){box(g,s*2.4-.28,.55,zz-.28,s*2.4+.28,3.8,zz+.28,st);box(g,s*2.4-.36,3.5,zz-.36,s*2.4+.36,3.8,zz+.36,gold)}
    box(g,-3.0,3.8,-3.8,3.0,4.25,1.2,st);box(g,-2.6,4.25,-3.4,2.6,4.6,.8,gold);box(g,-2.0,4.6,-3.0,2.0,4.95,.4,st);box(g,-1.2,.55,-3.2,1.2,3.0,-2.6,st);box(g,-.9,.55,-2.62,.9,2.6,-2.5,blk);box(g,-1.6,.55,-2.8,-1.2,3.2,-2.4,dk);box(g,1.2,.55,-2.8,1.6,3.2,-2.4,dk)}
@@ -3761,7 +3790,7 @@ function wolfTrick(w,d,dt,GS){switch(w.st){
 //    move or swing, mash to kick it off before you are dragged down. Missed: it sprawls face-down, wide open.
 // 3) PLAYING DEAD — a "killing" blow sometimes leaves it alive: it lies still until you look away or walk off, then gets
 //    up and lunges at your back (危). Strike the "corpse" and it is over for real.
-function gobFeign(g,kind){if(/^(stab|assn|exec|choke|so|bleed)/.test(kind||'')||g.held||/^(choked|pinned|escape|latched)$/.test(g.st)||g.big||g.boss||g.feigned||g.lookout||g.elite||g.archer||g.so||Math.random()>=.28)return false;g.feigned=1;g.hp=1;g.st='playdead';g.t=0;g.held=null;g.kx*=.5;g.kz*=.5;g.aware=0;if(P.lock===g)P.lock=null;return true}
+function gobFeign(g,kind){if(g.undead||g.human||/^(stab|assn|exec|choke|so|bleed|fall|slam|clash)/.test(kind||'')||g.held||/^(choked|pinned|escape|latched)$/.test(g.st)||g.big||g.boss||g.feigned||g.lookout||g.elite||g.archer||g.so||Math.random()>=.28)return false;g.feigned=1;g.hp=1;g.st='playdead';g.t=0;g.held=null;g.kx*=.5;g.kz*=.5;g.aware=0;if(P.lock===g)P.lock=null;return true}
 function gobTricks(g,d,dt){switch(g.st){
  case'dirt':{g.spd=lp(g.spd,0,.4);const T=.7;if(g.t<T)agentFace(g,P.x,P.z,dt,10);
   if(g.t>=T&&!g.thrown){g.thrown=1;sfx.swing();const fx=Math.sin(g.yaw),fz=Math.cos(g.yaw);for(let i=0;i<4;i++)spawnSparks(g.x+fx*(1+i*.9),g.y+1.1+i*.05,g.z+fz*(1+i*.9),7,[.42,.32,.2],2.5);
@@ -3893,11 +3922,11 @@ const EVT={t:75,cur:null,arena:null,pool:{g:[],w:[]}};
 const ARENA={x:40,z:338};
 function evSpot(minR,maxR){for(let i=0;i<20;i++){const a=rnd()*6.28,r=rr(minR,maxR),x=P.x+Math.sin(a)*r,z=P.z+Math.cos(a)*r;if(Math.hypot(x,z)<175||depthAt(x,z)>.2||inBuilding(x,z,1))continue;const p=collide(x,z,.6);return p}return null}
 // pooled spawns: event enemies are re-used, never pile up in the world lists
-function evGob(x,z,o={}){let g=EVT.pool.g.find(q=>q.free&&q.dead&&!!q.big===!!o.big);if(!g){g=mkGob(x,z,!!o.big,'evt',CAMPSITES[0]);g.R=rigObj(o.big?BIGM:GOBM,{out:.014,cull:150})}
- Object.assign(g,{free:0,dead:0,deadT:0,x,z,hx:x,hz:z,st:'chase',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,held:null,archer:!!o.archer,elite:!!o.elite,title:o.title||'',group:'evt',feigned:0,pos:0,kx:0,kz:0});
+function evGob(x,z,o={}){let g=EVT.pool.g.find(q=>q.free&&q.dead&&!!q.big===!!o.big&&(q.humanK||null)===(o.humanK||null));if(!g){g=mkGob(x,z,!!o.big,'evt',CAMPSITES[0]);g.R=rigObj(o.big?BIGM:GOBM,{out:.014,cull:150})}
+ Object.assign(g,{free:0,dead:0,deadT:0,x,z,hx:x,hz:z,st:'chase',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,held:null,clash:0,ally:0,shieldT:0,archer:!!o.archer,elite:!!o.elite,title:o.title||'',group:'evt',feigned:0,pos:0,kx:0,kz:0});
  g.sc=o.sc||(o.big?1.25:1);scaleFoe(g,o.lv||regionLevel(x,z)+1,o.hp||(o.big?HPK.big:HPK.gob));if(g.R&&g.R.ob)g.R.ob.col=o.col||[1,1,1];if(!EVT.pool.g.includes(g))EVT.pool.g.push(g);return g}
 function evWolf(x,z,o={}){let w=EVT.pool.w.find(q=>q.free&&q.dead);if(!w){w=mkWolf(x,z,{alpha:!!o.alpha});EVT.pool.w.push(w)}
- Object.assign(w,{free:0,dead:0,x,z,hx:x,hz:z,st:'stalk',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,calm:0,tame:false,pack:null,roll:0,crouch:0,alpha:!!o.alpha,white:!!o.white,title:o.title||'',elite:!!o.elite,bold:.85});
+ Object.assign(w,{free:0,dead:0,x,z,hx:x,hz:z,st:'stalk',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,calm:0,clash:0,tame:false,pack:null,roll:0,crouch:0,alpha:!!o.alpha,white:!!o.white,title:o.title||'',elite:!!o.elite,bold:.85});
  w.sc=o.sc||(o.alpha?1.25:1);scaleFoe(w,o.lv||regionLevel(x,z)+1,o.hp||(o.alpha?HPK.alpha:HPK.wolf));return w}
 function evFree(list){for(const f of list){f.dead=f.dead||1;f.free=1;f.x=f.hx=9000+rnd()*50;f.z=f.hz=9000;if(isWolf(f)){f.st='dead';f.dead=300}else{f.st='dead';f.deadT=0}}}
 const EVDEF={
@@ -3980,6 +4009,65 @@ function townInteract(){const T=TOWN;if(!T.inn)return false;
  if(T.trader&&Math.hypot(P.x-T.trader.x,P.z-T.trader.z)<2.6){const it=T.stock[0];if(!it){note('Rüstem: "Yarın gel, kervan yeni mal getirir."');return true}const pr=townPrice(it);if(SYS.gold<pr){note('Rüstem: "'+it.n+' — '+pr+' altın. Biraz daha biriktir."');return true}SYS.gold-=pr;giveItem(T.stock.shift());sfx.chest();note('[Pazar] '+it.n+' alındı (−'+pr+' altın).','gold');save(P);return true}
  if(T.fisher&&Math.hypot(P.x-T.fisher.x,P.z-T.fisher.z)<2.4){note(['Halil: "Gölün kuzeyinde, gece beyaz bir kurt dolaşıyor derler."','Halil: "Ejderha uyandığından beri balık da az."','Halil: "Kasabanın doğusundaki taş çemberde savaşçılar sınanır."'][Math.floor(rnd()*3)]);return true}
  return false}
+// ---- 73-humans.js
+// ===================== HUMANS, NIGHT, CLASHES, MERCENARIES (v26) =====================
+// HAYDUT (bandits): men with swords — some carry a SHIELD that turns every light blow from the front; a heavy blow,
+// a kick or a throw opens the guard for 4 s. GEZGİN ŞÖVALYE: a knight in black challenges you to a duel.
+// GECE: at night the dead walk outside the walls — slow HORTLAK that dive at your legs. YARATIK ÇATIŞMASI: a wolf pack
+// and a goblin band tearing at each other; walk up and both turn on you. PARALI ASKER: hire a sword at the guild hall.
+// Bandits and the dead use the goblin brain (all its tricks) on human bodies; the shield and the night are their own.
+const HUM={geo:{},shieldGeo:null,night:[],ally:null};
+function humGeo(k){if(!HUM.geo[k])HUM.geo[k]=humanGeo(k==='dead'?'villager':'guard');return HUM.geo[k]}
+function mkHuman(x,z,o){const geoK=o.dead?'dead':'guard',g=evGob(x,z,{lv:o.lv,hp:o.hp||200,title:o.title||'',elite:o.elite,sc:o.sc||1,humanK:geoK});
+ if(g.humanK!==geoK){if(g.R)rigHide(g.R);g.R=rigObj(humGeo(geoK),{out:.012,cull:150,outCol:[.08,.06,.06]});g.humanK=geoK}g.rigM=humGeo(geoK);g.human=1;
+ g.R.ob.col=o.col||[1,1,1];g.shield=!!o.shield;g.shieldT=0;g.spdMul=o.spd||1;g.undead=!!o.dead;g.title=o.title||'';return g}
+// ---------- the shield
+function shieldBlock(g,kind){if(GT.clock<(g.shieldT||0))return false;const front=Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<1.2;
+ if(!front||/^(stagger|sprawl|latched|escape|playdead)$/.test(g.st))return false;
+ if(kind==='heavy'||kind==='kick'||kind==='throw'||kind==='jumpatk'||kind==='runatk'){g.shieldT=GT.clock+4;g.st='stagger';g.t=0;floatText(g.x,(g.y||0)+2,g.z,'KALKAN AÇILDI','crit');sfx.break();return false}
+ g.blockedAt=GT.clock;g.kx*=.2;g.kz*=.2;sfx.clang();const p=[g.x+Math.sin(g.yaw)*.5,(g.y||0)+1.2,g.z+Math.cos(g.yaw)*.5];spawnSparks(p[0],p[1],p[2],8,[1,.9,.6],3);floatText(p[0],p[1]+.5,p[2],'KALKAN','');return true}
+function drawShields(){if(!HUM.shieldGeo){const s=G();box(s,-.36,-.48,-.05,.36,.48,.05,[.35,.22,.12]);box(s,-.3,-.42,.05,.3,.42,.08,[.5,.5,.55]);box(s,-.06,-.06,.08,.06,.06,.12,[.75,.6,.25]);HUM.shieldGeo=geo(s)}
+ for(const g of GOBS){if(!g.shield){if(g.shOb)g.shOb.vis=false;continue}if(!g.shOb)g.shOb=obj(HUM.shieldGeo,{shade:.95,pos:[0,0,0],cull:120,out:.006,outCol:[.05,.04,.03]});
+  const d=Math.hypot(g.x-P.x,g.z-P.z);if(g.dead||d>120||!g.R||!g.R.ob.vis||!g.R.def.WR){g.shOb.vis=false;continue}const R=g.R.def.WR[5],p=boneW(g.R.def,5,[0,-.05*g.sc,.12*g.sc],1),M=new Float32Array(16);
+  M[0]=R[0];M[1]=R[3];M[2]=R[6];M[4]=R[1];M[5]=R[4];M[6]=R[7];M[8]=R[2];M[9]=R[5];M[10]=R[8];for(let i=0;i<11;i++)if(i%4<3)M[i]*=g.sc;M[12]=p[0];M[13]=p[1];M[14]=p[2];M[15]=1;g.shOb.M=M;g.shOb.pos=[g.x,0,g.z];g.shOb.vis=true}}
+// ---------- new events: bandit ambush, the wandering knight, the creature clash
+Object.assign(EVDEF,{
+ bandits:{n:'HAYDUT PUSUSU',w:2,ok:()=>true,start(E){const p=evSpot(26,40);if(!p)return false;const lv=regionLevel(p[0],p[1])+1;E.ents=[mkHuman(p[0],p[1],{lv,shield:true,title:'HAYDUT KALKANCI',col:[.85,.7,.65]}),mkHuman(p[0]+2,p[1]+1,{lv,col:[.8,.65,.6]}),mkHuman(p[0]-2,p[1]+1,{lv,col:[.8,.65,.6]})];E.x=p[0];E.z=p[1];sfx.gobShout();note('[Olay] HAYDUT PUSUSU! Yolun kenarından silahlı adamlar çıkıyor — kalkanlıya ağır vuruş ya da tekme.','red');return true},reward:9},
+ knight:{n:'GEZGİN ŞÖVALYE',w:1,ok:()=>SYS.lv>=3,start(E){const p=evSpot(18,26);if(!p)return false;const lv=Math.max(SYS.lv+2,regionLevel(p[0],p[1])+2);const k=mkHuman(p[0],p[1],{lv,hp:520,shield:true,elite:true,sc:1.12,title:'GEZGİN ŞÖVALYE · Kara Varis',col:[.45,.45,.55]});k.pk='elite';k.st='alert';k.aware=.6;E.ents=[k];E.x=p[0];E.z=p[1];note('[Olay] Kara zırhlı bir şövalye yolunu kesti: "Kılıcın konuşsun, yolcu." — teke tek düello.','gold');bossBanner('DÜELLO','Gezgin Şövalye');return true},reward:16,tier:2},
+ clash:{n:'YARATIK ÇATIŞMASI',w:2,ok:()=>true,start(E){const p=evSpot(34,48);if(!p)return false;const lv=regionLevel(p[0],p[1]);E.ents=[];for(let i=0;i<3;i++){const w=evWolf(p[0]+rr(-4,4),p[1]-5+rr(-2,2),{lv});w.clash=1;E.ents.push(w)}for(let i=0;i<3;i++){const g=evGob(p[0]+rr(-4,4),p[1]+5+rr(-2,2),{lv});g.clash=1;E.ents.push(g)}E.x=p[0];E.z=p[1];sfx.howl();note('[Olay] Uzakta hırlamalar ve bağırışlar — kurtlar bir goblin çetesiyle boğuşuyor. Kazananı bekle ya da araya gir.','gold');return true},reward:7}});
+// creature clash: until the hero is close, wolves and goblins of the clash fight each other with their own animations
+function clashTick(f,dt){const d=Math.hypot(P.x-f.x,P.z-f.z);if(d<13||f.aware>=1&&f.hp<f.max&&f.lastHitBy==='hero'){f.clash=0;f.aware=1;f.ls=[P.x,P.z];if(isWolf(f)){f.st='circle';f.t=0}else{f.st='chase';f.t=0}return false}
+ f.t+=dt;f.cdC=(f.cdC||rr(.5,1.5))-dt;const wolfSide=isWolf(f);let tg=null,td=1e9;const E=EVT.cur;if(!E)return false;for(const o of E.ents){if(o.dead||o===f||isWolf(o)===wolfSide)continue;const q=Math.hypot(o.x-f.x,o.z-f.z);if(q<td){td=q;tg=o}}
+ if(!tg){f.clash=0;return false}const reach=wolfSide?1.4:1.6;
+ if(wolfSide){if(f.st!=='bite'||f.t>.35){if(td>reach){wolfMove(f,tg.x,tg.z,7.5,dt,8);f.st='chase'}else{f.spd=0;wolfFace(f,tg.x,tg.z,dt,10)}}f.crouch=lp(f.crouch||0,.3,.1);f.jaw=lp(f.jaw||0,f.st==='bite'?1:.3,.3)}
+ else{if(f.st!=='strike'&&f.st!=='windup'){if(td>reach){agentMove(f,tg.x,tg.z,4.8,dt,f.rad,8);f.st='chase'}else{f.spd=lp(f.spd,0,.3);agentFace(f,tg.x,tg.z,dt,10)}}else if(f.t>(f.st==='windup'?.45:.25)){f.st=f.st==='windup'?'strike':'chase';f.t=0}}
+ if(td<=reach&&f.cdC<=0){f.cdC=rr(.9,1.6);if(wolfSide){f.st='bite';f.t=0;sfx.bite()}else{f.st='windup';f.t=0;f.hitDone=false}const dm=Math.round((wolfSide?8:9)*lvDmg(f.lv||1));const k=td||1,dead=foeHurt(tg,dm,(tg.x-f.x)/k,(tg.z-f.z)/k,'clash');if(dead){tg.dead=tg.dead||1;if(isWolf(tg))tg.st='dead'}}
+ if(!wolfSide){if(f.spd>.2)f.ph+=f.spd*dt*4.2}else f.ph+=(f.spd||0)*dt*2.2;f.y=hAt(f.x,f.z);return true}
+// ---------- the dead walk at night (outside the walls): slow, they dive at your legs, gone at dawn
+function nightTick(dt){if(DUN.on)return;const night=GT.tod>.8||GT.tod<.18,out=Math.hypot(P.x,P.z)>190;HUM.nt=(HUM.nt||0)-dt;
+ HUM.night=HUM.night.filter(g=>!g.dead&&!g.free);
+ if(!night||!out){if(HUM.night.length&&(!night||Math.hypot(P.x,P.z)<150)){for(const g of HUM.night){g.st='escape';g.from='pinned';g.t=0}const L=HUM.night;HUM.night=[];setTimeout(()=>evFree(L),1500);if(!night)note('[Gece] Şafak söküyor — ölüler toprağa geri çekiliyor.','')}return}
+ if(HUM.nt<=0&&HUM.night.length<4&&!window.__noAutoQ){HUM.nt=rr(14,24);const p=evSpot(24,38);if(!p)return;const g=mkHuman(p[0],p[1],{dead:true,lv:regionLevel(p[0],p[1])+1,hp:170,spd:.55,title:'HORTLAK',col:[.55,.62,.5]});g.st='escape';g.from='pinned';g.t=0;g.aware=1;g.tkCd=0;g.feigned=1;HUM.night.push(g);
+  if(!HUM.warned){HUM.warned=1;note('[Gece] Topraktan eller uzanıyor… geceleri ölüler surların dışında yürür.','red')}}}
+// ---------- the guild hall and the mercenary
+function buildGuildHall(){const g=G(),x=GUILD.x,z=GUILD.z+9,y=hAt(x,z)-.3,w=[.55,.45,.35],rf=[.3,.16,.12];box(g,x-7,y,z-4,x+7,y+5.2,z+4,w);for(let k=0;k<4;k++){const f=1-k*.22;box(g,x-7.4*f,y+5.2+k*.6,z-4.4*f,x+7.4*f,y+5.8+k*.6,z+4.4*f,rf)}
+ box(g,x-1.2,y,z-4.05,x+1.2,y+2.8,z-3.95,[.25,.16,.1]);box(g,x-2.6,y+3.2,z-4.25,x+2.6,y+4.2,z-4.1,[.6,.15,.12]);box(g,x-2.4,y+3.35,z-4.3,x+2.4,y+4.05,z-4.25,[.85,.7,.3]);
+ for(const s of[-1,1])box(g,x+s*5.2-.2,y,z-4.2,x+s*5.2+.2,y+5.2,z-3.8,[.3,.2,.12]);addBox(x-7,z-4,x+7,z+4,5);obj(geo(g),{shade:.95,pos:[x,0,z],cull:500,out:.01,outCol:[.06,.05,.04]})}
+function mercPrompt(){if(!GUILD.clerk)return null;if(Math.hypot(P.x-GUILD.clerk.x,P.z-GUILD.clerk.z)<2.4&&!(HUM.ally&&!HUM.ally.dead))return'ETKİLEŞ: PARALI ASKER KİRALA (120 altın, 5 dk)';return null}
+function hireMerc(){if(!GUILD.clerk||Math.hypot(P.x-GUILD.clerk.x,P.z-GUILD.clerk.z)>2.4||HUM.ally&&!HUM.ally.dead)return false;if(SYS.gold<120){note('Selin: "Paralı asker 120 altın ister, savaşçı."');return true}SYS.gold-=120;
+ const p=collide(P.x+2,P.z+2,.5),g=mkHuman(p[0],p[1],{lv:SYS.lv+1,hp:400,shield:true,title:'PARALI ASKER · Demir Orhan',col:[.75,.85,1.15]});g.ally=1;g.st='chase';g.until=GT.clock+300;HUM.ally=g;note('[Lonca] Demir Orhan 5 dakikalığına seninle. Düşmanlarına saldırır.','gold');save(P);return true}
+function allyTick(g,dt){g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);if(GT.clock>g.until||!P.alive){note('[Lonca] Demir Orhan\'ın sözleşmesi bitti — yoluna gitti.','');g.ally=0;HUM.ally=null;evFree([g]);return}
+ let tg=null,td=12;for(const f of foes()){if(!foeHostile(f)||f===DRAGON)continue;const q=Math.hypot(f.x-g.x,f.z-g.z);if(q<td){td=q;tg=f}}
+ if(g.st==='windup'){g.spd=lp(g.spd,0,.4);if(tg)agentFace(g,tg.x,tg.z,dt,10);if(g.t>.45){g.st='strike';g.t=0;sfx.swing();if(tg&&td<2.2){const k=td||1,dm=Math.round(14*lvDmg(g.lv||1)*dmgMul()),dead=foeHurt(tg,dm,(tg.x-g.x)/k,(tg.z-g.z)/k,'ally');addPosture(tg,14);floatText(tg.x,(tg.y||0)+1.5,tg.z,''+dm,'');if(dead)onFoeKilled(tg,true)}}}
+ else if(g.st==='strike'){if(g.t>.25){g.st='chase';g.t=0;g.cd=rr(.5,1)}}
+ else{g.st='chase';g.cd-=dt;if(tg){if(td>1.8)agentMove(g,tg.x,tg.z,5.2,dt,g.rad,8);else{g.spd=lp(g.spd,0,.3);agentFace(g,tg.x,tg.z,dt,10);if(g.cd<=0){g.st='windup';g.t=0}}}
+  else{const a=P.yaw+PI*.75,gx=P.x+Math.sin(a)*2.4,gz=P.z+Math.cos(a)*2.4,q=Math.hypot(gx-g.x,gz-g.z);if(q>1.2)agentMove(g,gx,gz,q>8?6.5:3.5,dt,g.rad,6);else g.spd=lp(g.spd,0,.2);if(q>60){g.x=P.x+1.5;g.z=P.z+1.5}}}
+ g.y=hAt(g.x,g.z);if(g.spd>.2)g.ph+=g.spd*dt*4.2}
+// ---------- the environment as a weapon: kicked off a cliff, slammed into a wall
+function envSlam(dt){for(const f of foes()){if(f.dead||f===DRAGON||f.big||f.boss)continue;const v=Math.hypot(f.kx||0,f.kz||0);if(v<5.5)continue;
+  const ahead=[f.x+(f.kx/v)*1.2,f.z+(f.kz/v)*1.2],fall=[f.x+(f.kx/v)*2.5,f.z+(f.kz/v)*2.5],drop=hAt(f.x,f.z)-hAt(fall[0],fall[1]);
+  if(drop>3.5&&!DUN.on){f.x=fall[0];f.z=fall[1];const dead=foeHurt(f,f.max,0,0,'fall');floatText(f.x,(f.y||0)+1,f.z,'UÇURUMDAN DÜŞTÜ','crit');sfx.thud();if(dead)onFoeKilled(f,false);continue}
+  if(inBuilding(ahead[0],ahead[1],.2)&&!f.slamT){f.slamT=1;setTimeout(()=>{f.slamT=0},600);f.kx=f.kz=0;const dm=Math.round(f.max*.12),dead=foeHurt(f,dm,0,0,'slam');addPosture(f,40);if(!isWolf(f)&&!dead){f.st='stagger';f.t=0}floatText(f.x,(f.y||0)+1.6,f.z,'DUVARA ÇARPTI '+dm,'crit');sfx.thud();CAM.shake=Math.max(CAM.shake,.35);spawnSparks(ahead[0],(f.y||0)+1,ahead[1],10,[.7,.65,.55],4);if(dead)onFoeKilled(f,false)}}}
 // ---- 90-loader.js
 (function(){const TX={},jobs=[];for(const k in KND.tex)jobs.push(['k_'+k,KND.tex[k]]);DRG.groups.forEach((g,i)=>jobs.push(['d_'+i,g.tex]));let left=jobs.length;
  if(!gl){$('load').textContent='Bu cihaz WebGL desteklemiyor';return}
