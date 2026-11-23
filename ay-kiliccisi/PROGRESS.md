@@ -134,3 +134,4 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
   öfke çubuğu, boss adı + duruş çubuğu, hızlı yolculuk, manhwa görünümü (sabit oranlı paneller, sıra kuyruğu),
   görev pusulası, yeni sesler. Düzeltilenler: açılış sırası (Veyra/hikâye), kese ve mühür toplama artık oyun
   adımında, kavgada 4 m algı, Veyra'ya düşman vuruşu, Kırık Diş yere vurma halkası. s-loop.js 71/71.
+- Oturum 8 (zamanlanmış görev, 2026-11-23): kahraman miğferi — koyu gömük T vizör + içeride yanan iki göz (eski: yarık duvarları turuncu boyanıyordu), yanakları yırtan nefes yarıkları kaldırıldı, boynuzlar koyu kemik. Testler 47/71/11/7 geçti. Kök kayıt: `../PROGRESS.md`.
