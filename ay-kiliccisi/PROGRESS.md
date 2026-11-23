@@ -7,6 +7,7 @@ Testler (Playwright + yazılımsal WebGL): `NODE_PATH=$(npm root -g) node test/h
 - `s-loop.js` → aşama 2 oynanış döngüsü (71 test, `loop-tests.js`)
 - `s-ui.js`, `s-save.js`, `s-portrait.js`, `s-perf.js` → dokunmatik, kayıt, dikey ekran, performans
 - `s-p2shots.js`, `s-p2portrait.js` → ekran görüntüleri (`test/out/`)
+- `s-anim.js` → kahraman hareket cilası: yokuşta ayak IK, dönüş/ivme eğilmesi (8 test)
 Hikâye ve karakterler: `SENARYO.md`. Yayın: claude.ai artifact XSyZ8dWNspYrNFxSMeMqp4 (aynı adrese güncellenir).
 
 ## Tasarım kararları (oyun yönetmeni notları)
@@ -88,7 +89,17 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [x] Oturum 5: kurtlar sersemletme kilidine girmiyor (saldırırken vurulsa da sürdürür, 2. vuruşta geri sıçrayıp karşı saldırı); ok sistemi (59-arrows.js): goblin okçular (her kampta 1 + yol devriyelerinde 2), kahramanın yayı (YAY / B), 3 yol devriyesi köy yakınında; kraliçe saçı/perçemi/yüzü (manhwa göz, kaş, burun, ağız)
 - [x] Oturum 6 (Master Directive, ANALIZ.md; tema kara fantezi KALIYOR, savaş Ghost of Tsushima/Sekiro tarzı): AŞAMA 1 başladı — 51-stances.js: 4 duruş (Taş başlangıç; Rüzgâr 5 kurt; Ay Kül Yele; Su Kırık Diş), duruş avantajı (hasar ×1.25, denge ×1.8), kusursuz kaçınma (0.2 sn pencere → yavaş çekim + karşı saldırı ×1.8; ileri kaçınma = KARŞILAMA), zincir savuşturma, saldırı iptali, iksir bitince 40 öfke ile iyileşme. Hata: kurt yakalamışken vurulma, ok itmesi. Kraliçe: kullanıcının saç GLB'si (import_hair.py), etek kaldırıldı. Test: s-stance.js 11/11.
 - [x] Oturum 7: suikast (△ arkadan, 51-stances.js), okçu isabeti insan gibi, PlayStation düğme düzeni (□ hafif, △ ağır, ✕ zıpla, ○ kaçın, L1 blok, R1 etkileş, R2 duruş, L2 yay). Su hatası: kıyı setleri (hRaw) + su diskleri küçültüldü. Hikâye (kullanıcı isteği): Kael sıradan maceracı, Şeytan Kraliçe ile kişisel bağı yok, 'son şövalye' değil. DÜNYA 1 (21-scenery.js): kamerayı izleyen karlı dağ halkaları, 1500 kaya, 5200 çalı (ağaç parçalarında k=6), 6 çitli tarla + saman, yel değirmeni (dönen kanat), nehir başında şelale. Site: kök index.html = oyun (dist kopyası), eski oyun yaban.html; main'e PR.
+- [x] Oturum 8 (zamanlanmış çalışma, 2026-11-23) — GERÇEKÇİ ANİMASYON 1. adım: `src/33-locomotion.js`.
+      Zemine uyan ayaklar (ayak IK): her ayağın altındaki zemin (bilek + ayak ucu) ölçülür, kalça alçaktaki ayağa iner,
+      diğer bacak iki kemikli IK ile kendi zeminine uzanır (diz, yürüyüşün bükülme düzlemini korur), ayak yokuşa göre
+      eğilir/yatar; yumuşatılır, havada/takla/yerde/derin suda kapalı (`__G.FIK.on`). Gövde eğilmesi: dönüşe doğru
+      omurga yatar, baş dönüşe bakar, hızlanınca öne / yavaşlayınca geriye eğilir. Önce: yokuşta bir ayak 6 cm havada,
+      diğeri 6 cm gömülü; sonra ±2 mm. Test: `test/s-anim.js` 8/8.
 - [ ] DÜNYA DİREKTİFİ sırası (kullanıcı): 2) harita/bölge genişletme (karlı dağ bölgesi, liman, kasaba; WS büyütmek gerek) 3) yaşayan köyler/NPC rutinleri, han, pazar 4) Maceracılar Loncası: kayıt, rütbe F→S, görev panosu 5) AYRI zindan haritaları (çok katlı, tuzak, bulmaca) 6) zindan yaratıkları (iskelet, örümcek, golem, lanetli şövalye…) 7) ekipman türleri + Mitik nadirlik 8) görev/gizem 9) ilişki altyapısı (kişilik, hafıza, güven) 10) optimizasyon. Krallık büyütülecek (referans: katmanlı şehir + saray).
+- [ ] ANİMASYON sıradaki adımlar: (a) anahtar kareli klip sistemi (poz anahtarları + zaman eğrisi, durumlar arası
+      hız-eşleşmeli harmanlama) — şimdiki `poseTarget` tek hedefe üstel yaklaşıyor; (b) yürüme/koşu döngüsünde ayak
+      kaymasını önleyen adım kilidi (basan ayak dünyada sabit); (c) dönerken yerinde dönme adımı; (d) aynı ayak IK'yı
+      kurt/goblin/NPC'lere taşımak (dört ayaklı için ön/arka gövde eğimi)
 - [ ] AŞAMA 1 kalan: oyuncu denge çubuğunu 'Denge' olarak göster, duruşlara özgü pozlar (hamle/saplama), kombo bitirici efektleri, yönlü saldırı; AŞAMA 2: kalkanlı/mızraklı/suikastçı/elit düşmanlar, boss girişleri
 - [ ] SIRADAKİ (kullanıcı istedi): haritayı büyüt + farklı bölgeler; mağara; büyük zindan + uzun zindan kulesi (katlar, boss); daha çok yaratık türü ve olay (manhwa RPG: iskelet, hortlak, örümcek, golem, gece baskını)
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş

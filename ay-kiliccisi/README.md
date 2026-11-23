@@ -31,6 +31,7 @@ src/        oyunun kaynağı (numara sırasıyla tek dosyada birleşir)
   20-world.js         2800 × 2800 m harita, bölgeler, su, akışlı orman, köy, kale, kamplar, harabeler
   25-perception.js    görüş konisi + engel + uyarı yayılması
   30-player-model.js  Selene modeli, kılıç, poz, kol IK'sı
+  33-locomotion.js    kahramanın zemine uyan ayakları (bacak IK) ve dönüş/ivme eğilmesi
   40-wolves.js        kurtlar
   45-rig.js           goblin / köylü / muhafız / tüccar / timsah modelleri
   46-goblins.js  47-npcs.js  48-croc.js  49-dragon.js
