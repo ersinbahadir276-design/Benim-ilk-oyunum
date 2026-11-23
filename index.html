@@ -952,6 +952,7 @@ function wolfHurt(w,dmg,dirx,dirz,P){if(w.dead)return false;w.hp-=dmg;w.flash=1;
   if((w.st==='windup'||w.st==='pounce')&&w.combo<4){w.kx*=.2;w.kz*=.2}
   else if(w.combo>=2&&w.st!=='pin'){w.st='evade';w.t=0;w.air=0;w.pitch=0;w.kx=dirx*9;w.kz=dirz*9;w.combo=0}
   else{w.st='hurt';w.t=0;w.air=0;w.pitch=0}}
+ wolfReact(w,dmg,dirx,dirz);
  for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&Math.hypot(o.x-w.x,o.z-w.z)<16&&!hostileSt(o)){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.6)}
  return false}
 function updateWolf(w,P,dt,GS){
@@ -1042,6 +1043,17 @@ function wolfGround(w,sc,H,moving,run){if(w.gp===undefined){w.gp=0;w.gd=0}
   td=Math.min(td,WFIK.maxD)*sc}
  const k=WFIK.k;w.gp+=(tp-w.gp)*k;w.gd+=(td-w.gd)*k;if(Math.abs(w.gp)<1e-4&&!tp)w.gp=0;if(w.gd<1e-4&&!td)w.gd=0;
  return {p:w.gp,drop:w.gd}}
+// ===== directional hit reaction (WREACT): the body recoils along the push instead of one generic crouch =====
+// wolfHurt stores the push direction in the wolf's own frame (hrF: +forward, hrS: +right) and a strength; the draw adds
+// a short spring-like envelope (snap in ~70 ms, small rebound, settled by ~0.5 s): front hit → rears up, head thrown back;
+// hit from behind → rump shoved, head dips; side hit → body rolls and slides away, head and tail swing with the push,
+// legs buckle a little. A wolf that shrugs a hit off mid-attack gets a third of it. WREACT.on=0 → old behaviour.
+const WREACT={on:1,pitch:.24,roll:.22,shift:.11,drop:.07,head:.35,hyaw:.4,tail:.5};
+function wolfReact(w,dmg,dirx,dirz){if(!WREACT.on)return;const fx=Math.sin(w.yaw),fz=Math.cos(w.yaw),n=Math.hypot(dirx,dirz)||1;
+ w.hrF=(dirx*fx+dirz*fz)/n;w.hrS=(dirx*fz-dirz*fx)/n;w.hrX=dirx/n;w.hrZ=dirz/n;
+ w.hrA=cl(.6+dmg/Math.max(1,w.max||1)*2,.6,1)*((w.st==='windup'||w.st==='pounce')?.35:1);w.hrT=GT.clock}
+function wolfReactEnv(w){if(!WREACT.on||w.hrT===undefined||w.dead)return 0;const t=GT.clock-w.hrT;if(t<0||t>.75)return 0;
+ if(t<.07)return sst(0,1,t/.07)*w.hrA;const u=t-.07;return Math.exp(-u*6)*Math.cos(u*8.5)*w.hrA}
 function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Math.hypot(w.x-P.x,w.z-P.z),w]).filter(a=>a[0]<150).sort((a,b)=>a[0]-b[0]).slice(0,WSLOTS);
  for(let i=0;i<WSLOTS;i++){const s=wslots[i],e=near[i],vis=!!e;if(s.sk)s.sk.vis=vis;s.body.vis=s.head.vis=s.jaw.vis=s.tail.vis=s.sh.vis=vis;for(const l of s.legs)l[0].vis=l[1].vis=vis;s.w=vis?e[1]:null;if(!vis)continue;
   const w=e[1],sc=w.sc,moving=w.spd>.3,run=w.spd>4,bob=moving?Math.abs(Math.sin(w.ph))*(run?(WFIK.lock?.025:.05):.02):Math.sin(time*2+w.ph)*.006,H=(.66-w.crouch*.2+bob-(run&&WFIK.lock?.04:0))*sc,sink=w.dead>4?(w.dead-4)*.25:0;
@@ -1049,11 +1061,12 @@ function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Mat
   // direction of travel relative to the facing (strafing while circling, backing off): the stride follows it
   {if(w.lx===undefined){w.lx=w.x;w.lz=w.z;w.md=0}const mx=w.x-w.lx,mz=w.z-w.lz,mv=Math.hypot(mx,mz);w.lx=w.x;w.lz=w.z;
    if(mv>1e-4&&mv<1)w.md+=angd(Math.atan2(mx,mz)-w.yaw,w.md)*.35;else if(mv>=1)w.md=0}
-  let M=mmul(mtrs([w.x,w.y+H+w.air-sink+(w.roll*-.42*sc)-gnd.drop,w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch+gnd.p,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll]));
+  const rk=wolfReactEnv(w),rP=rk?w.hrF*WREACT.pitch*rk:0,rR=rk?-w.hrS*WREACT.roll*rk:0,rSh=rk*WREACT.shift*sc;
+  let M=mmul(mtrs([w.x+(rk?w.hrX*rSh:0),w.y+H+w.air-sink+(w.roll*-.42*sc)-gnd.drop-Math.abs(rk)*WREACT.drop*sc,w.z+(rk?w.hrZ*rSh:0)],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch+gnd.p+rP,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll+rR]));
   for(let k=0;k<12;k++)M[k]*=sc;
   const tintc=w.tame?[.9,1,1.12]:w.alpha?[.5,.5,.56]:[1,1,1],fl=w.flash;
-  s.body.M=M;s.head.M=mroty(M,0,.3,.76,w.hpit+(w.st==='pin'?.5+Math.sin(time*30)*.12*w.jaw:w.st==='windup'?.25:0),w.hyaw+(w.st==='pin'?Math.sin(time*26)*.3*w.jaw:0),0);
-  s.jaw.M=mroty(s.head.M,0,-.055,.1,w.jaw*.75,0,0);s.tail.M=mroty(M,0,.1,-.62,w.st==='chase'||w.st==='pounce'?.5:w.st==='windup'?-.3:.1+Math.sin(time*2+w.ph)*.1,w.tail+Math.sin(time*(w.tame?10:3)+w.ph)*(w.tame?.5:.12),0);
+  s.body.M=M;s.head.M=mroty(M,0,.3,.76,w.hpit+(w.st==='pin'?.5+Math.sin(time*30)*.12*w.jaw:w.st==='windup'?.25:0)+(rk?w.hrF*WREACT.head*rk:0),w.hyaw+(w.st==='pin'?Math.sin(time*26)*.3*w.jaw:0)+(rk?w.hrS*WREACT.hyaw*rk:0),0);
+  s.jaw.M=mroty(s.head.M,0,-.055,.1,w.jaw*.75,0,0);s.tail.M=mroty(M,0,.1,-.62,w.st==='chase'||w.st==='pounce'?.5:w.st==='windup'?-.3:.1+Math.sin(time*2+w.ph)*.1,w.tail+Math.sin(time*(w.tame?10:3)+w.ph)*(w.tame?.5:.12)+(rk?w.hrS*WREACT.tail*rk:0),0);
   for(const o of[s.body,s.head,s.jaw,s.tail]){o.col=tintc;o.flash=fl}
   for(let l=0;l<4;l++){const hp=WHIP[l],o=s.legs[l],diag=(l===0||l===3)?0:PI,phase=w.ph+(run?(l<2?0:2.4)+(l%2?.5:0):diag);let au,al,rz=0;
    if(!w.pl)w.pl=[{},{},{},{}];if(w.air>.05||w.dead){w.pl[l].on=0;w.pl[l].skip=0;const fr=l<2;au=w.dead?(fr?-.5:.6):(fr?-1.1:1.0)*(w.st==='pounce'?1:.4);al=w.dead?.5:(fr?.5:-.3)}
@@ -1070,7 +1083,7 @@ function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Mat
     gy=pl.on?hAt(pl.x,pl.z):WFIK.on?hAt(hw[0]+(fx*sw+fz*lat)*sc,hw[2]+(fz*sw-fx*lat)*sc):hAt(hw[0],hw[2]);
     let hh=Math.max(.12,(hw[1]-gy)/sc-lift);rz=lat?cl(Math.atan2(lat,hh),-WGAIT.maxRoll,WGAIT.maxRoll):0;hh/=Math.cos(rz);
     const dd=Math.min(Math.hypot(hh,sw),L-.002),ga=Math.atan2(sw,hh),A=Math.acos(cl((W_UP*W_UP+dd*dd-W_LO*W_LO)/(2*W_UP*dd),-1,1)),K=Math.acos(cl((W_UP*W_UP+W_LO*W_LO-dd*dd)/(2*W_UP*W_LO),-1,1));
-    au=-(ga+hp[3]*A)-w.pitch-gnd.p;al=hp[3]*(PI-K)}
+    au=-(ga+hp[3]*A)-w.pitch-gnd.p-rP;al=hp[3]*(PI-K)}
    o[0].M=mroty(M,hp[0],hp[1],hp[2],au,0,rz);o[1].M=mroty(o[0].M,0,-W_UP,0,al,0,0);o[0].col=o[1].col=tintc;o[0].flash=o[1].flash=fl}
   if(s.sk){const parts=[s.body,s.head,s.jaw,s.tail,s.legs[0][0],s.legs[1][0],s.legs[2][0],s.legs[3][0],s.legs[0][1],s.legs[1][1],s.legs[2][1],s.legs[3][1]],B=s.sk.bones;
    parts.forEach((p,i)=>{const M=p.M,b=WG.bind[i],q=i*12;for(let r=0;r<3;r++){B[q+r*4]=M[r];B[q+r*4+1]=M[4+r];B[q+r*4+2]=M[8+r];B[q+r*4+3]=M[12+r]-(M[r]*b[0]+M[4+r]*b[1]+M[8+r]*b[2])}});
@@ -2795,7 +2808,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={HREACT,GREACT,gobHurtPose,gobPose,gobHurt,P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,WGAIT,wolfRate,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,CFIK,drawCrocs,crocFootLocal,boneW,crocY,waterAt,get DRAGON(){return DRAGON},dSample,dMatrix,dBone,drawDragon,DRG,DFIK,dFit,dSkinMats,dLimbs,updateDragon,BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,CAPE,press,
+ window.__G={HREACT,WREACT,wolfReact,wolfReactEnv,wolfHurt,GREACT,gobHurtPose,gobPose,gobHurt,P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,WGAIT,wolfRate,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,CFIK,drawCrocs,crocFootLocal,boneW,crocY,waterAt,get DRAGON(){return DRAGON},dSample,dMatrix,dBone,drawDragon,DRG,DFIK,dFit,dSkinMats,dLimbs,updateDragon,BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,CAPE,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
