@@ -1,5 +1,5 @@
 module.exports = async ({ page, G, log }) => {
-  const r = await G(() => { const g = __G, P = g.P, X = g.X, IN = g.IN, DT = 1 / 60; g.GT.paused = true; const sim = (s, f) => { for (let i = 0; i < Math.round(s / DT); i++) { g.GT.time += DT; g.step(DT); if (f && f() === false) break; } };
+  const r = await G(() => { const g = __G, P = g.P, X = g.X, IN = g.IN, DT = 1 / 60; g.GT.paused = true; window.__noAutoQ = 1; const sim = (s, f) => { for (let i = 0; i < Math.round(s / DT); i++) { g.GT.time += DT; g.step(DT); if (f && f() === false) break; } };
     const far = (x, z) => { for (const l of [g.wolves, g.GOBS, g.CROCS]) for (const a of l) if (!a.boss && Math.hypot(a.x - x, a.z - z) < 60) { a.x += 400; a.hx = a.x; } }; far(30, 420);
     const fresh = () => { g.tp(30, 420); Object.assign(P, { st: 'move', t: 0, hp: X.maxHP(), sta: 100, yaw: 0, alive: true, crouch: true }); IN.atkHeld = false; for (const k in g.BUF) g.BUF[k] = -9; };
     const o = {};

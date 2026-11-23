@@ -1,5 +1,5 @@
 module.exports = async ({ G, log }) => {
-  const r = await G(() => { const g = __G, P = g.P, X = g.X; g.GT.paused = true; const sim = (n, f) => { for (let i = 0; i < n; i++) { g.GT.time += 1 / 60; g.step(1 / 60); if (f) f(); } };
+  const r = await G(() => { const g = __G, P = g.P, X = g.X; g.GT.paused = true; window.__noAutoQ = 1; const sim = (n, f) => { for (let i = 0; i < n; i++) { g.GT.time += 1 / 60; g.step(1 / 60); if (f) f(); } };
     const arch = g.GOBS.filter((x) => x.archer && !x.dead), pat = g.GOBS.filter((x) => String(x.group).startsWith('road'));
     const a = arch[0]; g.tp(a.x + 11, a.z); P.hp = X.maxHP(); a.st = 'chase'; a.aware = 1; a.cd = 0; a.ls = [P.x, P.z]; a.hx = a.x; a.hz = a.z; for (const o of g.GOBS) if (o !== a && Math.hypot(o.x - a.x, o.z - a.z) < 40) { o.x += 300; o.hx = o.x; }
     const h0 = P.hp = X.maxHP(); let aimed = 0, lost = 0; const px = P.x, pz = P.z; sim(2400, () => { if (a.st === 'aim') aimed = 1; if (P.hp < h0) { lost += h0 - P.hp; P.hp = h0; } P.x = px; P.z = pz; P.st = 'move'; P.alive = true; a.unseen = 0; if (a.cd > .6) a.cd = .6; }); // archers miss sometimes: give it several volleys

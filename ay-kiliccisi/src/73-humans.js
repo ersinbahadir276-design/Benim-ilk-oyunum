@@ -41,8 +41,9 @@ function nightTick(dt){if(DUN.on)return;const night=GT.tod>.8||GT.tod<.18,out=Ma
 function buildGuildHall(){const g=G(),x=GUILD.x,z=GUILD.z+9,y=hAt(x,z)-.3,w=[.55,.45,.35],rf=[.3,.16,.12];box(g,x-7,y,z-4,x+7,y+5.2,z+4,w);for(let k=0;k<4;k++){const f=1-k*.22;box(g,x-7.4*f,y+5.2+k*.6,z-4.4*f,x+7.4*f,y+5.8+k*.6,z+4.4*f,rf)}
  box(g,x-1.2,y,z-4.05,x+1.2,y+2.8,z-3.95,[.25,.16,.1]);box(g,x-2.6,y+3.2,z-4.25,x+2.6,y+4.2,z-4.1,[.6,.15,.12]);box(g,x-2.4,y+3.35,z-4.3,x+2.4,y+4.05,z-4.25,[.85,.7,.3]);
  for(const s of[-1,1])box(g,x+s*5.2-.2,y,z-4.2,x+s*5.2+.2,y+5.2,z-3.8,[.3,.2,.12]);addBox(x-7,z-4,x+7,z+4,5);obj(geo(g),{shade:.95,pos:[x,0,z],cull:500,out:.01,outCol:[.06,.05,.04]})}
-function mercPrompt(){if(!GUILD.clerk)return null;if(Math.hypot(P.x-GUILD.clerk.x,P.z-GUILD.clerk.z)<2.4&&!(HUM.ally&&!HUM.ally.dead))return'ETKİLEŞ: PARALI ASKER KİRALA (120 altın, 5 dk)';return null}
-function hireMerc(){if(!GUILD.clerk||Math.hypot(P.x-GUILD.clerk.x,P.z-GUILD.clerk.z)>2.4||HUM.ally&&!HUM.ally.dead)return false;if(SYS.gold<120){note('Selin: "Paralı asker 120 altın ister, savaşçı."');return true}SYS.gold-=120;
+const MERCAT=()=>[GUILD.x,GUILD.z+3.4];/* the mercenary waits at the guild hall door, not at the clerk */
+function mercPrompt(){const m=MERCAT();if(Math.hypot(P.x-m[0],P.z-m[1])<2.4&&!(HUM.ally&&!HUM.ally.dead))return'ETKİLEŞ: PARALI ASKER KİRALA (120 altın, 5 dk)';return null}
+function hireMerc(){const mp=MERCAT();if(Math.hypot(P.x-mp[0],P.z-mp[1])>2.4||HUM.ally&&!HUM.ally.dead)return false;if(SYS.gold<120){note('Selin: "Paralı asker 120 altın ister, savaşçı."');return true}SYS.gold-=120;
  const p=collide(P.x+2,P.z+2,.5),g=mkHuman(p[0],p[1],{lv:SYS.lv+1,hp:400,shield:true,title:'PARALI ASKER · Demir Orhan',col:[.75,.85,1.15]});g.ally=1;g.st='chase';g.until=GT.clock+300;HUM.ally=g;note('[Lonca] Demir Orhan 5 dakikalığına seninle. Düşmanlarına saldırır.','gold');save(P);return true}
 function allyTick(g,dt){g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);if(GT.clock>g.until||!P.alive){note('[Lonca] Demir Orhan\'ın sözleşmesi bitti — yoluna gitti.','');g.ally=0;HUM.ally=null;evFree([g]);return}
  let tg=null,td=12;for(const f of foes()){if(!foeHostile(f)||f===DRAGON)continue;const q=Math.hypot(f.x-g.x,f.z-g.z);if(q<td){td=q;tg=f}}
