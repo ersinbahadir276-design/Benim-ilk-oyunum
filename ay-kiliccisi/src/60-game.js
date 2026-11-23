@@ -140,7 +140,7 @@ function uiTick(dt){hudT=Math.min(hudT,.1)-dt;if(hudT<=0){hudT=.1;hud(P);drawRad
   $('bFlask').innerHTML='<i>▼</i>İKSİR <b>'+SYS.flasks+'</b>';const sk=SYS.skill,cdl=sk&&P.cd&&P.cd[sk]?Math.max(0,P.cd[sk]-GT.clock):0;$('bSkill').innerHTML='<i>▲</i>'+(sk?SKILLS[sk].n.split(' ')[0].slice(0,7):'YETENEK')+(cdl>0?' <b>'+cdl.toFixed(0)+'</b>':'');$('bSkill').classList.toggle('cd',cdl>0);$('bLock').classList.toggle('on',!!P.lock);
   let nw=null,nd=3.2;for(const w of wolves){if(w.dead||w.tame)continue;const d=Math.hypot(w.x-P.x,w.z-P.z);if(d<nd){nd=d;nw=w}}$('bInt').classList.toggle('on',!!pr&&pr.startsWith('ETKİLEŞ')||(!!nw&&!hostileSt(nw)));
   $('bBlk').classList.toggle('on',P.st==='block');$('bSpr').classList.toggle('on',P.sprinting);$('bCrc').classList.toggle('on',P.crouch)}
- chkT-=dt;if(chkT<=0){chkT=.4;checkQuests(P)}saveT-=dt;if(saveT<=0){saveT=6;save(P)}}
+ chkT-=dt;if(chkT<=0){chkT=.4;checkQuests(P)}const nowMs=performance.now();if(nowMs>=saveT){saveT=nowMs+5000;save(P)}}
 function drawRadar(){const c=$('radar'),g=c.getContext('2d'),S=c.width,R=radarR(),k=S/2/R,cy=CAM.yaw,fx=Math.sin(cy),fz=Math.cos(cy);g.clearRect(0,0,S,S);g.fillStyle='rgba(10,20,45,.55)';g.beginPath();g.arc(S/2,S/2,S/2-2,0,7);g.fill();g.strokeStyle='rgba(120,180,255,.7)';g.lineWidth=2;g.stroke();
  const T=(x,z)=>{const dx=x-P.x,dz=z-P.z;return[S/2+(dx*-fz+dz*fx)*k,S/2-(dx*fx+dz*fz)*k]};
  const dot=(a,col,range,hostile,calm,sz=5)=>{const d=Math.hypot(a.x-P.x,a.z-P.z);if(d>R+range*.5)return;const p=T(a.x,a.z),q=T(a.x+Math.sin(a.yaw+(a.hyaw||0)),a.z+Math.cos(a.yaw+(a.hyaw||0))),an=Math.atan2(q[1]-p[1],q[0]-p[0]);

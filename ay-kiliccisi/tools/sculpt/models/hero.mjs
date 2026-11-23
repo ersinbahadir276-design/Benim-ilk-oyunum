@@ -10,6 +10,7 @@ export default function hero(ALL) {
   const slab = (y0, y1) => I(0, plane([0, y1, 0], [0, 1, 0]), plane([0, y0, 0], [0, -1, 0]));
   const zcut = (z0, dir) => plane([0, 0, z0], [0, 0, dir]); // dir=-1 keeps z>z0, dir=1 keeps z<z0
   const xcut = (x0, dir) => plane([x0, 0, 0], [dir, 0, 0]);
+  const cylDisc = (c, n, r, h) => cone(v3.sub(c, v3.mul(n, h)), v3.add(c, v3.mul(n, h)), r, r);
   const fingerW = (seg) => (x, y, z) => ['Index', 'Middle', 'Ring', 'Little'].map((f) => { const zf = B['left' + f + 'Proximal'][2]; return ['left' + f + seg, Math.exp(-Math.pow((z - zf) / 0.016, 2)) + 1e-4]; });
 
   // ------------------------------------------------------------ under-layer (only seen at the joints)
@@ -125,6 +126,35 @@ export default function hero(ALL) {
   const holes = U(0, ellipsoid([0.12, 0.66, -0.36], [0.03, 0.045, 0.1]), ellipsoid([-0.19, 0.76, -0.3], [0.022, 0.035, 0.1]));
   C({ name: 'cape', mat: 'cloth', k: 0.01, tau: 0.03, sdf: Sub(0.004, capeD, holes), boneFn: (x, y) => { const t = (y0 - y) / (y0 - y1);
     if (y > y0 - 0.08) return [['UpperChest', 1]]; return [['CapeA', Math.max(0, 1 - t * 2.2) + 1e-3], ['CapeB', Math.max(0, 1 - Math.abs(t - 0.5) * 2.2)], ['CapeC', Math.max(0, t * 2.2 - 1.2)]]; } });
+
+  // ------------------------------------------------------------ field kit: baldric, front tabard, belt pouch, rondel dagger
+  // baldric = a thin shell hugging the cuirass, kept only inside a diagonal slab (right shoulder -> left hip), so it wraps front and back
+  const bN = v3.norm([0.8, 0.6, 0]), bM = [0.02, 1.46, 0], bW = 0.026;
+  const bSlab = I(0, plane(v3.add(bM, v3.mul(bN, bW)), bN), plane(v3.sub(bM, v3.mul(bN, bW)), v3.mul(bN, -1)));
+  const bSkin = I(0, shell(grow(cuirSolid, 0.012), 0.0065), slab(1.3, 1.72));
+  C({ name: 'baldric', mat: 'leather', bone: 'UpperChest', rigid: true, k: 0.003, sdf: I(0.003, bSkin, bSlab) });
+  const bEdge = U(0, ...[1, -1].map((s) => I(0, plane(v3.add(bM, v3.mul(bN, s * bW + 0.002)), bN), plane(v3.add(bM, v3.mul(bN, s * bW - 0.002)), v3.mul(bN, -1)))));
+  C({ name: 'baldricStitch', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0, sdf: I(0, shell(grow(cuirSolid, 0.0135), 0.004), slab(1.3, 1.72), bEdge, zcut(0.05, -1)) });
+  C({ name: 'baldricBoss', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.002, I(0.003, ellipsoid([0.03, 1.47, 0.215], [0.034, 0.034, 0.03]), zcut(0.2, -1)), sphere([0.03, 1.47, 0.252], 0.02)) });
+  C({ name: 'baldricGem', mat: 'glow', bone: 'UpperChest', rigid: true, k: 0, sdf: sphere([0.03, 1.47, 0.232], 0.0105) });
+  // crimson tabard over the tassets: folded cloth with a ragged hem; weights slide from the hips onto whichever thigh it sits over
+  const tFold = (x, y, z) => { const t = Math.max(0, Math.min(1, (1.1 - y) / 0.36)); return t * (0.006 * Math.sin(x * 95 + 0.6) + 0.004 * fbm(x * 20, y * 8, 0.5, 2)); };
+  const tHem = { d: (x, y, z) => (0.745 + 0.035 * Math.max(0, fbm(x * 30, 2.1, 0.4, 3)) + 0.02 * Math.max(0, noise(x * 70, 4.2, 0.3)) + 0.05 * Math.abs(x) / 0.07) - y, bb: [-1, 0.7, -1, 1, 3, 1] };
+  const tabard = I(0.003, shell(disp(ellipsoid([0, 1.02, 0.03], [0.175, 0.34, 0.19]), tFold, 0.012), 0.0055), zcut(0.08, -1), xcut(0.072, 1), xcut(-0.072, -1), slab(0.7, 1.108), tHem);
+  const tabFn = (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.05) / 0.1)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.2)); return [['Hips', 1 - d * 0.8], ['leftUpperLeg', d * 0.8 * t], ['rightUpperLeg', d * 0.8 * (1 - t)]]; };
+  C({ name: 'tabard', mat: 'cloth', tau: 0.03, k: 0.004, sdf: tabard, boneFn: tabFn });
+  const disc = (c, r) => ellipsoid(c, [r, r, 0.12]);
+  const sigil = U(0, Sub(0, disc([0, 0.975, 0.22], 0.046), disc([0.024, 0.988, 0.22], 0.037)), box([0, 0.9, 0.22], [0.008, 0.032, 0.12], null, 0.003));
+  C({ name: 'tabardSigil', mat: 'trim', tau: 0.03, k: 0.002, sdf: I(0.002, shell(disp(ellipsoid([0, 1.02, 0.03], [0.175, 0.34, 0.19]), tFold, 0.012), 0.0105), zcut(0.08, -1), sigil), boneFn: tabFn });
+  // belt pouch on the left hip, rondel dagger sheathed on the right hip (both ride the hips)
+  const pa = 1.05, pc = [Math.sin(pa) * 0.226, 1.085, Math.cos(pa) * 0.184];
+  C({ name: 'pouch', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: U(0.004, box(pc, [0.04, 0.042, 0.022], rot.y(pa), 0.012),
+    I(0.003, box(v3.add(pc, [Math.sin(pa) * 0.006, 0.022, Math.cos(pa) * 0.006]), [0.044, 0.024, 0.022], rot.y(pa), 0.01), plane(v3.add(pc, [0, 0.004, 0]), [0, -1, 0]))) });
+  C({ name: 'pouchStud', mat: 'trim', bone: 'Hips', rigid: true, k: 0, sdf: sphere(v3.add(pc, [Math.sin(pa) * 0.03, 0.004, Math.cos(pa) * 0.03]), 0.009) });
+  const da = -1.75, dTop = [Math.sin(da) * 0.235, 1.15, Math.cos(da) * 0.19], dBot = v3.add(dTop, [-0.02, -0.25, -0.07]);
+  C({ name: 'sheath', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: U(0.004, cone(dTop, dBot, 0.022, 0.011), I(0, shell(cone(dTop, dBot, 0.024, 0.013), 0.003), slab(dBot[1] - 0.02, dBot[1] + 0.03))) });
+  const dUp = v3.norm(v3.sub(dTop, dBot)), dG = v3.add(dTop, v3.mul(dUp, 0.012));
+  C({ name: 'dagger', mat: 'trim', bone: 'Hips', rigid: true, k: 0.003, sdf: U(0.003, cylDisc(dG, dUp, 0.03, 0.006), cone(dG, v3.add(dG, v3.mul(dUp, 0.085)), 0.011, 0.012), cylDisc(v3.add(dG, v3.mul(dUp, 0.093)), dUp, 0.026, 0.006)) });
 
   // ------------------------------------------------------------ mirror the left side
   const swap = (n) => n.startsWith('left') ? 'right' + n.slice(4) : n.startsWith('right') ? 'left' + n.slice(5) : n;
