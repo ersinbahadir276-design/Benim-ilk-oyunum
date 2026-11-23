@@ -122,6 +122,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - Gerçek Android cihazda dokunma, titreşim ve gerçek GPU performansı test edilemedi (yazılımsal WebGL ile ölçüldü).
 - Ses yalnızca kodla üretiliyor (WebAudio); kulakla dinlenemedi.
 - Manhwa panelleri oyun motoruyla çizilir; ilk açılışta 1–2 sn "Sahne çiziliyor…" görünür.
+- `s-assn.js` okçu isabet testi rastgele: duran hedefe isabet oranı koşudan koşuya %19–%82 arası çıkıyor (sabit tohum yok), ara sıra kırmızı. Oyun hatası değil; tohumlu rastgelelik ya da daha çok atış gerekli.
 - Eğimli zeminde büyük tehlike halkası yer yer zemine gömülebilir.
 
 ## Modeller (yalnızca iskelet oranları alındı)
