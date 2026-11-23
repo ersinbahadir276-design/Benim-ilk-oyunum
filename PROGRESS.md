@@ -8,7 +8,7 @@ Eski oyun «Yaban Yoldaşları» `yaban.html` + `src/` altında duruyor.
 
 | # | Özellik | Durum |
 | --- | --- | --- |
-| 1 | Yüksek kaliteli erkek kahraman | **Devam ediyor**: Kael heykel modeli (~21k üçgen, PBR) var; zırh katmanları eklendi (tur 1). Kalan: yüz/kafa (miğfersiz görünüm yok), uzak LOD |
+| 1 | Yüksek kaliteli erkek kahraman | **Devam ediyor**: Kael heykel modeli (~21k üçgen, PBR); zırh türü katmanları (tur 1); demirci +3/+5 süsleri (tur 2). Kalan: miğfersiz kafa/yüz, uzak LOD |
 | 2 | Gerçekçi 3B karakter animasyonları | Devam ediyor: prosedürel pozlar + kol IK, pelerin kemikleri. Kalan: ayak IK (eğimli zemin), duruşa özgü hamleler |
 | 3 | Gönderilen GLB modellerinin entegrasyonu | Kısmen: ejderha, kraliçenin saçı, elf gövdesi, iskelet oranları. Kalan: zindan yaratıkları için yeni GLB gelirse |
 | 4 | Çok sayıda hayvan ve yaratık | Kısmen: kurt, goblin (3 tür), timsah, ejderha. Kalan: iskelet, örümcek, golem, hortlak |
@@ -37,8 +37,25 @@ Eski oyun «Yaban Yoldaşları» `yaban.html` + `src/` altında duruyor.
 - Görüntüleyici: `test/viewer.html?m=hero+armwolf` birden çok modeli birlikte çizer.
 - Test: `test/s-armor.js` 10/10 (takma, çıkarma, sızıntı yok, iskeletle hareket, öfke parıltısı).
 
+### Tur 2 (2026-11-23) — Özellik 1: demirci yükseltmesi zırhta görünüyor
+- Not: önceki turların her biri `main`'den ayrı dal açmıştı, işler birikmiyordu. Bu tur son turun dalı
+  (`ccr-70a30f22-8xlo0y`, zırh katmanları) üzerine kuruldu; o turun işi bu dalda da var.
+- **+3 «Usta İşi»** (`tools/sculpt/models/armup3.mjs`, ~3.5k üçgen): göğüs zırhının oyma çizgileri gümüş kakmayla
+  dolduruldu, her omuzluğun kubbesinde 5 gümüş perçin (ışın yürütmeyle plakaya oturur), kol ve baldır zırhında
+  burgulu gümüş halat bantlar.
+- **+5 «Ay İşçiliği»** (`armup5.mjs`, ~4k üçgen; +3 işiyle birlikte çizilir): göğüste ışıyan ay taşını kucaklayan
+  altın hilal + altın halka, miğfer alnında küçük hilal ve ay taşı, dizlerde ay taşlı altın rozetler, omuzluk alt
+  kenarında altın şerit. Ay taşları kendi soluk mavi ışığını kullanır; öfkede zırh kızarırken mavi kalır.
+- Oyunda (`src/52-items.js`): katman kodu genelleştirildi (`overlaySkin` birden çok modeli tek deriye birleştirir,
+  `dropSkin`); süs katmanı zırh türü katmanından bağımsız (Kurt Postlu +5 = kurt postu + ay süsü). Yükseltme,
+  kuşanma ve zırh değişiminde kendini yeniler, eskisi temizlenir. Demirci sekmesinde süslerin hangi seviyede
+  çıktığı yazıyor.
+- Test: yeni `test/s-armup.js` 12/12 (+2'de yok, +3'te armup3, +5'te ikisi tek deri, iskeletle hareket, ay taşı
+  ışığı öfkeden bağımsız, zırh değişiminde sızıntı yok). Diğerleri: s-armor 10/10, s-mech 47/47, s-loop 71/71,
+  s-stance 11/11. Ekran görüntüleri `ay-kiliccisi/test/out/armup-*.jpg`.
+
 ## Sıradaki öncelikler
-1. Özellik 1 devamı: miğfersiz kafa/yüz (hikâye sahneleri için), uzak mesafe LOD (telefon), Kara Plaka için de
-   seviye/yükseltme ile beliren süsler (+3, +5 demirci görünümü).
+1. Özellik 1 devamı: miğfersiz kafa/yüz (hikâye sahneleri için; en büyük kalan iş), uzak mesafe LOD (telefon).
+   Silah için de +3/+5 görünümü (kılıçta rün oyması, +5 ay ışıltısı) düşünülebilir.
 2. Özellik 2: eğimli zeminde ayak IK, duruşa özgü saldırı pozları (ANALIZ.md AŞAMA 1 kalanı).
 3. Özellik 4: zindan yaratıkları (iskelet, örümcek) — yeni heykel modelleri.
