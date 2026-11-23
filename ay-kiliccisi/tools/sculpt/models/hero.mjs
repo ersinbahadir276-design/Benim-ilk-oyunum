@@ -117,6 +117,35 @@ export default function hero(ALL) {
   C({ name: 'horns', mat: 'horn', bone: 'Head', rigid: true, k: 0.014, sdf: symX(disp(horn(hornPts, 0.037, 0.004), (x, y, z) => 0.0028 * Math.sin(Math.hypot(x - 0.11, y - 1.97, z - 0.02) * 115), 0.003)) });
   C({ name: 'helmRivets', mat: 'rivet', bone: 'Head', rigid: true, k: 0, sdf: symX(U(0, sphere([0.115, 1.925, 0.05], 0.0085), sphere([0.115, 1.89, -0.04], 0.0085), sphere([0.11, 1.97, -0.06], 0.0085))) });
 
+  // ------------------------------------------------------------ oturum 8: moon crest, baldric, tabard, pouches (identity details of the "Moon Swordsman")
+  // the crest and the strap are cut out of thin layers that follow the cuirass, so they sit on the plate wherever it curves
+  const onPlate = (a, b) => Sub(0.002, grow(cuirSolid, b), grow(cuirSolid, a));
+  const zDisc = (cx, cy, r) => cone([cx, cy, -0.4], [cx, cy, 0.4], r, r);
+  const crescent = Sub(0.003, zDisc(0, 1.4, 0.05), zDisc(0.024, 1.414, 0.043));
+  C({ name: 'moonCrest', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, onPlate(0.001, 0.009), crescent, zcut(0.05, -1)) });
+  C({ name: 'moonGem', mat: 'gem', bone: 'UpperChest', rigid: true, k: 0, sdf: I(0.002, grow(cuirSolid, 0.011), sphere([0.022, 1.413, 0.19], 0.016), zcut(0.05, -1)) });
+  // baldric: a leather strap over the right shoulder down to the left flank, crossing the back as well
+  const bN = v3.norm([1, 1, 0]), band = (hw) => I(0, plane([0, 1.56 + hw * 1.414, 0], bN), plane([0, 1.56 - hw * 1.414, 0], v3.mul(bN, -1)));
+  C({ name: 'baldric', mat: 'leather', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.003, I(0.003, onPlate(0.002, 0.012), band(0.021), slab(1.31, 1.75)), neckHole) });
+  C({ name: 'baldricStitch', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0, sdf: U(0, ...[-0.18, -0.1, 0.1, 0.18].map((t) => I(0.001, onPlate(0.008, 0.015), zDisc(t * 0.707 + 0.004, 1.56 - t * 0.707 + 0.004, 0.0075), zcut(0.05, -1)))) });
+  const bk = [0.06, 1.5];
+  C({ name: 'baldricBuckle', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: Sub(0.002, I(0.002, onPlate(0.008, 0.02), box([bk[0], bk[1], 0.2], [0.03, 0.026, 0.1], rot.z(-Math.PI / 4), 0.006)),
+    I(0, onPlate(0.0, 0.03), box([bk[0], bk[1], 0.2], [0.016, 0.013, 0.1], rot.z(-Math.PI / 4), 0.003))) });
+  // front tabard: oxblood cloth from the belt to the knee between the tassets, frayed hem, folds
+  const tabY0 = 1.11, tabY1 = 0.6;
+  const tabFolds = (x, y, z) => { const t = Math.max(0, Math.min(1, (tabY0 - y) / (tabY0 - tabY1))); return t * (0.006 * Math.sin(x * 70 + 0.8) + 0.005 * fbm(x * 12, y * 6, 1.3, 2)); };
+  const tabHem = { d: (x, y, z) => (tabY1 + 0.025 + 0.05 * Math.max(0, fbm(x * 14, 2.1, 0.4, 3)) + 0.03 * Math.max(0, noise(x * 40, 0.6, 3.1))) - y, bb: [-1, tabY1, -1, 1, 3, 1] };
+  const tabSides = (x, y) => 0.082 + 0.016 * Math.max(0, Math.min(1, (tabY0 - y) / 0.3));
+  const tabard = I(0.004, shell(disp(ellipsoid([0, 1.0, 0.0], [0.21, 0.58, 0.228]), tabFolds, 0.012), 0.006), zcut(0.06, -1), tabHem, slab(0, tabY0 - 0.004),
+    { d: (x, y) => Math.abs(x) - tabSides(x, y), bb: [-0.1, 0, -1, 0.1, 3, 1] });
+  C({ name: 'tabard', mat: 'cloth', k: 0.006, tau: 0.03, sdf: tabard, boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.07) / 0.14)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.4)) * 0.7;
+    return [['Hips', 1 - d], ['leftUpperLeg', d * t], ['rightUpperLeg', d * (1 - t)]]; } });
+  // belt pouches (left flank, right back) with bronze flap studs
+  const pouch = (c, ry) => U(0.004, box(c, [0.038, 0.045, 0.026], rot.y(ry), 0.014), I(0.003, box(v3.add(c, [0, 0.022, 0]), [0.043, 0.026, 0.031], rot.y(ry), 0.012), plane(v3.add(c, [0, 0.0, 0]), [0, -1, 0])));
+  C({ name: 'pouchL', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: pouch([0.205, 1.07, 0.07], 1.2) });
+  C({ name: 'pouchR', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: pouch([-0.165, 1.07, -0.135], -2.4) });
+  C({ name: 'pouchStuds', mat: 'rivet', bone: 'Hips', rigid: true, k: 0, sdf: U(0, sphere(v3.add([0.205, 1.07, 0.07], [0.03 * Math.sin(1.2), 0.012, 0.03 * Math.cos(1.2)]), 0.008), sphere(v3.add([-0.165, 1.07, -0.135], [0.03 * Math.sin(-2.4), 0.012, 0.03 * Math.cos(-2.4)]), 0.008)) });
+
   // ------------------------------------------------------------ tattered cape (folds shaped before the shell so the cloth never tears into strips)
   const y0 = 1.63, y1 = 0.5;
   const folds = (x, y, z) => { const t = Math.max(0, Math.min(1, (y0 - y) / (y0 - y1))), a = Math.atan2(x, -z); return t * (0.016 * Math.sin(a * 9 + 1.2 * fbm(x * 3, y * 2, 0, 2)) + 0.008 * fbm(x * 9, y * 4, z * 9, 2)); };
@@ -131,7 +160,7 @@ export default function hero(ALL) {
   for (const p of P.slice()) if (p.side) P.push({ ...p, side: 0, name: p.name + 'R', sdf: mirrorX(p.sdf), bone: p.bone && swap(p.bone), boneFn: p.boneFn && ((x, y, z) => p.boneFn(-x, y, z).map(([b, w]) => [swap(b), w])) });
 
   return {
-    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
+    name: 'hero', voxel: 0.005, tris: 23000, err: 0.0014, bones, parts: P,
     decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
@@ -143,6 +172,7 @@ export default function hero(ALL) {
       cloth: { col: [0.42, 0.06, 0.07], col2: [0.24, 0.035, 0.04], freq2: 5, var: 0.15, freq: 30, gloss: 0.12, dirt: 0.55, grad: [0.5, 1.2, [0.5, 0.5, 0.5]] },
       horn: { col: [0.36, 0.32, 0.28], col2: [0.6, 0.55, 0.46], freq2: 9, var: 0.18, freq: 60, gloss: 0.45, dirt: 0.5 },
       glow: { col: [1.0, 0.34, 0.12], em: 1, gloss: 0 },
+      gem: { col: [0.6, 0.74, 0.92], gloss: 0.92, metal: 0.25, var: 0.06, freq: 40 },
     },
   };
 }
