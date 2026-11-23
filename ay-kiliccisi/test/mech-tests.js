@@ -164,12 +164,13 @@ window.runMech = function () {
   }
   // ---------------------------------------------------------------- 11. dragon pattern
   {
-    const d = G.DRAGON; isolate(d.x, d.z, 120); calmAll(); freshP(d.x + Math.sin(d.yaw) * 26, d.z + Math.cos(d.yaw) * 26, d.yaw + Math.PI); d.st = 'sleep'; d.t = 0; d.hp = d.max; P.hp = 5000;
+    const d = G.DRAGON; const vit0 = G.SYS.vit; G.SYS.vit = 600; isolate(d.x, d.z, 120); calmAll(); freshP(d.x + Math.sin(d.yaw) * 26, d.z + Math.cos(d.yaw) * 26, d.yaw + Math.PI); d.st = 'sleep'; d.t = 0; d.hp = d.max; P.hp = 5000;
     const log = []; let lastSt = '', clawWind = -1, clawImpact = -1, burns0 = G.BURNS.length, burnHurt = false, tookOff = false, landed = false, breathT = -1;
     sim(60, (t) => { if (d.st !== lastSt) { log.push(d.st + '@' + t.toFixed(1)); lastSt = d.st; } if (d.st === 'claw' && clawWind < 0) clawWind = t; if (d.st === 'claw' && d.ct > 2.65 && clawImpact < 0) clawImpact = t; if (d.st === 'takeoff') tookOff = true; if (d.st === 'breath' && d.ct > 3 && breathT < 0) breathT = t; if (d.st === 'tired') landed = true;
       P.alive = true; P.hp = 5000; if (P.st === 'down' && !P.pinBy && P.t > 1) { P.st = 'move'; P.rag.ang = 0; } if (d.st === 'tired' || log.length > 30) return false; });
     ok('ejderha: uyanış → yürüyüş → pençe (v21: hızlı ama okunur, ≥0.8 sn hazırlık)', clawWind > 0 && clawImpact - clawWind >= .8, { hazırlık: +(clawImpact - clawWind).toFixed(2) });
     ok('ejderha: havalanma, havada ateş püskürtme, yerde yanan iz, iniş', tookOff && breathT > 0 && G.BURNS.length > burns0 && landed, { düzen: log.join(' → '), yanan_iz: G.BURNS.length });
+    G.SYS.vit = vit0;
   }
   // ---------------------------------------------------------------- 12. map and village
   {
