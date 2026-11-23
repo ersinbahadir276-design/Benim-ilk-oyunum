@@ -24,7 +24,9 @@ module.exports = async ({ page, shot, G, log }) => {
   const j = await box('bJmp'); await page.mouse.click(j.x + j.width / 2, j.y + j.height / 2); await page.waitForTimeout(150); const st5 = await G(() => __G.P.st);
   log('dokunmatik: ZIPLA', st5 === 'jump', st5);
   // save + reload keeps progress
-  await G(() => { __G.SYS.gold = 42; __G.SYS.takedowns = 2; }); await page.waitForTimeout(500);
+  await G(() => { __G.SYS.gold = 42; __G.SYS.takedowns = 2; }); await page.waitForTimeout(2600); // autosave runs every 2 s (pagehide alone is not reliable)
+  const stored = await G(() => JSON.parse(localStorage.getItem('kf2_save') || '{}').gold);
+  log('kayıt: 2 sn içinde kendiliğinden kaydediyor (pagehide beklemeden)', stored === 42, stored);
   await page.reload(); await page.waitForFunction('window.__G', { timeout: 120000 }); const sv = await G(() => [__G.SYS.gold, __G.SYS.takedowns]);
   log('kayıt: telefon hafızasına kaydedip geri yüklüyor', sv[0] === 42 && sv[1] === 2, JSON.stringify(sv));
 };

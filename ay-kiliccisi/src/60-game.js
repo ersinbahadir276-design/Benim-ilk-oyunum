@@ -175,6 +175,8 @@ const QUAL={QL:0};
 function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlayer(TX);buildFx();spawnWolves();spawnGoblins();spawnPatrols();spawnNpcs();spawnCrocs();dragonInit(TX);buildAltars();buildChests();buildSeals();load();invInit();applyLooks();scaleWorld();spawnBosses();veyraInit();storyInit();checkStances();stanceHud();P.hp=maxHP();if(SYS.altarAt>=0&&ALTARS[SYS.altarAt]){const a=ALTARS[SYS.altarAt];P.x=a.x+1.6;P.z=a.z+1.6}CAM.tx=P.x;CAM.tz=P.z;bindInput();
  // save when the phone hides or closes the tab (mobile browsers kill background tabs)
  addEventListener('visibilitychange',()=>{if(document.hidden)save(P)});addEventListener('pagehide',()=>save(P));
+ // autosave: pagehide/visibilitychange are not delivered reliably (Android kills background tabs, a busy page can miss them on reload) → also write every 2 s when something changed
+ {let lastSave='';setInterval(()=>{try{if(P&&P.cp)SYS.cp=P.cp;const s=JSON.stringify(SYS);if(s!==lastSave){localStorage.setItem('kf2_save',s);lastSave=s}}catch(e){}},2000)}
  function size(){const r=Math.min(devicePixelRatio||1,[1.75,1.3,1,.8][QUAL.QL]);cv.width=Math.round(innerWidth*r);cv.height=Math.round(innerHeight*r)}size();addEventListener('resize',size);let fAvg=16,fN=0;const grassFull=grassGeo.n;
  streamForest(P.x,P.z,999);$('load').style.display='none';
  if(SYS.intro){GT.paused=false;$('intro').style.display='none';note('[Sistem] Tekrar hoş geldin, Kara Zırh.')}else{$('intro').style.display='flex';$('introb').addEventListener('click',()=>{sfx.on();SYS.intro=1;$('intro').style.display='none';GT.paused=false;if(!SYS.prologue){SYS.prologue=1;showManhwa(PANELS.prologue(),()=>{note('[Sistem] Sınıf: Kara Zırh. İlk görev: «Uyanış»');save(P)})}
