@@ -68,9 +68,9 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  case'windup':{const T=g.big?{smash:1.35,sweep:1.05,stomp:.95}[g.move||'smash']:g.peril?.72:g.cn?.26:(g.delay?.78:.46);
   if(!g.big&&gobFeint(g))break;
   if(!g.big){if(g.t<T*.85)agentFace(g,P.x,P.z,dt,12);if(d>1.7)agentMove(g,P.x,P.z,4.3,dt,g.rad,10);else g.spd=lp(g.spd,0,.4)}else{g.spd=lp(g.spd,0,.4);if(g.t<T*.7)agentFace(g,P.x,P.z,dt,2.2)}
-  if(g.t>=T){g.st='strike';g.t=0;sfx.swing();if(!g.big){const L=cl(d-1.0,0,g.peril?4:2.4);g.lv=L/.2}}break}
+  if(g.t>=T){g.st='strike';g.t=0;sfx.swing();if(!g.big){const L=cl(d-1.0,0,g.peril?4:2.4);g.lunV=L/.2}}break}
  case'strike':{const T=g.big?(g.move==='sweep'?.42:.38):.2,u=g.t/T;
-  if(!g.big){const p=collide(g.x+Math.sin(g.yaw)*(g.lv||0)*dt,g.z+Math.cos(g.yaw)*(g.lv||0)*dt,g.rad);g.x=p[0];g.z=p[1];const dd=Math.hypot(P.x-g.x,P.z-g.z);
+  if(!g.big){const p=collide(g.x+Math.sin(g.yaw)*(g.lunV||0)*dt,g.z+Math.cos(g.yaw)*(g.lunV||0)*dt,g.rad);g.x=p[0];g.z=p[1];const dd=Math.hypot(P.x-g.x,P.z-g.z);
    const fa=Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw));if(!g.hitDone&&u>.3&&dd<1.7&&(fa<1.35||dd<.9)){g.hitDone=true;{const r=hitPlayer({src:g,dmg:g.peril?13:7,guard:g.peril?99:18,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:g.peril?'down':'flinch',unblockable:!!g.peril,parryable:!g.peril});if(r==='block'||r==='parry'||r==='guardbreak')g.cn=0}}}
   else if(g.move==='stomp'){if(!g.hitDone&&u>=.5){g.hitDone=true;CAM.shake=Math.max(CAM.shake,.7);sfx.thud();spawnSparks(g.x,g.y+.2,g.z,24,[.6,.5,.4],7);if(d<5.6&&!P.air)hitPlayer({src:g,dmg:20,guard:40,dir:[P.x-g.x,P.z-g.z],knock:'down',power:1.2,parryable:false})}}
   else if(!g.hitDone){// the club must really touch the hero: segment (club) vs capsule (body) test every frame of the swing

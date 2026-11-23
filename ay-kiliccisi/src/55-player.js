@@ -35,7 +35,7 @@ function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=(o.src&&
    if(src&&src.hp!==undefined&&stDef().pp)addPosture(src,18*(stDef().pp-1)*(P.chain||1));
    if(reel){note('[Sistem] Tam zamanlı savuşturma! Düşman sarsıldı.','gold');if(src&&src.onParried)src.onParried();else if(src&&isWolf(src))wolfParried(src)}else note('[Sistem] Savuşturdun ama düşman sarsılmadı — ritmini değiştirecek.','');
    return'parry'}
-  const gd=(o.guard!==undefined?o.guard:o.dmg*1.8)*(stDef().gd||1);P.guard-=gd;P.guardT=1.2;sfx.block();const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],8,[1,.9,.6],4);CAM.shake=Math.max(CAM.shake,.25);
+  const gd=(o.guard!==undefined?o.guard:o.dmg*1.8)*(stDef().gd||1);P.guard-=gd;P.gcT=GT.clock+.7;P.guardT=1.2;sfx.block();const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],8,[1,.9,.6],4);CAM.shake=Math.max(CAM.shake,.25);
   const pd=o.dir||[0,0];P.vx=pd[0]*3;P.vz=pd[1]*3;floatText(P.x,P.y+1.7,P.z,'BLOK','');
   if(P.guard<=0){P.guard=0;P.st='gbreak';P.t=0;sfx.thud();note('[Sistem] Savunma kırıldı! Kısa süre savunmasızsın.','red');return'guardbreak'}return'block'}
  // a hit lands
@@ -181,11 +181,13 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
   if(u>.3&&take('atk',.25)){P.dashEnd=GT.clock;startRunAtk();break}if(u>.55&&take('dodge',.25)){P.dashEnd=GT.clock;startDodge();break}
   if(u>=1){P.st='move';P.t=0;P.dashEnd=GT.clock;P.vx*=.35;P.vz*=.35}break}
  case'block':{const sp=1.5*il;moveFree(sp,6);if(il>.05&&!nearestFoe(8,PI))P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*6);else{const f=nearestFoe(10,PI);if(f)P.yaw+=angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw)*Math.min(1,dt*8)}
-  if(!IN.blockHeld){P.st='move';P.t=0;P.blockRel=GT.clock}else if(take('atk')){P.st='move';P.blockRel=GT.clock;startLight(0)}else if(take('dodge')){P.blockRel=GT.clock;startDodge()}break}
+  if(!IN.blockHeld){P.st='move';P.t=0;P.blockRel=GT.clock}else if(take('atk')){P.blockRel=GT.clock;if(kickTarget())startKick();else{P.st='move';startLight(0)}}else if(P.gcT>GT.clock&&take('hvy')){IN.atkUsed=true;IN.atkHeld=false;P.blockRel=GT.clock;startGuardCounter()}else if(take('dodge')){P.blockRel=GT.clock;startDodge()}break}
  case'parry':slide(10);if(P.t>.1&&take('atk',.4)){P.st='move';startLight(0);break}if(P.t>.32){P.st=IN.blockHeld?'block':'move';P.t=0}break;// □ during the parry = riposte
  case'gbreak':slide(6);if(P.t>1.4){P.st='move';P.t=0}break;
  case'hurt':slide(8);if(P.t>.38){P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;if(P.pinBy)P.pinBy=null}break;
  case'grabbed':move=false;updateGrabbed(dt);break;
+ case'kick':updateKick(dt);break;
+ case'throw':move=false;updateThrow(dt);break;
  case'ride':move=false;updateRide(dt);break;
  case'td':move=false;updateTakedown(dt);if(!P.td&&P.st==='td'){P.st='move';P.t=0}break;
  case'down':{const R=P.rag;slide(5);// inverted pendulum about the feet, one damped bounce on the ground
@@ -240,6 +242,8 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(k2==='dash'){q.two=1;q.RaZ=.2;q.RaX=.3;q.RaY=1.9;q.Rel=.1;q.spX=.5;q.pel=.35;q.LthX=-1.1;q.Lkn=1.2;q.RthX=.6;q.Rkn=.4;q.chY=.6}
   else if(k2==='slam'){q.two=1;const air=P.air;q.RaZ=-1.4;q.RaX=air?-1.0:1.6;q.Rel=air?.7:.05;q.RaY=.2;q.chX=air?-.3:.6;q.spX=air?-.1:.4;q.pel=air?.1:.4;q.LthX=air?-1:-1.2;q.Lkn=air?1.3:1.5;q.RthX=air?-.6:.4;q.Rkn=air?1.2:.6;q.hipY=air?0:-.15}break}
  case'grabbed':rate=20;grabPose(q);break;
+ case'kick':rate=24;kickPose(q);break;
+ case'throw':rate=22;throwPose(q);break;
  case'ride':rate=20;ridePose(q);break;
  case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;break}
  case'td':{rate=18;const td=P.td;if(!td)break;

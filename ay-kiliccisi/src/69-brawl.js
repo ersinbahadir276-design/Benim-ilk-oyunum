@@ -127,3 +127,36 @@ const HPK={wolf:180,alpha:300,gob:150,big:650,denWolf:180,ashmane:900,chief:1200
 // ground tells for the tricks (the feint has none on purpose: a real rush shows its '!' and strip, a fake one does not)
 function brawlTele(){for(const w of wolves){if(w.dead||w.tame)continue;if(w.st==='hamstring'&&w.t<.5)tele('strip',w.x,w.z,.7,Math.min(7,Math.hypot(P.x-w.x,P.z-w.z)+1),w.yaw,sst(0,.25,w.t));if(w.st==='armleap'&&w.t<.34)tele('strip',w.x,w.z,.8,Math.min(5,Math.hypot(P.x-w.x,P.z-w.z)+.5),w.yaw,sst(0,.2,w.t))}
  for(const g of GOBS){if(g.dead)continue;if(g.st==='tackle'&&g.t<.6)tele('strip',g.x,g.z,.9,4.6,g.yaw,sst(0,.3,g.t));if(g.st==='dirt'&&g.t<.75)tele('strip',g.x,g.z,2.4,5.4,g.yaw,sst(.1,.5,g.t)*.6)}}
+// ===================== HERO: three new answers (v22) =====================
+// 1) TEKME (Sekiro / Crimson Desert): hold BLOK and press □ with a foe in front = a front kick. It breaks a goblin's
+//    raised guard, pushes and staggers small foes, and builds balance damage — the answer to a turtling enemy.
+// 2) SİPER KARŞILIĞI (Elden Ring guard counter): within 0.7 s after BLOCKING a hit, △ = a fast heavy counter
+//    (×1.5 damage, +30 balance) — blocking is no longer only waiting.
+// 3) YAKALA-FIRLAT (Crimson Desert grapple): ETKİLEŞ next to an open small foe (staggered, sprawled, recovering,
+//    balance broken, or from behind) = grab and hurl it; the body knocks down whoever it hits.
+function kickTarget(){let b=null,bd=2.5;for(const f of foes()){if(f===DRAGON||f.big||f.boss)continue;const d=foeDist(f),a=Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw));if(d<bd&&a<1.0){bd=d;b=f}}return b}
+function startKick(){if(!canAct())return false;spend(16);P.st='kick';P.t=0;P.kickDone=false;const f=kickTarget();if(f)P.yaw=Math.atan2(f.x-P.x,f.z-P.z);sfx.swing();return true}
+function updateKick(dt){P.vx*=Math.exp(-dt*10);P.vz*=Math.exp(-dt*10);
+ if(!P.kickDone&&P.t>.17){P.kickDone=true;const f=kickTarget();if(f){const k=foeDist(f)||1,dx=(f.x-P.x)/k,dz=(f.z-P.z)/k,p=f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+.8,f.z];sfx.thud();spawnSparks(p[0],p[1],p[2],8,[.8,.75,.6],3);CAM.shake=Math.max(CAM.shake,.3);GT.stop=Math.max(GT.stop,.05);
+  const guarded=GOBS.includes(f)&&f.st==='guard';const dead=foeHurt(f,4,dx,dz,'kick');if(dead){onFoeKilled(f,false);return}addPosture(f,guarded?45:28);
+  if(isWolf(f)){f.st='recover';f.t=-.35;f.air=0;f.pitch=0;f.kx=dx*8;f.kz=dz*8}else{f.st='stagger';f.t=guarded?0:.6;f.kx=dx*8;f.kz=dz*8}
+  floatText(p[0],p[1]+.6,p[2],guarded?'SİPER KIRILDI':'TEKME','crit')}}
+ if(P.t>.48){P.st=IN.blockHeld?'block':'move';P.t=0}}
+function kickPose(q){const k=sst(0,.17,P.t)*(1-sst(.3,.48,P.t));q.RthX=-1.55*k;q.Rkn=lp(1.4,.15,sst(.08,.18,P.t))*k+.1;q.LthX=.15*k;q.Lkn=.25*k;q.spX=-.25*k;q.pel=.05;q.RaZ=.55;q.RaX=-1.0;q.Rel=1.3;q.LaZ=.6;q.LaX=-.5;q.Lel=.9;q.hdX=.15*k}
+function startGuardCounter(){if(!(P.gcT>GT.clock)||!canAct())return false;P.gcT=0;P.charge=0;startHeavy(false);P.hvT*=.7;if(P.atk){P.atk.T*=.7;P.atk.mul=1.5;P.atk.rip=1}floatText(P.x,P.y+2,P.z,'SİPER KARŞILIĞI','gold');return true}
+// ---------- grab and throw
+const THROWN=[];
+function throwOpen(f){if(isWolf(f))return/^(recover|hurt|evade|bitewind)$/.test(f.st)&&f.st!=='bitewind'||isBroken(f);return/^(stagger|sprawl|hurt|recover|escape)$/.test(f.st)||isBroken(f)}
+function throwTarget(){if(DUN.on)return null;let b=null,bd=2.1;for(const f of foes()){if(f===DRAGON||f.big||f.boss||f.dead||CROCS.includes(f)||f.held||f.st==='armlatch'||f.st==='latched')continue;const d=foeDist(f);if(d>=bd)continue;const behind=Math.abs(angd(Math.atan2(P.x-f.x,P.z-f.z),f.yaw))>2.2;if(!(throwOpen(f)||behind&&foeHostile(f)))continue;bd=d;b=f}return b}
+function startThrow(){const f=throwTarget();if(!f||P.st!=='move'&&P.st!=='block')return false;if(!canAct())return false;spend(22);P.st='throw';P.t=0;P.thr=f;P.thrY=Math.atan2(f.x-P.x,f.z-P.z);P.yaw=P.thrY;sfx.grab();
+ if(isWolf(f)){f.st='recover';f.t=-2}else{f.st='sprawl';f.t=-2}f.kx=f.kz=0;return true}
+function updateThrow(dt){const f=P.thr;P.vx=P.vz=0;if(!f||f.dead){P.st='move';P.t=0;P.thr=null;return}
+ const u=P.t;if(u<.55){const a=P.thrY+2*PI*sst(.18,.55,u);P.yaw=a;const r=.85;f.x=P.x+Math.sin(a)*r;f.z=P.z+Math.cos(a)*r;f.yaw=a+PI;if(isWolf(f))f.air=.5;f.t=-2}
+ else if(!P.thrown){P.thrown=1;const a=P.yaw,vx=Math.sin(a)*13,vz=Math.cos(a)*13;THROWN.push({f,vx,vz,t:0,hit:new Set([f])});const dm=Math.round(f.max*.22*dmgMul());const dead=foeHurt(f,dm,Math.sin(a),Math.cos(a),'throw');floatText(f.x,(f.y||0)+1.4,f.z,'FIRLATTIN '+dm,'crit');sfx.hit();CAM.shake=Math.max(CAM.shake,.4);gainRage(10);addPosture(f,40);if(dead)onFoeKilled(f,false);else{f.st=isWolf(f)?'recover':'sprawl';f.t=-2;f.kx=f.kz=0}}
+ if(u>.8){P.st='move';P.t=0;P.thr=null;P.thrown=0}}
+function updateThrown(dt){for(let i=THROWN.length-1;i>=0;i--){const o=THROWN[i],f=o.f;o.t+=dt;const T=.5;
+  if(!f.dead||o.t<T){const p=collide(f.x+o.vx*dt,f.z+o.vz*dt,.4);if(p[0]!==f.x+o.vx*dt||p[1]!==f.z+o.vz*dt){o.t=Math.max(o.t,T)}f.x=p[0];f.z=p[1];const h=4*1.1*Math.min(1,o.t/T)*(1-Math.min(1,o.t/T));if(!f.dead)f.t=-2;if(isWolf(f)){f.air=h;f.roll=lp(f.roll||0,1.4,.2)}else f.y=hAt(f.x,f.z)+h}
+  for(const g of foes()){if(o.hit.has(g)||g.dead||g===DRAGON||g.boss)continue;if(Math.hypot(g.x-f.x,g.z-f.z)<1.5){o.hit.add(g);const k=Math.hypot(o.vx,o.vz)||1;const dead=foeHurt(g,Math.round(12*dmgMul()),o.vx/k,o.vz/k,'throw');addPosture(g,35);spawnSparks(g.x,(g.y||0)+.8,g.z,10,[.8,.7,.5],4);sfx.thud();floatText(g.x,(g.y||0)+1.6,g.z,'DEVRİLDİ','crit');
+    if(dead)onFoeKilled(g,false);else if(isWolf(g)){g.st='recover';g.t=-1;g.kx=o.vx*.5;g.kz=o.vz*.5}else if(!g.big){g.st='sprawl';g.t=0;g.kx=o.vx*.4;g.kz=o.vz*.4}else{g.st='stagger';g.t=0}}}
+  if(o.t>=T){THROWN.splice(i,1);sfx.thud();spawnSparks(f.x,hAt(f.x,f.z)+.2,f.z,14,[.6,.55,.45],5);if(!f.dead){if(isWolf(f)){f.air=0;f.roll=0;f.st='recover';f.t=-.8}else{f.y=hAt(f.x,f.z);f.st='sprawl';f.t=0}}}}}
+function throwPose(q){const u=P.t,k=sst(0,.15,u),rel=sst(.55,.65,u);q.LaX=lp(-1.6*k,-.4,rel);q.LaZ=.4;q.Lel=lp(.6,.2,rel);q.RaX=lp(-1.4*k,-2.2,rel);q.RaZ=.5;q.Rel=.5;q.spX=lp(.25*k,-.1,rel);q.chY=lp(.6*sst(.18,.55,u),-.4,rel);q.pel=.15;q.LthX=-.5;q.Lkn=.6;q.RthX=.25;q.Rkn=.3}

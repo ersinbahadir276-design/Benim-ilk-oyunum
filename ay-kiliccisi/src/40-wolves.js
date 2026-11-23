@@ -36,7 +36,7 @@ function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                 
   const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);if(depthAt(x,z)>0||waterAt(x,z)>-50&&hAt(x,z)<waterAt(x,z)+.6)continue;mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
-const W_HOSTILE={howl:1,chase:1,windup:1,pounce:1,pin:1,circle:1,recover:1,hurt:1,evade:1,stalk:1,bitewind:1,rush:1,bite:1,retreat:1,hamstring:1,armleap:1,armlatch:1,feint:1};const hostileSt=w=>!!W_HOSTILE[w.st];
+const W_HOSTILE={howl:1,chase:1,windup:1,pounce:1,pin:1,circle:1,recover:1,hurt:1,evade:1,stalk:1,bitewind:1,rush:1,bite:1,retreat:1,hamstring:1,armleap:1,armlatch:1,feint:1,flee:1};const hostileSt=w=>!!W_HOSTILE[w.st];
 const tokenBusy=()=>wolves.some(w=>!w.tame&&!w.dead&&(w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='bitewind'||w.st==='rush'||w.st==='bite'));
 // can this wolf see the player right now? only a cone in front, blocked by trees
 function wolfSees(w,P){if(!P.alive||w.calm>0)return false;const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz),R=(P.crouch?13:27)*(w.alpha?1.15:1);

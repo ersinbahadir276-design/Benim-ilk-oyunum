@@ -76,7 +76,7 @@ const GS={onAggro(w){sfx.growl()},onWindup(w){sfx.snarl()},onPounce(w){sfx.noise
   if(P.hp<=0)die()},
  onKill(w,byPet){WKILL.push(GT.clock);SYS.kills++;SYS.meat++;addXP(w.alpha?70:30,P);note('[Sistem] Kurt öldürüldü'+(byPet?' (yoldaşın)':'')+' · +'+(w.alpha?70:30)+' XP · +1 çiğ et');GT.stop=Math.max(GT.stop,.12);save(P)}};
 // ---------- interaction: silent choke on an unaware goblin from behind, talk, feed/tame a wolf, statue
-function interact(){if(dunInteract())return;if(startRide())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
+function interact(){if(dunInteract())return;if(startRide())return;if(startThrow())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
  if(startStandoff())return;
  const ai=nearAltar();if(ai>=0){restAt(ai);return}const ci=nearChest();if(ci>=0){P.yaw=Math.atan2(CHESTS[ci].x-P.x,CHESTS[ci].z-P.z);P.interactT=.6;openChest(ci);return}
  if(storyInteract())return;
@@ -90,7 +90,7 @@ function interact(){if(dunInteract())return;if(startRide())return;const v=tdTarg
 // ---------- one simulation step
 let lastZone='';
 function step(dt){GT.dt=dt;if(dt>0&&DUN.on){GT.clock+=dt;updatePlayer(dt);GT.tod=(GT.tod+dt/600)%1;updateDungeon(dt);updateFx(dt);updateLoot(dt);updatePosture(dt);updateRage(dt);updateLock(dt);foeTicks(dt);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt}
- else if(dt>0){GT.clock+=dt;updatePlayer(dt);brawlTick(dt);updateStandoff(dt);
+ else if(dt>0){GT.clock+=dt;updatePlayer(dt);brawlTick(dt);updateThrown(dt);updateStandoff(dt);
   for(const w of wolves)if(Math.hypot(w.x-P.x,w.z-P.z)<170||w.tame||w.dead)updateWolf(w,P,dt,GS);
   for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<180)updateGob(g,dt);for(const n of NPCS)updateNpc(n,dt);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<200)updateCroc(c,dt);
   updatePacks(dt);updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
@@ -132,7 +132,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  skinAll();if(DUN.on)drawMons(GT.time);else{drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon()}drawHeroBow();drawTrail();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks();updateThreats()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
-function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='grabbed')return GRAB.label;if(P.st==='ride')return DRAGON.thrW?'TUTUN! BLOK basılı tut':'SAPLA! Saldırıya art arda bas';if(rideTarget())return'ETKİLEŞ: BOYNUNA TIRMAN';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
+function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='grabbed')return GRAB.label;if(P.st==='ride')return DRAGON.thrW?'TUTUN! BLOK basılı tut':'SAPLA! Saldırıya art arda bas';if(rideTarget())return'ETKİLEŞ: BOYNUNA TIRMAN';if(P.st==='move'&&throwTarget())return'ETKİLEŞ: YAKALA-FIRLAT';if(P.st==='block'&&P.gcT>GT.clock)return'△: SİPER KARŞILIĞI';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
  if(nearAltar()>=0)return'ETKİLEŞ: sunakta dinlen'+(SYS.altars&&SYS.altars[nearAltar()]?'':' (yak)');if(nearChest()>=0)return'ETKİLEŞ: sandığı aç';const sp=storyPrompt();if(sp)return sp;
  const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return d<2.4?'△ SUİKAST (ağır yara)':'Büyük goblin tutulamaz';if(d<2.4)return'△ SUİKAST'+(!isWolf(v)&&d<1.9?'  ·  R1: boyun kilidi':'')+'  ·  ✕✕: üstüne atla';return isWolf(v)?'✕✕: kurdun sırtına atla  ·  yaklaş: △ suikast':'✕✕: goblinin üstüne atla  ·  yaklaş: △ suikast'}
  for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<2.8)return'ETKİLEŞ: konuş';return''}
@@ -199,7 +199,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
  window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
-  X:{GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
+  X:{startKick,kickTarget,startGuardCounter,throwTarget,startThrow,THROWN,GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
   makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,

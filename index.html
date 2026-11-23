@@ -855,7 +855,7 @@ function spawnWolves(){mkWolf(SPAWN[0]-9,SPAWN[2]-30,{yaw:PI});                 
   const n=2+Math.floor(rnd()*3);for(let i=0;i<n;i++){const[x,z]=collide(cx+rr(-9,9),cz+rr(-9,9),.6);if(depthAt(x,z)>0||waterAt(x,z)>-50&&hAt(x,z)<waterAt(x,z)+.6)continue;mkWolf(x,z,{alpha:i===0&&p%4===0})}}
  const R=mkRng(4242);for(const[cx,cz,n]of[[-700,-300,4],[-1100,200,3],[-900,700,4],[-300,1100,3],[300,-500,3],[-250,-860,3],[1000,-700,3],[1150,-150,3],[450,1150,3],[-1200,-900,3]]){const k=n;for(let i=0;i<k;i++){const[x,z]=collide(cx+(R()-.5)*18,cz+(R()-.5)*18,.6);if(depthAt(x,z)>0)continue;mkWolf(x,z,{alpha:i===0&&R()<.4})}}}
 function wolfParried(w){w.st='recover';w.t=-.65;w.air=0;w.pitch=0;w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;w.cd=2.2;w.resolved=true}
-const W_HOSTILE={howl:1,chase:1,windup:1,pounce:1,pin:1,circle:1,recover:1,hurt:1,evade:1,stalk:1,bitewind:1,rush:1,bite:1,retreat:1,hamstring:1,armleap:1,armlatch:1,feint:1};const hostileSt=w=>!!W_HOSTILE[w.st];
+const W_HOSTILE={howl:1,chase:1,windup:1,pounce:1,pin:1,circle:1,recover:1,hurt:1,evade:1,stalk:1,bitewind:1,rush:1,bite:1,retreat:1,hamstring:1,armleap:1,armlatch:1,feint:1,flee:1};const hostileSt=w=>!!W_HOSTILE[w.st];
 const tokenBusy=()=>wolves.some(w=>!w.tame&&!w.dead&&(w.st==='windup'||w.st==='pounce'||w.st==='pin'||w.st==='bitewind'||w.st==='rush'||w.st==='bite'));
 // can this wolf see the player right now? only a cone in front, blocked by trees
 function wolfSees(w,P){if(!P.alive||w.calm>0)return false;const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz),R=(P.crouch?13:27)*(w.alpha?1.15:1);
@@ -1020,8 +1020,10 @@ function wolfAway(w,d,dt){const ax=w.x-P.x,az=w.z-P.z,k=Math.hypot(ax,az)||1;
  if(w.st==='watch'){const c=w.cover||(w.cover=wolfCover(w));if(w.t<.9){w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,8)}// first it stops and stares
   else{const dx=c[0]-w.x,dz=c[1]-w.z,q=Math.hypot(dx,dz);if(q>1){const sp=Math.min(2.6,q*2),p=collide(w.x+dx/q*sp*dt,w.z+dz/q*sp*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,sp,.2);w.ph+=sp*dt*4.4}else w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,6)}/* eyes never leave the prey while it backs into cover */w.crouch=lp(w.crouch,.6,.1);w.tail=-.3;
   if(w.t>(w.watchT||6)){const m=wolfMood(w);if(m.aggr>m.fear+.15&&Math.hypot(P.x,P.z)>150&&Math.random()<.6){w.st='stalk';w.t=0}else{w.st='return';w.t=0;w.aware=0;w.calm=4}}return}
- if(w.st==='flee'){const pk=w.pack,tx=pk?pk.den[0]:w.x+ax/k*30,tz=pk?pk.den[1]:w.z+az/k*30,awayDen=Math.hypot(tx-w.x,tz-w.z)<6;wolfMove(w,awayDen?w.x+ax/k*5:tx,awayDen?w.z+az/k*5:tz,7.4,dt,6);w.crouch=lp(w.crouch,.3,.2);w.tail=-.6;
-  if(w.t>7||d>38){w.st='return';w.t=0;w.aware=0;w.calm=6}}}
+ if(w.st==='flee'){const pk=w.pack,tx=pk?pk.den[0]:w.x+ax/k*30,tz=pk?pk.den[1]:w.z+az/k*30,awayDen=Math.hypot(tx-w.x,tz-w.z)<6,limp=3.4+3.2*cl(w.hp/w.max,0,1);/* a wounded wolf limps: the hero can run it down */
+  if(awayDen&&d<9||d<2.6&&w.t>1.2){w.st='bitewind';w.t=0;w.bwT=.22;w.resolved=false;w.cornered=1;floatText(w.x,w.y+1.2,w.z,'KÖŞEDE!','red');sfx.snarl();return}/* cornered (at the den, or caught): it turns and fights */
+  wolfMove(w,awayDen?w.x+ax/k*5:tx,awayDen?w.z+az/k*5:tz,limp,dt,6);w.crouch=lp(w.crouch,.3,.2);w.tail=-.6;w.ls=[P.x,P.z];
+  if(d>34){w.st='return';w.t=0;w.aware=0;w.calm=6}else if(w.t>7)w.t=3}}
 // ---- 45-rig.js
 // ===================== rigged characters: villagers, merchant, guards, goblins, crocodile =====================
 // Each part is modelled in its bone's local space and tagged with the bone index; one draw call per character.
@@ -1254,9 +1256,9 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
  case'windup':{const T=g.big?{smash:1.35,sweep:1.05,stomp:.95}[g.move||'smash']:g.peril?.72:g.cn?.26:(g.delay?.78:.46);
   if(!g.big&&gobFeint(g))break;
   if(!g.big){if(g.t<T*.85)agentFace(g,P.x,P.z,dt,12);if(d>1.7)agentMove(g,P.x,P.z,4.3,dt,g.rad,10);else g.spd=lp(g.spd,0,.4)}else{g.spd=lp(g.spd,0,.4);if(g.t<T*.7)agentFace(g,P.x,P.z,dt,2.2)}
-  if(g.t>=T){g.st='strike';g.t=0;sfx.swing();if(!g.big){const L=cl(d-1.0,0,g.peril?4:2.4);g.lv=L/.2}}break}
+  if(g.t>=T){g.st='strike';g.t=0;sfx.swing();if(!g.big){const L=cl(d-1.0,0,g.peril?4:2.4);g.lunV=L/.2}}break}
  case'strike':{const T=g.big?(g.move==='sweep'?.42:.38):.2,u=g.t/T;
-  if(!g.big){const p=collide(g.x+Math.sin(g.yaw)*(g.lv||0)*dt,g.z+Math.cos(g.yaw)*(g.lv||0)*dt,g.rad);g.x=p[0];g.z=p[1];const dd=Math.hypot(P.x-g.x,P.z-g.z);
+  if(!g.big){const p=collide(g.x+Math.sin(g.yaw)*(g.lunV||0)*dt,g.z+Math.cos(g.yaw)*(g.lunV||0)*dt,g.rad);g.x=p[0];g.z=p[1];const dd=Math.hypot(P.x-g.x,P.z-g.z);
    const fa=Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw));if(!g.hitDone&&u>.3&&dd<1.7&&(fa<1.35||dd<.9)){g.hitDone=true;{const r=hitPlayer({src:g,dmg:g.peril?13:7,guard:g.peril?99:18,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:g.peril?'down':'flinch',unblockable:!!g.peril,parryable:!g.peril});if(r==='block'||r==='parry'||r==='guardbreak')g.cn=0}}}
   else if(g.move==='stomp'){if(!g.hitDone&&u>=.5){g.hitDone=true;CAM.shake=Math.max(CAM.shake,.7);sfx.thud();spawnSparks(g.x,g.y+.2,g.z,24,[.6,.5,.4],7);if(d<5.6&&!P.air)hitPlayer({src:g,dmg:20,guard:40,dir:[P.x-g.x,P.z-g.z],knock:'down',power:1.2,parryable:false})}}
   else if(!g.hitDone){// the club must really touch the hero: segment (club) vs capsule (body) test every frame of the swing
@@ -1780,7 +1782,8 @@ function combatGuideHtml(){let h='<div class="wt">DURUŞLAR</div>';for(const k o
   'L1 tam vuruş anında = <b>SAVUŞTURMA</b> → hemen □ = <b>KARŞI DARBE</b>. Bloğa art arda basmak pencereyi daraltır. Aynı düşmanı 6 sn içinde 3. kez savuşturursan sarsılmaz, ritmini değiştirir.<br>'+
   '○ <b>ATIL</b>: başında kısa dokunulmazlık; vuruşun içine doğru zamanında atılırsan <b>KUSURSUZ KAÇINMA</b> → □ karşı saldırı. 1 sn içinde 3. atılma dokunulmaz değildir.<br>'+
   'Kombo ortasında R2 ile duruş değiştir = kombo yeni duruşta <b>AKIŞ</b> ile sürer. Kombonun son vuruşu duruşun bitiricisidir.<br>'+
-  '<b style="color:#ff5a4a">危</b> = savuşturulamaz, bloklanamaz: atıl. Kavga başlamamış gruba R1 = <b>KAFA KAFAYA</b>.</div>'+
+  '<b style="color:#ff5a4a">危</b> = savuşturulamaz, bloklanamaz: atıl. Kavga başlamamış gruba R1 = <b>KAFA KAFAYA</b>.<br>'+
+  'L1 basılıyken □ = <b>TEKME</b> (goblin siperini kırar, iter) · bir vuruşu BLOKLADIKTAN sonra 0.7 sn içinde △ = <b>SİPER KARŞILIĞI</b> (hızlı, ×1.5) · sendeleyen/açık ya da arkası dönük küçük düşmana R1 = <b>YAKALA-FIRLAT</b> (çarptığını devirir).</div>'+
   '<div class="wt2">DÜŞMANIN HİLELERİ</div><div class="qs" style="font-size:12px;line-height:1.5">'+
   '<b>Kurt</b> — arkandan alçak dalış = <b>BACAK ISIRIĞI</b> (topallarsın; arkanı açık bırakma) · blokta beklersen ya da boş savurursan <b>KOLUNA KENETLENİR</b> (art arda bas, silkele — kurt açıkta kalır) · işaretsiz koşu = <b>SAHTE ATILMA</b>: vurursan öbür kurt yandan gelir.<br>'+
   '<b>Goblin</b> — yere eğilip avuçlarsa <b>GÖZE TOPRAK</b> atacak: atıl (blok yarısını tutar) · alçalıp öne atılırsa <b>BACAĞA DALIŞ</b>: atıl ya da zıpla, tutarsa tekmele · bazen <b>ÖLÜ TAKLİDİ</b> yapar: cesede bir kez daha vur.<br>'+
@@ -2066,7 +2069,7 @@ function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=(o.src&&
    if(src&&src.hp!==undefined&&stDef().pp)addPosture(src,18*(stDef().pp-1)*(P.chain||1));
    if(reel){note('[Sistem] Tam zamanlı savuşturma! Düşman sarsıldı.','gold');if(src&&src.onParried)src.onParried();else if(src&&isWolf(src))wolfParried(src)}else note('[Sistem] Savuşturdun ama düşman sarsılmadı — ritmini değiştirecek.','');
    return'parry'}
-  const gd=(o.guard!==undefined?o.guard:o.dmg*1.8)*(stDef().gd||1);P.guard-=gd;P.guardT=1.2;sfx.block();const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],8,[1,.9,.6],4);CAM.shake=Math.max(CAM.shake,.25);
+  const gd=(o.guard!==undefined?o.guard:o.dmg*1.8)*(stDef().gd||1);P.guard-=gd;P.gcT=GT.clock+.7;P.guardT=1.2;sfx.block();const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],8,[1,.9,.6],4);CAM.shake=Math.max(CAM.shake,.25);
   const pd=o.dir||[0,0];P.vx=pd[0]*3;P.vz=pd[1]*3;floatText(P.x,P.y+1.7,P.z,'BLOK','');
   if(P.guard<=0){P.guard=0;P.st='gbreak';P.t=0;sfx.thud();note('[Sistem] Savunma kırıldı! Kısa süre savunmasızsın.','red');return'guardbreak'}return'block'}
  // a hit lands
@@ -2212,11 +2215,13 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
   if(u>.3&&take('atk',.25)){P.dashEnd=GT.clock;startRunAtk();break}if(u>.55&&take('dodge',.25)){P.dashEnd=GT.clock;startDodge();break}
   if(u>=1){P.st='move';P.t=0;P.dashEnd=GT.clock;P.vx*=.35;P.vz*=.35}break}
  case'block':{const sp=1.5*il;moveFree(sp,6);if(il>.05&&!nearestFoe(8,PI))P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*6);else{const f=nearestFoe(10,PI);if(f)P.yaw+=angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw)*Math.min(1,dt*8)}
-  if(!IN.blockHeld){P.st='move';P.t=0;P.blockRel=GT.clock}else if(take('atk')){P.st='move';P.blockRel=GT.clock;startLight(0)}else if(take('dodge')){P.blockRel=GT.clock;startDodge()}break}
+  if(!IN.blockHeld){P.st='move';P.t=0;P.blockRel=GT.clock}else if(take('atk')){P.blockRel=GT.clock;if(kickTarget())startKick();else{P.st='move';startLight(0)}}else if(P.gcT>GT.clock&&take('hvy')){IN.atkUsed=true;IN.atkHeld=false;P.blockRel=GT.clock;startGuardCounter()}else if(take('dodge')){P.blockRel=GT.clock;startDodge()}break}
  case'parry':slide(10);if(P.t>.1&&take('atk',.4)){P.st='move';startLight(0);break}if(P.t>.32){P.st=IN.blockHeld?'block':'move';P.t=0}break;// □ during the parry = riposte
  case'gbreak':slide(6);if(P.t>1.4){P.st='move';P.t=0}break;
  case'hurt':slide(8);if(P.t>.38){P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;if(P.pinBy)P.pinBy=null}break;
  case'grabbed':move=false;updateGrabbed(dt);break;
+ case'kick':updateKick(dt);break;
+ case'throw':move=false;updateThrow(dt);break;
  case'ride':move=false;updateRide(dt);break;
  case'td':move=false;updateTakedown(dt);if(!P.td&&P.st==='td'){P.st='move';P.t=0}break;
  case'down':{const R=P.rag;slide(5);// inverted pendulum about the feet, one damped bounce on the ground
@@ -2271,6 +2276,8 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(k2==='dash'){q.two=1;q.RaZ=.2;q.RaX=.3;q.RaY=1.9;q.Rel=.1;q.spX=.5;q.pel=.35;q.LthX=-1.1;q.Lkn=1.2;q.RthX=.6;q.Rkn=.4;q.chY=.6}
   else if(k2==='slam'){q.two=1;const air=P.air;q.RaZ=-1.4;q.RaX=air?-1.0:1.6;q.Rel=air?.7:.05;q.RaY=.2;q.chX=air?-.3:.6;q.spX=air?-.1:.4;q.pel=air?.1:.4;q.LthX=air?-1:-1.2;q.Lkn=air?1.3:1.5;q.RthX=air?-.6:.4;q.Rkn=air?1.2:.6;q.hipY=air?0:-.15}break}
  case'grabbed':rate=20;grabPose(q);break;
+ case'kick':rate=24;kickPose(q);break;
+ case'throw':rate=22;throwPose(q);break;
  case'ride':rate=20;ridePose(q);break;
  case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;break}
  case'td':{rate=18;const td=P.td;if(!td)break;
@@ -2775,7 +2782,7 @@ const GS={onAggro(w){sfx.growl()},onWindup(w){sfx.snarl()},onPounce(w){sfx.noise
   if(P.hp<=0)die()},
  onKill(w,byPet){WKILL.push(GT.clock);SYS.kills++;SYS.meat++;addXP(w.alpha?70:30,P);note('[Sistem] Kurt öldürüldü'+(byPet?' (yoldaşın)':'')+' · +'+(w.alpha?70:30)+' XP · +1 çiğ et');GT.stop=Math.max(GT.stop,.12);save(P)}};
 // ---------- interaction: silent choke on an unaware goblin from behind, talk, feed/tame a wolf, statue
-function interact(){if(dunInteract())return;if(startRide())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
+function interact(){if(dunInteract())return;if(startRide())return;if(startThrow())return;const v=tdTarget(1.9);if(v&&!isWolf(v)){if(v.big){note('Büyük goblin tutulamaz, boyun kilidine alınamaz.');return}startChoke(v);return}
  if(startStandoff())return;
  const ai=nearAltar();if(ai>=0){restAt(ai);return}const ci=nearChest();if(ci>=0){P.yaw=Math.atan2(CHESTS[ci].x-P.x,CHESTS[ci].z-P.z);P.interactT=.6;openChest(ci);return}
  if(storyInteract())return;
@@ -2789,7 +2796,7 @@ function interact(){if(dunInteract())return;if(startRide())return;const v=tdTarg
 // ---------- one simulation step
 let lastZone='';
 function step(dt){GT.dt=dt;if(dt>0&&DUN.on){GT.clock+=dt;updatePlayer(dt);GT.tod=(GT.tod+dt/600)%1;updateDungeon(dt);updateFx(dt);updateLoot(dt);updatePosture(dt);updateRage(dt);updateLock(dt);foeTicks(dt);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt}
- else if(dt>0){GT.clock+=dt;updatePlayer(dt);brawlTick(dt);updateStandoff(dt);
+ else if(dt>0){GT.clock+=dt;updatePlayer(dt);brawlTick(dt);updateThrown(dt);updateStandoff(dt);
   for(const w of wolves)if(Math.hypot(w.x-P.x,w.z-P.z)<170||w.tame||w.dead)updateWolf(w,P,dt,GS);
   for(const g of GOBS)if(Math.hypot(g.x-P.x,g.z-P.z)<180)updateGob(g,dt);for(const n of NPCS)updateNpc(n,dt);for(const c of CROCS)if(Math.hypot(c.x-P.x,c.z-P.z)<200)updateCroc(c,dt);
   updatePacks(dt);updateDragon(DRAGON,dt);GT.tod=(GT.tod+dt/600)%1;updateFx(dt);updateDragonFx(dt);
@@ -2831,7 +2838,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  skinAll();if(DUN.on)drawMons(GT.time);else{drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon()}drawHeroBow();drawTrail();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks();updateThreats()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
-function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='grabbed')return GRAB.label;if(P.st==='ride')return DRAGON.thrW?'TUTUN! BLOK basılı tut':'SAPLA! Saldırıya art arda bas';if(rideTarget())return'ETKİLEŞ: BOYNUNA TIRMAN';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
+function promptText(){if(P.st==='down'&&P.pinBy)return'KURTUL! Düğmelere art arda bas';if(P.st==='grabbed')return GRAB.label;if(P.st==='ride')return DRAGON.thrW?'TUTUN! BLOK basılı tut':'SAPLA! Saldırıya art arda bas';if(rideTarget())return'ETKİLEŞ: BOYNUNA TIRMAN';if(P.st==='move'&&throwTarget())return'ETKİLEŞ: YAKALA-FIRLAT';if(P.st==='block'&&P.gcT>GT.clock)return'△: SİPER KARŞILIĞI';if(P.st==='td'||P.st==='exec')return'';if(execTarget())return'SALDIR: İNFAZ';{const dp=dunPrompt();if(dp)return dp}if(SO.on)return'';{const so=standoffTarget();if(so&&!tdTarget(4.8))return'ETKİLEŞ: KAFA KAFAYA — meydan oku ('+so.grp.length+' goblin)'}
  if(nearAltar()>=0)return'ETKİLEŞ: sunakta dinlen'+(SYS.altars&&SYS.altars[nearAltar()]?'':' (yak)');if(nearChest()>=0)return'ETKİLEŞ: sandığı aç';const sp=storyPrompt();if(sp)return sp;
  const v=tdTarget(4.8);if(v){const d=Math.hypot(v.x-P.x,v.z-P.z);if(!isWolf(v)&&v.big)return d<2.4?'△ SUİKAST (ağır yara)':'Büyük goblin tutulamaz';if(d<2.4)return'△ SUİKAST'+(!isWolf(v)&&d<1.9?'  ·  R1: boyun kilidi':'')+'  ·  ✕✕: üstüne atla';return isWolf(v)?'✕✕: kurdun sırtına atla  ·  yaklaş: △ suikast':'✕✕: goblinin üstüne atla  ·  yaklaş: △ suikast'}
  for(const n of NPCS)if(Math.hypot(n.x-P.x,n.z-P.z)<2.8)return'ETKİLEŞ: konuş';return''}
@@ -2898,7 +2905,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
  window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
-  X:{GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
+  X:{startKick,kickTarget,startGuardCounter,throwTarget,startThrow,THROWN,GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
   makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
@@ -3805,6 +3812,39 @@ const HPK={wolf:180,alpha:300,gob:150,big:650,denWolf:180,ashmane:900,chief:1200
 // ground tells for the tricks (the feint has none on purpose: a real rush shows its '!' and strip, a fake one does not)
 function brawlTele(){for(const w of wolves){if(w.dead||w.tame)continue;if(w.st==='hamstring'&&w.t<.5)tele('strip',w.x,w.z,.7,Math.min(7,Math.hypot(P.x-w.x,P.z-w.z)+1),w.yaw,sst(0,.25,w.t));if(w.st==='armleap'&&w.t<.34)tele('strip',w.x,w.z,.8,Math.min(5,Math.hypot(P.x-w.x,P.z-w.z)+.5),w.yaw,sst(0,.2,w.t))}
  for(const g of GOBS){if(g.dead)continue;if(g.st==='tackle'&&g.t<.6)tele('strip',g.x,g.z,.9,4.6,g.yaw,sst(0,.3,g.t));if(g.st==='dirt'&&g.t<.75)tele('strip',g.x,g.z,2.4,5.4,g.yaw,sst(.1,.5,g.t)*.6)}}
+// ===================== HERO: three new answers (v22) =====================
+// 1) TEKME (Sekiro / Crimson Desert): hold BLOK and press □ with a foe in front = a front kick. It breaks a goblin's
+//    raised guard, pushes and staggers small foes, and builds balance damage — the answer to a turtling enemy.
+// 2) SİPER KARŞILIĞI (Elden Ring guard counter): within 0.7 s after BLOCKING a hit, △ = a fast heavy counter
+//    (×1.5 damage, +30 balance) — blocking is no longer only waiting.
+// 3) YAKALA-FIRLAT (Crimson Desert grapple): ETKİLEŞ next to an open small foe (staggered, sprawled, recovering,
+//    balance broken, or from behind) = grab and hurl it; the body knocks down whoever it hits.
+function kickTarget(){let b=null,bd=2.5;for(const f of foes()){if(f===DRAGON||f.big||f.boss)continue;const d=foeDist(f),a=Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw));if(d<bd&&a<1.0){bd=d;b=f}}return b}
+function startKick(){if(!canAct())return false;spend(16);P.st='kick';P.t=0;P.kickDone=false;const f=kickTarget();if(f)P.yaw=Math.atan2(f.x-P.x,f.z-P.z);sfx.swing();return true}
+function updateKick(dt){P.vx*=Math.exp(-dt*10);P.vz*=Math.exp(-dt*10);
+ if(!P.kickDone&&P.t>.17){P.kickDone=true;const f=kickTarget();if(f){const k=foeDist(f)||1,dx=(f.x-P.x)/k,dz=(f.z-P.z)/k,p=f.hitPts?f.hitPts()[0]:[f.x,(f.y||0)+.8,f.z];sfx.thud();spawnSparks(p[0],p[1],p[2],8,[.8,.75,.6],3);CAM.shake=Math.max(CAM.shake,.3);GT.stop=Math.max(GT.stop,.05);
+  const guarded=GOBS.includes(f)&&f.st==='guard';const dead=foeHurt(f,4,dx,dz,'kick');if(dead){onFoeKilled(f,false);return}addPosture(f,guarded?45:28);
+  if(isWolf(f)){f.st='recover';f.t=-.35;f.air=0;f.pitch=0;f.kx=dx*8;f.kz=dz*8}else{f.st='stagger';f.t=guarded?0:.6;f.kx=dx*8;f.kz=dz*8}
+  floatText(p[0],p[1]+.6,p[2],guarded?'SİPER KIRILDI':'TEKME','crit')}}
+ if(P.t>.48){P.st=IN.blockHeld?'block':'move';P.t=0}}
+function kickPose(q){const k=sst(0,.17,P.t)*(1-sst(.3,.48,P.t));q.RthX=-1.55*k;q.Rkn=lp(1.4,.15,sst(.08,.18,P.t))*k+.1;q.LthX=.15*k;q.Lkn=.25*k;q.spX=-.25*k;q.pel=.05;q.RaZ=.55;q.RaX=-1.0;q.Rel=1.3;q.LaZ=.6;q.LaX=-.5;q.Lel=.9;q.hdX=.15*k}
+function startGuardCounter(){if(!(P.gcT>GT.clock)||!canAct())return false;P.gcT=0;P.charge=0;startHeavy(false);P.hvT*=.7;if(P.atk){P.atk.T*=.7;P.atk.mul=1.5;P.atk.rip=1}floatText(P.x,P.y+2,P.z,'SİPER KARŞILIĞI','gold');return true}
+// ---------- grab and throw
+const THROWN=[];
+function throwOpen(f){if(isWolf(f))return/^(recover|hurt|evade|bitewind)$/.test(f.st)&&f.st!=='bitewind'||isBroken(f);return/^(stagger|sprawl|hurt|recover|escape)$/.test(f.st)||isBroken(f)}
+function throwTarget(){if(DUN.on)return null;let b=null,bd=2.1;for(const f of foes()){if(f===DRAGON||f.big||f.boss||f.dead||CROCS.includes(f)||f.held||f.st==='armlatch'||f.st==='latched')continue;const d=foeDist(f);if(d>=bd)continue;const behind=Math.abs(angd(Math.atan2(P.x-f.x,P.z-f.z),f.yaw))>2.2;if(!(throwOpen(f)||behind&&foeHostile(f)))continue;bd=d;b=f}return b}
+function startThrow(){const f=throwTarget();if(!f||P.st!=='move'&&P.st!=='block')return false;if(!canAct())return false;spend(22);P.st='throw';P.t=0;P.thr=f;P.thrY=Math.atan2(f.x-P.x,f.z-P.z);P.yaw=P.thrY;sfx.grab();
+ if(isWolf(f)){f.st='recover';f.t=-2}else{f.st='sprawl';f.t=-2}f.kx=f.kz=0;return true}
+function updateThrow(dt){const f=P.thr;P.vx=P.vz=0;if(!f||f.dead){P.st='move';P.t=0;P.thr=null;return}
+ const u=P.t;if(u<.55){const a=P.thrY+2*PI*sst(.18,.55,u);P.yaw=a;const r=.85;f.x=P.x+Math.sin(a)*r;f.z=P.z+Math.cos(a)*r;f.yaw=a+PI;if(isWolf(f))f.air=.5;f.t=-2}
+ else if(!P.thrown){P.thrown=1;const a=P.yaw,vx=Math.sin(a)*13,vz=Math.cos(a)*13;THROWN.push({f,vx,vz,t:0,hit:new Set([f])});const dm=Math.round(f.max*.22*dmgMul());const dead=foeHurt(f,dm,Math.sin(a),Math.cos(a),'throw');floatText(f.x,(f.y||0)+1.4,f.z,'FIRLATTIN '+dm,'crit');sfx.hit();CAM.shake=Math.max(CAM.shake,.4);gainRage(10);addPosture(f,40);if(dead)onFoeKilled(f,false);else{f.st=isWolf(f)?'recover':'sprawl';f.t=-2;f.kx=f.kz=0}}
+ if(u>.8){P.st='move';P.t=0;P.thr=null;P.thrown=0}}
+function updateThrown(dt){for(let i=THROWN.length-1;i>=0;i--){const o=THROWN[i],f=o.f;o.t+=dt;const T=.5;
+  if(!f.dead||o.t<T){const p=collide(f.x+o.vx*dt,f.z+o.vz*dt,.4);if(p[0]!==f.x+o.vx*dt||p[1]!==f.z+o.vz*dt){o.t=Math.max(o.t,T)}f.x=p[0];f.z=p[1];const h=4*1.1*Math.min(1,o.t/T)*(1-Math.min(1,o.t/T));if(!f.dead)f.t=-2;if(isWolf(f)){f.air=h;f.roll=lp(f.roll||0,1.4,.2)}else f.y=hAt(f.x,f.z)+h}
+  for(const g of foes()){if(o.hit.has(g)||g.dead||g===DRAGON||g.boss)continue;if(Math.hypot(g.x-f.x,g.z-f.z)<1.5){o.hit.add(g);const k=Math.hypot(o.vx,o.vz)||1;const dead=foeHurt(g,Math.round(12*dmgMul()),o.vx/k,o.vz/k,'throw');addPosture(g,35);spawnSparks(g.x,(g.y||0)+.8,g.z,10,[.8,.7,.5],4);sfx.thud();floatText(g.x,(g.y||0)+1.6,g.z,'DEVRİLDİ','crit');
+    if(dead)onFoeKilled(g,false);else if(isWolf(g)){g.st='recover';g.t=-1;g.kx=o.vx*.5;g.kz=o.vz*.5}else if(!g.big){g.st='sprawl';g.t=0;g.kx=o.vx*.4;g.kz=o.vz*.4}else{g.st='stagger';g.t=0}}}
+  if(o.t>=T){THROWN.splice(i,1);sfx.thud();spawnSparks(f.x,hAt(f.x,f.z)+.2,f.z,14,[.6,.55,.45],5);if(!f.dead){if(isWolf(f)){f.air=0;f.roll=0;f.st='recover';f.t=-.8}else{f.y=hAt(f.x,f.z);f.st='sprawl';f.t=0}}}}}
+function throwPose(q){const u=P.t,k=sst(0,.15,u),rel=sst(.55,.65,u);q.LaX=lp(-1.6*k,-.4,rel);q.LaZ=.4;q.Lel=lp(.6,.2,rel);q.RaX=lp(-1.4*k,-2.2,rel);q.RaZ=.5;q.Rel=.5;q.spX=lp(.25*k,-.1,rel);q.chY=lp(.6*sst(.18,.55,u),-.4,rel);q.pel=.15;q.LthX=-.5;q.Lkn=.6;q.RthX=.25;q.Rkn=.3}
 // ---- 90-loader.js
 (function(){const TX={},jobs=[];for(const k in KND.tex)jobs.push(['k_'+k,KND.tex[k]]);DRG.groups.forEach((g,i)=>jobs.push(['d_'+i,g.tex]));let left=jobs.length;
  if(!gl){$('load').textContent='Bu cihaz WebGL desteklemiyor';return}

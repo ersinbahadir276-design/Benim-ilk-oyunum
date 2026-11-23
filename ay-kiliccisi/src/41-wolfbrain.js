@@ -64,5 +64,7 @@ function wolfAway(w,d,dt){const ax=w.x-P.x,az=w.z-P.z,k=Math.hypot(ax,az)||1;
  if(w.st==='watch'){const c=w.cover||(w.cover=wolfCover(w));if(w.t<.9){w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,8)}// first it stops and stares
   else{const dx=c[0]-w.x,dz=c[1]-w.z,q=Math.hypot(dx,dz);if(q>1){const sp=Math.min(2.6,q*2),p=collide(w.x+dx/q*sp*dt,w.z+dz/q*sp*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,sp,.2);w.ph+=sp*dt*4.4}else w.spd=lp(w.spd,0,.3);wolfFace(w,P.x,P.z,dt,6)}/* eyes never leave the prey while it backs into cover */w.crouch=lp(w.crouch,.6,.1);w.tail=-.3;
   if(w.t>(w.watchT||6)){const m=wolfMood(w);if(m.aggr>m.fear+.15&&Math.hypot(P.x,P.z)>150&&Math.random()<.6){w.st='stalk';w.t=0}else{w.st='return';w.t=0;w.aware=0;w.calm=4}}return}
- if(w.st==='flee'){const pk=w.pack,tx=pk?pk.den[0]:w.x+ax/k*30,tz=pk?pk.den[1]:w.z+az/k*30,awayDen=Math.hypot(tx-w.x,tz-w.z)<6;wolfMove(w,awayDen?w.x+ax/k*5:tx,awayDen?w.z+az/k*5:tz,7.4,dt,6);w.crouch=lp(w.crouch,.3,.2);w.tail=-.6;
-  if(w.t>7||d>38){w.st='return';w.t=0;w.aware=0;w.calm=6}}}
+ if(w.st==='flee'){const pk=w.pack,tx=pk?pk.den[0]:w.x+ax/k*30,tz=pk?pk.den[1]:w.z+az/k*30,awayDen=Math.hypot(tx-w.x,tz-w.z)<6,limp=3.4+3.2*cl(w.hp/w.max,0,1);/* a wounded wolf limps: the hero can run it down */
+  if(awayDen&&d<9||d<2.6&&w.t>1.2){w.st='bitewind';w.t=0;w.bwT=.22;w.resolved=false;w.cornered=1;floatText(w.x,w.y+1.2,w.z,'KÖŞEDE!','red');sfx.snarl();return}/* cornered (at the den, or caught): it turns and fights */
+  wolfMove(w,awayDen?w.x+ax/k*5:tx,awayDen?w.z+az/k*5:tz,limp,dt,6);w.crouch=lp(w.crouch,.3,.2);w.tail=-.6;w.ls=[P.x,P.z];
+  if(d>34){w.st='return';w.t=0;w.aware=0;w.calm=6}else if(w.t>7)w.t=3}}
