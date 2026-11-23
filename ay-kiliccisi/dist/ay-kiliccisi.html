@@ -670,11 +670,12 @@ function buildPlayer(TX){PLD=heroBuild();skInit();
  SK.R[HB.rightThumbProximal]=r3m(rY(.2),rZ(.45));SK.R[HB.rightThumbIntermediate]=rZ(.6);SK.R[HB.rightThumbDistal]=rZ(.45);
  heroMesh(TX)}
 // ---------- pose application (procedural joint angles) + optional arm IK targets
-const POSE0={hipY:0,pel:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0};
+const POSE0={hipY:0,pel:0,pelZ:0,LfX:0,RfX:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0};
 function applyPose(q){const R=SK.R,H=HB;
- R[H.hips]=rX(q.pel);R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),rY(q.hdY));
+ R[H.hips]=r3m(rX(q.pel),rZ(q.pelZ||0));R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),rY(q.hdY));
  R[H.leftUpperLeg]=r3m(rX(q.LthX),rZ(q.LthZ));R[H.rightUpperLeg]=r3m(rX(q.RthX),rZ(q.RthZ));R[H.leftLowerLeg]=rX(q.Lkn);R[H.rightLowerLeg]=rX(q.Rkn);
- R[H.leftFoot]=rX(cl(-(q.pel+q.LthX+q.Lkn),-.9,.9));R[H.rightFoot]=rX(cl(-(q.pel+q.RthX+q.Rkn),-.9,.9));
+ // feet stay flat on the ground (cancel hip, thigh, knee and stance spread), plus heel-strike / toe-off roll (LfX/RfX)
+ R[H.leftFoot]=r3m(rX(cl(-(q.pel+q.LthX+q.Lkn)+(q.LfX||0),-.9,.9)),rZ(-(q.LthZ-POSE0.LthZ+(q.pelZ||0))));R[H.rightFoot]=r3m(rX(cl(-(q.pel+q.RthX+q.Rkn)+(q.RfX||0),-.9,.9)),rZ(-(q.RthZ-POSE0.RthZ+(q.pelZ||0))));
  R[H.leftUpperArm]=r3m(rY(q.LaY),r3m(rX(q.LaX),rZ(-q.LaZ)));R[H.leftLowerArm]=rY(-q.Lel);R[H.leftHand]=r3m(rX(q.LwX),rY(q.LwY));
  R[H.rightUpperArm]=r3m(rY(q.RaY),r3m(rX(q.RaX),rZ(q.RaZ)));R[H.rightLowerArm]=rY(q.Rel);R[H.rightHand]=r3m(rX(q.RwX),r3m(rY(q.RwY),rZ(q.RwZ)));
  const e=(th,kn)=>SK.L1*Math.cos(q.pel+th)+SK.L2*Math.cos(q.pel+th+kn);
@@ -1892,14 +1893,28 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(P.sprinting)P.noise=Math.max(P.noise,9);
  if(!SYS.gate&&Math.hypot(P.x,P.z)<46){SYS.gate=1;P.cp=[0,60]}if(!SYS.knight&&Math.hypot(P.x-10,P.z-50)<5.5)SYS.knight=1}
 // --------------------------------------------------------------- pose targets per state
+// combat-ready idle: staggered stance with soft knees, slow breathing (chest + shoulders), a weight shift from
+// foot to foot every few seconds, sword held low and forward, and an occasional glance around.
+function idlePose(q,t){const b=Math.sin(t*1.7),w=Math.sin(t*.42)+.35*Math.sin(t*1.13+1),g=Math.sin(t*.23);
+ const glance=sst(.75,.95,g)-sst(-.95,-.75,g);
+ q.pel=.05;q.hipY=-.012;q.spX=.05+b*.012;q.chX=-.03-b*.028;q.hdX=-.05+b*.01;q.hdY=glance*.55+Math.sin(t*.5)*.08;q.chY=glance*.12;
+ q.LthX=-.2;q.Lkn=.24;q.RthX=.04;q.Rkn=.06;q.LthZ=.15+w*.02;q.RthZ=-.13+w*.02;q.pelZ=-w*.03;q.spZ=w*.035;
+ q.LaZ=1.08+b*.025;q.LaX=.16;q.Lel=.42;q.LwX=-.1;
+ q.RaZ=1.0+b*.02;q.RaX=-.48;q.RaY=.12;q.Rel=.72;q.RwX=-.12}
 function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph),c=Math.cos(P.ph);let rate=14;
  const run=(mv,sprint)=>{const A=(sprint?.9:.5)*mv,B=(sprint?1.55:.95)*mv;q.LthX=-s*A;q.RthX=s*A;q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
-  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012)};
+  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012);
+  // gait detail: heel strike on the leading foot, toe-off on the trailing one, swing-side hip drop,
+  // gaze held level against the torso lean, body banks into turns
+  const roll=(sprint?.55:.38)*mv;q.LfX=roll*(Math.max(0,-s)*Math.max(0,c)*1.6-Math.max(0,s)*Math.max(0,-c)*.8);q.RfX=roll*(Math.max(0,s)*Math.max(0,-c)*1.6-Math.max(0,-s)*Math.max(0,c)*.8);
+  q.pelZ=c*(sprint?.05:.035)*mv;q.spZ=-q.pelZ*.6+bank*mv;q.hdX=-q.spX*.55;q.hdY=-q.chY*.5};
+ // turn rate (rad/s) for banking; idle clock for the breathing / weight-shift loop
+ const dt=GT.dt||1/60,yr=P._pyaw===undefined?0:angd(P.yaw,P._pyaw)/Math.max(dt,1e-3);P._pyaw=P.yaw;P._yr=(P._yr||0)+(cl(yr,-6,6)-(P._yr||0))*Math.min(1,dt*6);const bank=cl(-P._yr*.035,-.14,.14);
  switch(P.st){
  case'move':case'land':{const mv=cl(P.spd/3.4,0,1);
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
   else if(mv>.08)run(mv,P.sprinting&&P.spd>4.6);
-  else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
+  else idlePose(q,t)
   if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
