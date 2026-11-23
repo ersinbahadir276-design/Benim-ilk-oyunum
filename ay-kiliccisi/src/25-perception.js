@@ -18,7 +18,7 @@ function alertGroup(src,P,radius,list){for(const o of list){if(o===src||o.dead||
   o.aware=Math.max(o.aware||0,.6);o.ls=[P.x,P.z];o.heard=1.2;if(o.onAlerted)o.onAlerted(P)}}
 // helpers shared by all agents
 function agentFace(a,tx,tz,dt,rate=8){a.yaw+=angd(Math.atan2(tx-a.x,tz-a.z),a.yaw)*Math.min(1,dt*rate)}
-function agentMove(a,tx,tz,speed,dt,rad,turn=7){const dx=tx-a.x,dz=tz-a.z,d=Math.hypot(dx,dz);if(d<.05){a.spd=lp(a.spd||0,0,Math.min(1,dt*10));return d}
+function agentMove(a,tx,tz,speed,dt,rad,turn=7){speed*=(a.spdMul||1);const dx=tx-a.x,dz=tz-a.z,d=Math.hypot(dx,dz);if(d<.05){a.spd=lp(a.spd||0,0,Math.min(1,dt*10));return d}
  const ty=Math.atan2(dx,dz);a.yaw+=angd(ty,a.yaw)*Math.min(1,dt*turn);const f=Math.max(.25,Math.cos(angd(ty,a.yaw))),s=Math.min(speed*f,d/Math.max(dt,1e-3));
  let nx=a.x+Math.sin(a.yaw)*s*dt,nz=a.z+Math.cos(a.yaw)*s*dt;if(!a.swims&&depthAt(nx,nz)>.6){nx=a.x;nz=a.z}const p=collide(nx,nz,rad);
  const moved=Math.hypot(p[0]-a.x,p[1]-a.z);a.x=p[0];a.z=p[1];a.spd=lp(a.spd||0,moved/Math.max(dt,1e-3),Math.min(1,dt*10));

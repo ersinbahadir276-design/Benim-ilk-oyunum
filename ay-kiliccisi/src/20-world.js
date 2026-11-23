@@ -23,7 +23,7 @@ const FLATS=[[-528,262,30],[40,338,16]],FLATC=new Map();let noFlat=false;
 const FLATH=(cx,cz)=>{const k=cx+','+cz;if(!FLATC.has(k)){noFlat=true;FLATC.set(k,hRaw(cx,cz));noFlat=false}return FLATC.get(k)};
 function fallFrame(x,z){const F=FALLHEAD,dx=x-F.x,dz=z-F.z;return[dx*F.ux+dz*F.uz,dx*-F.uz+dz*F.ux]}
 function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
- {const wild=sst(150,380,r);h+=(fbm(x*.0055,z*.0055)-.5)*2*17*wild;/* rolling hills */const m=fbm(x*.011+40,z*.011-13);h+=sst(.64,.69,m)*11*wild*sst(.5,.9,fbm(x*.003,z*.003)+.4);/* mesas: flat tops, steep sides */
+ {const wild=sst(330,620,r);/* the starting lands stay gentle; the wild rises further out */h+=(fbm(x*.0055,z*.0055)-.5)*2*17*wild;/* rolling hills */const m=fbm(x*.011+40,z*.011-13);h+=sst(.64,.69,m)*11*wild*sst(.5,.9,fbm(x*.003,z*.003)+.4);/* mesas: flat tops, steep sides */
   const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+80){const rid=1-Math.abs(fbm(x*.012,z*.012)*2-1);h+=sst(SNOW[2]+80,SNOW[2]-120,dsn)*(28+rid*rid*48)}}
  const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<420){const ridge=Math.abs(Math.sin(x*.021+Math.sin(z*.017)*1.6))*Math.cos(z*.019+.4);h+=72*sst(420,95,dm)+ridge*9*sst(420,160,dm)*sst(60,140,dm);if(dm<120)h=lp(h,LAIR_Y,sst(120,62,dm))}
  const dl=Math.hypot(x-LAKE[0],z-LAKE[1]);if(dl<LAKE[2]+70)h=lp(h,-6.4+Math.sin(x*.04)*.8,sst(LAKE[2]+60,LAKE[2]-25,dl));

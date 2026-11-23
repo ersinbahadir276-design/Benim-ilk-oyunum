@@ -7,11 +7,11 @@ const EVT={t:75,cur:null,arena:null,pool:{g:[],w:[]}};
 const ARENA={x:40,z:338};
 function evSpot(minR,maxR){for(let i=0;i<20;i++){const a=rnd()*6.28,r=rr(minR,maxR),x=P.x+Math.sin(a)*r,z=P.z+Math.cos(a)*r;if(Math.hypot(x,z)<175||depthAt(x,z)>.2||inBuilding(x,z,1))continue;const p=collide(x,z,.6);return p}return null}
 // pooled spawns: event enemies are re-used, never pile up in the world lists
-function evGob(x,z,o={}){let g=EVT.pool.g.find(q=>q.free&&q.dead&&!!q.big===!!o.big);if(!g){g=mkGob(x,z,!!o.big,'evt',CAMPSITES[0]);g.R=rigObj(o.big?BIGM:GOBM,{out:.014,cull:150})}
- Object.assign(g,{free:0,dead:0,deadT:0,x,z,hx:x,hz:z,st:'chase',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,held:null,archer:!!o.archer,elite:!!o.elite,title:o.title||'',group:'evt',feigned:0,pos:0,kx:0,kz:0});
+function evGob(x,z,o={}){let g=EVT.pool.g.find(q=>q.free&&q.dead&&!!q.big===!!o.big&&(q.humanK||null)===(o.humanK||null));if(!g){g=mkGob(x,z,!!o.big,'evt',CAMPSITES[0]);g.R=rigObj(o.big?BIGM:GOBM,{out:.014,cull:150})}
+ Object.assign(g,{free:0,dead:0,deadT:0,x,z,hx:x,hz:z,st:'chase',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,held:null,clash:0,ally:0,shieldT:0,archer:!!o.archer,elite:!!o.elite,title:o.title||'',group:'evt',feigned:0,pos:0,kx:0,kz:0});
  g.sc=o.sc||(o.big?1.25:1);scaleFoe(g,o.lv||regionLevel(x,z)+1,o.hp||(o.big?HPK.big:HPK.gob));if(g.R&&g.R.ob)g.R.ob.col=o.col||[1,1,1];if(!EVT.pool.g.includes(g))EVT.pool.g.push(g);return g}
 function evWolf(x,z,o={}){let w=EVT.pool.w.find(q=>q.free&&q.dead);if(!w){w=mkWolf(x,z,{alpha:!!o.alpha});EVT.pool.w.push(w)}
- Object.assign(w,{free:0,dead:0,x,z,hx:x,hz:z,st:'stalk',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,calm:0,tame:false,pack:null,roll:0,crouch:0,alpha:!!o.alpha,white:!!o.white,title:o.title||'',elite:!!o.elite,bold:.85});
+ Object.assign(w,{free:0,dead:0,x,z,hx:x,hz:z,st:'stalk',t:0,aware:1,unseen:0,ls:[P.x,P.z],cd:1,calm:0,clash:0,tame:false,pack:null,roll:0,crouch:0,alpha:!!o.alpha,white:!!o.white,title:o.title||'',elite:!!o.elite,bold:.85});
  w.sc=o.sc||(o.alpha?1.25:1);scaleFoe(w,o.lv||regionLevel(x,z)+1,o.hp||(o.alpha?HPK.alpha:HPK.wolf));return w}
 function evFree(list){for(const f of list){f.dead=f.dead||1;f.free=1;f.x=f.hx=9000+rnd()*50;f.z=f.hz=9000;if(isWolf(f)){f.st='dead';f.dead=300}else{f.st='dead';f.deadT=0}}}
 const EVDEF={

@@ -81,7 +81,7 @@ function wolfTrick(w,d,dt,GS){switch(w.st){
 //    move or swing, mash to kick it off before you are dragged down. Missed: it sprawls face-down, wide open.
 // 3) PLAYING DEAD — a "killing" blow sometimes leaves it alive: it lies still until you look away or walk off, then gets
 //    up and lunges at your back (危). Strike the "corpse" and it is over for real.
-function gobFeign(g,kind){if(/^(stab|assn|exec|choke|so|bleed)/.test(kind||'')||g.held||/^(choked|pinned|escape|latched)$/.test(g.st)||g.big||g.boss||g.feigned||g.lookout||g.elite||g.archer||g.so||Math.random()>=.28)return false;g.feigned=1;g.hp=1;g.st='playdead';g.t=0;g.held=null;g.kx*=.5;g.kz*=.5;g.aware=0;if(P.lock===g)P.lock=null;return true}
+function gobFeign(g,kind){if(g.undead||g.human||/^(stab|assn|exec|choke|so|bleed|fall|slam|clash)/.test(kind||'')||g.held||/^(choked|pinned|escape|latched)$/.test(g.st)||g.big||g.boss||g.feigned||g.lookout||g.elite||g.archer||g.so||Math.random()>=.28)return false;g.feigned=1;g.hp=1;g.st='playdead';g.t=0;g.held=null;g.kx*=.5;g.kz*=.5;g.aware=0;if(P.lock===g)P.lock=null;return true}
 function gobTricks(g,d,dt){switch(g.st){
  case'dirt':{g.spd=lp(g.spd,0,.4);const T=.7;if(g.t<T)agentFace(g,P.x,P.z,dt,10);
   if(g.t>=T&&!g.thrown){g.thrown=1;sfx.swing();const fx=Math.sin(g.yaw),fz=Math.cos(g.yaw);for(let i=0;i<4;i++)spawnSparks(g.x+fx*(1+i*.9),g.y+1.1+i*.05,g.z+fz*(1+i*.9),7,[.42,.32,.2],2.5);

@@ -20,7 +20,7 @@ function spawnGoblins(){GOBM=humanGeo('goblin');BIGM=humanGeo('bigGoblin');
   for(let k=0;k<3;k++){const a=c.gate+(k-1)*.25,p=collide(c.x+Math.cos(a)*40,c.z+Math.sin(a)*40,.4);const g=mkGob(p[0],p[1],false,grp+'p',c);g.patrol=[[c.x+Math.cos(c.gate)*40,c.z+Math.sin(c.gate)*40],[c.x+Math.cos(c.gate+1.2)*45,c.z+Math.sin(c.gate+1.2)*45],[c.x+Math.cos(c.gate-1.2)*45,c.z+Math.sin(c.gate-1.2)*45]];g.pi=k%3}});
  for(const g of GOBS){g.R=rigObj(g.big?BIGM:GOBM,{out:.014,cull:150});rigHide(g.R)}}
 function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kind.startsWith&&kind.startsWith('light');
- if(gobDeflect(g,kind))return false;
+ if(gobDeflect(g,kind))return false;if(g.shield&&shieldBlock(g,kind))return false;
  if(g.st==='guard'&&!g.big&&Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<1.2){if(light0||kind==='arrow'){g.blockedAt=GT.clock;g.t=Math.min(g.t,.5);g.kx=dx*2;g.kz=dz*2;if(Math.random()<.35){g.t=99;gobStartSwing(g)}return false}
   if(kind==='heavy'||kind==='runatk'||kind==='jumpatk'){g.st='stagger';g.t=0;floatText(g.x,(g.y||0)+1.9,g.z,'SAVUNMA KIRILDI','crit');sfx.break()}}g.hp-=dmg;g.flash=1;g.aware=1;g.ls=[P.x,P.z];
  if(g.st==='playdead'){g.hp=0;floatText(g.x,(g.y||0)+1.4,g.z,'ÖLÜ TAKLİDİ!','crit')}if(g.hp<=0&&gobFeign(g,kind))return false;if(g.hp<=0){g.hp=0;g.dead=1;g.st='dead';g.t=0;g.held=null;return true}
@@ -31,7 +31,7 @@ function gobHurt(g,dmg,dx,dz,kind){if(g.dead)return false;const light0=kind&&kin
   else if(!g.big||kind==='heavy'||kind==='jumpatk'){if(g.st!=='stagger'){g.st='hurt';g.t=0}}else if(!g.hostile()){g.st='chase';g.t=0}}
  alertGroup(g,P,22,GOBS);if(!g.helped&&!g.big&&!g.so&&g.hp<g.max*.5)gobCallHelp(g);return false}
 const gobTokens=()=>GOBS.filter(g=>!g.dead&&!g.big&&(g.st==='windup'||g.st==='strike')).length;
-function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
+function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}if(g.ally&&!g.dead){allyTick(g,dt);return}if(g.clash&&!g.dead&&clashTick(g,dt))return;g.t+=dt;g.flash=Math.max(0,g.flash-dt*6);g.cd-=dt;const d=Math.hypot(P.x-g.x,P.z-g.z);
  if(Math.abs(g.kx)+Math.abs(g.kz)>.05&&!g.held){const p=collide(g.x+g.kx*dt,g.z+g.kz*dt,g.rad);g.x=p[0];g.z=p[1];const k=Math.exp(-dt*7);g.kx*=k;g.kz*=k}
  if(g.dead){g.deadT+=dt;if(g.deadT>140&&d>100&&!g.free){Object.assign(g,{dead:0,hp:g.max,x:g.hx,z:g.hz,st:'idle',aware:0,deadT:0,held:null})}g.y=hAt(g.x,g.z);return}
  if(g.st==='choked'||g.st==='pinned'){g.spd=0;g.y=hAt(g.x,g.z);return}
@@ -88,7 +88,7 @@ function updateGob(g,dt){if(g.so){g.y=hAt(g.x,g.z);return}g.t+=dt;g.flash=Math.m
 // small goblin swing: 40% two-hit combo, 18% a red unblockable lunge (危: dash away or sideways), always with a tell
 function gobStartSwing(g){const S=gobSwingStyle(g);g.st='windup';g.t=0;g.hitDone=false;g.peril=Math.random()<S.peril?1:0;g.cn=g.peril?0:Math.random()<S.combo?(S.three?2:1):0;g.delay=g.cn>0&&Math.random()<S.delay?1:0;// elite rank, adaptation and the hero's habits shape the swing
  if(g.peril){sfx.charge();floatText(g.x,(g.y||0)+2,g.z,'危','crit');spawnSparks(g.x,(g.y||0)+1.3,g.z,6,[1,.15,.1],2)}else sfx.gobShout()}
-function gobFK(g,time){const tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc,extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));g.root=[g.x,y,g.z,extra];rigFK(g.R.def,gobPose(g,time),[g.x,y,g.z],g.yaw,g.sc,g.R.ob.bones,extra)}
+function gobFK(g,time){const tilt=gobRootTilt(g),K=(g.rigM||(g.big?BIGM:GOBM)).K,hipH=(K.th+K.sh2+.06)*g.sc,extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));g.root=[g.x,y,g.z,extra];rigFK(g.R.def,gobPose(g,time),[g.x,y,g.z],g.yaw,g.sc,g.R.ob.bones,extra)}
 function clubSeg(g){gobFK(g,GT.time);const d=g.R.def;return[boneW(d,8,[0,-.08,.3],g.sc),boneW(d,8,[0,-.08,1.75],g.sc)]}
 // closest distance between segment AB (club) and segment CD (body axis) < r
 function segCapsule(A,B,C,D,r){let best=1e9;for(let i=0;i<=8;i++){const t=i/8,p=[lp(A[0],B[0],t),lp(A[1],B[1],t),lp(A[2],B[2],t)],cd=vsub(D,C),u=cl(vdot(vsub(p,C),cd)/vdot(cd,cd),0,1),q=vadd(C,vmul(cd,u));best=Math.min(best,Math.hypot(...vsub(p,q)))}return best<r+.18}
@@ -121,6 +121,6 @@ function gobPose(g,time){const q={};const A=cl(g.spd/(g.big?2.4:5),0,1),run=g.bi
 // root tilt for lying states (face-down when pinned, on the back when dead)
 function gobRootTilt(g){{const tt=gobTrickTilt(g);if(tt!==null)return tt}if(g.st==='pinned')return 1.45;if(g.st==='escape'&&g.from==='pinned')return 1.45*(1-sst(0,.85,g.t/1.4));if(g.st==='dead')return -1.45*sst(0,.6,g.t);return 0}
 function drawGobs(time){for(const g of GOBS){const d=Math.hypot(g.x-P.x,g.z-P.z);if(d>140||(g.dead&&g.deadT>20)){rigHide(g.R);if(g.bowOb)g.bowOb.vis=false;continue}
-  const rot=gobPose(g,time),tilt=gobRootTilt(g),K=g.big?BIGM.K:GOBM.K,hipH=(K.th+K.sh2+.06)*g.sc;
+  const rot=gobPose(g,time),tilt=gobRootTilt(g),K=(g.rigM||(g.big?BIGM:GOBM)).K,hipH=(K.th+K.sh2+.06)*g.sc;
   const extra=tilt?rX(tilt):R3I,y=g.y+lp(hipH,g.big?.4:.15,Math.abs(Math.sin(tilt)));rigDraw(g.R,g.x,y,g.z,g.yaw,g.sc,rot,g.big?.9:.42,extra);drawGobBow(g);
   g.R.ob.flash=g.flash;g.R.ob.col=g.st==='stagger'||g.open()?[1.15,1.05,.8]:[1,1,1]}}

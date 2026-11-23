@@ -55,7 +55,7 @@ function wolfHurt(w,dmg,dirx,dirz,P){if(w.dead)return false;w.hp-=dmg;w.flash=1;
   else{w.st='hurt';w.t=0;w.air=0;w.pitch=0}}
  for(const o of wolves)if(o!==w&&!o.dead&&!o.tame&&o.calm<=0&&Math.hypot(o.x-w.x,o.z-w.z)<16&&!hostileSt(o)){o.st='alert';o.t=0;o.ls=[P.x,P.z];o.aware=Math.max(o.aware,.6)}
  return false}
-function updateWolf(w,P,dt,GS){
+function updateWolf(w,P,dt,GS){if(w.clash&&!w.dead&&clashTick(w,dt))return;
  w.flash=Math.max(0,w.flash-dt*6);w.calm=Math.max(0,w.calm-dt);w.cd-=dt;w.t+=dt;
  if(Math.abs(w.kx)+Math.abs(w.kz)>.05&&w.st!=='pin'){const p=collide(w.x+w.kx*dt,w.z+w.kz*dt,.42);w.x=p[0];w.z=p[1];const k=Math.exp(-dt*7);w.kx*=k;w.kz*=k}
  const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz);

@@ -14,7 +14,7 @@ const stDef=()=>STDEF[SYS.stance]||{};
 // the parry window the hero has right now: stance, and spamming the block button shrinks it (a parry is a decision, not a reflex)
 function parryWin(){return PARRY_WIN*(stDef().pw||1)*Math.max(.35,1-.22*(P.bspam||0))}
 // --------------------------------------------------------------- enemies the player can hit
-function foes(){if(DUN.on){const o=[];for(const m of MONS)if(!m.dead)o.push(m);return o}const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead)out.push(g);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
+function foes(){if(DUN.on){const o=[];for(const m of MONS)if(!m.dead)o.push(m);return o}const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead&&!g.ally)out.push(g);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
 const isWolf=w=>wolves.includes(w);
 function foeHostile(f){return isWolf(f)?hostileSt(f):f.hostile()}
 function foeHurt(f,dmg,dx,dz,kind){return isWolf(f)?wolfHurt(f,dmg,dx,dz,P):f.hurt(dmg,dx,dz,kind)}
@@ -33,7 +33,7 @@ function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=(o.src&&
    // parry fatigue: the same foe parried a third time inside 6 s no longer reels — it learns, and changes its rhythm
    let reel=true;if(src&&src.hp!==undefined&&!src.boss&&src!==DRAGON){src.parN=GT.clock-(src.parAt||-9)<6?(src.parN||0)+1:1;src.parAt=GT.clock;if(src.parN>=3){reel=false;src.adapt=GT.clock+8;floatText(src.x,(src.y||0)+2.1,src.z,'ALIŞTI','')}}
    if(src&&src.hp!==undefined&&stDef().pp)addPosture(src,18*(stDef().pp-1)*(P.chain||1));
-   if(reel&&src&&GOBS.includes(src)&&!src.big&&!src.elite&&!src.boss&&!src.rock&&Math.random()<.3){src.st='unarmed';src.t=0;floatText(src.x,(src.y||0)+2,src.z,'SİLAHI DÜŞTÜ','gold');note('[Sistem] Goblinin silahı elinden uçtu — kaçıp yerden taş arıyor.','gold')}else if(reel){note('[Sistem] Tam zamanlı savuşturma! Düşman sarsıldı.','gold');if(src&&src.onParried)src.onParried();else if(src&&isWolf(src))wolfParried(src)}else note('[Sistem] Savuşturdun ama düşman sarsılmadı — ritmini değiştirecek.','');
+   if(reel&&src&&GOBS.includes(src)&&!src.big&&!src.elite&&!src.boss&&!src.rock&&(o.crit||SYS.stance==='moon')&&Math.random()<.35){/* Moon is the parry stance: its perfect parries knock weapons away */src.st='unarmed';src.t=0;floatText(src.x,(src.y||0)+2,src.z,'SİLAHI DÜŞTÜ','gold');note('[Sistem] Goblinin silahı elinden uçtu — kaçıp yerden taş arıyor.','gold')}else if(reel){note('[Sistem] Tam zamanlı savuşturma! Düşman sarsıldı.','gold');if(src&&src.onParried)src.onParried();else if(src&&isWolf(src))wolfParried(src)}else note('[Sistem] Savuşturdun ama düşman sarsılmadı — ritmini değiştirecek.','');
    return'parry'}
   const gd=(o.guard!==undefined?o.guard:o.dmg*1.8)*(stDef().gd||1);P.guard-=gd;P.gcT=GT.clock+.7;P.guardT=1.2;sfx.block();const sp=swordTip();spawnSparks(sp[0],sp[1],sp[2],8,[1,.9,.6],4);CAM.shake=Math.max(CAM.shake,.25);
   const pd=o.dir||[0,0];P.vx=pd[0]*3;P.vz=pd[1]*3;floatText(P.x,P.y+1.7,P.z,'BLOK','');
