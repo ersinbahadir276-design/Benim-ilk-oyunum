@@ -57,6 +57,7 @@ const BLADE_F=[0,.3,.6,.85,1.04];
 function sweepHits(){const A=P.atk;if(!A||(P.st!=='attack'&&P.st!=='heavy'&&P.st!=='runatk')){if(A&&A.trail)A.trail=null;return}
  const u=P.t/A.T;trailPush(u>A.a0-.06&&u<A.a1+.06);if(u<A.a0-.03||u>A.a1+.04){A.prev=null;return}
  const cur=BLADE_F.map(bladeAt),prev=A.prev||cur;A.prev=cur;
+ {const tp=cur[4],gy=hAt(tp[0],tp[2]);if(!A.scraped&&tp[1]<gy+.04){A.scraped=1;spawnSparks(tp[0],gy+.05,tp[2],10,[1,.8,.45],3);sfx.clang();GT.stop=Math.max(GT.stop,.03)}}/* the blade bites the ground instead of passing through it */
  if(!A.started){A.started=1;if(DUN.on)dunSwing(A.kind==='heavy'?'heavy':'light0');if(A.kind==='heavy'&&hasFx('fire'))for(let i=0;i<4;i++)BURNS.push({x:P.x+Math.sin(P.yaw)*(1.2+i*.9),z:P.z+Math.cos(P.yaw)*(1.2+i*.9),t:0,life:4,mine:1});P.noise=14}
  if(A.fin&&A.st==='moon'&&!A.wave&&u>A.a1-.02)moonWave(A);if(A.fin&&A.st==='wind'&&!A.pierce&&u>(A.a0+A.a1)/2)windPierce(A);
  if(A.hits.size>=A.max)return;

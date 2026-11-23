@@ -52,7 +52,7 @@ function wolfEngage(w,d,dt,GS){w.brT=(w.brT||0)-dt;if(w.brT<=0){w.brT=.35;const 
  const cs=Math.max(3.6,(P.spd||0)*1.15),p=collide(w.x+(gx-w.x)/k*cs*dt,w.z+(gz-w.z)/k*cs*dt,.42);w.x=p[0];w.z=p[1];w.spd=lp(w.spd,3.4,.2);w.ph+=3*dt*4;wolfFace(w,P.x,P.z,dt,9);if(Math.hypot(w.x-px,w.z-pz)<3.6*dt*.3)w.strafe*=-1}
 // the bite: a short crouch and growl (the tell), a rush, a snap, then away again
 function wolfBite(w,d,dt,GS){const fx=P.x-w.x,fz=P.z-w.z;
- if(w.st==='bitewind'){w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,.75,Math.min(1,dt*10));w.jaw=lp(w.jaw,.55,.2);wolfFace(w,P.x,P.z,dt,12);if(w.t>(w.bwT||.38)){w.st='rush';w.t=0}return}
+ if(w.st==='bitewind'){if(w.t<=dt*1.01)sfx.growl();/* the tell is the sound + the crouch, no marker */w.spd=lp(w.spd,0,.4);w.crouch=lp(w.crouch,.75,Math.min(1,dt*10));w.jaw=lp(w.jaw,.55,.2);wolfFace(w,P.x,P.z,dt,12);if(w.t>(w.bwT||.38)){w.st='rush';w.t=0}return}
  if(w.st==='rush'){w.crouch=lp(w.crouch,0,.3);w.jaw=lp(w.jaw,.7,.2);wolfMove(w,P.x,P.z,9.5,dt,10);if(d<1.5){w.st='bite';w.t=0;w.bitten=0}else if(w.t>1.3){w.st='retreat';w.t=0;w.retTo=6;w.after='circle';w.cd=rr(.8,1.4)}return}
  if(w.st==='bite'){if(w.t<.16){const p=collide(w.x+Math.sin(w.yaw)*4.5*dt,w.z+Math.cos(w.yaw)*4.5*dt,.42);w.x=p[0];w.z=p[1]}w.spd=lp(w.spd,0,.5);/* the snap lunges forward */w.pitch=lp(w.pitch,-.2,.4);w.jaw=w.t<.12?1:lp(w.jaw,.2,.3);wolfFace(w,P.x,P.z,dt,14);
   if(!w.bitten&&w.t>.08){w.bitten=1;const fa=Math.abs(angd(Math.atan2(fx,fz),w.yaw));if(d<1.75&&fa<1.1){const r=hitPlayer({src:w,dmg:5+(w.alpha?2:0)+(w.boss?3:0),guard:16,dir:[Math.sin(w.yaw),Math.cos(w.yaw)],knock:'flinch',name:'kurt'});sfx.bite();

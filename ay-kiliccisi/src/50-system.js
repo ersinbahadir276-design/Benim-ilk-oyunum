@@ -87,7 +87,9 @@ function combatGuideHtml(){let h='<div class="wt">DURUŞLAR</div>';for(const k o
   '○ <b>ATIL</b>: başında kısa dokunulmazlık; vuruşun içine doğru zamanında atılırsan <b>KUSURSUZ KAÇINMA</b> → □ karşı saldırı. 1 sn içinde 3. atılma dokunulmaz değildir.<br>'+
   'Kombo ortasında R2 ile duruş değiştir = kombo yeni duruşta <b>AKIŞ</b> ile sürer. Kombonun son vuruşu duruşun bitiricisidir.<br>'+
   '<b style="color:#ff5a4a">危</b> = savuşturulamaz, bloklanamaz: atıl. Kavga başlamamış gruba R1 = <b>KAFA KAFAYA</b>.<br>'+
-  'L1 basılıyken □ = <b>TEKME</b> (goblin siperini kırar, iter) · bir vuruşu BLOKLADIKTAN sonra 0.7 sn içinde △ = <b>SİPER KARŞILIĞI</b> (hızlı, ×1.5) · sendeleyen/açık ya da arkası dönük küçük düşmana R1 = <b>YAKALA-FIRLAT</b> (çarptığını devirir).</div>'+
+  'L1 basılıyken □ = <b>TEKME</b> (goblin siperini kırar, iter) · bir vuruşu BLOKLADIKTAN sonra 0.7 sn içinde △ = <b>SİPER KARŞILIĞI</b> (hızlı, ×1.5) · sendeleyen/açık ya da arkası dönük küçük düşmana R1 = <b>YAKALA-FIRLAT</b> (çarptığını devirir).<br>'+
+  '△ basılı = yükle; tam dolduğu an (ses) bırak = <b>KUSURSUZ YÜK</b> ×1.3. Ağır savururken hafif darbeler seni durdurmaz (<b>DİRENÇ</b>). Ağır darbeleri savuşturmak daha zor; bazı özel darbeler <b>KRİTİK SAVUŞTURMA</b> ister. Düşman saldırıları işaretle değil, vücut ve sesle okunur.<br>'+
+  'L2 basılı = <b>YAY ÇEK</b> (kamera ile nişan), bırak = at; tam gerildiği an bırak = <b>KUSURSUZ ATIŞ</b>; yüksekten isabet = <b>KAFA</b> ×2. Kısa dokunuş = hedefe hızlı ok.</div>'+
   '<div class="wt2">DÜŞMANIN HİLELERİ</div><div class="qs" style="font-size:12px;line-height:1.5">'+
   '<b>Kurt</b> — arkandan alçak dalış = <b>BACAK ISIRIĞI</b> (topallarsın; arkanı açık bırakma) · blokta beklersen ya da boş savurursan <b>KOLUNA KENETLENİR</b> (art arda bas, silkele — kurt açıkta kalır) · işaretsiz koşu = <b>SAHTE ATILMA</b>: vurursan öbür kurt yandan gelir.<br>'+
   '<b>Goblin</b> — yere eğilip avuçlarsa <b>GÖZE TOPRAK</b> atacak: atıl (blok yarısını tutar) · alçalıp öne atılırsa <b>BACAĞA DALIŞ</b>: atıl ya da zıpla, tutarsa tekmele · bazen <b>ÖLÜ TAKLİDİ</b> yapar: cesede bir kez daha vur.<br>'+

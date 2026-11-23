@@ -14,7 +14,7 @@ function updateArrows(dt){for(const a of ARROWS){if(!a.on){a.ob.vis=false;contin
    if(a.y<hAt(a.x,a.z)+.05){a.stuck=1;a.life=Math.min(a.life,3);a.y=hAt(a.x,a.z)+.08}
    else if(a.owner==='foe'){if(P.alive&&Math.hypot(P.x-a.x,P.z-a.z)<.45&&a.y>P.y+.1&&a.y<P.y+1.8){const r=hitPlayer({src:{x:a.x-a.vx*.05,z:a.z-a.vz*.05,lv:a.lv},dmg:a.dmg,guard:a.dmg*1.6,dir:[a.vx/19,a.vz/19],knock:'flinch',noPush:1});if(r!=='iframe'){a.on=false;if(r==='block'||r==='parry')spawnSparks(a.x,a.y,a.z,6,[1,.9,.6],3)}}}
    else{for(const f of foes()){const big=f===DRAGON?3:f.big||f.boss?1.0:isWolf(f)?.65:.5,fy=f===DRAGON?f.y+2:(f.y||0)+(f.big?1.4:.8);if(Math.hypot(f.x-a.x,f.z-a.z)<big&&Math.abs(a.y-fy)<(f===DRAGON?3:1)){
-     const k=Math.hypot(a.vx,a.vz)||1,dead=foeHurt(f,a.dmg,a.vx/k,a.vz/k,'arrow');addPosture(f,6);floatText(f.x,fy+.6,f.z,''+a.dmg,'');spawnSparks(a.x,a.y,a.z,5,[.9,.2,.15],2);if(dead)onFoeKilled(f,false);else{f.aware=1;if(f.ls)f.ls=[P.x,P.z]}a.on=false;break}}}}
+     const head=f!==DRAGON&&a.y>fy+(f.big?.55:isWolf(f)?.15:.45),dm=head?a.dmg*2:a.dmg,k=Math.hypot(a.vx,a.vz)||1,dead=foeHurt(f,dm,a.vx/k,a.vz/k,'arrow');addPosture(f,head?18:6);floatText(f.x,fy+.6,f.z,(head?'KAFA! ':'')+dm,head?'crit':'');spawnSparks(a.x,a.y,a.z,5,[.9,.2,.15],2);if(dead)onFoeKilled(f,false);else{f.aware=1;if(f.ls)f.ls=[P.x,P.z]}a.on=false;break}}}}
   const yaw=Math.atan2(a.vx,a.vz),pit=-Math.atan2(a.vy,Math.hypot(a.vx,a.vz));a.ob.M=mtrs([a.x,a.y,a.z],[pit,yaw,0]);a.ob.pos=[a.x,0,a.z]}}
 // ---------- goblin archers
 function archerChase(g,d,dt){if(!g.archer)return false;if(g.unseen>1||d>22)return false;
@@ -52,5 +52,5 @@ function updateShoot(dt){P.vx*=Math.exp(-dt*10);P.vz*=Math.exp(-dt*10);const t=P
  if(P.t>.32&&!P.shot){P.shot=1;const fy=t?(t===DRAGON?t.y+2:(t.y||hAt(t.x,t.z))+(t.big?1.4:isWolf(t)?.6:.8)):P.y+1.3,to=t?[t.x,fy,t.z]:[P.x+Math.sin(P.yaw)*30,P.y+1.4,P.z+Math.cos(P.yaw)*30];
   shootArrow([P.x+Math.sin(P.yaw)*.5,P.y+1.45,P.z+Math.cos(P.yaw)*.5],to,40,'hero',Math.round(weaponDmg()*.7*dmgMul()),t&&t.kx!==undefined?[0,0]:null)}
  if(P.t>.6){P.st='move';P.t=0}}
-function drawHeroBow(){if(!heroBow){arrowGeom();heroBow=obj(bowGeo,{shade:.9,pos:[0,0,0],cull:60,out:.004,outCol:[.05,.04,.03]})}heroBow.vis=P.st==='shoot';if(!heroBow.vis)return;
+function drawHeroBow(){if(!heroBow){arrowGeom();heroBow=obj(bowGeo,{shade:.9,pos:[0,0,0],cull:60,out:.004,outCol:[.05,.04,.03]})}heroBow.vis=P.st==='shoot'||P.st==='draw';if(!heroBow.vis)return;
  const R=SK.GR[HB.leftHand],gp=SK.GP[HB.leftHand],w=mpt(PM,gp),M=new Float32Array(16),Ry=rY(P.yaw),RR=r3m(Ry,R);M[0]=RR[0];M[1]=RR[3];M[2]=RR[6];M[4]=RR[1];M[5]=RR[4];M[6]=RR[7];M[8]=RR[2];M[9]=RR[5];M[10]=RR[8];M[12]=w[0];M[13]=w[1];M[14]=w[2];M[15]=1;heroBow.M=M;heroBow.pos=[P.x,0,P.z]}

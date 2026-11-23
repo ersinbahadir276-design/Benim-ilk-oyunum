@@ -33,12 +33,12 @@ function dAwaken(d){if(P.st==='grabbed'&&GRAB.by===d)releaseHero(false,false);if
 function dragonBreak(d){floatText(d.x,d.y+5,d.z,'YERE DÜŞTÜ','crit');if(d.fy>1.5||/^(hover|breath|circle|dive|strafe|volley|takeoff)$/.test(d.st)){d.st='crash';d.t=0;d.hitDone=false;dGo(d,'down',.25,1)}else dDown(d)}
 function dDown(d){d.st='downed';d.t=0;d.pitch=0;d.roll=0;dGo(d,'die',.35,1);note('[Sistem] Ejderha yerde! Boynuna tırman (ETKİLEŞ) ya da saldır.','gold')}
 // ---------- moves
-function dPickGround(d,dist,fa){const now=GT.clock,sp=dSpd(d),r=Math.random();
+function dPickGround(d,dist,fa){const now=GT.clock,sp=dSpd(d),H=habits();let r=Math.random();if(H.turtle&&fa<.55&&dist>4)r*=.5;/* it reads the hero: a turtle gets bitten (guard-heavy lunge), a dodger gets delayed claws */
  if(d.phase>=3&&(d.novaCd||0)<now&&dist<12&&(r<.45||d.gm>=2)){d.st='nova';d.t=0;d.hitDone=false;d.novaCd=now+16;dGo(d,'taitou',.3,1.3);sfx.inhale();return}
  if(dist<5&&!(d.stompCd>now)){d.st='stomp';d.t=0;d.hitDone=false;d.stompCd=now+4;dangerRing(d.x,d.z,6.2,1.15/sp);dGo(d,'taitou',.25,1.3*sp);sfx.roar(.8);return}
  if(fa>1.5&&dist<10){d.st='tail';d.t=0;d.hitDone=false;d.spin=angd(Math.atan2(P.x-d.x,P.z-d.z),d.yaw)>0?1:-1;dGo(d,'walk',.25,.6);sfx.snarl();return}
  if(fa<.55&&dist>5.5&&dist<15&&(r<.45||dist>10)){d.st='bite';d.t=0;d.hitDone=false;dGo(d,'walk',.25,.5);sfx.snarl();return}
- if(fa<.6&&dist<10){d.st='claw';d.t=0;d.hitDone=false;d.chain=0;d.slow=Math.random()<[0,.25,.4,.55][d.phase];dGo(d,'attack01',.2,1.5*sp,1.25);sfx.roar(.7);return}}
+ if(fa<.6&&dist<10){d.st='claw';d.t=0;d.hitDone=false;d.chain=0;d.slow=Math.random()<[0,.25,.4,.55][d.phase]+(H.dodger?.3:0);dGo(d,'attack01',.2,1.5*sp,1.25);sfx.roar(.7);return}}
 function dTakeoff(d){d.st='takeoff';d.t=0;d.gm=0;d.am=0;dGo(d,'up',.3,1);sfx.wings()}
 function dLand(d){d.st='land';d.t=0;d.landed=false;d.roll=0;d.pitch=0;dGo(d,'down',.3,1)}
 function dShot(x,z,T,r,dmg){DSHOTS.push({x,z,t:0,T,r,dmg})}
@@ -77,7 +77,7 @@ function updateDragon(d,dt){if(!d)return;d.t+=dt;d.flash=Math.max(0,d.flash-dt*4
  case'claw':{// the claw clip from its raise; a DELAYED claw holds high (slow) then snaps (fast)
   d.speed=d.slow?(d.ct<2.25?.42:2.5*sp):1.5*sp;if(d.ct<2.35)dFace(d,P.x,P.z,dt,1.5*sp);
   if(!d.hitDone&&d.ct>2.6&&d.ct<3.4){const c=dBone(d,DRG.rHand),hit=Math.hypot(c[0]-P.x,c[2]-P.z)<2.5&&c[1]<P.y+2.4;
-   if(hit){d.hitDone=true;const k=Math.hypot(P.x-d.x,P.z-d.z)||1;dHit(d,{dmg:34,guard:70,dir:[(P.x-d.x)/k,(P.z-d.z)/k],knock:'down',power:1.7})}}
+   if(hit){d.hitDone=true;const k=Math.hypot(P.x-d.x,P.z-d.z)||1;dHit(d,{dmg:34,guard:70,dir:[(P.x-d.x)/k,(P.z-d.z)/k],knock:'down',power:1.7,crit:true})}}
   if(d.ct>2.7&&d.ct<2.7+dt*d.speed+.001){CAM.shake=Math.max(CAM.shake,dist<14?.45:.15);sfx.thud();if(!d.hitDone&&dist<3.6&&!P.air){d.hitDone=true;dHit(d,{dmg:16,guard:35,knock:'flinch',parryable:false})}}
   if(d.ct>4.1){d.gm++;const r=Math.random();if(d.phase>=2&&!d.chain&&r<.5){d.chain=1;d.hitDone=false;d.slow=Math.random()<.35;dGo(d,'attack01',.15,1.6*sp,1.5);sfx.roar(.6)}
    else if(d.phase>=2&&r<.8&&dist<10){d.st='tail';d.t=0;d.hitDone=false;d.spin=Math.random()<.5?1:-1;dGo(d,'walk',.25,.6)}else{dToGround(d);d.cd=rr(.3,.8)/sp}}break}
@@ -153,16 +153,10 @@ function updateDragon(d,dt){if(!d)return;d.t+=dt;d.flash=Math.max(0,d.flash-dt*4
  // burning ground: hurts while standing in it; dodging through it still burns (it is fire, not a blow)
  if(P.alive&&!P.held&&(P.burnT=(P.burnT||0)-dt)<=0)for(const b of BURNS)if(b.t<b.life&&Math.hypot(P.x-b.x,P.z-b.z)<1.3&&!P.air){P.burnT=.5;const inv=P.inv;P.inv=0;hitPlayer({dmg:4,knock:'none',unblockable:true,parryable:false});P.inv=inv;break}}
 // what the ground shows before each move (called from the telegraph pass)
-function dragonTele(){const d=DRAGON;if(!d||d.dead)return;const sp=dSpd(d);
- if(d.st==='claw'&&d.ct<2.6)tele('circle',d.x+Math.sin(d.yaw)*6.2+Math.cos(d.yaw)*-1.2,d.z+Math.cos(d.yaw)*6.2-Math.sin(d.yaw)*-1.2,2.6,0,0,d.slow&&d.ct<2.25?.55:1);
- if(d.st==='breath'&&d.breathA&&d.ct<4.4){const ax=d.breathA[0],az=d.breathA[1],bx=d.breathB[0],bz=d.breathB[1];tele('strip',ax,az,3.6,Math.hypot(bx-ax,bz-az),Math.atan2(bx-ax,bz-az),d.ct<2.7?1:.5)}
- if(d.st==='land'&&d.ct<.6)tele('circle',d.x,d.z,5.5,0,0,1);
- if(d.st==='tail'&&d.t<.6/sp+.85/sp)tele('circle',d.x,d.z,10.5,0,0,sst(0,.3,d.t)*.8);
- if(d.st==='bite'&&d.t<.6/sp)tele('strip',d.x,d.z,3,12,d.yaw,sst(0,.3,d.t));
- if(d.st==='nova'&&d.t<1.6)tele('circle',d.x,d.z,10,0,0,sst(0,1.6,d.t));
- if(d.st==='awaken'&&d.t<.95)tele('circle',d.x,d.z,12,0,0,sst(0,.9,d.t));
- if(d.st==='dive'&&d.dv){const L=d.dL+16;tele('strip',d.dS[0],d.dS[1],3.6,L,Math.atan2(d.dv[0],d.dv[1]),d.t<1.05/sp?1:.45)}
- if(d.st==='strafe'&&d.t<1.4/sp)tele('strip',d.sA[0],d.sA[1],3.2,Math.hypot(d.sB[0]-d.sA[0],d.sB[1]-d.sA[1]),Math.atan2(d.sB[0]-d.sA[0],d.sB[1]-d.sA[1]),.9);
+function dragonTele(){const d=DRAGON;if(!d||d.dead)return;
+ if(d.st==='land'&&d.ct<.6)tele('circle',d.x,d.z,5.5,0,0,.6);
+ if(d.st==='nova'&&d.t<1.6)tele('circle',d.x,d.z,10,0,0,sst(0,1.6,d.t)*.8);
+ if(d.st==='awaken'&&d.t<.95)tele('circle',d.x,d.z,12,0,0,sst(0,.9,d.t)*.7);
  for(const s of DSHOTS)tele('circle',s.x,s.z,s.r,0,0,sst(0,.4,s.t))}
 function dragonTell(d){return d.st==='claw'&&d.ct<2.7||d.st==='breath'&&d.ct<2.7||d.st==='tail'&&d.t<.6/dSpd(d)||d.st==='bite'&&d.t<.6/dSpd(d)||d.st==='nova'&&d.t<1.6||d.st==='dive'&&d.t<1.05/dSpd(d)}
 // ---------- climbing the downed dragon: stab the neck, hold on when it thrashes

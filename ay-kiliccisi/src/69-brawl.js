@@ -108,11 +108,23 @@ function gobTricks(g,d,dt){switch(g.st){
  case'sprawl':g.spd=0;g.kx*=.9;g.kz*=.9;if(g.t>1.5){g.st='escape';g.from='pinned';g.t=0}return true;
  case'playdead':{g.spd=0;g.kx*=.85;g.kz*=.85;const back=Math.abs(angd(Math.atan2(g.x-P.x,g.z-P.z),P.yaw))>1.9;
   if(P.alive&&g.t>2.2&&((back&&d>2&&d<9)||g.t>9)&&d<16){g.st='rise';g.t=0;sfx.gobShout()}return true}
+ case'gkick':{g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,10);if(g.t>=.45&&!g.hitDone){g.hitDone=true;sfx.swing();if(d<2.1&&heroOpen()&&Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<.9){if(P.inv>0)perfectDodge({src:g});else if(P.st==='block'){P.guard=0;P.st='gbreak';P.t=0;sfx.thud();CAM.shake=Math.max(CAM.shake,.4);floatText(P.x,P.y+1.8,P.z,'SİPERİN KIRILDI','red');note('[!] Goblin siperine tekme attı — blokta beklemek her zaman güvenli değil.','red')}else hitPlayer({src:g,dmg:6,guard:30,dir:[Math.sin(g.yaw),Math.cos(g.yaw)],knock:'flinch',parryable:false})}}
+  if(g.t>.9){g.st='chase';g.t=0;g.hitDone=false;g.cd=rr(.5,1)}return true}
+ case'unarmed':{const ax=g.x-P.x,az=g.z-P.z,k=Math.hypot(ax,az)||1;if(g.t<2.2){agentMove(g,g.x+ax/k*4,g.z+az/k*4,4.6,dt,g.rad,6)}else{g.spd=lp(g.spd,0,.4)}if(g.t>3.4){g.st='chase';g.t=0;g.cd=.6;floatText(g.x,g.y+1.8,g.z,'TAŞ KAPTI','');g.rock=1}return true}
+ case'bgrab':{const T=.75;if(g.t<T){g.spd=lp(g.spd,0,.4);agentFace(g,P.x,P.z,dt,3);return true}
+  if(g.t<T+.3){const p=collide(g.x+Math.sin(g.yaw)*6*dt,g.z+Math.cos(g.yaw)*6*dt,g.rad);g.x=p[0];g.z=p[1];if(!g.hitDone&&Math.hypot(P.x-g.x,P.z-g.z)<2.4&&heroOpen()){g.hitDone=true;if(P.inv>0){perfectDodge({src:g})}else{g.grabLost=()=>g.st!=='bhold';
+   if(grabHero(g,{kind:'big',lim:2.0,need:1.4,tickT:.7,pos:()=>[g.x+Math.sin(g.yaw)*1.1*g.sc,g.y+1.3*g.sc,g.z+Math.cos(g.yaw)*1.1*g.sc],msg:'Büyük goblin seni kaldırdı! Art arda bas — fırlatmadan kurtul!',label:'KURTUL! Düğmelere art arda bas',
+    onTick:o=>holdHurt(o,3),onFree:o=>{o.st='stagger';o.t=0;addPosture(o,50);floatText(o.x,o.y+2.4,o.z,'KURTULDUN','gold')},
+    onFail:o=>{o.st='recover';o.t=0;P.y=hAt(P.x,P.z);const a=o.yaw;P.x+=Math.sin(a)*1.5;P.z+=Math.cos(a)*1.5;knockDown([Math.sin(a),Math.cos(a)],2.4);holdHurt(o,24);CAM.shake=Math.max(CAM.shake,.8);note('[!] Büyük goblin seni fırlattı!','red')}})){g.st='bhold';g.t=0;return true}}}return true}
+  g.st='recover';g.t=0;g.hitDone=false;return true}
+ case'bhold':{if(P.st!=='grabbed'||GRAB.by!==g){g.st='recover';g.t=0}g.spd=0;return true}
  case'rise':{const u=g.t/.75;agentFace(g,P.x,P.z,dt,6);if(u>=1){g.st='windup';g.t=0;g.hitDone=false;g.peril=1;g.cn=0;g.delay=0;g.aware=1;g.ls=[P.x,P.z];floatText(g.x,g.y+2,g.z,'危','crit');note('[!] Ölü taklidi yapıyordu — arkandan geliyor!','red')}return true}}
+ if(g.big&&!g.boss&&g.st==='chase'&&g.hostile()&&d<3.4&&(g.bgCd||0)<GT.clock&&heroOpen()&&Math.random()<dt*.5&&attackOK(g)){g.st='bgrab';g.t=0;g.hitDone=false;g.bgCd=GT.clock+rr(9,13);sfx.roar(.5);return true}
+ if(!g.big&&!g.archer&&g.st==='chase'&&P.st==='block'&&d<2.4&&(g.gkCd||0)<GT.clock&&g.hostile()&&Math.random()<dt*1.3&&attackOK(g)){g.st='gkick';g.t=0;g.hitDone=false;g.gkCd=GT.clock+rr(5,8);sfx.gobShout();return true}
  // starting a trick: only a small goblin in a real fight, never two of the same at once
  if(g.st!=='chase'||g.big||g.archer||g.boss||!g.hostile()||(g.unseen||0)>1||!heroOpen())return false;const now=GT.clock;
- if(d>2.2&&d<5.4&&(g.dirtCd||0)<now&&!(P.blindT>0)&&!GOBS.some(o=>o.st==='dirt')&&Math.random()<dt*.32&&attackOK(g)){g.st='dirt';g.t=0;g.thrown=0;g.dirtCd=now+rr(9,14);floatText(g.x,g.y+2,g.z,'!','yel');return true}
- if(d>2.6&&d<6.2&&(g.tkCd||0)<now&&!GOBS.some(o=>o.st==='tackle'||o.st==='latched')&&Math.random()<dt*(P.st==='block'?.6:.28)&&attackOK(g)){g.st='tackle';g.t=0;g.hitDone=false;g.tkCd=now+rr(10,15);sfx.gobShout();floatText(g.x,g.y+2,g.z,'!','yel');return true}
+ if(d>2.2&&d<5.4&&(g.dirtCd||0)<now&&!(P.blindT>0)&&!GOBS.some(o=>o.st==='dirt')&&Math.random()<dt*.32&&attackOK(g)){g.st='dirt';g.t=0;g.thrown=0;g.dirtCd=now+rr(9,14);return true}
+ if(d>2.6&&d<6.2&&(g.tkCd||0)<now&&!GOBS.some(o=>o.st==='tackle'||o.st==='latched')&&Math.random()<dt*(P.st==='block'?.6:.28)&&attackOK(g)){g.st='tackle';g.t=0;g.hitDone=false;g.tkCd=now+rr(10,15);sfx.gobShout();return true}
  return false}
 function gobTrickTilt(g){switch(g.st){case'tackle':return 1.3*sst(.5,.62,g.t);case'latched':return 1.42;case'sprawl':return 1.45;case'playdead':return -1.45*sst(0,.45,g.t);case'rise':return -1.45*(1-sst(0,1,g.t/.75))}return null}
 function gobTrickPose(g,q){const t=g.t;switch(g.st){
@@ -121,11 +133,15 @@ function gobTrickPose(g,q){const t=g.t;switch(g.st){
  case'latched':{const s=Math.sin(t*16);q.RsX=-2.6;q.LsX=-2.6;q.RsZ=-.35;q.LsZ=-.35;q.ReX=-1.1;q.LeX=-1.1;q.hdP=-.8;q.LhX=.3+s*.4;q.RhX=.3-s*.4;q.LkX=.6;q.RkX=.6;q.jaw=.7;break}
  case'sprawl':q.RsX=-2.4;q.LsX=-2.0;q.RsZ=.6;q.LsZ=.8;q.hdP=-.5;q.LhX=.15;q.RhX=-.2;q.LkX=.4;break;
  case'playdead':q.LsZ=1.1;q.RsZ=.9;q.LsX=-.3;q.RsX=.2;q.hdP=.3;q.hdY=.6;q.LhX=-.2;q.LkX=.5;q.RkX=.1;q.jaw=.6;break;
+ case'gkick':{const k=sst(0,.4,t)*(1-sst(.55,.85,t)),f=sst(.4,.5,t);q.RhX=lp(.6*k,-1.6,f)*(1-sst(.6,.9,t));q.RkX=lp(1.2*k,.2,f);q.spP=lp(.1,-.25,f);q.RsX=-.5;q.LsX=-.5;q.LsZ=.6;q.RsZ=.5;break}
+ case'bgrab':{const k=sst(0,.6,t);q.RsX=-1.5*k;q.LsX=-1.5*k;q.RsZ=.2;q.LsZ=.2;q.ReX=-.3;q.LeX=-.3;q.spP=.35*k;q.LhX=-.4;q.LkX=.6;q.jaw=.6;break}
+ case'bhold':q.RsX=-1.7;q.LsX=-1.7;q.RsZ=.05;q.LsZ=.05;q.ReX=-.9;q.LeX=-.9;q.spP=-.15;q.jaw=.8;break;
+ case'unarmed':q.RsX=-.2;q.LsX=-.2;break;
  case'rise':{const u=sst(0,1,t/.75);q.spP=.8*(1-u);q.LhX=-1.3*(1-u);q.LkX=1.8*(1-u);q.RhX=-1.0*(1-u);q.RkX=1.5*(1-u);q.RsX=-.6;q.hdP=-.3;break}}}
 // ---------- tuning: fights last longer (the user: "they die too easily")
 const HPK={wolf:180,alpha:300,gob:150,big:650,denWolf:180,ashmane:900,chief:1200};
 // ground tells for the tricks (the feint has none on purpose: a real rush shows its '!' and strip, a fake one does not)
-function brawlTele(){for(const w of wolves){if(w.dead||w.tame)continue;if(w.st==='hamstring'&&w.t<.5)tele('strip',w.x,w.z,.7,Math.min(7,Math.hypot(P.x-w.x,P.z-w.z)+1),w.yaw,sst(0,.25,w.t));if(w.st==='armleap'&&w.t<.34)tele('strip',w.x,w.z,.8,Math.min(5,Math.hypot(P.x-w.x,P.z-w.z)+.5),w.yaw,sst(0,.2,w.t))}
+function brawlTele(){return;for(const w of wolves){if(w.dead||w.tame)continue;if(w.st==='hamstring'&&w.t<.5)tele('strip',w.x,w.z,.7,Math.min(7,Math.hypot(P.x-w.x,P.z-w.z)+1),w.yaw,sst(0,.25,w.t));if(w.st==='armleap'&&w.t<.34)tele('strip',w.x,w.z,.8,Math.min(5,Math.hypot(P.x-w.x,P.z-w.z)+.5),w.yaw,sst(0,.2,w.t))}
  for(const g of GOBS){if(g.dead)continue;if(g.st==='tackle'&&g.t<.6)tele('strip',g.x,g.z,.9,4.6,g.yaw,sst(0,.3,g.t));if(g.st==='dirt'&&g.t<.75)tele('strip',g.x,g.z,2.4,5.4,g.yaw,sst(.1,.5,g.t)*.6)}}
 // ===================== HERO: three new answers (v22) =====================
 // 1) TEKME (Sekiro / Crimson Desert): hold BLOK and press □ with a foe in front = a front kick. It breaks a goblin's
@@ -160,3 +176,6 @@ function updateThrown(dt){for(let i=THROWN.length-1;i>=0;i--){const o=THROWN[i],
     if(dead)onFoeKilled(g,false);else if(isWolf(g)){g.st='recover';g.t=-1;g.kx=o.vx*.5;g.kz=o.vz*.5}else if(!g.big){g.st='sprawl';g.t=0;g.kx=o.vx*.4;g.kz=o.vz*.4}else{g.st='stagger';g.t=0}}}
   if(o.t>=T){THROWN.splice(i,1);sfx.thud();spawnSparks(f.x,hAt(f.x,f.z)+.2,f.z,14,[.6,.55,.45],5);if(!f.dead){if(isWolf(f)){f.air=0;f.roll=0;f.st='recover';f.t=-.8}else{f.y=hAt(f.x,f.z);f.st='sprawl';f.t=0}}}}}
 function throwPose(q){const u=P.t,k=sst(0,.15,u),rel=sst(.55,.65,u);q.LaX=lp(-1.6*k,-.4,rel);q.LaZ=.4;q.Lel=lp(.6,.2,rel);q.RaX=lp(-1.4*k,-2.2,rel);q.RaZ=.5;q.Rel=.5;q.spX=lp(.25*k,-.1,rel);q.chY=lp(.6*sst(.18,.55,u),-.4,rel);q.pel=.15;q.LthX=-.5;q.Lkn=.6;q.RthX=.25;q.Rkn=.3}
+// POISE: a committed heavy swing (or a well-loaded charge) is not interrupted by a light blow; heavy armour lets a
+// light attack carry through small hits. Knock-downs, grabs and big blows still interrupt everything.
+function heroPoise(o){if(o.knock!=='flinch')return false;if(P.st==='heavy')return true;if(P.st==='attack'&&armorDef()>=40&&o.dmg<10)return true;return false}

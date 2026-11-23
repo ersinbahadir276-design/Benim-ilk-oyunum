@@ -60,7 +60,7 @@ function updateWolf(w,P,dt,GS){
  if(Math.abs(w.kx)+Math.abs(w.kz)>.05&&w.st!=='pin'){const p=collide(w.x+w.kx*dt,w.z+w.kz*dt,.42);w.x=p[0];w.z=p[1];const k=Math.exp(-dt*7);w.kx*=k;w.kz*=k}
  const dx=P.x-w.x,dz=P.z-w.z,d=Math.hypot(dx,dz);
  if(w.st==='dead'){w.dead+=dt;w.roll=lp(w.roll,1.45,Math.min(1,dt*7));w.crouch=lp(w.crouch,.75,Math.min(1,dt*5));w.spd=0;w.jaw=.3;
-  if(w.dead>150&&d>90){w.dead=0;w.st='idle';w.hp=w.max;w.x=w.hx;w.z=w.hz;w.roll=0;w.crouch=0;w.aware=0;w.tame=false;w.trust=0}w.y=hAt(w.x,w.z);return}
+  if(w.dead>150&&d>90&&!w.free){w.dead=0;w.st='idle';w.hp=w.max;w.x=w.hx;w.z=w.hz;w.roll=0;w.crouch=0;w.aware=0;w.tame=false;w.trust=0}w.y=hAt(w.x,w.z);return}
  w.roll=lp(w.roll,0,.2);
  if(w.st==='mounted'){w.spd=0;w.air=0;w.pitch=lp(w.pitch,.15,.2);w.crouch=lp(w.crouch,.85,.2);w.jaw=.7;w.hyaw=Math.sin(w.t*17)*.45*Math.max(0,1-w.t/2.2);w.tail=Math.sin(w.t*20)*.6;w.y=hAt(w.x,w.z);return}
  // ---------------- tamed companions
@@ -120,7 +120,7 @@ function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Mat
   const w=e[1],sc=w.sc,moving=w.spd>.3,run=w.spd>4,bob=moving?Math.abs(Math.sin(w.ph))*(run?.05:.02):Math.sin(time*2+w.ph)*.006,H=(.66-w.crouch*.2+bob)*sc,sink=w.dead>4?(w.dead-4)*.25:0;
   let M=mmul(mtrs([w.x,w.y+H+w.air-sink+(w.roll*-.42*sc),w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll]));
   for(let k=0;k<12;k++)M[k]*=sc;
-  const tintc=w.tame?[.9,1,1.12]:w.alpha?[.5,.5,.56]:[1,1,1],fl=w.flash;
+  const tintc=w.white?[1.9,1.9,2.0]:w.tame?[.9,1,1.12]:w.alpha?[.5,.5,.56]:[1,1,1],fl=w.flash;
   s.body.M=M;s.head.M=mroty(M,0,.3,.76,w.hpit+(w.st==='pin'?.5+Math.sin(time*30)*.12*w.jaw:w.st==='windup'?.25:0),w.hyaw+(w.st==='pin'?Math.sin(time*26)*.3*w.jaw:0),0);
   s.jaw.M=mroty(s.head.M,0,-.055,.1,w.jaw*.75,0,0);s.tail.M=mroty(M,0,.1,-.62,w.st==='chase'||w.st==='pounce'?.5:w.st==='windup'?-.3:.1+Math.sin(time*2+w.ph)*.1,w.tail+Math.sin(time*(w.tame?10:3)+w.ph)*(w.tame?.5:.12),0);
   for(const o of[s.body,s.head,s.jaw,s.tail]){o.col=tintc;o.flash=fl}

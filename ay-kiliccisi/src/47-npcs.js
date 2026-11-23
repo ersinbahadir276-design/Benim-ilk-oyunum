@@ -34,7 +34,7 @@ function updateNpc(n,dt){n.t+=dt;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d>170)re
 function npcTalk(n){const L=NPC_LINES[n.kind==='villager2'?'villager':n.kind],line=L[Math.floor(Math.random()*L.length)];n.st='watch';n.t=0;n.ls=[P.x,P.z];
  const who=n.kind==='guard'?'Muhafız':n.kind==='merchant'?'Tüccar':'Köylü';note(who+': "'+line+'"');
  if(n.kind==='merchant'){if((SYS.gold||0)>=5){SYS.gold-=5;SYS.meat++;note('[Ticaret] 5 altın → 1 çiğ et (kalan altın: '+SYS.gold+')','gold');save(P)}else note('[Ticaret] Et 5 altın. Altının: '+(SYS.gold||0))}}
-function drawNpcs(time){for(const n of NPCS){const d=Math.hypot(n.x-P.x,n.z-P.z);if(d>120){rigHide(n.R);continue}
+function drawNpcs(time){for(const n of NPCS){const d=Math.hypot(n.x-P.x,n.z-P.z);if(d>120||n.inside){rigHide(n.R);continue}
   const q={};const A=cl(n.spd/1.4,0,1);gaitPose(q,n.ph,A,0);q.hdY=n.hyaw;q.hdP=-.05;
   if(n.kind==='guard'){q.ReX=-1.5;q.RsX=-.1;q.RwX=0;if(n.st==='watch'){q.hdP=.05}}
   if(n.kind==='merchant'&&n.st!=='walk'){q.LsX=-.6+Math.sin(time*1.7+n.ph)*.25;q.LeX=-1.1;q.RsX=-.3;q.ReX=-.9}

@@ -25,7 +25,7 @@ function camFrame(dtR){let n=0;for(const f of foes())if(foeHostile(f)&&Math.hypo
 // ---------- threats outside the view: red arrows on the screen edge
 let thrEls=[];
 function threatTell(f){return isWolf(f)?(f.st==='windup'||f.st==='bitewind'||f.st==='rush'||f.st==='pounce'):(f.st==='windup'||f.st==='aim'||f.st==='strike')}
-function updateThreats(){const box=$('threats');if(!box)return;let i=0;
+function updateThreats(){const box=$('threats');if(!box)return;box.style.display='none';return;let i=0;
  for(const f of foes()){const d=Math.hypot(f.x-P.x,f.z-P.z);if(d>16||!threatTell(f))continue;const s=project(f.x,(f.y||0)+1,f.z),inView=s&&s[0]>30&&s[0]<innerWidth-30&&s[1]>30&&s[1]<innerHeight-30;if(inView)continue;
   const a=angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw),rx=innerWidth/2-46,ry=innerHeight/2-46,x=innerWidth/2-Math.sin(a)*rx,y=innerHeight/2-Math.cos(a)*ry;
   let e=thrEls[i];if(!e){e=document.createElement('div');e.className='thr';box.appendChild(e);thrEls[i]=e}i++;e.style.display='block';e.style.left=x+'px';e.style.top=y+'px';e.style.transform='translate(-50%,-50%) rotate('+(-a)+'rad)';e.textContent='▲'}
