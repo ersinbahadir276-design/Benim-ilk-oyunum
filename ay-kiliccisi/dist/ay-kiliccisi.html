@@ -1602,7 +1602,7 @@ function dragonInit(TX){const D=DRG,nb=D.par.length,groups=[];
   groups,G:new Float32Array(nb*16),S:new Float32Array(nb*12),L:new Float32Array(nb*10),L2:new Float32Array(nb*10),dead:0,flash:0,hitDone:false,breathA:null,breathB:null,emitT:0,dmgT:0,M:MID,spawn:[LAIR[0],LAIR[1]]};
  d.hostile=()=>d.st!=='sleep'&&d.st!=='return'&&!d.dead;d.open=()=>d.st==='tired'||d.st==='stagger'||(d.st==='claw'&&d.ct>3.5&&d.ct<5.2);
  d.alt=()=>{const p=dBone(d,D.pelvis);return p[1]-hAt(d.x,d.z)-2.8};
- d.hurt=(dmg,dx,dz)=>{if(d.dead)return false;d.hp-=dmg;d.flash=1;if(d.st==='sleep'){dWake(d)}if(d.hp<=0){d.hp=0;d.dead=1;d.st='dead';d.t=0;dPlay(d,'die',.4);return true}return false};
+ d.hurt=(dmg,dx,dz)=>{if(d.dead)return false;d.hp-=dmg;d.flash=1;dHurtReact(d,dmg,dx||0,dz||0);if(d.st==='sleep'){dWake(d)}if(d.hp<=0){d.hp=0;d.dead=1;d.st='dead';d.t=0;dPlay(d,'die',.4);return true}return false};
  d.onParried=()=>{if(d.st==='claw'){d.st='stagger';d.t=0;dPlay(d,'taitou',.25);d.flash=1}};
  d.hitPts=()=>[[...dBone(d,D.bones.chest),1.7],[...dBone(d,D.pelvis),1.7],[...dBone(d,D.bones.neck),1.1],[...dBone(d,D.headBone),.95],[...dBone(d,D.rHand),.7],[...dBone(d,D.lHand),.7]];
  d.calmDown=()=>{if(!d.dead&&d.hostile()){d.st='return';d.t=0;dPlay(d,'walk',.4)}};
@@ -1678,12 +1678,43 @@ function dFit(d,dt){const D=DRG,G=d.G,Ls=dLimbs(),pel=G[D.pelvis*16+13]*DS,on=DF
  if(gw>0)Ls.forEach((L,i)=>{if(Math.abs(r[i])<1e-4){reach.push(0);return}const wv=[0,r[i]/DS,0],mv=r3v(r3T(R),wv);reach.push(+dLimbIK(G,L,mv).toFixed(3))});
  if(Math.abs(d.gp)<1e-5&&!tp)d.gp=0;if(Math.abs(d.gr)<1e-5&&!tr)d.gr=0;if(Math.abs(d.gs)<1e-5&&!ts)d.gs=0;
  DFIK.last={on:1,gw:+gw.toFixed(2),p:+d.gp.toFixed(3),r:+d.gr.toFixed(3),sink:+d.gs.toFixed(3),res:r.map(v=>+v.toFixed(3)),reach};return M}
+// ---- directional hit reaction (DREACT) ----
+// d.hurt stores the push direction (dragon frame: hrF +forward, hrS +right) and a strength; after the clip is sampled
+// and before the terrain fit, dReact adds a spring-like recoil (snap ~0.1 s, damped rebound, settled by DREACT.dur):
+// the whole body tilts and slides along the push about a pivot low under the pelvis, the neck (Neck1 and up, so not
+// the clavicles/arms) whips further along the push, the tail swings with it, and limb ends that are on or near the
+// ground are pulled back to where the clip put them (dLimbIK), so the feet stay planted while the body recoils.
+// Front hit → rears and the head is thrown back; from behind → shoved forward, head dips; side → leans and slides
+// away, head and tail swing with the push. Mid-claw / breath / take-off it gets ~a third (super armour). DREACT.on=0 = off.
+const DREACT={on:1,body:.075,shift:.16,neck:.32,tail:.22,dur:1.1,armor:.35};
+function dHurtReact(d,dmg,dx,dz){if(!DREACT.on||d.dead)return;const n=Math.hypot(dx,dz);if(n<1e-6)return;const fx=Math.sin(d.yaw),fz=Math.cos(d.yaw);
+ d.hrF=(dx*fx+dz*fz)/n;d.hrS=(dx*fz-dz*fx)/n;d.hrX=dx/n;d.hrZ=dz/n;
+ const armor=d.st==='claw'&&d.ct<3.5||d.st==='breath'||d.st==='takeoff'||d.st==='stomp'||d.st==='roar';
+ d.hrA=cl(.45+dmg/60,.45,1)*(armor?DREACT.armor:1);d.hrT=GT.clock}
+function dReactEnv(d){if(!DREACT.on||d.hrT===undefined||d.dead)return 0;const t=GT.clock-d.hrT;if(t<0||t>DREACT.dur)return 0;
+ if(t<.1)return sst(0,1,t/.1)*d.hrA;const u=t-.1;return Math.exp(-u*5)*Math.cos(u*6.5)*d.hrA*(1-sst(DREACT.dur-.15,DREACT.dur,t))}
+function dReactSets(){const D=DRG;if(D.reactSets)return D.reactSets;const nb=D.par.length,f=n=>D.names.findIndex(x=>x.startsWith(n+'_'));
+ const sub=r=>{const o=[];if(r<0)return o;for(let i=0;i<nb;i++){let j=i;while(j>=0&&j!==r)j=D.par[j];if(j===r)o.push(i)}return o};
+ const all=[];for(let i=0;i<nb;i++)all.push(i);D.reactSets={all,neck:sub(f('Bip001-Neck1')),neckB:f('Bip001-Neck1'),tail:sub(f('Bone001')),tailB:f('Bone001')};return D.reactSets}
+function dReact(d){const rk=dReactEnv(d);d.rk=rk;if(!rk)return 0;const D=DRG,G=d.G,S=dReactSets(),Ls=dLimbs(),M0=dMatrix(d),k2=DS*DS;
+ // push direction in model space (bones are in unscaled model space; M0 = yaw·scale)
+ const wx=d.hrX,wz=d.hrZ,pm=vnorm([(M0[0]*wx+M0[2]*wz)/k2,(M0[4]*wx+M0[6]*wz)/k2,(M0[8]*wx+M0[10]*wz)/k2]);
+ const ends=Ls.map(L=>gpos(G,L.e)),pel=gpos(G,D.pelvis),piv=[pel[0],pel[1]*.35,pel[2]];
+ // body: rotate "up" toward the push, then slide along it
+ const ax=vcross([0,1,0],pm),al=vlen(ax);if(al>1e-6)gRot(G,S.all,axisAng(vmul(ax,1/al),DREACT.body*rk),piv);
+ const sh=vmul(pm,DREACT.shift*rk/DS);for(const i of S.all){G[i*16+12]+=sh[0];G[i*16+13]+=sh[1];G[i*16+14]+=sh[2]}
+ // neck/head and tail whip along the push (rotation that moves the bone chain toward pm)
+ const whip=(ids,root,tip,amt)=>{if(root<0||!ids.length)return;const c=gpos(G,root);let v=[0,0,0];if(tip>=0)v=vsub(gpos(G,tip),c);else for(const i of ids){const q=vsub(gpos(G,i),c);if(vlen(q)>vlen(v))v=q}const a=vcross(v,pm),l=vlen(a);if(l<1e-6)return;
+  gRot(G,ids,axisAng(vmul(a,1/l),amt*rk),c)};
+ whip(S.neck,S.neckB,D.headBone,DREACT.neck);whip(S.tail,S.tailB,-1,DREACT.tail);
+ // planted limbs go back to where the clip put them
+ Ls.forEach((L,i)=>{const lw=cl((2.6-ends[i][1]*DS)/1,0,1);if(lw<=0)return;const now=gpos(G,L.e);dLimbIK(G,L,vmul(vsub(ends[i],now),lw))});return rk}
 function dBone(d,i){const g=d.G,o=i*16;return mpt(d.M,[g[o+12],g[o+13],g[o+14]])}
 function dMouth(d){const h=dBone(d,DRG.headBone),n=dBone(d,DRG.bones.neck),f=vnorm(vsub(h,n));return vadd(h,vmul(f,1.3))}
 function dWake(d){d.st='roar';d.t=0;dPlay(d,'taitou',.35,1.4);sfx.roar(1);CAM.shake=Math.max(CAM.shake,.5);note('[!] EJDERHA UYANDI! Saldırı düzenini izle: pençeyi kaldırınca, havada nefes alınca kaç.','red');alertGroup(d,P,0,[])}
 function dFace(d,tx,tz,dt,rate){d.yaw+=cl(angd(Math.atan2(tx-d.x,tz-d.z),d.yaw),-rate*dt,rate*dt)}
 function updateDragon(d,dt){if(!d)return;d.t+=dt;d.flash=Math.max(0,d.flash-dt*4);const dist=Math.hypot(P.x-d.x,P.z-d.z),fromLair=Math.hypot(P.x-d.spawn[0],P.z-d.spawn[1]);
- if(dist<260){dSample(d,dt);d.M=dFit(d,dt);dSkinMats(d)}
+ if(dist<260){dSample(d,dt);dReact(d);d.M=dFit(d,dt);dSkinMats(d)}
  d.y=hAt(d.x,d.z);if(d.dead){d.st='dead';return}
  const sees=senseTick(d,P,dt,58,1.15);
  if(d.st==='sleep'){if(fillAware(d,P,sees,dt,58)||d.aware>=.8||(P.noise>0&&dist<P.noise*2))dWake(d);if(d.ct>3)dPlay(d,'stand',.3,.6);return}
@@ -2853,7 +2884,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={VREACT,vHurt,updateVeyra,foeHostile,vReactEnv,veyraPose,drawVeyra,HREACT,WREACT,wolfReact,wolfReactEnv,wolfHurt,GREACT,gobHurtPose,gobPose,gobHurt,P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,WGAIT,wolfRate,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,CFIK,CREACT,crocReact,crocReactEnv,drawCrocs,crocFootLocal,boneW,crocY,waterAt,get DRAGON(){return DRAGON},dSample,dMatrix,dBone,drawDragon,DRG,DFIK,dFit,dSkinMats,dLimbs,updateDragon,BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,CAPE,press,
+ window.__G={DREACT,dHurtReact,dReactEnv,dReact,dReactSets,VREACT,vHurt,updateVeyra,foeHostile,vReactEnv,veyraPose,drawVeyra,HREACT,WREACT,wolfReact,wolfReactEnv,wolfHurt,GREACT,gobHurtPose,gobPose,gobHurt,P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,RFIK,WFIK,WGAIT,wolfRate,drawWolves,wslots,W_LO,rigFootIK,rigFK,humanPose,gaitPose,NPCM,get VEYRA(){return VEYRA},CROCS,CFIK,CREACT,crocReact,crocReactEnv,drawCrocs,crocFootLocal,boneW,crocY,waterAt,get DRAGON(){return DRAGON},dSample,dMatrix,dBone,drawDragon,DRG,DFIK,dFit,dSkinMats,dLimbs,updateDragon,BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,FIK,GAIT,PLD:()=>PLD,get PM(){return PM},mpt,r3v,CAPE,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
