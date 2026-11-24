@@ -20,7 +20,7 @@ function vnoise(x,z){const i=Math.floor(x),j=Math.floor(z),fx=x-i,fz=z-j,u=fx*fx
 function fbm(x,z){return vnoise(x,z)*.5+vnoise(x*2.03+17,z*2.03+9)*.27+vnoise(x*4.1+5,z*4.1+31)*.15+vnoise(x*8.3+3,z*8.3+7)*.08}
 const FALLHEAD=(()=>{const a=RIVER[0],b=RIVER[1],dl=Math.hypot(a[0]-b[0],a[1]-b[1]),ux=(a[0]-b[0])/dl,uz=(a[1]-b[1])/dl;return{x:a[0],z:a[1],ux,uz,lip:16,top:WATER_L+19}})();
 // flattened building sites (the harbour town, the arena): level ground so houses do not float
-const FLATS=[[-528,262,30],[40,338,16],[0,1700,300],[GVIL[0],GVIL[1],100]],FLATC=new Map();let noFlat=false;
+const FLATS=[[-528,262,30],[40,338,16],[0,1700,440],[GVIL[0],GVIL[1],100]],FLATC=new Map();let noFlat=false;
 const FLATH=(cx,cz)=>{const k=cx+','+cz;if(!FLATC.has(k)){noFlat=true;FLATC.set(k,hRaw(cx,cz));noFlat=false}return FLATC.get(k)};
 function fallFrame(x,z){const F=FALLHEAD,dx=x-F.x,dz=z-F.z;return[dx*F.ux+dz*F.uz,dx*-F.uz+dz*F.ux]}
 function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
@@ -36,11 +36,11 @@ function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  {const F=FALLHEAD,[al,w]=fallFrame(x,z);if(al>F.lip-6&&al<170&&Math.abs(w)<95){const k=sst(95,60,Math.abs(w))*sst(170,120,al)*sst(F.lip-.5,F.lip+2.5,al);let ph=F.top+1.5+fbm(x*.03,z*.03)*3;if(Math.abs(w)<5.5)ph=F.top-1.4;h=lp(h,ph,k)}}
  if(!noFlat)for(const [cx,cz,R] of FLATS){const d=Math.hypot(x-cx,z-cz);if(d<R+25)h=lp(h,FLATH(cx,cz),sst(R+25,R,d))}
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
-function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x+1880,z+1880)<280)return'ash';if(Math.hypot(x-0,z-1700)<290)return'capital';if(Math.hypot(x-GVIL[0],z-GVIL[1])<100)return'gvil';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
+function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x+1880,z+1880)<280)return'ash';if(Math.hypot(x-0,z-1700)<430)return'capital';if(Math.hypot(x-GVIL[0],z-GVIL[1])<100)return'gvil';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
  if(Math.hypot(x-LAKE[0],z-LAKE[1])<LAKE[2]+25)return'lake';if(riverD(x,z)<16)return'river';if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2])return'swamp';
  for(const c of CAMPS)if(Math.hypot(x-c[0],z-c[1])<48)return'camp';for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<65)return'ruins';
  if(dm<420)return'mountain';if(x<-430)return'dense';return'forest'}
-const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',capital:'Başkent Altınsur',ash:'Kül Toprakları',gvil:'Goblin Köyü',forest:'Orman',dungeon:'Zindan'};
+const ZNAME={kingdom:'Sınır Kalesi',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',capital:'Krallık · Altınsur',ash:'Kül Toprakları',gvil:'Goblin Köyü',forest:'Orman',dungeon:'Zindan'};
 // sampled heightmap: hAt interpolates the SAME triangles the terrain mesh and the grass shader use
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){if(DUN.on)return dunH(x,z);let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
@@ -78,7 +78,7 @@ function los(ax,az,bx,bz,eye=1.3){if(DUN.on)return dunLos(ax,az,bx,bz);const dx=
 function inBuilding(x,z,m){if(DUN.on)return dunSolidAt(x,z,m);let hit=false;nearBoxes(x,z,b=>{if(b[4]>2.5&&x>b[0]-m&&x<b[2]+m&&z>b[1]-m&&z<b[3]+m)hit=true});return hit}
 // ---------- forest specs (geometry is built on demand around the player and dropped far away)
 const TREES=[],TCH=new Map(),TCS=100,tchKey=(x,z)=>Math.floor((x+WS)/TCS)*100+Math.floor((z+WS)/TCS);
-function clearing(x,z){return Math.hypot(x+1880,z+1880)<300||Math.hypot(x,z-1700)<310||Math.hypot(x-GVIL[0],z-GVIL[1])<105||Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
+function clearing(x,z){return Math.hypot(x+1880,z+1880)<300||Math.hypot(x,z-1700)<450||Math.hypot(x-GVIL[0],z-GVIL[1])<105||Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
 function treeOK(x,z){if(clearing(x,z))return false;const zn=zoneAt(x,z);if(zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='kingdom')return false;if(depthAt(x,z)>.15)return false;
  for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<34)return false;if(Math.hypot(x-SPAWN[0],z-SPAWN[2])<11)return false;return true}
 function addSpec(t){TREES.push(t);const k=tchKey(t.x,t.z);let a=TCH.get(k);if(!a)TCH.set(k,a=[]);a.push(t)}

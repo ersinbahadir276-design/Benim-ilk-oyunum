@@ -12,7 +12,7 @@ const DUNS={
   mobs:[['spider','spider'],['spiderling','spiderling','spiderling','spiderling','spiderling'],['rat','rat','rat','rat'],['ghoul','spider'],['spider','spiderling','spiderling']],deep:[['spider','spider','spider'],['golem'],['ghoul','ghoul','spider'],['skmage','spider']]},
  temple:{id:'temple',n:'Mühürlü Tapınak',x:44,z:-608,lv:15,floors:3,theme:'temple',seed:303,boss:'keeper',puzzles:['plates','rune','brazier'],
   mobs:[['golem'],['knight','skelS'],['skmage','skel','skelA'],['ghoul','ghoul','ghoul'],['knight']],deep:[['knight','knight'],['golem','skmage'],['skelS','skelS','skmage'],['golem']]},
- swamp:{id:'swamp',n:'Bataklık Tapınağı',x:560,z:560,lv:12,floors:3,theme:'swamp',seed:505,boss:'serpent',puzzles:['brazier','rune','plates'],
+ swamp:{id:'swamp',n:'Bataklık Tapınağı',x:420,z:520,lv:12,floors:3,theme:'swamp',seed:505,boss:'serpent',puzzles:['brazier','rune','plates'],
   mobs:[['ghoul','ghoul','rat'],['spider','spiderling','spiderling'],['skmage','skel'],['rat','rat','rat','ghoul'],['ghoul','skelA']],deep:[['ghoul','ghoul','ghoul'],['skmage','spider'],['knight','ghoul'],['spider','spider','skmage']]},
  citadel:{id:'citadel',n:'Kül Kale',x:-1880,z:-1880,lv:22,floors:5,theme:'citadel',seed:606,boss:'azgal',puzzles:['rune','plates','brazier'],
   mobs:[['knight','knight'],['golem','skmage'],['skelS','skelS','skelA','skmage'],['knight','ghoul','ghoul'],['golem','knight']],deep:[['knight','knight','skmage'],['golem','golem'],['knight','knight','knight'],['skmage','skmage','golem']]},

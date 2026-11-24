@@ -110,7 +110,7 @@ function updateWolf(w,P,dt,GS){if(w.clash&&!w.dead&&clashTick(w,dt))return;
  case'search':w.crouch=lp(w.crouch,.1,.1);if(w.aware>=1){w.st='chase';w.t=0}else if(wolfMove(w,w.ls[0],w.ls[1],3.2,dt,4)<1.5){w.spd=lp(w.spd,0,.3);w.hyaw=Math.sin(w.t*1.8)*.9;if(w.t>6){w.st='return';w.t=0;w.aware=0}}else if(w.t>14){w.st='return';w.t=0}break;
  case'return':w.hyaw=lp(w.hyaw,0,.1);w.crouch=lp(w.crouch,0,.1);w.jaw=lp(w.jaw,0,.1);if(w.aware>.3&&!safe){w.st='alert';w.t=0}else if(wolfMove(w,w.hx,w.hz,2.6,dt,3)<2||w.t>40){w.st='idle';w.t=0}break}
  // keep wolves out of the kingdom and apart from each other
- {const rc=Math.hypot(w.x,w.z-1700);if(rc<300&&w.st!=='pin'){w.x*=1;w.z=1700+(w.z-1700)*300/rc;w.x=w.x*300/rc}}/* and out of the capital */const r=Math.hypot(w.x,w.z);if(r<165&&w.st!=='pin'&&w.st!=='armlatch'){w.x*=165/r;w.z*=165/r}
+ {const rc=Math.hypot(w.x,w.z-1700);if(rc<440&&w.st!=='pin'){w.z=1700+(w.z-1700)*440/rc;w.x=w.x*440/rc}}/* and out of the capital */const r=Math.hypot(w.x,w.z);if(r<165&&w.st!=='pin'&&w.st!=='armlatch'){w.x*=165/r;w.z*=165/r}
  for(const o of wolves){if(o===w||o.dead||o.st==='pin'||w.st==='pin'||w.st==='pounce')continue;const ex=w.x-o.x,ez=w.z-o.z,q=ex*ex+ez*ez;if(q<.8&&q>1e-6){const k=Math.sqrt(q);w.x+=ex/k*(.9-k)*.5;w.z+=ez/k*(.9-k)*.5}}
  w.y=hAt(w.x,w.z)}
 // ---------------- rendering: assign the nearest wolves to render slots and pose their parts
