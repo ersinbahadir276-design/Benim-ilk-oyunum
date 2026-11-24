@@ -130,6 +130,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - Oturum 2: tasarım belgesi, PROGRESS.md, SENARYO.md; Kara Zırh kahramanı; ganimet, sunak, sandık, duruş/İNFAZ,
   öfke, yetenekler, hedef kilidi, bölge seviyeleri, bosslar, Veyra, hikâye modülleri yazıldı.
 - Oturum 4: kullanıcı modelleri çok kötü buldu → SDF heykel hattı; kahraman, 8 insan, goblinler, kurt, Veyra, timsah, Şeytan Kral, kılıç yeniden yapıldı; yeni ışık.
+- Oturum 8 (zamanlanmış tur 1): kahramanın bacak zırhı yeniden tasarlandı: baldırlı/menteşeli baldırlık, bronz bilek bandı, eklemli uyluk plakaları, burun sırtı (21 496 üçgen). Kök PROGRESS.md eklendi.
 - Oturum 3: hepsi birleştirildi ve test edildi. Yeni düğmeler (İKSİR, YETENEK, HEDEF, ÖFKE) + yatay/dikey yerleşim,
   öfke çubuğu, boss adı + duruş çubuğu, hızlı yolculuk, manhwa görünümü (sabit oranlı paneller, sıra kuyruğu),
   görev pusulası, yeni sesler. Düzeltilenler: açılış sırası (Veyra/hikâye), kese ve mühür toplama artık oyun

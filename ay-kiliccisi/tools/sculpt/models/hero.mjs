@@ -93,13 +93,23 @@ export default function hero(ALL) {
   L({ name: 'poleyn', mat: 'plate', boneFn: () => [['leftLowerLeg', 0.55], ['leftUpperLeg', 0.45]], rigid: true, k: 0.005, sdf: U(0.008,
     I(0.004, shell(ellipsoid(v3.add(kn, [0, 0, 0.03]), [0.077, 0.082, 0.072]), 0.0095), zcut(-0.01, -1)), I(0.004, shell(ellipsoid(v3.add(kn, [0.068, 0, 0.0]), [0.024, 0.072, 0.066]), 0.008), xcut(0.078, -1)),
     horn([v3.add(kn, [0, 0.0, 0.095]), v3.add(kn, [0, 0.02, 0.125]), v3.add(kn, [0, 0.045, 0.142])], 0.015)) });
-  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.08, 0.062), 0.0095), slab(0.15, 0.58)),
-    I(0.003, cone([0.099, 0.57, 0.084], [0.099, 0.17, 0.068], 0.0105, 0.0085), zcut(0.06, -1))) });
-  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: I(0.003, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.083, 0.065), 0.011), slab(0.55, 0.568)) });
+  // greave: front shell plus a real calf swell at the back, split by hinge seams down each side, flared ankle lip
+  const greaveSolid = U(0.035, cone([0.099, 0.58, 0.008], [0.099, 0.15, 0.012], 0.074, 0.055), ellipsoid([0.099, 0.43, -0.024], [0.068, 0.135, 0.07]), ellipsoid([0.099, 0.47, 0.012], [0.07, 0.11, 0.068]));
+  const seams = U(0, ...[-1, 1].map((s) => box([0.099 + s * 0.079, 0.365, -0.008], [0.012, 0.2, 0.0035], null, 0.002)));
+  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: Sub(0.002, U(0.006, I(0.004, shell(greaveSolid, 0.0095), slab(0.15, 0.58)),
+    I(0.003, cone([0.099, 0.57, 0.086], [0.099, 0.17, 0.07], 0.0105, 0.0085), zcut(0.06, -1))), seams) });
+  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: U(0.002, I(0.003, shell(grow(greaveSolid, 0.003), 0.011), slab(0.55, 0.568)),
+    I(0.003, shell(cone([0.099, 0.2, 0.012], [0.099, 0.13, 0.018], 0.062, 0.074), 0.008), slab(0.135, 0.175))) });
+  L({ name: 'greaveRivets', mat: 'rivet', bone: 'leftLowerLeg', rigid: true, k: 0, sdf: U(0, ...[0.52, 0.4, 0.27].flatMap((y) => [-1, 1].map((s) => sphere([0.099 + s * (y > 0.45 ? 0.082 : 0.077), y, -0.008], 0.0075)))) });
+  // cuisse: two articulated lames running down onto the knee, bronze edge at the top
+  L({ name: 'cuisseLames', mat: 'plate', boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (0.72 - y) / 0.07)); return [['leftUpperLeg', 1 - t * 0.5], ['leftLowerLeg', t * 0.5]]; }, rigid: true, k: 0.004,
+    sdf: U(0, ...[0, 1].map((i) => I(0.004, shell(cone([0.099, 0.74 - i * 0.035, 0.008], [0.099, 0.69 - i * 0.035, 0.012], 0.093 - i * 0.004, 0.088 - i * 0.004), 0.008), slab(0.692 - i * 0.035, 0.73 - i * 0.035), zcut(-0.03, -1)))) });
+  L({ name: 'cuisseTrim', mat: 'trim', bone: 'leftUpperLeg', rigid: true, k: 0.003, sdf: I(0.003, shell(cone([0.099, 0.99, 0.005], [0.099, 0.71, 0.01], 0.116, 0.092), 0.01), slab(0.965, 0.985), zcut(-0.03, -1)) });
   const foot = U(0.03, ellipsoid([an[0], 0.075, 0.02], [0.063, 0.075, 0.105]), cone([an[0], 0.06, 0.05], [an[0], 0.04, toe[2] + 0.06], 0.058, 0.026));
   const footFn = (x, y, z) => { const t = Math.max(0, Math.min(1, (z - 0.08) / 0.06)); return [['leftFoot', 1 - t], ['leftToes', t]]; };
   L({ name: 'sabaton', mat: 'plate', tau: 0.02, k: 0.008, sdf: I(0.004, foot, plane([0, 0.0, 0], [0, -1, 0])), boneFn: footFn });
   L({ name: 'sabatonLames', mat: 'plate', tau: 0.02, k: 0.003, sdf: U(0, ...[0, 1, 2].map((i) => I(0.003, shell(grow(foot, 0.006 + i * 0.002), 0.004), I(0, plane([0, 0, 0.06 + i * 0.035], [0, 0, 1]), plane([0, 0, 0.035 + i * 0.035], [0, 0, -1])), plane([0, 0.035, 0], [0, -1, 0])))), boneFn: footFn });
+  L({ name: 'toeRidge', mat: 'plate', tau: 0.02, k: 0.004, sdf: I(0.003, cone([an[0], 0.128, 0.05], [an[0], 0.062, toe[2] + 0.05], 0.009, 0.006), zcut(0.04, -1)), boneFn: footFn });
   L({ name: 'sole', mat: 'leather', tau: 0.02, k: 0.006, sdf: I(0.004, grow(foot, 0.006), plane([0, 0.022, 0], [0, 1, 0]), plane([0, 0.0, 0], [0, -1, 0])), boneFn: footFn });
 
   // ------------------------------------------------------------ the great helm: flat-sided skull, beaked visor with a keel, T-slit, fin crest, swept horns
