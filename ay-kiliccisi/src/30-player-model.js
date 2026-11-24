@@ -53,3 +53,25 @@ function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H
  SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
  if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
  skUpdate()}
+// ---------- terrain foot IK: on slopes and bumps each foot is planted on the ground under it.
+// The pelvis drops to the lower foot, the uphill leg bends (two-bone IK that keeps the leg's twist), and each foot
+// tilts with the ground normal. `on` (0..1) blends it in only while the hero stands on terrain.
+function legIK(side,T){const H=HB,U=H[side+'UpperLeg'],Lo=H[side+'LowerLeg'],F=H[side+'Foot'],L1=SK.L1,L2=SK.L2;
+ const S=SK.GP[U],K=SK.GP[Lo],A0=SK.GP[F],st=vsub(T,S),d=cl(Math.hypot(...st),.05,L1+L2-.001),u=vnorm(st);
+ const pole=vadd(vsub(K,S),[0,0,.04]),pv=vsub(pole,vmul(u,vdot(pole,u))),v=vnorm(Math.hypot(...pv)>1e-4?pv:[0,0,1]);
+ const ca=cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1),sa=Math.sqrt(1-ca*ca),E=vadd(S,vadd(vmul(u,L1*ca),vmul(v,L1*sa))),Tc=vadd(S,vmul(u,d));
+ const Q1=fromTo(vnorm(vsub(K,S)),vnorm(vsub(E,S))),Gu=r3m(Q1,SK.GR[U]),d2=vnorm(r3v(Q1,vsub(A0,K))),Gl=r3m(fromTo(d2,vnorm(vsub(Tc,E))),r3m(Q1,SK.GR[Lo]));
+ const Gf=SK.GR[F];SK.R[U]=r3m(r3t(SK.GR[SK.par[U]]),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);SK.R[F]=r3m(r3t(Gl),Gf)}
+const FIK={w:0,d:0,gL:0,gR:0,nL:[0,1,0],nR:[0,1,0]};
+function groundNormal(x,z){const e=.25,hx=hAt(x+e,z)-hAt(x-e,z),hz=hAt(x,z+e)-hAt(x,z-e);return vnorm([-hx/(2*e),1,-hz/(2*e)])}
+function footIK(M,dt,on,rootY){const H=HB;FIK.w+=((on?1:0)-FIK.w)*Math.min(1,dt*10);if(FIK.w<.01){FIK.w=0;FIK.d=0;return}
+ const w=FIK.w,ax=vnorm([M[0],M[1],M[2]]),ay=vnorm([M[4],M[5],M[6]]),az=vnorm([M[8],M[9],M[10]]),toM=n=>vnorm([vdot(n,ax),vdot(n,ay),vdot(n,az)]);
+ const g={},n={};for(const s of['left','right']){const p=mpt(M,SK.GP[H[s+'Foot']]);g[s]=cl((hAt(p[0],p[2])-rootY)/PSC,-.45,.45);n[s]=toM(groundNormal(p[0],p[2]))}
+ // pelvis follows the lower foot (smoothed so a step over a ridge does not pop the body)
+ const dT=cl(Math.min(g.left,g.right),-.4,.25)*w;FIK.d+=(dT-FIK.d)*Math.min(1,dt*18);FIK.gL=g.left;FIK.gR=g.right;
+ SK.root[1]+=FIK.d;skUpdate();
+ for(const s of['left','right']){const F=H[s+'Foot'],up=Math.max(0,g[s]*w-FIK.d);if(up>.002)legIK(s,vadd(SK.GP[F],[0,up,0]));
+  // foot tilt with the slope (at most ~0.45 rad)
+  let nn=n[s];const ang=Math.acos(cl(nn[1],-1,1));if(ang>.45)nn=vnorm(vadd([0,1,0],vmul(vnorm([nn[0],0,nn[2]]),Math.tan(.45))));
+  const tilt=fromTo([0,1,0],vnorm(vadd([0,1-w,0],vmul(nn,w))));skUpdate();const Gl=SK.GR[H[s+'LowerLeg']];SK.R[F]=r3m(r3t(Gl),r3m(tilt,SK.GR[F]))}
+ skUpdate();FIK.nL=n.left;FIK.nR=n.right}

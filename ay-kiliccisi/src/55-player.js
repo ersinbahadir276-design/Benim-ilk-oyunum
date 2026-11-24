@@ -230,3 +230,6 @@ const lying=P.st==='down'||P.st==='dead'||P.st==='getup'||P.st==='dodge'||P.st==
  let need=0;const H=HB,chk=[[H.head,.11],[H.upperChest,.1],[H.hips,.09],[H.leftHand,.03],[H.rightHand,.03],[H.leftLowerArm,.04],[H.rightLowerArm,.04],[H.leftLowerLeg,.05],[H.rightLowerLeg,.05],[H.leftFoot,.03],[H.rightFoot,.03]];
  if(lying)for(const[b,m]of chk){const w=mpt(M,SK.GP[b]);need=Math.max(need,m-(w[1]-hAt(w[0],w[2])))}
  if(P.air||P.st==='td')need=Math.max(0,need);P.lift=Math.max(need,P.lift-(dt||0)*2.5);if(P.lift<1e-4)P.lift=0;M[13]+=P.lift;return M}
+// foot IK only while standing on bare terrain (not in the air, rolling, lying, in a takedown or wading)
+const FIK_OFF={jump:1,jumpatk:1,dodge:1,down:1,dead:1,getup:1,td:1};
+function footIKOn(){return !FIK.off&&!P.air&&!FIK_OFF[P.st]&&!(P.st==='skill'&&P.air)&&P.rag.ang<.02&&P.lift<.001&&!P.pinBy&&waterAt(P.x,P.z)-1.25<hAt(P.x,P.z)-.01}
