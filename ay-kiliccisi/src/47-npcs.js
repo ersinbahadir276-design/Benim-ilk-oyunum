@@ -30,14 +30,14 @@ function updateNpc(n,dt){n.t+=dt;const d=Math.hypot(P.x-n.x,P.z-n.z);if(d>170)re
  const want=sees&&d<9?cl(angd(Math.atan2(P.x-n.x,P.z-n.z),n.yaw),-.9,.9):0;n.hyaw=lp(n.hyaw,want,Math.min(1,dt*4));
  for(const o of NPCS){if(o===n)continue;const ex=n.x-o.x,ez=n.z-o.z,q=ex*ex+ez*ez;if(q<.5&&q>1e-6){const k=Math.sqrt(q);n.x+=ex/k*(.7-k)*.5;n.z+=ez/k*(.7-k)*.5}}
  const pd=Math.hypot(P.x-n.x,P.z-n.z);if(pd<.7&&pd>1e-4){n.x+=(n.x-P.x)/pd*(.7-pd);n.z+=(n.z-P.z)/pd*(.7-pd)}
- n.y=hAt(n.x,n.z);if(n.spd>.2)n.ph+=n.spd*dt*4.4}
+ n.y=hAt(n.x,n.z);if(n.spd>.02)n.ph+=n.spd*dt*rigGaitRate(n.R.def,n.sc,4.4)}
 function npcTalk(n){const L=NPC_LINES[n.kind==='villager2'?'villager':n.kind],line=L[Math.floor(Math.random()*L.length)];n.st='watch';n.t=0;n.ls=[P.x,P.z];
  const who=n.kind==='guard'?'Muhafız':n.kind==='merchant'?'Tüccar':'Köylü';note(who+': "'+line+'"');
  if(n.kind==='merchant'){if((SYS.gold||0)>=5){SYS.gold-=5;SYS.meat++;note('[Ticaret] 5 altın → 1 çiğ et (kalan altın: '+SYS.gold+')','gold');save(P)}else note('[Ticaret] Et 5 altın. Altının: '+(SYS.gold||0))}}
 function drawNpcs(time){for(const n of NPCS){const d=Math.hypot(n.x-P.x,n.z-P.z);if(d>120){rigHide(n.R);continue}
-  const q={};const A=cl(n.spd/1.4,0,1);gaitPose(q,n.ph,A,0);q.hdY=n.hyaw;q.hdP=-.05;
+  const q={};const A=cl(n.spd/1.4,0,1);gaitLin(q,n.ph,A,n.R.def,n.sc);q.hdY=n.hyaw;q.hdP=-.05;
   if(n.kind==='guard'){q.ReX=-1.5;q.RsX=-.1;q.RwX=0;if(n.st==='watch'){q.hdP=.05}}
   if(n.kind==='merchant'&&n.st!=='walk'){q.LsX=-.6+Math.sin(time*1.7+n.ph)*.25;q.LeX=-1.1;q.RsX=-.3;q.ReX=-.9}
   if(n.st==='idle'&&!n.post)q.spP=Math.sin(time*1.3+n.ph)*.03;
   if(n.st==='watch'){q.spP=-.05;q.LsX=-.2;q.LeX=-.6}
-  const K=NPCM[n.kind].K,hipH=(K.th+K.sh2+.06)*n.sc,rot=humanPose(q);let y=n.y+hipH+(q.bob||0);if(d<RFIK.dist)y+=rigFootIK(n.R.def,rot,n.x,y,n.z,n.yaw,n.sc,n.y,null);rigDraw(n.R,n.x,y,n.z,n.yaw,n.sc,rot,.4,null)}}
+  const K=NPCM[n.kind].K,hipH=(K.th+K.sh2+.06)*n.sc,rot=humanPose(q);let y=n.y+hipH+(q.bob||0);if(d<RFIK.dist)y+=rigFootIK(n.R.def,rot,n.x,y,n.z,n.yaw,n.sc,n.y,null,{S:n.fl||(n.fl={}),st:q.fst,t:time});rigDraw(n.R,n.x,y,n.z,n.yaw,n.sc,rot,.4,null)}}

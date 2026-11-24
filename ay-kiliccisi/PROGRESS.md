@@ -7,6 +7,7 @@ Testler (Playwright + yazılımsal WebGL): `NODE_PATH=$(npm root -g) node test/h
 - `s-loop.js` → aşama 2 oynanış döngüsü (71 test, `loop-tests.js`)
 - `s-footik.js` → eğimde ayak IK (9 test)
 - `s-stride.js` → adımda ayak kilidi: basan ayak kaymıyor (9 test)
+- `s-npcstride.js` → köylü/muhafız/tüccar adım kilidi: hıza eşli yürüyüş + dünyada sabit ayak (15 test)
 - `s-rigfik.js` → insansı rig'lerde (köylü, muhafız, goblin, iskelet, büyük goblin) eğimde ayak IK (14 test)
 - `s-ui.js`, `s-save.js`, `s-portrait.js`, `s-perf.js` → dokunmatik, kayıt, dikey ekran, performans
 - `s-p2shots.js`, `s-p2portrait.js` → ekran görüntüleri (`test/out/`)
@@ -102,6 +103,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 - [ ] Dünya: ağaç, kaya, ev, kale (hâlâ eski düşük poligon) — sıradaki iş
 - [x] Oturum 10 (zamanlanmış 4): kurtlar eğimde — gövde zemine göre eğilir, gerekirse çöker, her pati kendi altındaki zemine basar (WFIK, 40-wolves.js; s-wolfik.js 11/11)
 - [x] Oturum 12 (zamanlanmış 6): kurt pati kilidi — yürüyüş/koşu artık sinüs değil: pati görev oranı kadar yerde kalır ve gövdenin aldığı yol kadar doğrusal süpürülür; değdiği nokta dünyada sabitlenir (dönüş, yan yan dolanma, hız değişimi), bacak gerilirse yumuşakça bırakılır. Adım hareket yönünü izler (çemberde yan adım, kalçadan yuvarlanma). Kayma (m / m): yürüyüş 0,34 → 0,05, koşu 0,18 → 0,03, dönüş 0,37 → 0,06, yan adım 0,57 → 0,05. WFIK.lock=0 eski davranış. Test: s-wolfstride.js 10/10.
+- [x] Oturum 13 (zamanlanmış 8): köylü/tüccar/muhafız adım kilidi (45-rig.js `gaitLin`, `leg2`, `RGAIT`; `rigFootIK` kilit parametresi). Faz hızı bacak boyundan, basma evresinde doğrusal süpürme, salınımda uç hızları eşli Hermite eğrisi, ters sarkaç kalça; basan ayak dünyada sabit, 3B iki kemik çözümü (kalçadan yana yuvarlanma). Kayma (m/m): düz 0,121 → 0,013, muhafız 0,154 → 0,009, dönüş 0,120 → 0,045, yokuş 0,12 → 0,012. RGAIT.lin=0 / RGAIT.lock=0 eski davranış. Test: s-npcstride.js 15/15.
 - [ ] Uzak mesafe LOD (ikinci, daha az üçgenli model) — köy kalabalığında gerekirse
 - [ ] Şeytan Kral'ın kolları ince; aşama 3 boss dövüşünde iyileştirilecek
 
