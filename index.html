@@ -2732,7 +2732,7 @@ function updateShoot(dt){P.vx*=Math.exp(-dt*10);P.vz*=Math.exp(-dt*10);const t=P
   shootArrow([P.x+Math.sin(P.yaw)*.5,P.y+1.45,P.z+Math.cos(P.yaw)*.5],to,40,'hero',Math.round(weaponDmg()*.7*dmgMul()),t&&t.kx!==undefined?[0,0]:null)}
  if(P.t>.6){P.st='move';P.t=0}}
 function drawHeroBow(){if(!heroBow){arrowGeom();heroBow=obj(bowGeo,{shade:.9,pos:[0,0,0],cull:60,out:.004,outCol:[.05,.04,.03]})}heroBow.vis=P.st==='shoot'||P.st==='draw';if(typeof swordSkin!=='undefined'&&swordSkin&&swordSkin.o){const sh=!heroBow.vis;swordSkin.o.vis=sh;if(swordSkin.og)swordSkin.og.vis=sh}/* the sword is put away while the bow is out: both hands on the bow */if(!heroBow.vis)return;
- const R=SK.GR[HB.leftHand],gp=SK.GP[HB.leftHand],w=mpt(PM,gp),M=new Float32Array(16),Ry=rY(P.yaw),RR=r3m(Ry,R);M[0]=-RR[0];M[1]=-RR[3];M[2]=-RR[6];M[4]=RR[1];M[5]=RR[4];M[6]=RR[7];M[8]=-RR[2];M[9]=-RR[5];M[10]=-RR[8];/* turned 180° about its own axis: the string faces the archer */M[12]=w[0];M[13]=w[1];M[14]=w[2];M[15]=1;heroBow.M=M;heroBow.pos=[P.x,0,P.z]}
+ const gp=SK.GP[HB.leftHand],w=mpt(PM,gp),M=mtrs([w[0],w[1],w[2]],[-.08,P.yaw,.12]);/* v29: the bow stands upright in the left fist, belly towards the aim, string towards the archer */heroBow.M=M;heroBow.pos=[P.x,0,P.z]}
 // ---- 60-game.js
 // ===================== game: camera, sound, effects, telegraphs, marks, HUD, radar, input, loop =====================
 const CAM={yaw:PI,pitch:.24,dist:4.8,shake:0,tx:P.x,ty:1.3,tz:P.z,eye:[0,0,0]};
