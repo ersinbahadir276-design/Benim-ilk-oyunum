@@ -340,11 +340,11 @@ function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  {const F=FALLHEAD,[al,w]=fallFrame(x,z);if(al>F.lip-6&&al<170&&Math.abs(w)<95){const k=sst(95,60,Math.abs(w))*sst(170,120,al)*sst(F.lip-.5,F.lip+2.5,al);let ph=F.top+1.5+fbm(x*.03,z*.03)*3;if(Math.abs(w)<5.5)ph=F.top-1.4;h=lp(h,ph,k)}}
  if(!noFlat)for(const [cx,cz,R] of FLATS){const d=Math.hypot(x-cx,z-cz);if(d<R+25)h=lp(h,FLATH(cx,cz),sst(R+25,R,d))}
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
-function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x-0,z-1700)<290)return'capital';if(Math.hypot(x-GVIL[0],z-GVIL[1])<100)return'gvil';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
+function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x+1880,z+1880)<280)return'ash';if(Math.hypot(x-0,z-1700)<290)return'capital';if(Math.hypot(x-GVIL[0],z-GVIL[1])<100)return'gvil';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
  if(Math.hypot(x-LAKE[0],z-LAKE[1])<LAKE[2]+25)return'lake';if(riverD(x,z)<16)return'river';if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2])return'swamp';
  for(const c of CAMPS)if(Math.hypot(x-c[0],z-c[1])<48)return'camp';for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<65)return'ruins';
  if(dm<420)return'mountain';if(x<-430)return'dense';return'forest'}
-const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',capital:'Başkent Altınsur',gvil:'Goblin Köyü',forest:'Orman',dungeon:'Zindan'};
+const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',capital:'Başkent Altınsur',ash:'Kül Toprakları',gvil:'Goblin Köyü',forest:'Orman',dungeon:'Zindan'};
 // sampled heightmap: hAt interpolates the SAME triangles the terrain mesh and the grass shader use
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){if(DUN.on)return dunH(x,z);let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
@@ -382,7 +382,7 @@ function los(ax,az,bx,bz,eye=1.3){if(DUN.on)return dunLos(ax,az,bx,bz);const dx=
 function inBuilding(x,z,m){if(DUN.on)return dunSolidAt(x,z,m);let hit=false;nearBoxes(x,z,b=>{if(b[4]>2.5&&x>b[0]-m&&x<b[2]+m&&z>b[1]-m&&z<b[3]+m)hit=true});return hit}
 // ---------- forest specs (geometry is built on demand around the player and dropped far away)
 const TREES=[],TCH=new Map(),TCS=100,tchKey=(x,z)=>Math.floor((x+WS)/TCS)*100+Math.floor((z+WS)/TCS);
-function clearing(x,z){return Math.hypot(x,z-1700)<310||Math.hypot(x-GVIL[0],z-GVIL[1])<105||Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
+function clearing(x,z){return Math.hypot(x+1880,z+1880)<300||Math.hypot(x,z-1700)<310||Math.hypot(x-GVIL[0],z-GVIL[1])<105||Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
 function treeOK(x,z){if(clearing(x,z))return false;const zn=zoneAt(x,z);if(zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='kingdom')return false;if(depthAt(x,z)>.15)return false;
  for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<34)return false;if(Math.hypot(x-SPAWN[0],z-SPAWN[2])<11)return false;return true}
 function addSpec(t){TREES.push(t);const k=tchKey(t.x,t.z);let a=TCH.get(k);if(!a)TCH.set(k,a=[]);a.push(t)}
@@ -394,7 +394,8 @@ function buildWorld(){
   let d=(.1+.9*sst(125,300,r))*(r>74?1:0)*sst(2.6,5,road+Math.max(0,r-720)),t=0;
   if(zn==='swamp'){d*=.55;t=1}else if(zn==='mountain'||zn==='lair'){d*=.7*sst(40,8,h);t=.55}else if(zn==='camp'){d*=.3;t=.6}else if(zn==='ruins'){d*=.6;t=.3}else if(zn==='dense')d*=.75;
   {const gx=(hAt(x+3,z)-hAt(x-3,z))/6,gz=(hAt(x,z+3)-hAt(x,z-3))/6;d*=sst(.95,.45,Math.hypot(gx,gz))}/* no grass on cliffs and steep rock */
-  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+40)d*=sst(SNOW[2]-30,SNOW[2]+40,dsn)}/* none in the snow */
+  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+40)d*=sst(SNOW[2]-30,SNOW[2]+40,dsn)}
+  {const da=Math.hypot(x+1880,z+1880);if(da<320)d*=sst(250,320,da)}/* none in the snow */
   if(depthAt(x,z)>.05)d=0;GDN[o]=Math.round(cl(d,0,1)*255);GTN[o]=Math.round(t*255);const q=Math.round(cl((h+20)/140,0,1)*65535);hb[o*4]=q>>8;hb[o*4+1]=q&255;hb[o*4+2]=GDN[o];hb[o*4+3]=GTN[o]}
  if(gprog&&gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)>0){HTEX=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,HN,HN,0,gl.RGBA,gl.UNSIGNED_BYTE,hb);
   for(const[k,v]of[[gl.TEXTURE_MIN_FILTER,gl.NEAREST],[gl.TEXTURE_MAG_FILTER,gl.NEAREST],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v)}
@@ -406,6 +407,7 @@ function buildWorld(){
   const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<430){const rock=[.4+n*.06,.39+n*.05,.38+n*.05];c=mix3(c,rock,sst(6,22,h)*sst(430,250,dm));c=mix3(c,[.9,.92,.96],sst(44,56,h));if(dm<120)c=mix3(c,[.24,.2,.2],sst(110,60,dm))}
   {const sl=nn?1-nn[1]:0;/* slope: grass -> dirt -> rock */c=mix3(c,[.36+n*.04,.28+n*.03,.19],sst(.12,.24,sl));c=mix3(c,[.42+n*.05,.4+n*.04,.37+n*.04],sst(.3,.48,sl))}
   {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+60)c=mix3(c,[.88+n*.05,.9+n*.05,.95],sst(SNOW[2]+60,SNOW[2]-40,dsn)*sst(.6,.35,nn?1-nn[1]:0)*.92+sst(SNOW[2]+60,SNOW[2],dsn)*.0)}
+  {const da=Math.hypot(x+1880,z+1880);if(da<320){const k=sst(320,240,da);c=mix3(c,[.16+n*.05,.13+n*.03,.12+n*.03],k);if(n>.82)c=mix3(c,[.7,.22,.08],k*.7)}}/* ash and cinder, glowing cracks */
   if(h>38&&Math.hypot(x-MOUNT[0],z-MOUNT[1])>140)c=mix3(c,[.9,.92,.96],sst(38,52,h));
   const wd=waterAt(x,z)-h;if(waterAt(x,z)>-90&&wd>-1.2)c=mix3(c,[.5,.46,.33],sst(-1.2,.2,wd)*.8);return c};
  const NCH=Math.ceil((HN-1)/NC);for(let cx=0;cx<NCH;cx++)for(let cz=0;cz<NCH;cz++){const g=G(),i0=cx*NC,j0=cz*NC;
@@ -1812,10 +1814,10 @@ function combatGuideHtml(){let h='<div class="wt">DURUŞLAR</div>';for(const k o
 // A stance changes how the sword is used: speed, combo length, reach, arc and what it is strong against.
 // Using the right stance against an enemy type breaks its balance much faster; the wrong one still works.
 const STANCES={
- stone:{n:'TAŞ',c:'#d8dbe6',d:'Dengeli üçlü kombo; bitirici KAYA KIRAN siper kırar. Blok daha az yorar. Küçük silahlı düşmanlara (goblinler) karşı güçlü.',T:.46,combo:3,dm:[1,1.05,1.7],pm:[1,1,2.2],pose:[0,1,2],arc:1.2,r:2.75,cost:1,hvT:.7,hvM:2.1,how:'Başlangıç',strong:f=>GOBS.includes(f)&&!f.big},
- wind:{n:'RÜZGÂR',c:'#8fe38f',d:'Saplamalar ve uzun menzil; bitirici RÜZGÂR DELİŞİ üç düşmanı deler, savurur. Atılma ucuz ve uzun. Hızlı düşmanlara (kurtlar) karşı güçlü.',T:.42,combo:3,dm:[.95,.95,1.6],pm:[1,1,1.9],pose:[1,0,2],arc:.85,r:3.5,cost:1,lunge:1,hvT:.62,hvM:1.9,how:'5 kurt avla',strong:f=>isWolf(f)},
+ stone:{n:'TAŞ',c:'#d8dbe6',d:'Dengeli üçlü kombo; bitirici KAYA KIRAN siper kırar. Blok daha az yorar. Ağır ve zırh kıran: goblinlere, kalkanlılara ve zırhlılara karşı güçlü, ağır saldırısı en çok dengeyi kırar.',T:.46,combo:3,dm:[1,1.05,1.75],pm:[1.1,1.1,2.6],pose:[0,1,2],arc:1.2,r:2.75,cost:1,hvT:.7,hvM:2.35,how:'Başlangıç',strong:f=>GOBS.includes(f)&&!f.big||!!f.shield||!!f.armor},
+ wind:{n:'RÜZGÂR',c:'#8fe38f',d:'Saplamalar ve uzun menzil; bitirici RÜZGÂR DELİŞİ üç düşmanı deler, savurur. Atılma ucuz ve uzun. Hızlı düşmanlara (kurtlar) karşı güçlü.',T:.38,combo:3,dm:[.95,.95,1.6],pm:[1,1,1.9],pose:[1,0,2],arc:.85,r:3.5,cost:1,lunge:1,hvT:.62,hvM:1.9,how:'5 kurt avla',strong:f=>isWolf(f)},
  moon:{n:'AY',c:'#c9a0ff',d:'Yavaş, geniş, iki elle iki savuruş; bitirici AY HİLALİ yerde ilerleyen bir dalga yollar, ağır saldırı çepeçevre keser. Savuşturması dar ama çok sert. İri düşmanlara karşı güçlü.',T:.62,combo:2,dm:[1.45,2.1],pm:[1.6,2.6],pose:[1,2],arc:2.2,r:3.1,cost:1.35,hvT:.85,hvM:2.6,hvArc:PI,how:"Kül Yele'yi yen",strong:f=>!isWolf(f)&&(f.big||f.boss||f===DRAGON)},
- water:{n:'SU',c:'#7cc4ff',d:'Çok hızlı dört vuruş; bitirici SU AKINTISI kanatır ve nefes verir. Savuşturma penceresi en geniş. Zırhlı ve kalkanlı düşmanlara karşı güçlü.',T:.33,combo:4,dm:[.7,.7,.75,1.3],pm:[1.2,1.2,1.3,2.4],pose:[0,1,0,2],arc:1.1,r:2.6,cost:.72,hvT:.6,hvM:1.7,how:"Kırık Diş'i yen",strong:f=>CROCS.includes(f)||!!f.shield}};
+ water:{n:'SU',c:'#7cc4ff',d:'Çok hızlı dört vuruş; bitirici SU AKINTISI kanatır ve nefes verir. Savuşturma penceresi en geniş. Akıcı ve savunmacı: birden çok düşman yakınken, slime ve timsaha karşı güçlü.',T:.33,combo:4,dm:[.7,.7,.75,1.3],pm:[1.2,1.2,1.3,2.4],pose:[0,1,0,2],arc:1.1,r:2.6,cost:.72,hvT:.6,hvM:1.7,how:"Kırık Diş'i yen",strong:f=>CROCS.includes(f)||!!f.slime||foes().filter(o=>Math.hypot(o.x-P.x,o.z-P.z)<6).length>=2}};
 const STANCE_ORDER=['stone','wind','moon','water'];
 const curStance=()=>STANCES[SYS.stance]||STANCES.stone;
 function checkStances(){SYS.stances=SYS.stances||{stone:1};const give=(k,why)=>{if(SYS.stances[k])return;SYS.stances[k]=1;note('[Sistem] Yeni duruş: «'+STANCES[k].n+'» — '+STANCES[k].d,'gold');sfx.level()};
@@ -1862,6 +1864,8 @@ const UNIQ={
  dragonbone:{slot:'weapon',n:'Ejder Kemiği',dmg:58,fx:'fire',d:'Ağır saldırı yerde alev izi bırakır.',mods:{dmg:15},look:{len:1.7,wid:.075,col:[.3,.1,.06],edge:[1,.55,.2],glow:[1,.4,.1]}},
  oath:{slot:'weapon',n:"Aldren'in Yemini",dmg:52,fx:'oath',d:'Savuşturma penceresi +%50, İnfaz %20 can yeniler.',mods:{agi:4,exe:30},look:{len:1.6,wid:.062,col:[.75,.78,.85],edge:[1,1,1],glow:[.7,.85,1]}},
  heart:{slot:'charm',n:"Hırlayan'ın Kalbi",fx:'rage2',d:'Öfke iki kat hızlı dolar. Zırh fısıldıyor.',mods:{rage:100,dmg:8}},
+ serpent:{slot:'charm',rar:5,n:'Yılan Rahibe\'nin Gözü',fx:'leech',d:'Mitik · Büyü gücü ve can emme; mana daha hızlı dolar.',mods:{leech:6,hp:40,per:4}},
+ azgal:{slot:'weapon',rar:5,n:'Azgal\'ın Kül Kılıcı',fx:'fire',dmg:96,d:'Mitik · Ağır saldırı yerde alev izi bırakır; Şeytan Kral\'ın kılıcı.',mods:{dmg:25,crit:8},look:{len:1.85,wid:.08,col:[.15,.05,.04],edge:[1,.35,.15],glow:[1,.25,.05]}},
  boneking:{slot:'charm',rar:5,n:"Kemik Kral'ın Mührü",fx:'posture',d:'Mitik · Duruş kırma +%35; İnfaz sonrası dayanıklılık dolar.',mods:{pos:30,def:12,hp:60,vit:4}},
  brood:{slot:'ring',rar:5,n:"Örümcek Ana'nın Gözü",fx:'bleed',d:'Mitik · Ağır saldırılar kanatır.',mods:{crit:12,agi:5,leech:4}},
  keeper:{slot:'weapon',rar:5,n:'Mühür Bekçisinin Rün Kılıcı',dmg:72,fx:'ember',d:'Mitik · Vuruşlar küçük rün patlamaları çıkarır.',mods:{dmg:18,str:5,pos:15},look:{len:1.72,wid:.07,col:[.12,.14,.2],edge:[.5,.9,1.2],glow:[.3,.8,1.4]}},
@@ -1944,7 +1948,7 @@ function drinkFlask(){if(P.st!=='move'||!P.alive)return;P.healFrac=.45;if(SYS.fl
 // Every region has a level; enemies there scale with it. Altars are checkpoints (rest = heal, refill flasks,
 // enemies come back) and fast-travel points. Dying drops your gold at the spot; reach it to get it back.
 function regionLevel(x,z){if(DUN.on)return DUN.lv;const zn=zoneAt(x,z),r=Math.hypot(x,z);
- if(zn==='kingdom'||zn==='capital')return 1;if(zn==='gvil')return 15;if(zn==='lair')return 18;if(zn==='snow')return 16;if(zn==='mountain')return 14;if(zn==='ruins')return 11;if(zn==='swamp'||zn==='lake'||zn==='river')return 9;
+ if(zn==='kingdom'||zn==='capital')return 1;if(zn==='gvil')return 15;if(zn==='ash')return 22;if(zn==='lair')return 18;if(zn==='snow')return 16;if(zn==='mountain')return 14;if(zn==='ruins')return 11;if(zn==='swamp'||zn==='lake'||zn==='river')return 9;
  if(zn==='camp'){let b=0,bd=1e9;CAMPS.forEach((c,i)=>{const d=Math.hypot(x-c[0],z-c[1]);if(d<bd){bd=d;b=i}});return[13,15,14,17][b]}
  if(zn==='dense')return Math.round(lp(8,12,sst(450,1300,r)));return Math.max(1,Math.round(lp(1,7,sst(150,1250,r))))}
 const lvMul=lv=>1+.2*(lv-1),lvDmg=lv=>1+.11*(lv-1);
@@ -2578,6 +2582,7 @@ const MAIN=[
  {id:'cages',t:'Kayıp Köylüler',d:'Kamptaki kafesleri aç',to:()=>CAGES[0],done:()=>SYS.cagesOpen},
  {id:'princess',t:'Zincirli Prenses',d:'Bataklık tapınağına git',to:()=>SHRINE,done:()=>SYS.veyraFate},
  {id:'dragon',t:'Kül Kanat',d:'Kuzey geçidini tutan ejderhayı yen',to:()=>({x:LAIR[0],z:LAIR[1]}),done:()=>SYS.dragon},
+ {id:'azgal',t:'Kül Kale',d:'Kuzeybatının kül topraklarındaki Kül Kale\'ye gir, beş katı aş, Şeytan Kral Azgal\'ı yen',to:()=>({x:-1880,z:-1880}),done:()=>SYS.azgal},
  {id:'tbc',t:'Kül Kale',d:'Geçit açıldı. Şeytan Kral seni bekliyor (yakında)',to:()=>null}];
 const curMain=()=>MAIN[Math.min(SYS.main||0,MAIN.length-1)];
 function questTarget(){const q=curMain(),t=q.to&&q.to();return t?[t.x,t.z]:null}
@@ -2671,7 +2676,7 @@ const PANELS={
  princess:()=>[{h:.7,st:{eye:[SHRINE.x+.6,1.4,SHRINE.z+3.4],at:[SHRINE.x,.9,SHRINE.z],fov:40,env:DUSK,noHero:true},nar:'Zincirler. Kızıl saç. O gözler.',say:[{who:'Veyra',txt:'...Sen kimsin? Annem mi yolladı?',x:52,y:10}]},
   {h:.75,st:{eye:[SHRINE.x+3,2.2,SHRINE.z+4.5],at:[SHRINE.x,1.2,SHRINE.z+1],env:DUSK,hero:{x:SHRINE.x,z:SHRINE.z+2,yaw:PI,pose:{two:1,RaZ:-1.4,RaX:-1.0,Rel:.6,RaY:.2,chX:-.2}}},
    whisper:'Bu o. Krallığı yakanların kızı. Kes.',say:[{who:'Kael',txt:'Krallık yanarken seni gördüm. Yangının ortasındaydın.',x:6,y:70}],choice:true}],
- dragon:()=>[{h:.65,st:{eye:[LAIR[0]+20,14,LAIR[1]+40],at:[LAIR[0],4,LAIR[1]-60],env:DUSK,noHero:true},nar:'Kül Kanat düştü. Kuzey geçidi açık.',sys:['Ana görev: Kül Kale (yakında)']}]};
+ dragon:()=>[{h:.65,st:{eye:[LAIR[0]+20,14,LAIR[1]+40],at:[LAIR[0],4,LAIR[1]-60],env:DUSK,noHero:true},nar:'Kül Kanat düştü. Kuzey geçidi açık.',sys:['Ana görev: Kül Kale — kuzeybatının kül toprakları']}]};
 // ---- 59-arrows.js
 // ===================== bows and arrows: goblin archers, the hero's bow, road patrols =====================
 // Arrows are real projectiles (gravity, travel time): they can be blocked, dodged (i-frames) or out-walked.
@@ -2925,7 +2930,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();const s0=
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
  window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
-  X:{CAP,SPELLS,SLIMES,mkSlime,castSpell,capInteract,shopAt,robPay,robTick,spawnGoblinVillage,MAGIC,HUM,mkHuman,hireMerc,nightTick,clashTick,envSlam,shieldBlock,DUNS,objsRef:()=>objs,TELE,queueTelegraphs,markFor,parryWin,heroPoise,TOWN,townInteract,EVT,EVDEF,ARENA,arenaStart,eventsTick,evEnd,eventInteract,startDraw,releaseDraw,drawLevel,startKick,kickTarget,startGuardCounter,throwTarget,startThrow,THROWN,GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
+  X:{DUN,DUNS,CAP,SPELLS,SLIMES,mkSlime,castSpell,capInteract,shopAt,robPay,robTick,spawnGoblinVillage,MAGIC,HUM,mkHuman,hireMerc,nightTick,clashTick,envSlam,shieldBlock,DUNS,objsRef:()=>objs,TELE,queueTelegraphs,markFor,parryWin,heroPoise,TOWN,townInteract,EVT,EVDEF,ARENA,arenaStart,eventsTick,evEnd,eventInteract,startDraw,releaseDraw,drawLevel,startKick,kickTarget,startGuardCounter,throwTarget,startThrow,THROWN,GRAB,grabHero,releaseHero,startRide,rideTarget,DSHOTS,dAwaken,dragonBreak,wolfTryTrick,gobTricks,gobFeign,HPK,dSpd,
   makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
    POSMAX,addPosture,breakFoe,isBroken,execTarget,startExec,gainRage,startRage,SKILLS,useSkill,unlockSkill,checkSkillUnlocks,toggleLock,bossTarget,
@@ -3053,12 +3058,18 @@ const DUNS={
   mobs:[['spider','spider'],['spiderling','spiderling','spiderling','spiderling','spiderling'],['rat','rat','rat','rat'],['ghoul','spider'],['spider','spiderling','spiderling']],deep:[['spider','spider','spider'],['golem'],['ghoul','ghoul','spider'],['skmage','spider']]},
  temple:{id:'temple',n:'Mühürlü Tapınak',x:44,z:-608,lv:15,floors:3,theme:'temple',seed:303,boss:'keeper',puzzles:['plates','rune','brazier'],
   mobs:[['golem'],['knight','skelS'],['skmage','skel','skelA'],['ghoul','ghoul','ghoul'],['knight']],deep:[['knight','knight'],['golem','skmage'],['skelS','skelS','skmage'],['golem']]},
+ swamp:{id:'swamp',n:'Bataklık Tapınağı',x:560,z:560,lv:12,floors:3,theme:'swamp',seed:505,boss:'serpent',puzzles:['brazier','rune','plates'],
+  mobs:[['ghoul','ghoul','rat'],['spider','spiderling','spiderling'],['skmage','skel'],['rat','rat','rat','ghoul'],['ghoul','skelA']],deep:[['ghoul','ghoul','ghoul'],['skmage','spider'],['knight','ghoul'],['spider','spider','skmage']]},
+ citadel:{id:'citadel',n:'Kül Kale',x:-1880,z:-1880,lv:22,floors:5,theme:'citadel',seed:606,boss:'azgal',puzzles:['rune','plates','brazier'],
+  mobs:[['knight','knight'],['golem','skmage'],['skelS','skelS','skelA','skmage'],['knight','ghoul','ghoul'],['golem','knight']],deep:[['knight','knight','skmage'],['golem','golem'],['knight','knight','knight'],['skmage','skmage','golem']]},
  // v26: the SHADOW TOWER in the snowy range — five floors, the layout changes every day (random floors), a mix of every horror below
  tower:{id:'tower',n:'Gölge Kulesi',x:-780,z:-985,lv:19,floors:5,theme:'tower',seed:404,daily:1,boss:'keeper',puzzles:['rune','plates','brazier'],
   mobs:[['knight','skmage'],['golem','skelA'],['ghoul','ghoul','spider'],['skelS','skelS','skelA'],['spider','spider','skmage']],deep:[['knight','knight','skmage'],['golem','golem'],['ghoul','ghoul','ghoul','ghoul'],['knight','golem']]}};
 const THEME={crypt:{fl:[.3,.29,.28],wa:[.34,.32,.3],moss:[.2,.27,.16],fog:[.012,.012,.02],sun:[.33,.33,.42]},
  cave:{fl:[.22,.19,.16],wa:[.28,.24,.2],moss:[.25,.22,.3],fog:[.016,.012,.014],sun:[.33,.3,.34]},
  temple:{fl:[.36,.35,.4],wa:[.4,.39,.45],moss:[.5,.42,.2],fog:[.01,.014,.024],sun:[.34,.36,.46]},
+ swamp:{fl:[.2,.24,.17],wa:[.24,.3,.2],moss:[.3,.45,.2],fog:[.012,.02,.012],sun:[.28,.36,.28]},
+ citadel:{fl:[.24,.18,.17],wa:[.3,.2,.18],moss:[.5,.2,.1],fog:[.03,.01,.008],sun:[.42,.26,.22]},
  tower:{fl:[.26,.25,.3],wa:[.3,.28,.36],moss:[.35,.2,.45],fog:[.014,.01,.022],sun:[.3,.28,.4]}};
 const GLYPH=[['☾','Ay'],['◉','Göz'],['♛','Taç'],['✦','Yıldız']];
 const LORE={
@@ -3261,7 +3272,7 @@ function buildDunEntrances(){dunGeoms();for(const k in DUNS){const D=DUNS[k];cle
    const R=mkRng(77);for(let n=0;n<14;n++){const a=-.2+n/13*(PI+.4),r=2.6+R()*.8,x=Math.cos(a)*r,z=-1.2-Math.sin(a)*1.6,h=1.5+R()*2.6,w=.7+R()*.6;box(g,x-w,.0,z-w,x+w,h,z+w,[st[0]*(.8+R()*.4),st[1]*(.8+R()*.4),st[2]*(.8+R()*.4)])}
    box(g,-2.4,.25,-3.8,2.4,3.6,-2.2,st);box(g,-1.4,.25,-2.4,1.4,2.4,.4,blk);box(g,-2.2,2.4,-2.4,2.2,3.4,.5,st);for(let n=0;n<6;n++){const x=-1.8+n*.7;box(g,x-.05,.25,1.2+(n%2)*.4,x+.3,.31,1.3+(n%2)*.4,bone)}
    for(const s of[-1,1]){const w=G();w.P.push(s*1.35,2.4,.45,s*.2,2.4,.45,s*1.35,1.1,.45);w.N.push(0,0,1,0,0,1,0,0,1);w.C.push(.85,.85,.82,.85,.85,.82,.85,.85,.82);w.U.push(0,0,0,0,0,0);w.W.push(0,0,0);w.I.push(0,1,2);const m=merge([g,w]);g.P=m.P;g.N=m.N;g.C=m.C;g.U=m.U;g.W=m.W;g.I=m.I}}
-  else if(T==='tower'){// a black tower: five storeys tapering up, lit slit windows, a crown of spikes
+  else if(T==='tower'||T==='citadel'){// a black tower: five storeys tapering up, lit slit windows, a crown of spikes
    const tw=[.2,.19,.24],tr=[.12,.11,.15],gl=[.75,.4,1.3];for(let s=0;s<6;s++){const w=3.2-s*.38,y0=.25+s*4.6;box(g,-w,y0,-w-1.2,w,y0+4.6,w-1.2,s%2?tw:tr);box(g,-w-.2,y0+4.3,-w-1.4,w+.2,y0+4.6,w-1.0,tr);box(g,-.18,y0+1.8,w-1.21,.18,y0+3,w-1.15,gl)}
    box(g,-1.0,.25,1.95,1.0,2.6,2.05,blk);for(let k=0;k<6;k++){const a=k/6*2*PI;box(g,Math.cos(a)*1.2-.12,27.8,Math.sin(a)*1.2-1.32,Math.cos(a)*1.2+.12,30,Math.sin(a)*1.2-1.08,tr)}}
   else{// a white shrine with columns, a gold band and a sealed rune door that stands open
@@ -3383,6 +3394,8 @@ const MT={
  rat:{n:'Veba Sıçanı',m:'rat',quad:1,hp:32,spd:5.8,rad:.34,sc:.68,pk:'tiny',xp:12,moves:['bite'],poison:1,feral:1},
  boneking:{n:'KEMİK KRAL',sub:'Mezarın tacı onu seçti',m:'skeleton',hp:1100,spd:3.0,rad:.75,sc:1.75,pk:'bossSk',boss:1,big:1,xp:600,moves:['slash','combo','summon','storm'],tint:[1.2,.95,.55],uniq:'boneking',armor:1},
  brood:{n:'ÖRÜMCEK ANA',sub:'Ağ Mührünün bekçisi',m:'spider',quad:1,hp:1400,spd:4.2,rad:1.35,sc:2.4,pk:'bossSp',boss:1,big:1,xp:900,moves:['bite','leap','web','eggs'],tint:[.8,.7,1.05],uniq:'brood',armor:1},
+ serpent:{n:'YILAN RAHİBE',sub:'Bataklığın unutulmuş tanrısının sesi',m:'skmage',hp:2600,spd:3.4,rad:.85,sc:2.0,pk:'bossSk',boss:1,big:1,xp:1600,moves:['bolt','storm','summon','runes','slash'],tint:[.55,1.15,.6],uniq:'serpent',armor:1},
+ azgal:{n:'ŞEYTAN KRAL AZGAL',sub:'Kül Kale\'nin efendisi',m:'knight',hp:5200,spd:3.2,rad:1.0,sc:2.3,pk:'bossGo',boss:1,big:1,xp:4000,moves:['combo','slash','thrust','runes','storm','summon'],tint:[1.25,.35,.3],uniq:'azgal',armor:1},
  keeper:{n:'MÜHÜR BEKÇİSİ',sub:'Rün Mührü uyanıyor',m:'golem',hp:2000,spd:1.9,rad:1.25,sc:1.8,pk:'bossGo',boss:1,big:1,xp:1300,moves:['slam','sweep','rock','runes'],tint:[.8,.92,1.25],uniq:'keeper',stone:1,armor:1}};
 Object.assign(POSMAX,{skel:60,shield:95,mage:45,ghoul:50,knight:170,golem:260,spider:65,tiny:20,bossSk:430,bossSp:480,bossGo:620});
 // move book: r = range that triggers it (scaled by size), w = wind-up, a = active, rc = recovery, cd = own cooldown
@@ -3452,7 +3465,7 @@ function monHurt(m,dmg,dx,dz,kind){if(m.dead)return false;const light=kind&&kind
  return false}
 function monKilled(m){const T=m.T,xp=Math.round(T.xp*(1+.08*(DUN.lv-1)));addXP(xp,P);SYS.mkills=SYS.mkills||{};SYS.mkills[m.type]=(SYS.mkills[m.type]||0)+1;
  if(!T.boss){note('[Sistem] '+T.n+' · +'+xp+' XP');return}
- SYS.dun=SYS.dun||{};SYS.dun.boss=SYS.dun.boss||{};SYS.dun.boss[DUN.id]=1;GT.slow=.6;CAM.shake=1;sfx.roar(.7);dunTitle('ZAFER',T.n+' düştü');
+ SYS.dun=SYS.dun||{};SYS.dun.boss=SYS.dun.boss||{};SYS.dun.boss[DUN.id]=1;if(DUN.id==='citadel'){SYS.azgal=1;setTimeout(()=>azgalFinale(),2600)}GT.slow=.6;CAM.shake=1;sfx.roar(.7);dunTitle('ZAFER',T.n+' düştü');
  dropLoot(m.x+1.5,m.z,[makeItem(null,DUN.lv,5,T.uniq),randomDrop(DUN.lv,4)],Math.round(T.hp*.12));note('[Sistem] '+T.n+' yenildi! +'+xp+' XP · Mitik ganimet!','gold');
  for(const o of MONS)if(!o.dead&&o!==m){o.hp=0;o.dead=1;o.st='dead';o.t=0}openDunDoor();addExitPortal();if(DUN.arena)DUN.arena.ring.alpha=0;save(P)}
 // ---------------------------------------------------------------- AI
@@ -4139,6 +4152,9 @@ function capInteract(){const s=shopAt();if(!s)return false;const G2=SYS.gold||0,
   const k=SYS.spell;if(!k){say('"Önce bir büyü öğren."');return true}const lv=SYS.spells[k],pr=200*lv;if(lv>=5){say('"'+SPELLS[k].n+' en yüksek ustalıkta."');return true}if(G2<pr){say('"'+SPELLS[k].n+' eğitimi '+pr+' altın."');return true}SYS.gold-=pr;SYS.spells[k]=lv+1;note('[Akademi] '+SPELLS[k].n+' ustalığı '+(lv+1)+'. seviye (güç +%25).','gold');save(P);return true}
  return false}
 function capTick(dt){if(DUN.on)return;if(!CAP.seen&&inCapital(P.x,P.z,40)){CAP.seen=1;bossBanner('ALTINSUR','Krallığın başkenti');note('[Bölge] BAŞKENT ALTINSUR — kale, pazar, kılıççı, demirci, simyacı, büyü kitapçısı ve büyü akademisi.','gold')}}
+// ---------- the end of the main story: Azgal falls in Kül Kale
+function azgalFinale(){bossBanner('ŞEYTAN KRAL DÜŞTÜ','Kül Kale sessizliğe gömüldü');CAM.shake=1;sfx.roar(1);SYS.titles=SYS.titles||[];if(!SYS.titles.includes('Kral Katili'))SYS.titles.push('Kral Katili');SYS.title='Kral Katili';addXP(3000,P);SYS.pts=(SYS.pts||0)+8;
+ note('[Hikâye] Azgal\'ın kül kılıcı yere düştü. Krallığa uzanan gölge çekildi — Altınsur\'un çanları seni karşılamak için çalıyor.','gold');note('[Sistem] Unvan: «Kral Katili» · +3000 XP · +8 stat puanı. Dünya açık kalıyor: olaylar, zindanlar, arena ve av seni bekliyor.','gold');save(P)}
 // ---- 75-wild.js
 // ===================== MAGIC, GOBLİN KÖYÜ, TAMED WOLVES, ROAD ROBBERS, SLIMES (v27) =====================
 // ---------- magic: spells bought from the bookseller / taught at the academy, cast with BÜYÜ (double tap = next spell)
