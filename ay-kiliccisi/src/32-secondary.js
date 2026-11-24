@@ -44,3 +44,33 @@ SK.R[Ft]=r3m(r3t(SK.GR[Lo]),r3m(rX(pitch),keep))}
 function fikBase(){const F=FIK;return F.w<.01?0:Math.min(0,F.l*F.w,F.r*F.w)}
 function feetIK(){const F=FIK;if(F.w<.01)return;const base=fikBase();
  legIK('left',F.l*F.w-base,F.pl*F.w);legIK('right',F.r*F.w-base,F.pr*F.w);skUpdate()}
+// ===================== motion layer: stride hips, acceleration lean, turn banking, directional hit flinch =====================
+// Added on top of the smoothed state pose (P.ps is never modified, so the layer cannot accumulate).
+// Stride: the pelvis yaws with the forward leg and drops on the swing-leg side; the spine counter-rotates so the
+//   shoulders stay steady and the thighs are counter-rolled so the feet stay under the body.
+// Acceleration: filtered d(speed)/dt leans the torso forward when speeding up and back when braking.
+// Turning: yaw rate x speed banks the upper body into the turn.
+// Hit flinch: hitReact() kicks three springs (pitch, roll, twist) in the hero's local frame from the push
+//   direction, so a blow from the front throws him back, from behind forward, from a side sideways. It also
+//   plays during attacks and berserk, where the hit does not change his state.
+const ML={spd:null,yaw:0,acc:0,turn:0,wl:0,hf:0,hfv:0,hs:0,hsv:0,ht:0,htv:0};
+function hitReact(d,k){if(P.st==='down'||P.st==='dead'||!d)return;const sy=Math.sin(P.yaw),cy=Math.cos(P.yaw),fd=d[0]*sy+d[1]*cy,sd=d[0]*cy-d[1]*sy;
+ ML.hfv+=fd*5.5*k;ML.hsv+=sd*6*k;ML.htv+=sd*8*k}
+function motionLayer(dt,ps){const q=Object.assign({},ps);if(!(dt>0))return q;const M=ML;
+ if(M.spd===null||Math.abs(angd(P.yaw,M.yaw))>1.2&&P.spd<.1){M.spd=P.spd;M.yaw=P.yaw}
+ const a=(P.spd-M.spd)/dt,wr=angd(P.yaw,M.yaw)/dt;M.spd=P.spd;M.yaw=P.yaw;
+ const upright=(P.st==='move'||P.st==='land')&&!P.air&&!P.crouch&&P.rag.ang<.05,mv=cl(P.spd/3.4,0,1);
+ M.acc+=((upright?cl(a,-14,14):0)-M.acc)*Math.min(1,dt*7);M.turn+=((upright?cl(wr*P.spd,-30,30):0)-M.turn)*Math.min(1,dt*6);
+ M.wl+=((upright&&mv>.08?1:0)-M.wl)*Math.min(1,dt*8);
+ // stride hips (amplitudes grow with speed; sprint swings the pelvis more, drops it less)
+ if(M.wl>.01){const s=Math.sin(P.ph),c=Math.cos(P.ph),sp=P.sprinting&&P.spd>4.6,w=M.wl*mv;
+  q.pelY+=-s*(sp?.16:.11)*w;q.pelZ+=-c*(sp?.035:.055)*w;q.spY+=s*.05*w}
+ // acceleration lean and banking
+ q.spX+=cl(M.acc*.028,-.2,.24);q.pel+=cl(M.acc*.01,-.07,.09);q.hdX-=cl(M.acc*.012,-.1,.1);
+ const bank=cl(M.turn*.013,-.24,.24);q.spZ-=bank;q.hdY+=bank*.6;
+ // hit springs
+ spr(M,'hf','hfv',0,95,10,dt);spr(M,'hs','hsv',0,95,10,dt);spr(M,'ht','htv',0,80,9,dt);
+ M.hf=cl(M.hf,-.6,.6);M.hs=cl(M.hs,-.6,.6);M.ht=cl(M.ht,-.6,.6);
+ if(P.st!=='down'&&P.st!=='dead'){q.spX+=M.hf*.5;q.chX+=M.hf*.3;q.hdX+=M.hf*.45;q.spZ-=M.hs*.4;q.chY+=M.ht*.3;q.hdY+=M.ht*.45;
+  const fl=Math.min(.5,Math.abs(M.hf)+Math.abs(M.hs));q.LaZ-=fl*.35;q.LaX-=fl*.3}
+ return q}
