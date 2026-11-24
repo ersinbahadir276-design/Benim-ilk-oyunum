@@ -58,7 +58,23 @@ function upgrade(it){if(it.up>=5){note('En yüksek seviye (+5)');return false}co
  SYS.gold-=c.gold;SYS.shards-=c.shards;it.up++;note('[Demirci] '+it.name+' +'+it.up,'gold');sfx.anvil();applyLooks();save(P);return true}
 // ---------- looks: weapon geometry + armour tint follow the equipped items
 let swordSkin=null;
-function applyLooks(){const a=eqItem('armor'),t=a&&a.look?a.look.tint.slice():[1,1,1];if(HERO.armor){if(HERO.armor.pbr){HERO.armor.tintM=t;HERO.armor.col=[1,1,1]}else HERO.armor.col=t}buildSword()}
+function applyLooks(){const a=eqItem('armor'),t=a&&a.look?a.look.tint.slice():[1,1,1];if(HERO.armor){if(HERO.armor.pbr){HERO.armor.tintM=t;HERO.armor.col=[1,1,1]}else HERO.armor.col=t}buildArmorOverlay(a);buildSword()}
+// armour overlays (tools/sculpt/models/arm*.mjs): each armour base adds its own sculpted pieces on top of the black plate
+// (wolf pelts, a bone rib cage and skulls, ember seams and an obsidian crown), skinned to the hero's skeleton
+const ARMOR_OVERLAY={wolfhide:'armwolf',bone:'armbone',ash:'armash'};let armorSkin=null,upSkin=null;
+// forge upgrades show on the armour too: +3 silver inlay/bosses/rope bands (armup3), +5 adds gilded crescent moons
+// with moonstones (armup5, which includes the +3 work by drawing both). Moonstones keep their own pale glow.
+const UP_OVERLAY=[[5,['armup3','armup5']],[3,['armup3']]];const MOON_EM=[.45,.6,1];
+function overlaySkin(keys,em){const ms=keys.map(k=>MODEL[k]);if(ms.some(m=>!m))return null;let nv=0,ni=0;for(const m of ms){nv+=m.nv;ni+=m.I.length}
+ const P=new Float32Array(nv*3),N=new Float32Array(nv*3),Cc=new Float32Array(nv*3),M=new Float32Array(nv*4),J=new Uint8Array(nv*4),K=new Float32Array(nv*4),I=new (nv>65535?Uint32Array:Uint16Array)(ni);let v=0,o=0;
+ for(const m of ms){P.set(m.P,v*3);N.set(m.N,v*3);Cc.set(m.C,v*3);M.set(m.M,v*4);for(let i=0;i<m.nv*4;i++){J[v*4+i]=m.J[i];K[v*4+i]=m.K[i]}for(let i=0;i<m.I.length;i++)I[o+i]=m.I[i]+v;v+=m.nv;o+=m.I.length}
+ const ob=addSkin({P,N,C:Cc,M,U:new Float32Array(nv*2),W:new Float32Array(nv),I},J,K,{out:.003,outCol:[.03,.03,.045],shade:1,pbr:1});ob.em=em;return{o:ob,s:skins[skins.length-1]}}
+function dropSkin(sk){const i=skins.indexOf(sk.s);if(i>=0)skins.splice(i,1);unobj(sk.o);const j=pObjs.indexOf(sk.o);if(j>=0)pObjs.splice(j,1);freeGeo(sk.s.geo)}
+function buildArmorOverlay(a){const key=a&&ARMOR_OVERLAY[a.base]||null,ok=HERO.armor&&HERO.armor.pbr;
+ if(!(armorSkin&&armorSkin.key===key)){if(armorSkin){dropSkin(armorSkin);armorSkin=null;HERO.overlay=null}
+  const r=ok&&key&&overlaySkin([key],HERO.armor.em);if(r){armorSkin={key,...r};HERO.overlay=r.o}}
+ const ue=a&&UP_OVERLAY.find(([n])=>a.up>=n),uk=ue?ue[1].join('+'):null;
+ if(!(upSkin&&upSkin.key===uk)){if(upSkin){dropSkin(upSkin);upSkin=null}const r=ok&&ue&&overlaySkin(ue[1],MOON_EM);if(r)upSkin={key:uk,...r}}}
 function buildSword(){const w=eqItem('weapon'),L=(w&&w.look)||BASES.rusty.look,H=HB;
  if(swordSkin){const i=skins.indexOf(swordSkin.s);if(i>=0)skins.splice(i,1);unobj(swordSkin.o);const j=pObjs.indexOf(swordSkin.o);if(j>=0)pObjs.splice(j,1);freeGeo(swordSkin.s.geo);if(swordSkin.og){unobj(swordSkin.og);const k=pObjs.indexOf(swordSkin.og);if(k>=0)pObjs.splice(k,1);const m=skins.indexOf(swordSkin.sg);if(m>=0)skins.splice(m,1)}swordSkin=null}
  const save=SK.R.map(r=>r);for(let i=0;i<SK.n;i++)SK.R[i]=R3I;for(const f of['Index','Middle','Ring','Little'])for(const[seg,a]of[['Proximal',1.1],['Intermediate',1.2],['Distal',.7]])SK.R[H['right'+f+seg]]=rZ(a);
