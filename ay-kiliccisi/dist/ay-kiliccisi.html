@@ -91,7 +91,7 @@ body.hudedit .btn{outline:2px dashed #ffd76a;outline-offset:2px;cursor:move}
 <div class="btn sh" id="bBow" style="right:calc(264px + var(--sr));bottom:calc(82px + var(--sb));width:48px;height:48px"><i>L2</i>YAY</div>
 <div class="btn sh" id="bSpell" style="right:calc(264px + var(--sr));bottom:calc(196px + var(--sb));width:50px;height:50px"><i>✦</i>BÜYÜ</div><div class="btn sh" id="bSkill" style="right:calc(202px + var(--sr));bottom:calc(148px + var(--sb));width:50px;height:50px"><i>▲</i>YETENEK</div>
 <div class="btn sh" id="bFlask" style="right:calc(264px + var(--sr));bottom:calc(138px + var(--sb));width:48px;height:48px"><i>▼</i>İKSİR</div>
-<div class="btn sh" id="bLock" style="right:calc(140px + var(--sr));bottom:calc(208px + var(--sb));width:46px;height:46px"><i>R3</i>HEDEF</div>
+<div class="btn sh" id="bLock" style="right:calc(140px + var(--sr));bottom:calc(208px + var(--sb));width:46px;height:46px"><i>R3</i>ODAK</div>
 <div class="btn sh" id="bSpr" style="right:calc(8px + var(--sr));bottom:calc(150px + var(--sb));width:48px;height:48px"><i>L3</i>KOŞ</div>
 <div class="btn sh" id="bCrc" style="right:calc(324px + var(--sr));bottom:calc(24px + var(--sb));width:46px;height:46px"><i>◀</i>EĞİL</div>
 <div class="btn sh" id="bRage" style="right:calc(202px + var(--sr));bottom:calc(206px + var(--sb));width:54px;height:54px"><i>L1+R1</i>ÖFKE</div>
@@ -2042,8 +2042,7 @@ function updateSkill(dt){const k=P.skill,t=P.t;P.vx*=Math.exp(-dt*8);P.vz*=Math.
  else if(k==='dash'){const sp=t<.3?22:0;P.vx=Math.sin(P.yaw)*sp;P.vz=Math.cos(P.yaw)*sp;if(t>.06&&t<.32)for(const f of foes()){if(f.dashHit===P.cd.dash)continue;if(foeDist(f)<1.4){f.dashHit=P.cd.dash;const dx=f.x-P.x,dz=f.z-P.z,kk=Math.hypot(dx,dz)||1,dmg=Math.round(weaponDmg()*dmgMul()*1.3),dead=foeHurt(f,dmg,dx/kk,dz/kk,'skill');addPosture(f,25);spawnSparks(f.x,(f.y||0)+.8,f.z,10,[.6,.5,1]);floatText(f.x,(f.y||0)+1.4,f.z,''+dmg,'crit');if(dead)onFoeKilled(f,false)}}if(t>.45){P.st='move';P.t=0}}
  else if(k==='slam'){if(!P.air&&P.hits===0&&t>.2){P.hits=1;skillHitAll(4.4,2.0,45,true);spawnSparks(P.x,P.y+.2,P.z,24,[.7,.6,.5],6);CAM.shake=.9;sfx.thud();if(hasFx('fire'))for(let i=0;i<8;i++){const a=i/8*6.28;BURNS.push({x:P.x+Math.cos(a)*2.5,z:P.z+Math.sin(a)*2.5,t:0,life:4,mine:1})}}if(P.hits===1&&t>.2&&!P.air&&P.t>.9){P.st='move';P.t=0}if(t>2.5){P.st='move';P.t=0}}}
 // ---------- lock-on
-function toggleLock(){if(P.lock){P.lock=null;note('Hedef bırakıldı');return}let best=null,bs=1e9;for(const f of foes()){const d=Math.hypot(f.x-P.x,f.z-P.z);if(d>28)continue;const a=Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw)),s=d*(1+a*2)*(foeHostile(f)?.6:1);if(a<1.3&&s<bs){bs=s;best=f}}
- if(best){P.lock=best;sfx.lock()}else note('Yakında hedef yok')}
+function toggleLock(){switchLock(1)}/* v29: no lock-on — the hero faces his foes by himself; R3 only changes which foe he focuses */
 function updateLock(dt){const f=P.lock;if(!f)return;if(f.dead){relock();return}if(Math.hypot(f.x-P.x,f.z-P.z)>32){P.lock=null;return}const want=Math.atan2(f.x-P.x,f.z-P.z),soft=GT.time-(CAM.userT||-9)<.9;CAM.yaw+=angd(want,CAM.yaw)*Math.min(1,dt*(soft?1.2:5));/* yields while the player drags */CAM.pitch=lp(CAM.pitch,.22,Math.min(1,dt*3))}
 // boss / elite bar target: the closest hostile boss within 60 m
 function bossTarget(){let b=null,bd=60;for(const f of foes()){if(!(f.boss||f===DRAGON)||!foeHostile(f))continue;const d=Math.hypot(f.x-P.x,f.z-P.z);if(d<bd){bd=d;b=f}}return b}
@@ -2119,7 +2118,7 @@ function respawn(){if(DUN.on)leaveDungeon(true);const al=SYS.altarAt!==undefined
 // --------------------------------------------------------------- starting actions
 function canAct(cost){if(P.sta<=0){note('Dayanıklılık yetersiz');return false}return true}
 function spend(c){P.sta=Math.max(0,P.sta-c);P.staT=.85}
-function aimAssist(range=4.2){const f=P.lock&&!P.lock.dead&&foeDist(P.lock)<range+3?P.lock:nearestFoe(range,1.7);if(f)P.yaw=Math.atan2(f.x-P.x,f.z-P.z);else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
+function aimAssist(range=4.2){const fc=P.focus;const keep=fc&&!fc.dead&&foeDist(fc)<range+1.5&&foeHostile(fc);const f=keep?fc:nearestFoe(range,1.7);if(f){P.focus=f;P.yaw=Math.atan2(f.x-P.x,f.z-P.z)}/* focus stays on one foe until it dies or steps away */else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
 function startLight(i){if(!canAct())return;const S=curStance(),sw=SWG[SYS.stance in SWG?SYS.stance:'stone'].L[i]||SWG.stone.L[0];spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T*(sw.fin?1.12:1);P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();P.atkStart=GT.clock;habitAdd('light');if(i===0&&(P.ripT||0)>GT.clock){P.ripT=0;P.atkT=.34;beginSwing('light',SWG.riposte,P.atkT);P.atk.rip=1;P.atk.cnt=1;P.counterT=0;if(P.ripV&&!P.ripV.dead){P.atk.tg=P.ripV;P.yaw=Math.atan2(P.ripV.x-P.x,P.ripV.z-P.z)}sfx.swing();return}
  beginSwing('light',sw,P.atkT);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startCharge(){if(!canAct())return;P.st='charge';P.t=0;P.charge=0;P.crouch=false;aimAssist();sfx.charge()}
@@ -2732,8 +2731,8 @@ function updateShoot(dt){P.vx*=Math.exp(-dt*10);P.vz*=Math.exp(-dt*10);const t=P
  if(P.t>.32&&!P.shot){P.shot=1;const fy=t?(t===DRAGON?t.y+2:(t.y||hAt(t.x,t.z))+(t.big?1.4:isWolf(t)?.6:.8)):P.y+1.3,to=t?[t.x,fy,t.z]:[P.x+Math.sin(P.yaw)*30,P.y+1.4,P.z+Math.cos(P.yaw)*30];
   shootArrow([P.x+Math.sin(P.yaw)*.5,P.y+1.45,P.z+Math.cos(P.yaw)*.5],to,40,'hero',Math.round(weaponDmg()*.7*dmgMul()),t&&t.kx!==undefined?[0,0]:null)}
  if(P.t>.6){P.st='move';P.t=0}}
-function drawHeroBow(){if(!heroBow){arrowGeom();heroBow=obj(bowGeo,{shade:.9,pos:[0,0,0],cull:60,out:.004,outCol:[.05,.04,.03]})}heroBow.vis=P.st==='shoot'||P.st==='draw';if(!heroBow.vis)return;
- const R=SK.GR[HB.leftHand],gp=SK.GP[HB.leftHand],w=mpt(PM,gp),M=new Float32Array(16),Ry=rY(P.yaw),RR=r3m(Ry,R);M[0]=RR[0];M[1]=RR[3];M[2]=RR[6];M[4]=RR[1];M[5]=RR[4];M[6]=RR[7];M[8]=RR[2];M[9]=RR[5];M[10]=RR[8];M[12]=w[0];M[13]=w[1];M[14]=w[2];M[15]=1;heroBow.M=M;heroBow.pos=[P.x,0,P.z]}
+function drawHeroBow(){if(!heroBow){arrowGeom();heroBow=obj(bowGeo,{shade:.9,pos:[0,0,0],cull:60,out:.004,outCol:[.05,.04,.03]})}heroBow.vis=P.st==='shoot'||P.st==='draw';if(typeof swordSkin!=='undefined'&&swordSkin&&swordSkin.o){const sh=!heroBow.vis;swordSkin.o.vis=sh;if(swordSkin.og)swordSkin.og.vis=sh}/* the sword is put away while the bow is out: both hands on the bow */if(!heroBow.vis)return;
+ const R=SK.GR[HB.leftHand],gp=SK.GP[HB.leftHand],w=mpt(PM,gp),M=new Float32Array(16),Ry=rY(P.yaw),RR=r3m(Ry,R);M[0]=-RR[0];M[1]=-RR[3];M[2]=-RR[6];M[4]=RR[1];M[5]=RR[4];M[6]=RR[7];M[8]=-RR[2];M[9]=-RR[5];M[10]=-RR[8];/* turned 180° about its own axis: the string faces the archer */M[12]=w[0];M[13]=w[1];M[14]=w[2];M[15]=1;heroBow.M=M;heroBow.pos=[P.x,0,P.z]}
 // ---- 60-game.js
 // ===================== game: camera, sound, effects, telegraphs, marks, HUD, radar, input, loop =====================
 const CAM={yaw:PI,pitch:.24,dist:4.8,shake:0,tx:P.x,ty:1.3,tz:P.z,eye:[0,0,0]};
@@ -2844,9 +2843,9 @@ function queueTelegraphs(){// v25: no arrows/strips for attacks — attacks are 
  dragonTele()}
 // ---------- camera, environment, render
 function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||!__G.__lockCam){const k=1-Math.exp(-dtReal*12);CAM.tx=lp(CAM.tx,P.x,k);CAM.tz=lp(CAM.tz,P.z,k);CAM.ty=lp(CAM.ty,P.y+(down?.7:P.crouch?1.15:P.st==='td'&&P.td&&P.td.kind!=='choke'?.9:1.5),1-Math.exp(-dtReal*8))}
- CAM.shake=Math.max(0,CAM.shake-dtReal*1.3);const sh=CAM.shake*CAM.shake*(SYS.lowShake?.3:1),T=GT.time,tg=[CAM.tx+Math.sin(T*47)*Math.cos(T*31)*sh*.38,CAM.ty+Math.sin(T*53+1.7)*sh*.3,CAM.tz+Math.sin(T*41+.6)*Math.cos(T*37)*sh*.38];
- const fx=Math.sin(CAM.yaw),fz=Math.cos(CAM.yaw),cp=Math.cos(CAM.pitch),spt=Math.sin(CAM.pitch);const boss=DRAGON&&!DRAGON.dead&&DRAGON.hostile()&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<60;let dist=CAM.dist*(P.st==='draw'?.5:1)*(down?.85:1)*(boss?1.5:1)*(DUN.on&&DUN.bossOn?1.25:1)*camFrame(dtReal),eye;
- for(;;){eye=[tg[0]-fx*cp*dist,tg[1]+spt*dist,tg[2]-fz*cp*dist];if(dist<=1.2||eye[1]>9||!inBuilding(eye[0],eye[2],.35)&&!(DUN.on&&!dunLos(tg[0],tg[2],eye[0],eye[2]))&&(DUN.on||!camTree(eye,tg)))break;dist-=.35}
+ CAM.shake=Math.max(0,CAM.shake-dtReal*1.3);const sh=CAM.shake*CAM.shake*(SYS.lowShake?.3:1),T=GT.time,tg=[CAM.tx+Math.sin(T*47)*Math.cos(T*31)*sh*.38,CAM.ty+Math.sin(T*53+1.7)*sh*.3,CAM.tz+Math.sin(T*41+.6)*Math.cos(T*37)*sh*.38];CAM.aimK=lp(CAM.aimK||0,P.st==='draw'?1:0,Math.min(1,dtReal*8));if(CAM.aimK>.01){const k=CAM.aimK;tg[0]+=Math.cos(CAM.yaw)*-.85*k;tg[2]+=-Math.sin(CAM.yaw)*-.85*k;tg[1]+=.45*k}
+ const fx=Math.sin(CAM.yaw),fz=Math.cos(CAM.yaw),cp=Math.cos(CAM.pitch),spt=Math.sin(CAM.pitch);const boss=DRAGON&&!DRAGON.dead&&DRAGON.hostile()&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<60;let dist=CAM.dist*(1-.55*(CAM.aimK||0))*(down?.85:1)*(boss?1.5:1)*(DUN.on&&DUN.bossOn?1.25:1)*camFrame(dtReal),eye;
+ for(;;){eye=[tg[0]-fx*cp*dist,tg[1]+spt*dist,tg[2]-fz*cp*dist];if(dist<=1.2||eye[1]>9||!inBuilding(eye[0],eye[2],.35)&&!(DUN.on&&!dunLos(tg[0],tg[2],eye[0],eye[2]))&&(DUN.on||!camTree(eye,tg)))break;dist-=.35}CAM.eye=eye;CAM.tgt=tg;
  eye[1]=Math.max(eye[1],hAt(eye[0],eye[2])+.35,waterAt(eye[0],eye[2])+.3);CAM.eye=eye;
  const L=mlook(eye,tg,[0,1,0]);VPm=mmul(mpersp(58*PI/180,cv.width/cv.height,.25,620),L.m);
  const dk=cl(Math.sin(GT.tod*2*PI)*1.7+.62,0,1),m3=(a,b,t)=>[lp(a[0],b[0],t),lp(a[1],b[1],t),lp(a[2],b[2],t)],dusk=1-Math.abs(dk-.5)*2;GT.night=dk<.35;
@@ -3640,10 +3639,10 @@ const camSet=()=>SYS.cam||(SYS.cam={sx:1,sy:1,inv:0,dist:4.8,bs:1});
 function camInit(){SYS.cam=Object.assign({sx:1,sy:1,inv:0,dist:4.8,bs:1},SYS.cam||{});CAM.dist=SYS.cam.dist;hudApply()}
 // ---------- target switching
 function lockCands(){return foes().filter(f=>!f.dead&&Math.hypot(f.x-P.x,f.z-P.z)<28&&!(f.alt&&f.alt()>8))}
-function switchLock(dir){const cur=P.lock;if(!cur){toggleLock();return}const ac=angd(Math.atan2(cur.x-P.x,cur.z-P.z),CAM.yaw);let best=null,bd=1e9;
+function switchLock(dir){const cur=P.focus&&!P.focus.dead?P.focus:null;if(!cur){const f=nearestFoe(14,PI);if(f){P.focus=f;sfx.lock();floatText(f.x,(f.y||0)+2,f.z,'ODAK','')}return}const ac=angd(Math.atan2(cur.x-P.x,cur.z-P.z),CAM.yaw);let best=null,bd=1e9;
  for(const f of lockCands()){if(f===cur)continue;const a=angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw),da=(a-ac)*-dir;if(da<=.02)continue;const s=da+Math.hypot(f.x-P.x,f.z-P.z)*.02;if(s<bd){bd=s;best=f}}
- if(best){P.lock=best;sfx.lock();floatText(best.x,(best.y||0)+2,best.z,'◎','')}}
-function relock(){let best=null,bd=15;for(const f of lockCands()){if(!foeHostile(f))continue;const d=Math.hypot(f.x-P.x,f.z-P.z);if(d<bd){bd=d;best=f}}P.lock=best;if(best)sfx.lock()}
+ if(best){P.focus=best;sfx.lock();floatText(best.x,(best.y||0)+2,best.z,'ODAK','')}}
+function relock(){P.lock=null;return;let best=null,bd=15;for(const f of lockCands()){if(!foeHostile(f))continue;const d=Math.hypot(f.x-P.x,f.z-P.z);if(d<bd){bd=d;best=f}}P.lock=best;if(best)sfx.lock()}
 // ---------- obstacles: tree crowns and trunks between the hero and the camera
 function camTree(eye,tg){const cx=Math.floor(eye[0]/TG),cz=Math.floor(eye[2]/TG);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=treeGrid.get((cx+i+200)*1000+cz+j+200);if(!a)continue;
   for(const t of a){if(t.h<3)continue;const gy=hAt(t.x,t.z),de=Math.hypot(eye[0]-t.x,eye[2]-t.z);if(t.r>.9){if(de<t.r+.35&&eye[1]<gy+t.r*1.6)return true}// a rock: just not inside it
@@ -3912,22 +3911,24 @@ function heroPoise(o){if(o.knock!=='flinch')return false;if(P.st==='heavy')retur
 // A quick tap still shoots at the locked target (one-thumb play on a phone).
 function startDraw(){if(P.st!=='move'||!P.alive)return;if(P.sta<10){note('Dayanıklılık yetersiz');return}habitAdd('bow');spend(8);P.st='draw';P.t=0;P.drawCue=0;sfx.swing()}
 function drawLevel(t){return t<.45?0:t<1.0?1:t<=1.25?2:1}
-function updateDraw(dt,moveFree){const lvl=drawLevel(P.t);moveFree(1.1,10);P.yaw+=angd(CAM.yaw,P.yaw)*Math.min(1,dt*14);
+function updateDraw(dt,moveFree){const lvl=drawLevel(P.t);xhair(true,lvl,P.t);moveFree(1.1,10);P.yaw+=angd(CAM.yaw,P.yaw)*Math.min(1,dt*14);
  if(P.t>1.0&&!P.drawCue){P.drawCue=1;sfx.charged();const tp=swordTip();spawnSparks(tp[0],tp[1],tp[2],4,[.7,.9,1],1)}
  if(P.t>1.25){P.sta=Math.max(0,P.sta-15*dt);P.staT=.85;if(P.sta<=0)releaseDraw()}
  if(!IN.bowHeld)releaseDraw()}
-function releaseDraw(){if(P.st!=='draw')return;const t=P.t,lvl=drawLevel(t);P.st='move';P.t=0;
+function releaseDraw(){if(P.st!=='draw')return;const t=P.t,lvl=drawLevel(t);P.st='move';P.t=0;xhair(false);
  if(t<.2){P.st='move';useBow();return}// a tap: the old quick shot at the locked / nearest target
  const sp=[24,40,48][lvl],mul=[.5,1,1.4][lvl],shake=t>1.25?.05:0;
- const yaw=CAM.yaw+rr(-shake,shake),pit=-CAM.pitch+.06+rr(-shake,shake);let dir=[Math.sin(yaw)*Math.cos(pit),Math.sin(pit),Math.cos(yaw)*Math.cos(pit)];
- const from=[P.x+Math.sin(P.yaw)*.5,P.y+1.45,P.z+Math.cos(P.yaw)*.5];
- // soft aim assist: a foe within ~5° of the aim ray is aimed at (gravity included)
- let best=null,bs=.09;for(const f of foes()){const fy=f===DRAGON?f.y+2:(f.y||0)+(f.big?1.4:.8),v=[f.x-from[0],fy-from[1],f.z-from[2]],l=Math.hypot(...v);if(l>60)continue;const c=(v[0]*dir[0]+v[1]*dir[1]+v[2]*dir[2])/l,a=Math.acos(cl(c,-1,1));if(a<bs){bs=a;best=[f.x,fy,f.z]}}
- const dmg=Math.round(weaponDmg()*.75*dmgMul()*mul);
- if(best)shootArrow(from,best,sp,'hero',dmg,null);else{arrowGeom();let a=ARROWS.find(x=>!x.on);if(!a){a={ob:obj(arrowGeo,{shade:.9,pos:[0,0,0],cull:120,out:.004,outCol:[.05,.04,.03]})};ARROWS.push(a)}Object.assign(a,{on:true,x:from[0],y:from[1],z:from[2],vx:dir[0]*sp,vy:dir[1]*sp,vz:dir[2]*sp,owner:'hero',dmg,life:4,stuck:0});a.ob.vis=true;sfx.swing()}
+ const from=[P.x+Math.sin(P.yaw)*.5,P.y+1.45,P.z+Math.cos(P.yaw)*.5],to=aimPoint(shake),dmg=Math.round(weaponDmg()*.75*dmgMul()*mul);shootArrow(from,to,sp,'hero',dmg,null);
  const last=ARROWS.filter(a=>a.on&&a.owner==='hero').pop();if(last)last.perf=lvl===2;
  if(lvl===2)floatText(P.x,P.y+2,P.z,'KUSURSUZ ATIŞ','gold');P.st='shoot';P.t=.32;P.shot=1;P.bowT=null}
 function drawPose(q){const k=sst(0,.45,P.t),sh=P.t>1.25?Math.sin(P.t*40)*.04:0;q.LaZ=.3;q.LaX=-1.45+sh;q.Lel=.05;q.RaZ=.55;q.RaX=-1.3+sh;q.Rel=lp(.9,2.0,k);q.RaY=-.2*k;q.spY=-.35;q.chY=-.15*k;q.LthX=-.3;q.Lkn=.35;q.RthX=.2;q.Rkn=.25;q.hdY=.15}
+
+// the crosshair: the point the camera looks at, found by marching the view ray (foes first, then the ground)
+function aimPoint(shake){const e=CAM.eye||[P.x,P.y+2,P.z],t=CAM.tgt||[P.x+Math.sin(P.yaw),P.y+1.5,P.z+Math.cos(P.yaw)];let d=[t[0]-e[0],t[1]-e[1],t[2]-e[2]];const l=Math.hypot(...d)||1;d=d.map(v=>v/l);if(shake){d[0]+=rr(-shake,shake);d[1]+=rr(-shake,shake);d[2]+=rr(-shake,shake)}
+ for(let s=2;s<90;s+=.5){const p=[e[0]+d[0]*s,e[1]+d[1]*s,e[2]+d[2]*s];if(Math.hypot(p[0]-P.x,p[2]-P.z)<1.2)continue;for(const f of foes()){const fy=f===DRAGON?f.y+2.5:(f.y||0)+(f.big?1.3:f.slime?.4*f.sz:isWolf(f)?.6:.9),R=f===DRAGON?3:f.big?1.1:.75;if(Math.hypot(f.x-p[0],f.z-p[2])<R&&Math.abs(fy-p[1])<(f===DRAGON?3:1.1))return[p[0],p[1],p[2]]}if(p[1]<hAt(p[0],p[2])||inBuilding(p[0],p[2],0))return p}
+ return[e[0]+d[0]*90,e[1]+d[1]*90,e[2]+d[2]*90]}
+let xhEl=null;function xhair(on,lvl,t){if(!xhEl){xhEl=document.createElement('div');xhEl.style.cssText='position:fixed;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid rgba(255,255,255,.85);border-radius:50%;pointer-events:none;z-index:6;display:none;box-shadow:0 0 4px #000';xhEl.innerHTML='<div style="position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;background:#fff;border-radius:50%"></div>';document.body.appendChild(xhEl)}
+ xhEl.style.display=on?'block':'none';if(!on)return;const sz=lvl===2?14:lvl===1?20:28;xhEl.style.width=xhEl.style.height=sz+'px';xhEl.style.margin=(-sz/2)+'px 0 0 '+(-sz/2)+'px';xhEl.style.borderColor=lvl===2?'#ffd24a':'rgba(255,255,255,.85)'}
 // ---- 71-events.js
 // ===================== LIVING WORLD EVENTS (v25 §14) =====================
 // Something happens in the world every couple of minutes, near the hero, without the story asking for it — stories a
