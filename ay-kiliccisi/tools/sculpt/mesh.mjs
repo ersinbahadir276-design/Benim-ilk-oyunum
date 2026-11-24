@@ -55,7 +55,19 @@ export async function sculpt(M) {
   // simplify
   const pos = new Float32Array(P), idx32 = new Uint32Array(I);
   const target = Math.min(I.length, (M.tris || 12000) * 3);
-  const [simp] = MeshoptSimplifier.simplify(idx32, pos, 3, target, M.err ?? 0.004, []);
+  let simp;
+  if (M.preserve) {
+    // material-aware simplification: every raw vertex carries its material's colour + glow, so the simplifier keeps
+    // the edges between plate/trim/cloth and around glowing details instead of smearing them across big triangles
+    const nr = P.length / 3, A = new Float32Array(nr * 4), decals = M.decals || [];
+    for (let v = 0; v < nr; v++) { const x = P[v * 3], y = P[v * 3 + 1], z = P[v * 3 + 2]; let best = null, bd = 1e9;
+      for (const p of listAt(x, y, z)) if (p.op === 'add') { const d = p.sdf.d(x, y, z); if (d < bd) { bd = d; best = p; } }
+      let mn = best ? best.mat : null; if (!mn) continue;
+      for (const dc of decals) if (inBB(dc.sdf.bb, x, y, z, 0.002) && dc.sdf.d(x, y, z) < 0 && (!dc.on || dc.on.includes(best.mat)) && (!dc.onPart || dc.onPart.includes(best.name))) mn = dc.mat;
+      const mt = M.mats[mn]; A[v * 4] = mt.col[0]; A[v * 4 + 1] = mt.col[1]; A[v * 4 + 2] = mt.col[2]; A[v * 4 + 3] = mt.em ?? 0; }
+    const w = M.preserve.weights || [0.6, 0.6, 0.6, 1.5];
+    [simp] = MeshoptSimplifier.simplifyWithAttributes(idx32, pos, 3, A, 4, w, null, target, M.err ?? 0.004, []);
+  } else [simp] = MeshoptSimplifier.simplify(idx32, pos, 3, target, M.err ?? 0.004, []);
   const remap = new Int32Array(P.length / 3).fill(-1), V = []; const outI = [];
   for (const q of simp) { if (remap[q] < 0) { remap[q] = V.length / 3; V.push(P[q * 3], P[q * 3 + 1], P[q * 3 + 2]); } outI.push(remap[q]); }
   // attributes

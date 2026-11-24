@@ -43,6 +43,20 @@ export default function hero(ALL) {
   for (let i = 0; i < 3; i++) { const y1 = 1.105 - i * 0.062, e = ellipsoid([0.1, 1.0, 0.02], [0.15 + i * 0.006, 0.3, 0.16 + i * 0.006]);
     L({ name: 'tasset' + i, mat: i === 2 ? 'trim' : 'plate', tau: 0.02, k: 0.004, sdf: I(0.005, shell(e, 0.007), slab(y1 - 0.07, y1), zcut(-0.02, -1), xcut(0.012, -1)), boneFn: () => [['leftUpperLeg', 0.55 + i * 0.15], ['Hips', 0.45 - i * 0.15]] }); }
 
+  // crimson tabard: hangs from the belt between the tassets; its folds are shaped before the shell, hem is ragged
+  const tY0 = 1.11, tY1 = 0.66;
+  const tFold = (x, y, z) => { const t = Math.max(0, Math.min(1, (tY0 - y) / (tY0 - tY1))); return t * (0.006 * Math.sin(x * 95 + 0.8) + 0.004 * fbm(x * 18, y * 6, 0, 2)); };
+  const tSurf = disp(ellipsoid([0, 1.0, 0.0], [0.23, 0.6, 0.198]), tFold, 0.012);
+  const tHem = { d: (x, y, z) => (tY1 + 0.025 * Math.abs(Math.sin(x * 40)) + 0.03 * Math.max(0, fbm(x * 14, 2.1, 0, 2)) + 0.25 * x * x) - y, bb: [-1, tY1, -1, 1, 3, 1] };
+  const tWidth = (y) => 0.068 + (tY0 - y) * 0.06;
+  const tSide = { d: (x, y, z) => Math.abs(x) - tWidth(y), bb: [-0.2, 0, -1, 0.2, 3, 1] };
+  const tabard = I(0.004, shell(tSurf, 0.0055), tSide, tHem, slab(0, tY0 - 0.004), zcut(0.08, -1));
+  const tabFn = (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.05) / 0.1)), d = Math.max(0, Math.min(1, (tY0 - 0.03 - y) / 0.3)); return [['Hips', 1 - d * 0.6], ['leftUpperLeg', d * 0.6 * t], ['rightUpperLeg', d * 0.6 * (1 - t)]]; };
+  C({ name: 'tabard', mat: 'tabard', tau: 0.03, k: 0.004, sdf: tabard, boneFn: tabFn });
+  C({ name: 'tabardHem', mat: 'trim', tau: 0.03, k: 0.003, sdf: I(0.003, shell(tSurf, 0.0075), { d: (x, y, z) => Math.abs(x) - tWidth(y) - 0.002, bb: [-0.2, 0, -1, 0.2, 3, 1] }, { d: (x, y, z) => Math.max(-tHem.d(x, y, z) - 0.018, tHem.d(x, y, z)), bb: [-1, tY1 - 0.05, -1, 1, 3, 1] }, zcut(0.08, -1)), boneFn: tabFn });
+  const moon = Sub(0.002, cone([0, 0.93, 0.15], [0, 0.93, 0.3], 0.036, 0.036), cone([0.017, 0.94, 0.15], [0.017, 0.94, 0.3], 0.03, 0.03));
+  C({ name: 'sigil', mat: 'trim', tau: 0.03, k: 0.002, sdf: I(0.002, shell(tSurf, 0.0075), moon, zcut(0.08, -1)), boneFn: tabFn });
+
   // ------------------------------------------------------------ gorget and wolf-fur mantle
   C({ name: 'gorget', mat: 'plate', tau: 0.03, k: 0.006, sdf: Sub(0.006, U(0.004, ...[0, 1].map((i) => I(0.004, shell(cone([0, 1.6, 0], [0, 1.79, 0.015], 0.125 - i * 0.022, 0.092 - i * 0.016), 0.007), slab(1.64 + i * 0.065, 1.7 + i * 0.065)))), cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.07, 0.066)),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (y - 1.65) / 0.12)); return [['Neck', t], ['UpperChest', 1 - t]]; } });
@@ -105,11 +119,13 @@ export default function hero(ALL) {
   // ------------------------------------------------------------ the great helm: flat-sided skull, beaked visor with a keel, T-slit, fin crest, swept horns
   const skull = I(0.03, ellipsoid([0, 1.935, -0.012], [0.128, 0.145, 0.152]), box([0, 1.93, 0], [0.114, 0.2, 0.2]));
   const prow = I(0.008, ellipsoid([0, 1.885, 0.035], [0.118, 0.12, 0.165]), symX(plane([0, 0, 0.205], [0.5, 0, 0.866])), slab(1.775, 2.0), box([0, 1.9, 0], [0.116, 0.2, 0.3]));
-  const slitH = box([0, 1.905, 0.17], [0.062, 0.0065, 0.1], null, 0.002), slitV = box([0, 1.872, 0.18], [0.006, 0.026, 0.1], null, 0.002);
+  const slitH = box([0, 1.905, 0.21], [0.064, 0.0075, 0.075], null, 0.0015), slitV = box([0, 1.87, 0.215], [0.0065, 0.03, 0.075], null, 0.0015);
+  const eyes = symX(ellipsoid([0.034, 1.905, 0.142], [0.019, 0.0085, 0.02]));
   const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
   const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
-  C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
+  const slitFrame = I(0.004, Sub(0.003, grow(U(0, slitH, slitV), 0.011), grow(U(0, slitH, slitV), 0.0035)), ellipsoid([0, 1.885, 0.04], [0.128, 0.13, 0.172]));
+  C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.006, slitFrame, I(0.004, shell(ellipsoid([0, 1.935, -0.012], [0.132, 0.149, 0.156]), 0.006), slab(1.95, 1.968))) });
   C({ name: 'crest', mat: 'plate', bone: 'Head', rigid: true, k: 0.008, sdf: I(0.003, ellipsoid([0, 1.935, -0.02], [0.04, 0.163, 0.17]), box([0, 2.0, -0.02], [0.0085, 0.12, 0.2], null, 0.003), plane([0, 2.0, 0], [0, -1, 0.2])) });
   C({ name: 'bevor', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.8 - i * 0.03, 0.02], [0.118 - i * 0.008, 0.08, 0.14 - i * 0.008]), 0.008), slab(1.77 - i * 0.032, 1.805 - i * 0.032), zcut(-0.03, -1)))) });
   C({ name: 'neckGuard', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.86 - i * 0.04, -0.02], [0.13 + i * 0.008, 0.11, 0.155 + i * 0.008]), 0.008), zcut(-0.02, 1), slab(1.78 - i * 0.04, 1.84 - i * 0.04)))) });
@@ -131,8 +147,8 @@ export default function hero(ALL) {
   for (const p of P.slice()) if (p.side) P.push({ ...p, side: 0, name: p.name + 'R', sdf: mirrorX(p.sdf), bone: p.bone && swap(p.bone), boneFn: p.boneFn && ((x, y, z) => p.boneFn(-x, y, z).map(([b, w]) => [swap(b), w])) });
 
   return {
-    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
-    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
+    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P, preserve: { weights: [0.25, 0.25, 0.25, 1.0] },
+    decals: [{ mat: 'void', sdf: grow(U(0, slitH, slitV), 0.0015), onPart: ['helm'] }, { mat: 'glow', sdf: eyes, onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
       trim: { col: [0.42, 0.3, 0.13], gloss: 0.72, metal: 1, wear: 0.55, edge: [1.0, 0.82, 0.45], var: 0.12, freq: 30, tint: 0 },
@@ -143,6 +159,8 @@ export default function hero(ALL) {
       cloth: { col: [0.42, 0.06, 0.07], col2: [0.24, 0.035, 0.04], freq2: 5, var: 0.15, freq: 30, gloss: 0.12, dirt: 0.55, grad: [0.5, 1.2, [0.5, 0.5, 0.5]] },
       horn: { col: [0.36, 0.32, 0.28], col2: [0.6, 0.55, 0.46], freq2: 9, var: 0.18, freq: 60, gloss: 0.45, dirt: 0.5 },
       glow: { col: [1.0, 0.34, 0.12], em: 1, gloss: 0 },
+      void: { col: [0.035, 0.025, 0.025], gloss: 0.05, dirt: 0, tint: 0 },
+      tabard: { col: [0.4, 0.055, 0.065], col2: [0.22, 0.03, 0.035], freq2: 6, var: 0.14, freq: 34, gloss: 0.1, dirt: 0.5, grad: [0.55, 1.1, [0.55, 0.55, 0.55]] },
     },
   };
 }
