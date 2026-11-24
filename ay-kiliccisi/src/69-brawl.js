@@ -122,7 +122,7 @@ function gobTricks(g,d,dt){switch(g.st){
  if(g.big&&!g.boss&&g.st==='chase'&&g.hostile()&&d<3.4&&(g.bgCd||0)<GT.clock&&heroOpen()&&Math.random()<dt*.5&&attackOK(g)){g.st='bgrab';g.t=0;g.hitDone=false;g.bgCd=GT.clock+rr(9,13);sfx.roar(.5);return true}
  if(!g.big&&!g.archer&&g.st==='chase'&&P.st==='block'&&d<2.4&&(g.gkCd||0)<GT.clock&&g.hostile()&&Math.random()<dt*1.3&&attackOK(g)){g.st='gkick';g.t=0;g.hitDone=false;g.gkCd=GT.clock+rr(5,8);sfx.gobShout();return true}
  // starting a trick: only a small goblin in a real fight, never two of the same at once
- if(g.st!=='chase'||g.big||g.archer||g.boss||!g.hostile()||(g.unseen||0)>1||!heroOpen())return false;const now=GT.clock;
+ if(g.st!=='chase'||g.big||g.archer||g.boss||!g.hostile()||(g.unseen||0)>1||!heroOpen()||g.hp<g.max*.4)return false;/* a badly hurt goblin thinks of running, not of tricks */const now=GT.clock;
  if(d>2.2&&d<5.4&&(g.dirtCd||0)<now&&!(P.blindT>0)&&!GOBS.some(o=>o.st==='dirt')&&Math.random()<dt*.32&&attackOK(g)){g.st='dirt';g.t=0;g.thrown=0;g.dirtCd=now+rr(9,14);return true}
  if(d>2.6&&d<6.2&&(g.tkCd||0)<now&&!GOBS.some(o=>o.st==='tackle'||o.st==='latched')&&Math.random()<dt*(P.st==='block'?.6:.28)&&attackOK(g)){g.st='tackle';g.t=0;g.hitDone=false;g.tkCd=now+rr(10,15);sfx.gobShout();return true}
  return false}
