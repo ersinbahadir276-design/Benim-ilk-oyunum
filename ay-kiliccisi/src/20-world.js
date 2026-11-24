@@ -36,11 +36,11 @@ function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  {const F=FALLHEAD,[al,w]=fallFrame(x,z);if(al>F.lip-6&&al<170&&Math.abs(w)<95){const k=sst(95,60,Math.abs(w))*sst(170,120,al)*sst(F.lip-.5,F.lip+2.5,al);let ph=F.top+1.5+fbm(x*.03,z*.03)*3;if(Math.abs(w)<5.5)ph=F.top-1.4;h=lp(h,ph,k)}}
  if(!noFlat)for(const [cx,cz,R] of FLATS){const d=Math.hypot(x-cx,z-cz);if(d<R+25)h=lp(h,FLATH(cx,cz),sst(R+25,R,d))}
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
-function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x-0,z-1700)<290)return'capital';if(Math.hypot(x-GVIL[0],z-GVIL[1])<100)return'gvil';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
+function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x+1880,z+1880)<280)return'ash';if(Math.hypot(x-0,z-1700)<290)return'capital';if(Math.hypot(x-GVIL[0],z-GVIL[1])<100)return'gvil';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
  if(Math.hypot(x-LAKE[0],z-LAKE[1])<LAKE[2]+25)return'lake';if(riverD(x,z)<16)return'river';if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2])return'swamp';
  for(const c of CAMPS)if(Math.hypot(x-c[0],z-c[1])<48)return'camp';for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<65)return'ruins';
  if(dm<420)return'mountain';if(x<-430)return'dense';return'forest'}
-const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',capital:'Başkent Altınsur',gvil:'Goblin Köyü',forest:'Orman',dungeon:'Zindan'};
+const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',capital:'Başkent Altınsur',ash:'Kül Toprakları',gvil:'Goblin Köyü',forest:'Orman',dungeon:'Zindan'};
 // sampled heightmap: hAt interpolates the SAME triangles the terrain mesh and the grass shader use
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){if(DUN.on)return dunH(x,z);let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
@@ -78,7 +78,7 @@ function los(ax,az,bx,bz,eye=1.3){if(DUN.on)return dunLos(ax,az,bx,bz);const dx=
 function inBuilding(x,z,m){if(DUN.on)return dunSolidAt(x,z,m);let hit=false;nearBoxes(x,z,b=>{if(b[4]>2.5&&x>b[0]-m&&x<b[2]+m&&z>b[1]-m&&z<b[3]+m)hit=true});return hit}
 // ---------- forest specs (geometry is built on demand around the player and dropped far away)
 const TREES=[],TCH=new Map(),TCS=100,tchKey=(x,z)=>Math.floor((x+WS)/TCS)*100+Math.floor((z+WS)/TCS);
-function clearing(x,z){return Math.hypot(x,z-1700)<310||Math.hypot(x-GVIL[0],z-GVIL[1])<105||Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
+function clearing(x,z){return Math.hypot(x+1880,z+1880)<300||Math.hypot(x,z-1700)<310||Math.hypot(x-GVIL[0],z-GVIL[1])<105||Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
 function treeOK(x,z){if(clearing(x,z))return false;const zn=zoneAt(x,z);if(zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='kingdom')return false;if(depthAt(x,z)>.15)return false;
  for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<34)return false;if(Math.hypot(x-SPAWN[0],z-SPAWN[2])<11)return false;return true}
 function addSpec(t){TREES.push(t);const k=tchKey(t.x,t.z);let a=TCH.get(k);if(!a)TCH.set(k,a=[]);a.push(t)}
@@ -90,7 +90,8 @@ function buildWorld(){
   let d=(.1+.9*sst(125,300,r))*(r>74?1:0)*sst(2.6,5,road+Math.max(0,r-720)),t=0;
   if(zn==='swamp'){d*=.55;t=1}else if(zn==='mountain'||zn==='lair'){d*=.7*sst(40,8,h);t=.55}else if(zn==='camp'){d*=.3;t=.6}else if(zn==='ruins'){d*=.6;t=.3}else if(zn==='dense')d*=.75;
   {const gx=(hAt(x+3,z)-hAt(x-3,z))/6,gz=(hAt(x,z+3)-hAt(x,z-3))/6;d*=sst(.95,.45,Math.hypot(gx,gz))}/* no grass on cliffs and steep rock */
-  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+40)d*=sst(SNOW[2]-30,SNOW[2]+40,dsn)}/* none in the snow */
+  {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+40)d*=sst(SNOW[2]-30,SNOW[2]+40,dsn)}
+  {const da=Math.hypot(x+1880,z+1880);if(da<320)d*=sst(250,320,da)}/* none in the snow */
   if(depthAt(x,z)>.05)d=0;GDN[o]=Math.round(cl(d,0,1)*255);GTN[o]=Math.round(t*255);const q=Math.round(cl((h+20)/140,0,1)*65535);hb[o*4]=q>>8;hb[o*4+1]=q&255;hb[o*4+2]=GDN[o];hb[o*4+3]=GTN[o]}
  if(gprog&&gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)>0){HTEX=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,HTEX);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,HN,HN,0,gl.RGBA,gl.UNSIGNED_BYTE,hb);
   for(const[k,v]of[[gl.TEXTURE_MIN_FILTER,gl.NEAREST],[gl.TEXTURE_MAG_FILTER,gl.NEAREST],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v)}
@@ -102,6 +103,7 @@ function buildWorld(){
   const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<430){const rock=[.4+n*.06,.39+n*.05,.38+n*.05];c=mix3(c,rock,sst(6,22,h)*sst(430,250,dm));c=mix3(c,[.9,.92,.96],sst(44,56,h));if(dm<120)c=mix3(c,[.24,.2,.2],sst(110,60,dm))}
   {const sl=nn?1-nn[1]:0;/* slope: grass -> dirt -> rock */c=mix3(c,[.36+n*.04,.28+n*.03,.19],sst(.12,.24,sl));c=mix3(c,[.42+n*.05,.4+n*.04,.37+n*.04],sst(.3,.48,sl))}
   {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+60)c=mix3(c,[.88+n*.05,.9+n*.05,.95],sst(SNOW[2]+60,SNOW[2]-40,dsn)*sst(.6,.35,nn?1-nn[1]:0)*.92+sst(SNOW[2]+60,SNOW[2],dsn)*.0)}
+  {const da=Math.hypot(x+1880,z+1880);if(da<320){const k=sst(320,240,da);c=mix3(c,[.16+n*.05,.13+n*.03,.12+n*.03],k);if(n>.82)c=mix3(c,[.7,.22,.08],k*.7)}}/* ash and cinder, glowing cracks */
   if(h>38&&Math.hypot(x-MOUNT[0],z-MOUNT[1])>140)c=mix3(c,[.9,.92,.96],sst(38,52,h));
   const wd=waterAt(x,z)-h;if(waterAt(x,z)>-90&&wd>-1.2)c=mix3(c,[.5,.46,.33],sst(-1.2,.2,wd)*.8);return c};
  const NCH=Math.ceil((HN-1)/NC);for(let cx=0;cx<NCH;cx++)for(let cz=0;cz<NCH;cz++){const g=G(),i0=cx*NC,j0=cz*NC;

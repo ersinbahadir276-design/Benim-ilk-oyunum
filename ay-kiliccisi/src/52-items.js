@@ -24,6 +24,8 @@ const UNIQ={
  dragonbone:{slot:'weapon',n:'Ejder Kemiği',dmg:58,fx:'fire',d:'Ağır saldırı yerde alev izi bırakır.',mods:{dmg:15},look:{len:1.7,wid:.075,col:[.3,.1,.06],edge:[1,.55,.2],glow:[1,.4,.1]}},
  oath:{slot:'weapon',n:"Aldren'in Yemini",dmg:52,fx:'oath',d:'Savuşturma penceresi +%50, İnfaz %20 can yeniler.',mods:{agi:4,exe:30},look:{len:1.6,wid:.062,col:[.75,.78,.85],edge:[1,1,1],glow:[.7,.85,1]}},
  heart:{slot:'charm',n:"Hırlayan'ın Kalbi",fx:'rage2',d:'Öfke iki kat hızlı dolar. Zırh fısıldıyor.',mods:{rage:100,dmg:8}},
+ serpent:{slot:'charm',rar:5,n:'Yılan Rahibe\'nin Gözü',fx:'leech',d:'Mitik · Büyü gücü ve can emme; mana daha hızlı dolar.',mods:{leech:6,hp:40,per:4}},
+ azgal:{slot:'weapon',rar:5,n:'Azgal\'ın Kül Kılıcı',fx:'fire',dmg:96,d:'Mitik · Ağır saldırı yerde alev izi bırakır; Şeytan Kral\'ın kılıcı.',mods:{dmg:25,crit:8},look:{len:1.85,wid:.08,col:[.15,.05,.04],edge:[1,.35,.15],glow:[1,.25,.05]}},
  boneking:{slot:'charm',rar:5,n:"Kemik Kral'ın Mührü",fx:'posture',d:'Mitik · Duruş kırma +%35; İnfaz sonrası dayanıklılık dolar.',mods:{pos:30,def:12,hp:60,vit:4}},
  brood:{slot:'ring',rar:5,n:"Örümcek Ana'nın Gözü",fx:'bleed',d:'Mitik · Ağır saldırılar kanatır.',mods:{crit:12,agi:5,leech:4}},
  keeper:{slot:'weapon',rar:5,n:'Mühür Bekçisinin Rün Kılıcı',dmg:72,fx:'ember',d:'Mitik · Vuruşlar küçük rün patlamaları çıkarır.',mods:{dmg:18,str:5,pos:15},look:{len:1.72,wid:.07,col:[.12,.14,.2],edge:[.5,.9,1.2],glow:[.3,.8,1.4]}},

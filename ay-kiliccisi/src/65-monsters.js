@@ -18,6 +18,8 @@ const MT={
  rat:{n:'Veba Sıçanı',m:'rat',quad:1,hp:32,spd:5.8,rad:.34,sc:.68,pk:'tiny',xp:12,moves:['bite'],poison:1,feral:1},
  boneking:{n:'KEMİK KRAL',sub:'Mezarın tacı onu seçti',m:'skeleton',hp:1100,spd:3.0,rad:.75,sc:1.75,pk:'bossSk',boss:1,big:1,xp:600,moves:['slash','combo','summon','storm'],tint:[1.2,.95,.55],uniq:'boneking',armor:1},
  brood:{n:'ÖRÜMCEK ANA',sub:'Ağ Mührünün bekçisi',m:'spider',quad:1,hp:1400,spd:4.2,rad:1.35,sc:2.4,pk:'bossSp',boss:1,big:1,xp:900,moves:['bite','leap','web','eggs'],tint:[.8,.7,1.05],uniq:'brood',armor:1},
+ serpent:{n:'YILAN RAHİBE',sub:'Bataklığın unutulmuş tanrısının sesi',m:'skmage',hp:2600,spd:3.4,rad:.85,sc:2.0,pk:'bossSk',boss:1,big:1,xp:1600,moves:['bolt','storm','summon','runes','slash'],tint:[.55,1.15,.6],uniq:'serpent',armor:1},
+ azgal:{n:'ŞEYTAN KRAL AZGAL',sub:'Kül Kale\'nin efendisi',m:'knight',hp:5200,spd:3.2,rad:1.0,sc:2.3,pk:'bossGo',boss:1,big:1,xp:4000,moves:['combo','slash','thrust','runes','storm','summon'],tint:[1.25,.35,.3],uniq:'azgal',armor:1},
  keeper:{n:'MÜHÜR BEKÇİSİ',sub:'Rün Mührü uyanıyor',m:'golem',hp:2000,spd:1.9,rad:1.25,sc:1.8,pk:'bossGo',boss:1,big:1,xp:1300,moves:['slam','sweep','rock','runes'],tint:[.8,.92,1.25],uniq:'keeper',stone:1,armor:1}};
 Object.assign(POSMAX,{skel:60,shield:95,mage:45,ghoul:50,knight:170,golem:260,spider:65,tiny:20,bossSk:430,bossSp:480,bossGo:620});
 // move book: r = range that triggers it (scaled by size), w = wind-up, a = active, rc = recovery, cd = own cooldown
@@ -87,7 +89,7 @@ function monHurt(m,dmg,dx,dz,kind){if(m.dead)return false;const light=kind&&kind
  return false}
 function monKilled(m){const T=m.T,xp=Math.round(T.xp*(1+.08*(DUN.lv-1)));addXP(xp,P);SYS.mkills=SYS.mkills||{};SYS.mkills[m.type]=(SYS.mkills[m.type]||0)+1;
  if(!T.boss){note('[Sistem] '+T.n+' · +'+xp+' XP');return}
- SYS.dun=SYS.dun||{};SYS.dun.boss=SYS.dun.boss||{};SYS.dun.boss[DUN.id]=1;GT.slow=.6;CAM.shake=1;sfx.roar(.7);dunTitle('ZAFER',T.n+' düştü');
+ SYS.dun=SYS.dun||{};SYS.dun.boss=SYS.dun.boss||{};SYS.dun.boss[DUN.id]=1;if(DUN.id==='citadel'){SYS.azgal=1;setTimeout(()=>azgalFinale(),2600)}GT.slow=.6;CAM.shake=1;sfx.roar(.7);dunTitle('ZAFER',T.n+' düştü');
  dropLoot(m.x+1.5,m.z,[makeItem(null,DUN.lv,5,T.uniq),randomDrop(DUN.lv,4)],Math.round(T.hp*.12));note('[Sistem] '+T.n+' yenildi! +'+xp+' XP · Mitik ganimet!','gold');
  for(const o of MONS)if(!o.dead&&o!==m){o.hp=0;o.dead=1;o.st='dead';o.t=0}openDunDoor();addExitPortal();if(DUN.arena)DUN.arena.ring.alpha=0;save(P)}
 // ---------------------------------------------------------------- AI

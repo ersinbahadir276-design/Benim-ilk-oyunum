@@ -12,12 +12,18 @@ const DUNS={
   mobs:[['spider','spider'],['spiderling','spiderling','spiderling','spiderling','spiderling'],['rat','rat','rat','rat'],['ghoul','spider'],['spider','spiderling','spiderling']],deep:[['spider','spider','spider'],['golem'],['ghoul','ghoul','spider'],['skmage','spider']]},
  temple:{id:'temple',n:'Mühürlü Tapınak',x:44,z:-608,lv:15,floors:3,theme:'temple',seed:303,boss:'keeper',puzzles:['plates','rune','brazier'],
   mobs:[['golem'],['knight','skelS'],['skmage','skel','skelA'],['ghoul','ghoul','ghoul'],['knight']],deep:[['knight','knight'],['golem','skmage'],['skelS','skelS','skmage'],['golem']]},
+ swamp:{id:'swamp',n:'Bataklık Tapınağı',x:560,z:560,lv:12,floors:3,theme:'swamp',seed:505,boss:'serpent',puzzles:['brazier','rune','plates'],
+  mobs:[['ghoul','ghoul','rat'],['spider','spiderling','spiderling'],['skmage','skel'],['rat','rat','rat','ghoul'],['ghoul','skelA']],deep:[['ghoul','ghoul','ghoul'],['skmage','spider'],['knight','ghoul'],['spider','spider','skmage']]},
+ citadel:{id:'citadel',n:'Kül Kale',x:-1880,z:-1880,lv:22,floors:5,theme:'citadel',seed:606,boss:'azgal',puzzles:['rune','plates','brazier'],
+  mobs:[['knight','knight'],['golem','skmage'],['skelS','skelS','skelA','skmage'],['knight','ghoul','ghoul'],['golem','knight']],deep:[['knight','knight','skmage'],['golem','golem'],['knight','knight','knight'],['skmage','skmage','golem']]},
  // v26: the SHADOW TOWER in the snowy range — five floors, the layout changes every day (random floors), a mix of every horror below
  tower:{id:'tower',n:'Gölge Kulesi',x:-780,z:-985,lv:19,floors:5,theme:'tower',seed:404,daily:1,boss:'keeper',puzzles:['rune','plates','brazier'],
   mobs:[['knight','skmage'],['golem','skelA'],['ghoul','ghoul','spider'],['skelS','skelS','skelA'],['spider','spider','skmage']],deep:[['knight','knight','skmage'],['golem','golem'],['ghoul','ghoul','ghoul','ghoul'],['knight','golem']]}};
 const THEME={crypt:{fl:[.3,.29,.28],wa:[.34,.32,.3],moss:[.2,.27,.16],fog:[.012,.012,.02],sun:[.33,.33,.42]},
  cave:{fl:[.22,.19,.16],wa:[.28,.24,.2],moss:[.25,.22,.3],fog:[.016,.012,.014],sun:[.33,.3,.34]},
  temple:{fl:[.36,.35,.4],wa:[.4,.39,.45],moss:[.5,.42,.2],fog:[.01,.014,.024],sun:[.34,.36,.46]},
+ swamp:{fl:[.2,.24,.17],wa:[.24,.3,.2],moss:[.3,.45,.2],fog:[.012,.02,.012],sun:[.28,.36,.28]},
+ citadel:{fl:[.24,.18,.17],wa:[.3,.2,.18],moss:[.5,.2,.1],fog:[.03,.01,.008],sun:[.42,.26,.22]},
  tower:{fl:[.26,.25,.3],wa:[.3,.28,.36],moss:[.35,.2,.45],fog:[.014,.01,.022],sun:[.3,.28,.4]}};
 const GLYPH=[['☾','Ay'],['◉','Göz'],['♛','Taç'],['✦','Yıldız']];
 const LORE={
@@ -220,7 +226,7 @@ function buildDunEntrances(){dunGeoms();for(const k in DUNS){const D=DUNS[k];cle
    const R=mkRng(77);for(let n=0;n<14;n++){const a=-.2+n/13*(PI+.4),r=2.6+R()*.8,x=Math.cos(a)*r,z=-1.2-Math.sin(a)*1.6,h=1.5+R()*2.6,w=.7+R()*.6;box(g,x-w,.0,z-w,x+w,h,z+w,[st[0]*(.8+R()*.4),st[1]*(.8+R()*.4),st[2]*(.8+R()*.4)])}
    box(g,-2.4,.25,-3.8,2.4,3.6,-2.2,st);box(g,-1.4,.25,-2.4,1.4,2.4,.4,blk);box(g,-2.2,2.4,-2.4,2.2,3.4,.5,st);for(let n=0;n<6;n++){const x=-1.8+n*.7;box(g,x-.05,.25,1.2+(n%2)*.4,x+.3,.31,1.3+(n%2)*.4,bone)}
    for(const s of[-1,1]){const w=G();w.P.push(s*1.35,2.4,.45,s*.2,2.4,.45,s*1.35,1.1,.45);w.N.push(0,0,1,0,0,1,0,0,1);w.C.push(.85,.85,.82,.85,.85,.82,.85,.85,.82);w.U.push(0,0,0,0,0,0);w.W.push(0,0,0);w.I.push(0,1,2);const m=merge([g,w]);g.P=m.P;g.N=m.N;g.C=m.C;g.U=m.U;g.W=m.W;g.I=m.I}}
-  else if(T==='tower'){// a black tower: five storeys tapering up, lit slit windows, a crown of spikes
+  else if(T==='tower'||T==='citadel'){// a black tower: five storeys tapering up, lit slit windows, a crown of spikes
    const tw=[.2,.19,.24],tr=[.12,.11,.15],gl=[.75,.4,1.3];for(let s=0;s<6;s++){const w=3.2-s*.38,y0=.25+s*4.6;box(g,-w,y0,-w-1.2,w,y0+4.6,w-1.2,s%2?tw:tr);box(g,-w-.2,y0+4.3,-w-1.4,w+.2,y0+4.6,w-1.0,tr);box(g,-.18,y0+1.8,w-1.21,.18,y0+3,w-1.15,gl)}
    box(g,-1.0,.25,1.95,1.0,2.6,2.05,blk);for(let k=0;k<6;k++){const a=k/6*2*PI;box(g,Math.cos(a)*1.2-.12,27.8,Math.sin(a)*1.2-1.32,Math.cos(a)*1.2+.12,30,Math.sin(a)*1.2-1.08,tr)}}
   else{// a white shrine with columns, a gold band and a sealed rune door that stands open

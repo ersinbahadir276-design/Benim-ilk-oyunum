@@ -12,6 +12,7 @@ const MAIN=[
  {id:'cages',t:'Kayıp Köylüler',d:'Kamptaki kafesleri aç',to:()=>CAGES[0],done:()=>SYS.cagesOpen},
  {id:'princess',t:'Zincirli Prenses',d:'Bataklık tapınağına git',to:()=>SHRINE,done:()=>SYS.veyraFate},
  {id:'dragon',t:'Kül Kanat',d:'Kuzey geçidini tutan ejderhayı yen',to:()=>({x:LAIR[0],z:LAIR[1]}),done:()=>SYS.dragon},
+ {id:'azgal',t:'Kül Kale',d:'Kuzeybatının kül topraklarındaki Kül Kale\'ye gir, beş katı aş, Şeytan Kral Azgal\'ı yen',to:()=>({x:-1880,z:-1880}),done:()=>SYS.azgal},
  {id:'tbc',t:'Kül Kale',d:'Geçit açıldı. Şeytan Kral seni bekliyor (yakında)',to:()=>null}];
 const curMain=()=>MAIN[Math.min(SYS.main||0,MAIN.length-1)];
 function questTarget(){const q=curMain(),t=q.to&&q.to();return t?[t.x,t.z]:null}
@@ -105,5 +106,5 @@ const PANELS={
  princess:()=>[{h:.7,st:{eye:[SHRINE.x+.6,1.4,SHRINE.z+3.4],at:[SHRINE.x,.9,SHRINE.z],fov:40,env:DUSK,noHero:true},nar:'Zincirler. Kızıl saç. O gözler.',say:[{who:'Veyra',txt:'...Sen kimsin? Annem mi yolladı?',x:52,y:10}]},
   {h:.75,st:{eye:[SHRINE.x+3,2.2,SHRINE.z+4.5],at:[SHRINE.x,1.2,SHRINE.z+1],env:DUSK,hero:{x:SHRINE.x,z:SHRINE.z+2,yaw:PI,pose:{two:1,RaZ:-1.4,RaX:-1.0,Rel:.6,RaY:.2,chX:-.2}}},
    whisper:'Bu o. Krallığı yakanların kızı. Kes.',say:[{who:'Kael',txt:'Krallık yanarken seni gördüm. Yangının ortasındaydın.',x:6,y:70}],choice:true}],
- dragon:()=>[{h:.65,st:{eye:[LAIR[0]+20,14,LAIR[1]+40],at:[LAIR[0],4,LAIR[1]-60],env:DUSK,noHero:true},nar:'Kül Kanat düştü. Kuzey geçidi açık.',sys:['Ana görev: Kül Kale (yakında)']}]};
+ dragon:()=>[{h:.65,st:{eye:[LAIR[0]+20,14,LAIR[1]+40],at:[LAIR[0],4,LAIR[1]-60],env:DUSK,noHero:true},nar:'Kül Kanat düştü. Kuzey geçidi açık.',sys:['Ana görev: Kül Kale — kuzeybatının kül toprakları']}]};
 

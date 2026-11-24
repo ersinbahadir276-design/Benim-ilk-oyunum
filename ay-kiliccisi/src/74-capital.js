@@ -64,3 +64,6 @@ function capInteract(){const s=shopAt();if(!s)return false;const G2=SYS.gold||0,
   const k=SYS.spell;if(!k){say('"Önce bir büyü öğren."');return true}const lv=SYS.spells[k],pr=200*lv;if(lv>=5){say('"'+SPELLS[k].n+' en yüksek ustalıkta."');return true}if(G2<pr){say('"'+SPELLS[k].n+' eğitimi '+pr+' altın."');return true}SYS.gold-=pr;SYS.spells[k]=lv+1;note('[Akademi] '+SPELLS[k].n+' ustalığı '+(lv+1)+'. seviye (güç +%25).','gold');save(P);return true}
  return false}
 function capTick(dt){if(DUN.on)return;if(!CAP.seen&&inCapital(P.x,P.z,40)){CAP.seen=1;bossBanner('ALTINSUR','Krallığın başkenti');note('[Bölge] BAŞKENT ALTINSUR — kale, pazar, kılıççı, demirci, simyacı, büyü kitapçısı ve büyü akademisi.','gold')}}
+// ---------- the end of the main story: Azgal falls in Kül Kale
+function azgalFinale(){bossBanner('ŞEYTAN KRAL DÜŞTÜ','Kül Kale sessizliğe gömüldü');CAM.shake=1;sfx.roar(1);SYS.titles=SYS.titles||[];if(!SYS.titles.includes('Kral Katili'))SYS.titles.push('Kral Katili');SYS.title='Kral Katili';addXP(3000,P);SYS.pts=(SYS.pts||0)+8;
+ note('[Hikâye] Azgal\'ın kül kılıcı yere düştü. Krallığa uzanan gölge çekildi — Altınsur\'un çanları seni karşılamak için çalıyor.','gold');note('[Sistem] Unvan: «Kral Katili» · +3000 XP · +8 stat puanı. Dünya açık kalıyor: olaylar, zindanlar, arena ve av seni bekliyor.','gold');save(P)}
