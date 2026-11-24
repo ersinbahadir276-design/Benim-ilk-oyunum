@@ -14,7 +14,7 @@ const stDef=()=>STDEF[SYS.stance]||{};
 // the parry window the hero has right now: stance, and spamming the block button shrinks it (a parry is a decision, not a reflex)
 function parryWin(){return PARRY_WIN*(stDef().pw||1)*Math.max(.35,1-.22*(P.bspam||0))}
 // --------------------------------------------------------------- enemies the player can hit
-function foes(){if(DUN.on){const o=[];for(const m of MONS)if(!m.dead)o.push(m);return o}const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead&&!g.ally)out.push(g);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
+function foes(){if(DUN.on){const o=[];for(const m of MONS)if(!m.dead)o.push(m);return o}const out=[];for(const w of wolves)if(!w.dead&&!w.tame)out.push(w);for(const g of GOBS)if(!g.dead&&!g.ally)out.push(g);for(const s of SLIMES)if(!s.dead)out.push(s);for(const c of CROCS)if(!c.dead)out.push(c);if(DRAGON&&!DRAGON.dead)out.push(DRAGON);return out}
 const isWolf=w=>wolves.includes(w);
 function foeHostile(f){return isWolf(f)?hostileSt(f):f.hostile()}
 function foeHurt(f,dmg,dx,dz,kind){return isWolf(f)?wolfHurt(f,dmg,dx,dz,P):f.hurt(dmg,dx,dz,kind)}
@@ -23,7 +23,7 @@ function foeDist(f){if(f.hitPts){let b=1e9;for(const h of f.hitPts())b=Math.min(
 function nearestFoe(range,half){let b=null,bd=range;for(const f of foes()){const d=foeDist(f),a=Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw));if(d<bd&&(half>=PI||a<half)){bd=d;b=f}}return b}
 // --------------------------------------------------------------- hits the player receives (one place for every enemy)
 // o:{dmg,guard,src,dir:[dx,dz] push direction,knock:'flinch'|'down'|'none',pin,unblockable,parryable,name}
-function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';const lvm=(o.src&&o.src.lv?lvDmg(o.src.lv):1)*lvGapIn(o.src);o=Object.assign({},o,{dmg:o.dmg*lvm*100/(100+armorDef()),guard:(o.guard!==undefined?o.guard:o.dmg*1.8)*lvm*(1-gear('guard')/200)});
+function hitPlayer(o){if(!P.alive||P.st==='dead')return'none';if(P.wardT>0)o=Object.assign({},o,{dmg:o.dmg*.5,guard:(o.guard!==undefined?o.guard:o.dmg*1.8)*.5});const lvm=(o.src&&o.src.lv?lvDmg(o.src.lv):1)*lvGapIn(o.src);o=Object.assign({},o,{dmg:o.dmg*lvm*100/(100+armorDef()),guard:(o.guard!==undefined?o.guard:o.dmg*1.8)*lvm*(1-gear('guard')/200)});
  if(P.inv>0){perfectDodge(o);return'iframe'}
  const src=o.src,front=src?Math.abs(angd(Math.atan2(src.x-P.x,src.z-P.z),P.yaw))<1.95:true;
  if((P.st==='block'||P.st==='parry')&&front&&!o.unblockable){
@@ -189,6 +189,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  case'hurt':slide(8);if(P.t>.38){P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;if(P.pinBy)P.pinBy=null}break;
  case'grabbed':move=false;updateGrabbed(dt);break;
  case'kick':updateKick(dt);break;
+ case'cast':move=false;updateCast(dt);break;
  case'throw':move=false;updateThrow(dt);break;
  case'ride':move=false;updateRide(dt);break;
  case'td':move=false;updateTakedown(dt);if(!P.td&&P.st==='td'){P.st='move';P.t=0}break;
@@ -247,6 +248,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(k2==='slam'){q.two=1;const air=P.air;q.RaZ=-1.4;q.RaX=air?-1.0:1.6;q.Rel=air?.7:.05;q.RaY=.2;q.chX=air?-.3:.6;q.spX=air?-.1:.4;q.pel=air?.1:.4;q.LthX=air?-1:-1.2;q.Lkn=air?1.3:1.5;q.RthX=air?-.6:.4;q.Rkn=air?1.2:.6;q.hipY=air?0:-.15}break}
  case'grabbed':rate=20;grabPose(q);break;
  case'kick':rate=24;kickPose(q);break;
+ case'cast':rate=20;castPose(q);break;
  case'throw':rate=22;throwPose(q);break;
  case'ride':rate=20;ridePose(q);break;
  case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;break}

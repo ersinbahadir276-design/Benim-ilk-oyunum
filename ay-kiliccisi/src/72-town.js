@@ -34,11 +34,11 @@ function townTick(dt){const T=TOWN;if(!T.trader||DUN.on)return;const night=GT.to
  const day=Math.floor((GT.clock||0)/600);if(T.day!==day||!T.stock.length&&T.day<0){T.day=day;T.stock=[0,1,2,3].map(i=>randomDrop(Math.max(1,SYS.lv),i===3?2:1))}
  if(!T.seen&&Math.hypot(P.x-T.x,P.z-T.z)<45){T.seen=1;note('[Bölge] GÖL LİMANI — balıkçı kasabası. Han (dinlen), pazar (alışveriş), iskele.','gold')}}
 function townPrompt(){const T=TOWN;if(!T.inn)return null;if(Math.hypot(P.x-T.inn.door[0],P.z-T.inn.door[1])<2.4)return'ETKİLEŞ: HAN — 15 altına dinlen (can, iksir, sabah, kayıt)';
- if(T.trader&&Math.hypot(P.x-T.trader.x,P.z-T.trader.z)<2.6){const it=T.stock[0];return it?'ETKİLEŞ: PAZAR — '+it.n+' ('+townPrice(it)+' altın)':'ETKİLEŞ: Pazar (bugün mal kalmadı)'}
+ if(T.trader&&Math.hypot(P.x-T.trader.x,P.z-T.trader.z)<2.6){const it=T.stock[0];return it?'ETKİLEŞ: PAZAR — '+(it.name||it.n)+' ('+townPrice(it)+' altın)':'ETKİLEŞ: Pazar (bugün mal kalmadı)'}
  if(T.fisher&&Math.hypot(P.x-T.fisher.x,P.z-T.fisher.z)<2.4)return'ETKİLEŞ: Balıkçı ile konuş';return null}
 const townPrice=it=>Math.round(30+(it.lv||SYS.lv)*10*(1+(it.r||0)*.8));
 function townInteract(){const T=TOWN;if(!T.inn)return false;
  if(Math.hypot(P.x-T.inn.door[0],P.z-T.inn.door[1])<2.4){if(SYS.gold<15){note('Hancı: "Bir gece 15 altın, yolcu."');return true}SYS.gold-=15;P.hp=maxHP();P.sta=100;P.guard=100;SYS.flasks=SYS.flaskMax;GT.tod=.28;sfx.rest&&sfx.rest();note('[Han] Sıcak bir yatak, sıcak bir çorba. Sabah oldu — canın ve iksirlerin doldu.','gold');save(P);return true}
- if(T.trader&&Math.hypot(P.x-T.trader.x,P.z-T.trader.z)<2.6){const it=T.stock[0];if(!it){note('Rüstem: "Yarın gel, kervan yeni mal getirir."');return true}const pr=townPrice(it);if(SYS.gold<pr){note('Rüstem: "'+it.n+' — '+pr+' altın. Biraz daha biriktir."');return true}SYS.gold-=pr;giveItem(T.stock.shift());sfx.chest();note('[Pazar] '+it.n+' alındı (−'+pr+' altın).','gold');save(P);return true}
+ if(T.trader&&Math.hypot(P.x-T.trader.x,P.z-T.trader.z)<2.6){const it=T.stock[0];if(!it){note('Rüstem: "Yarın gel, kervan yeni mal getirir."');return true}const pr=townPrice(it);if(SYS.gold<pr){note('Rüstem: "'+(it.name||it.n)+' — '+pr+' altın. Biraz daha biriktir."');return true}SYS.gold-=pr;giveItem(T.stock.shift());sfx.chest();note('[Pazar] '+(it.name||it.n)+' alındı (−'+pr+' altın).','gold');save(P);return true}
  if(T.fisher&&Math.hypot(P.x-T.fisher.x,P.z-T.fisher.z)<2.4){note(['Halil: "Gölün kuzeyinde, gece beyaz bir kurt dolaşıyor derler."','Halil: "Ejderha uyandığından beri balık da az."','Halil: "Kasabanın doğusundaki taş çemberde savaşçılar sınanır."'][Math.floor(rnd()*3)]);return true}
  return false}

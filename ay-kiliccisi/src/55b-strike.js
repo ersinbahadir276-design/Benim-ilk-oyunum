@@ -49,7 +49,7 @@ function swingMove(dt){const A=P.atk;if(!A)return;const u=P.t/A.T,f=A.tg;let vx=
  P.vx=lp(P.vx,vx,Math.min(1,dt*20));P.vz=lp(P.vz,vz,Math.min(1,dt*20))}
 // ---------------- foe body volumes (vertical capsules) for the blade sweep
 function foeBodyR(f){if(isWolf(f))return .5*(f.sc||1);if(f.T)return f.rad+.05;if(CROCS.includes(f))return .7;if(GOBS.includes(f))return f.big?.75*f.sc:.36*f.sc;return f.rad||.4}
-function foeBodyH(f){if(isWolf(f))return .95*(f.sc||1);if(f.T)return(f.T.quad?.85:1.75)*f.sc;if(CROCS.includes(f))return .7;if(GOBS.includes(f))return(f.big?2.3:1.3)*f.sc;return 1.6*(f.sc||1)}
+function foeBodyH(f){if(isWolf(f))return .95*(f.sc||1);if(f.T)return(f.T.quad?.85:1.75)*f.sc;if(CROCS.includes(f))return .7;if(f.slime)return .95*f.sz;if(GOBS.includes(f))return(f.big?2.3:f.human?1.75:1.3)*f.sc;return 1.6*(f.sc||1)}
 function bodyDist(f,p){if(f.hitPts){let b=1e9;for(const h of f.hitPts())b=Math.min(b,Math.hypot(p[0]-h[0],p[1]-h[1],p[2]-h[2])-h[3]);return b}
  const y0=(f.y!==undefined?f.y:hAt(f.x,f.z))+(f.air||0)+.1,y1=y0+foeBodyH(f),r=foeBodyR(f),cy=cl(p[1],y0+r*.5,Math.max(y0+r*.5,y1-r*.5));return Math.hypot(p[0]-f.x,p[1]-cy,p[2]-f.z)-r}
 // ---------------- the sweep, run every step after the hero's pose is final

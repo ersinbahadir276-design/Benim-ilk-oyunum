@@ -7,14 +7,14 @@ const MILL=[262,96];let MTN=null,MILLOB=null,FALLS=null;
 // runs before tree collision is registered: clear the farmland, sow bushes
 function sceneryPre(){const R=mkRng(90210);
  for(let i=TREES.length-1;i>=0;i--){const t=TREES[i];if(inField(t.x,t.z,6)||Math.hypot(t.x-MILL[0],t.z-MILL[1])<24){TREES.splice(i,1);const a=TCH.get(tchKey(t.x,t.z));if(a){const j=a.indexOf(t);if(j>=0)a.splice(j,1)}}}
- for(let i=0;i<5200;i++){const x=(R()-.5)*2*(WS-30),z=(R()-.5)*2*(WS-30),zn=zoneAt(x,z);if(clearing(x,z)||zn==='kingdom'||zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='swamp')continue;if(depthAt(x,z)>0||inField(x,z,3))continue;if(Math.abs(x)<5||Math.abs(z)<5)continue;
+ for(let i=0;i<15000;i++){const x=(R()-.5)*2*(WS-30),z=(R()-.5)*2*(WS-30),zn=zoneAt(x,z);if(clearing(x,z)||zn==='kingdom'||zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='swamp')continue;if(depthAt(x,z)>0||inField(x,z,3))continue;if(Math.abs(x)<5||Math.abs(z)<5)continue;
   const dry=zn==='mountain'||zn==='ruins',g=dry?[.3,.34,.2]:zn==='dense'?[.1,.26,.13]:[.2,.42,.16],f=.85+R()*.3;addSpec({x,z,s:.7+R()*.8,k:6,lv:[g[0]*f,g[1]*f,g[2]*f],rot:[R(),R(),R()],berry:R()<.12})}}
 function buildScenery(){const R=mkRng(31337),r=(a,b)=>a+(b-a)*R();
  // ---------- rocks everywhere (more along the river, in the old forest and on high ground); they block movement and sight
- const RC=new Map();for(let i=0;i<1500;i++){let x=(R()-.5)*2*(WS-40),z=(R()-.5)*2*(WS-40);const zn=zoneAt(x,z);if(clearing(x,z))continue;if(zn==='kingdom'||zn==='lake'||zn==='camp'||zn==='lair'||zn==='swamp'||zn==='mountain')continue;if(depthAt(x,z)>0||inField(x,z,5)||Math.abs(x)<6||Math.abs(z)<6)continue;
-  const big=R()<.12,s=big?r(1.8,3.6):r(.35,1.2),k=Math.floor((x+WS)/400)*10+Math.floor((z+WS)/400);let g=RC.get(k);if(!g)RC.set(k,g=G());rock(g,x,hAt(x,z)-.1,z,s,R);if(s>.7)addTree(x,z,s*.8,s*1.1);
+ const RC=new Map();for(let i=0;i<4300;i++){let x=(R()-.5)*2*(WS-40),z=(R()-.5)*2*(WS-40);const zn=zoneAt(x,z);if(clearing(x,z))continue;if(zn==='kingdom'||zn==='lake'||zn==='camp'||zn==='lair'||zn==='swamp'||zn==='mountain')continue;if(depthAt(x,z)>0||inField(x,z,5)||Math.abs(x)<6||Math.abs(z)<6)continue;
+  const big=R()<.12,s=big?r(1.8,3.6):r(.35,1.2),k=Math.floor((x+WS)/400)*100+Math.floor((z+WS)/400);let g=RC.get(k);if(!g)RC.set(k,g=G());rock(g,x,hAt(x,z)-.1,z,s,R);if(s>.7)addTree(x,z,s*.8,s*1.1);
   if(big)for(let j=0;j<3;j++){const a=R()*6.28,d=s*r(.9,1.5),s2=r(.4,1);rock(g,x+Math.cos(a)*d,hAt(x+Math.cos(a)*d,z+Math.sin(a)*d)-.1,z+Math.sin(a)*d,s2,R)}}
- for(const[k,g]of RC){if(!g.P.length)continue;const cx=Math.floor(k/10)*400-WS+200,cz=(k%10)*400-WS+200;obj(geo(g),{shade:.8,pos:[cx,0,cz],cull:560})}
+ for(const[k,g]of RC){if(!g.P.length)continue;const cx=Math.floor(k/100)*400-WS+200,cz=(k%100)*400-WS+200;obj(geo(g),{shade:.8,pos:[cx,0,cz],cull:560})}
  // ---------- farmland: striped fields that follow the ground, fences, haystacks
  const fg=G(),H=(x,z)=>hAt(x,z)+.07,wood=[.42,.3,.18],hay=[.78,.66,.3];
  for(const[x0,z0,x1,z1,kind]of FIELDS){const alongX=(x1-x0)>(z1-z0),A=kind?[.62,.52,.2]:[.3,.46,.18],B=kind?[.5,.4,.16]:[.36,.27,.16];

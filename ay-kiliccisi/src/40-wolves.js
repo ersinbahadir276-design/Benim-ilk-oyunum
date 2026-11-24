@@ -110,7 +110,7 @@ function updateWolf(w,P,dt,GS){if(w.clash&&!w.dead&&clashTick(w,dt))return;
  case'search':w.crouch=lp(w.crouch,.1,.1);if(w.aware>=1){w.st='chase';w.t=0}else if(wolfMove(w,w.ls[0],w.ls[1],3.2,dt,4)<1.5){w.spd=lp(w.spd,0,.3);w.hyaw=Math.sin(w.t*1.8)*.9;if(w.t>6){w.st='return';w.t=0;w.aware=0}}else if(w.t>14){w.st='return';w.t=0}break;
  case'return':w.hyaw=lp(w.hyaw,0,.1);w.crouch=lp(w.crouch,0,.1);w.jaw=lp(w.jaw,0,.1);if(w.aware>.3&&!safe){w.st='alert';w.t=0}else if(wolfMove(w,w.hx,w.hz,2.6,dt,3)<2||w.t>40){w.st='idle';w.t=0}break}
  // keep wolves out of the kingdom and apart from each other
- const r=Math.hypot(w.x,w.z);if(r<165&&w.st!=='pin'&&w.st!=='armlatch'){w.x*=165/r;w.z*=165/r}
+ {const rc=Math.hypot(w.x,w.z-1700);if(rc<300&&w.st!=='pin'){w.x*=1;w.z=1700+(w.z-1700)*300/rc;w.x=w.x*300/rc}}/* and out of the capital */const r=Math.hypot(w.x,w.z);if(r<165&&w.st!=='pin'&&w.st!=='armlatch'){w.x*=165/r;w.z*=165/r}
  for(const o of wolves){if(o===w||o.dead||o.st==='pin'||w.st==='pin'||w.st==='pounce')continue;const ex=w.x-o.x,ez=w.z-o.z,q=ex*ex+ez*ez;if(q<.8&&q>1e-6){const k=Math.sqrt(q);w.x+=ex/k*(.9-k)*.5;w.z+=ez/k*(.9-k)*.5}}
  w.y=hAt(w.x,w.z)}
 // ---------------- rendering: assign the nearest wolves to render slots and pose their parts
@@ -120,7 +120,7 @@ function drawWolves(P,time){const near=wolves.filter(w=>!(w.dead>8)).map(w=>[Mat
   const w=e[1],sc=w.sc,moving=w.spd>.3,run=w.spd>4,bob=moving?Math.abs(Math.sin(w.ph))*(run?.05:.02):Math.sin(time*2+w.ph)*.006,H=(.66-w.crouch*.2+bob)*sc,sink=w.dead>4?(w.dead-4)*.25:0;
   let M=mmul(mtrs([w.x,w.y+H+w.air-sink+(w.roll*-.42*sc),w.z],[0,w.yaw,0]),mtrs([0,0,0],[w.pitch,0,0]));M=mmul(M,mtrs([0,0,0],[0,0,w.roll]));
   for(let k=0;k<12;k++)M[k]*=sc;
-  const tintc=w.white?[1.9,1.9,2.0]:w.tame?[.9,1,1.12]:w.alpha?[.5,.5,.56]:[1,1,1],fl=w.flash;
+  const tintc=w.warg?[.62,.42,.36]:w.white?[1.9,1.9,2.0]:w.tame?[.9,1,1.12]:w.alpha?[.5,.5,.56]:[1,1,1],fl=w.flash;
   s.body.M=M;s.head.M=mroty(M,0,.3,.76,w.hpit+(w.st==='pin'?.5+Math.sin(time*30)*.12*w.jaw:w.st==='windup'?.25:0),w.hyaw+(w.st==='pin'?Math.sin(time*26)*.3*w.jaw:0),0);
   s.jaw.M=mroty(s.head.M,0,-.055,.1,w.jaw*.75,0,0);s.tail.M=mroty(M,0,.1,-.62,w.st==='chase'||w.st==='pounce'?.5:w.st==='windup'?-.3:.1+Math.sin(time*2+w.ph)*.1,w.tail+Math.sin(time*(w.tame?10:3)+w.ph)*(w.tame?.5:.12),0);
   for(const o of[s.body,s.head,s.jaw,s.tail]){o.col=tintc;o.flash=fl}

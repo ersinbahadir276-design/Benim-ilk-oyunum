@@ -40,7 +40,7 @@ function drawGobBow(g){if(!g.archer||!g.R)return;if(!g.bowOb){arrowGeom();g.bowO
  const d=g.R.def;if(!g.R.ob.vis||!d.WR||g.dead){g.bowOb.vis=false;return}const R=d.WR[5],p=boneW(d,5,[0,-.06*g.sc,0],1),M=new Float32Array(16);
  M[0]=R[0];M[1]=R[3];M[2]=R[6];M[4]=R[1];M[5]=R[4];M[6]=R[7];M[8]=R[2];M[9]=R[5];M[10]=R[8];for(let i=0;i<11;i++)if(i%4<3)M[i]*=g.sc;M[12]=p[0];M[13]=p[1];M[14]=p[2];M[15]=1;g.bowOb.M=M;g.bowOb.pos=[g.x,0,g.z];g.bowOb.vis=true}
 // road patrols near the village so goblins are met early (two melee + two archers each)
-function spawnPatrols(){const spots=[[0,260,0],[255,0,1.57],[-250,40,-1.57]];spots.forEach(([x,z,yaw],i)=>{const grp='road'+i,c=CAMPSITES[i%CAMPSITES.length];const pts=[[x,z],[x+Math.sin(yaw+1.57)*40,z+Math.cos(yaw+1.57)*40],[x+Math.sin(yaw)*35,z+Math.cos(yaw)*35]];
+function spawnPatrols(){const spots=[[GVIL[0]-260,GVIL[1]+120,0],[GVIL[0]-140,GVIL[1]+260,1.57],[GVIL[0]+60,GVIL[1]+300,-1.57]];/* v27: goblin patrols only on the roads round their own village */spots.forEach(([x,z,yaw],i)=>{const grp='road'+i,c=CAMPSITES[i%CAMPSITES.length];const pts=[[x,z],[x+Math.sin(yaw+1.57)*40,z+Math.cos(yaw+1.57)*40],[x+Math.sin(yaw)*35,z+Math.cos(yaw)*35]];
   for(let k=0;k<4;k++){const p=collide(x+(k-1.5)*2,z+(k%2)*2,.4),g=mkGob(p[0],p[1],false,grp,c);g.patrol=pts;g.pi=k%3;g.archer=k>=2;g.R=rigObj(GOBM,{out:.014,cull:150});rigHide(g.R)}});
  for(const c of CAMPSITES){const g=GOBS.find(x=>!x.big&&x.camp===c&&!x.archer&&!x.patrol);if(g)g.archer=true}}
 // ---------- the hero's bow: tap YAY — shoots at the locked target or the nearest foe in front

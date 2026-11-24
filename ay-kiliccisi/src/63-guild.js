@@ -24,8 +24,8 @@ function fillBoard(){const G2=SYS.guild;if(!G2)return;for(let i=0;i<8&&G2.board.
 // world entities for a contract (the bounty target with two followers, the lost villager); also rebuilt after loading a save
 function guildSpawn(c){if(GUILD.ents[c.id])return;if(c.k==='bounty'){const lv=Math.max(3,regionLevel(c.x,c.z)+2);
   if(c.tg==='wolf'){const w=mkWolf(c.x,c.z,{alpha:true});w.sc=1.45;scaleFoe(w,lv,420);w.bounty=c.id;w.elite=true;w.title=c.t;GUILD.ents[c.id]=[w];for(let i=0;i<2;i++){const p=collide(c.x+3+i*2,c.z+2,.6),o=mkWolf(p[0],p[1]);scaleFoe(o,lv,105);GUILD.ents[c.id].push(o)}}
-  else{const g=mkGob(c.x,c.z,false,'bounty'+c.id,CAMPSITES[0]);g.sc=1.3;scaleFoe(g,lv,400);g.bounty=c.id;g.elite=true;g.title=c.t;g.R=rigObj(GOBM,{out:.014,cull:150});g.R.ob.col=[1.15,.8,.75];GUILD.ents[c.id]=[g];
-   for(let i=0;i<2;i++){const p=collide(c.x+2+i*2,c.z+2,.4),o=mkGob(p[0],p[1],false,'bounty'+c.id,CAMPSITES[0]);o.archer=i===1;scaleFoe(o,lv,150);o.R=rigObj(GOBM,{out:.014,cull:150});GUILD.ents[c.id].push(o)}}}
+  else{const g=mkHuman(c.x,c.z,{lv,hp:400,elite:true,shield:true,sc:1.2,title:c.t,col:[1.15,.8,.75]});g.bounty=c.id;g.free=0;GUILD.ents[c.id]=[g];/* v27: bounties near the kingdom are outlaws, not goblins */
+   for(let i=0;i<2;i++){const p=collide(c.x+2+i*2,c.z+2,.4),o=mkHuman(p[0],p[1],{lv,hp:150,col:[.8,.65,.6]});GUILD.ents[c.id].push(o)}}}
  else if(c.k==='rescue'&&!c.found){if(!NPCM.villager)NPCM.villager=humanGeo('villager');const n=mkNpc('villager',c.x,c.z,{yaw:0,post:[c.x,c.z,0]});n.R=rigObj(NPCM.villager,{out:.012,cull:130,outCol:[.12,.1,.1]});n.lost=c.id;n.name='Kayıp köylü';n.role='lost';GUILD.ents[c.id]=[n]}}
 function guildInit(){if(!NPCM.merchant)NPCM.merchant=humanGeo('merchant');const p=collide(GUILD.x,GUILD.z,.5),n=mkNpc('merchant',p[0],p[1],{yaw:PI/2,post:[p[0],p[1],PI/2]});n.role='guild';n.name='Lonca Görevlisi Selin';n.R=rigObj(NPCM.merchant,{out:.012,cull:130,outCol:[.12,.1,.1]});n.R.ob.col=[.8,.95,1.25];GUILD.clerk=n;
  // the contract board: two posts, planks, pinned papers, a banner

@@ -3,10 +3,11 @@
 // north: mountains with the dragon lair on a plateau; west: dense forest, a lake fed by a river;
 // south-east: swamp (crocodiles); goblin camps and ruins scattered between them.
 var DUN={on:0,y:0};// dungeon mode (64-dungeon.js): height, collision, sight and zone come from the dungeon grid
-const WS=1400,HS=7,HN=WS*2/HS+1,HGT=new Float32Array(HN*HN),GDN=new Uint8Array(HN*HN),GTN=new Uint8Array(HN*HN);
+const WS=2450,HS=7,/* v27: the world is 4.9 km across (was 2.8) */HN=WS*2/HS+1,HGT=new Float32Array(HN*HN),GDN=new Uint8Array(HN*HN),GTN=new Uint8Array(HN*HN);
 const SPAWN=[14,0,318],LAKE=[-760,260,150],SWAMP=[760,720,330],MOUNT=[0,-1050],LAIR=[0,-1050],LAIR_Y=62,WATER_L=-2.6,WATER_S=-1.35;
 const RIVER=[[-180,-690],[-300,-520],[-470,-330],[-560,-120],[-660,80],[-735,190]];
-const CAMPS=[[820,-180],[-520,-790],[300,870],[-1130,-470]],RUINS=[[-1010,-120],[560,-620],[1090,320]];
+// v27: every goblin lives far from the kingdoms, in and around GOBLİN KÖYÜ in the far north-east
+const GVIL=[1850,-1500],CAMPS=[[1700,-1330],[2020,-1380],[1820,-1720],[2080,-1640]],RUINS=[[-1010,-120],[560,-620],[1090,320]];
 const HILL=(x,z)=>Math.sin(x*.013)*4+Math.cos(z*.016)*4+Math.sin((x+z)*.031)*2+Math.sin(x*.047+1.3)*Math.cos(z*.041)*1.5;
 function segD(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=cl(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t)}
 function riverD(x,z){let d=1e9;for(let i=0;i<RIVER.length-1;i++)d=Math.min(d,segD(x,z,RIVER[i],RIVER[i+1]));return d}
@@ -19,7 +20,7 @@ function vnoise(x,z){const i=Math.floor(x),j=Math.floor(z),fx=x-i,fz=z-j,u=fx*fx
 function fbm(x,z){return vnoise(x,z)*.5+vnoise(x*2.03+17,z*2.03+9)*.27+vnoise(x*4.1+5,z*4.1+31)*.15+vnoise(x*8.3+3,z*8.3+7)*.08}
 const FALLHEAD=(()=>{const a=RIVER[0],b=RIVER[1],dl=Math.hypot(a[0]-b[0],a[1]-b[1]),ux=(a[0]-b[0])/dl,uz=(a[1]-b[1])/dl;return{x:a[0],z:a[1],ux,uz,lip:16,top:WATER_L+19}})();
 // flattened building sites (the harbour town, the arena): level ground so houses do not float
-const FLATS=[[-528,262,30],[40,338,16]],FLATC=new Map();let noFlat=false;
+const FLATS=[[-528,262,30],[40,338,16],[0,1700,300],[GVIL[0],GVIL[1],100]],FLATC=new Map();let noFlat=false;
 const FLATH=(cx,cz)=>{const k=cx+','+cz;if(!FLATC.has(k)){noFlat=true;FLATC.set(k,hRaw(cx,cz));noFlat=false}return FLATC.get(k)};
 function fallFrame(x,z){const F=FALLHEAD,dx=x-F.x,dz=z-F.z;return[dx*F.ux+dz*F.uz,dx*-F.uz+dz*F.ux]}
 function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
@@ -35,11 +36,11 @@ function hRaw(x,z){const r=Math.hypot(x,z);let h=HILL(x,z)*sst(130,320,r);
  {const F=FALLHEAD,[al,w]=fallFrame(x,z);if(al>F.lip-6&&al<170&&Math.abs(w)<95){const k=sst(95,60,Math.abs(w))*sst(170,120,al)*sst(F.lip-.5,F.lip+2.5,al);let ph=F.top+1.5+fbm(x*.03,z*.03)*3;if(Math.abs(w)<5.5)ph=F.top-1.4;h=lp(h,ph,k)}}
  if(!noFlat)for(const [cx,cz,R] of FLATS){const d=Math.hypot(x-cx,z-cz);if(d<R+25)h=lp(h,FLATH(cx,cz),sst(R+25,R,d))}
  h+=Math.max(0,Math.max(Math.abs(x),Math.abs(z))-(WS-70))*.55;return h}
-function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
+function zoneAt(x,z){if(DUN.on)return'dungeon';if(Math.hypot(x-0,z-1700)<290)return'capital';if(Math.hypot(x-GVIL[0],z-GVIL[1])<100)return'gvil';if(Math.hypot(x-SNOW[0],z-SNOW[1])<SNOW[2])return'snow';const r=Math.hypot(x,z);if(r<135)return'kingdom';const dm=Math.hypot(x-MOUNT[0],z-MOUNT[1]);if(dm<120)return'lair';
  if(Math.hypot(x-LAKE[0],z-LAKE[1])<LAKE[2]+25)return'lake';if(riverD(x,z)<16)return'river';if(Math.hypot(x-SWAMP[0],z-SWAMP[1])<SWAMP[2])return'swamp';
  for(const c of CAMPS)if(Math.hypot(x-c[0],z-c[1])<48)return'camp';for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<65)return'ruins';
  if(dm<420)return'mountain';if(x<-430)return'dense';return'forest'}
-const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',forest:'Orman',dungeon:'Zindan'};
+const ZNAME={kingdom:'Krallık',lair:'Ejderha Yuvası',lake:'Gümüş Göl',river:'Nehir',swamp:'Sisli Bataklık',camp:'Goblin Kampı',ruins:'Eski Harabeler',mountain:'Kayalık Dağlar',dense:'Kara Orman',snow:'Karlı Sırtlar',capital:'Başkent Altınsur',gvil:'Goblin Köyü',forest:'Orman',dungeon:'Zindan'};
 // sampled heightmap: hAt interpolates the SAME triangles the terrain mesh and the grass shader use
 function buildHeights(){for(let j=0;j<HN;j++)for(let i=0;i<HN;i++)HGT[j*HN+i]=hRaw(-WS+i*HS,-WS+j*HS)}
 function hAt(x,z){if(DUN.on)return dunH(x,z);let gx=(x+WS)/HS,gz=(z+WS)/HS;gx=cl(gx,0,HN-1.001);gz=cl(gz,0,HN-1.001);const i=Math.floor(gx),j=Math.floor(gz),fx=gx-i,fz=gz-j,o=j*HN+i,a=HGT[o],b=HGT[o+1],c=HGT[o+HN],d=HGT[o+HN+1];
@@ -77,7 +78,7 @@ function los(ax,az,bx,bz,eye=1.3){if(DUN.on)return dunLos(ax,az,bx,bz);const dx=
 function inBuilding(x,z,m){if(DUN.on)return dunSolidAt(x,z,m);let hit=false;nearBoxes(x,z,b=>{if(b[4]>2.5&&x>b[0]-m&&x<b[2]+m&&z>b[1]-m&&z<b[3]+m)hit=true});return hit}
 // ---------- forest specs (geometry is built on demand around the player and dropped far away)
 const TREES=[],TCH=new Map(),TCS=100,tchKey=(x,z)=>Math.floor((x+WS)/TCS)*100+Math.floor((z+WS)/TCS);
-function clearing(x,z){return Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
+function clearing(x,z){return Math.hypot(x,z-1700)<310||Math.hypot(x-GVIL[0],z-GVIL[1])<105||Math.hypot(x-TOWN.x,z-TOWN.z)<40||Math.hypot(x-ARENA.x,z-ARENA.z)<17}
 function treeOK(x,z){if(clearing(x,z))return false;const zn=zoneAt(x,z);if(zn==='lake'||zn==='river'||zn==='camp'||zn==='lair'||zn==='kingdom')return false;if(depthAt(x,z)>.15)return false;
  for(const c of RUINS)if(Math.hypot(x-c[0],z-c[1])<34)return false;if(Math.hypot(x-SPAWN[0],z-SPAWN[2])<11)return false;return true}
 function addSpec(t){TREES.push(t);const k=tchKey(t.x,t.z);let a=TCH.get(k);if(!a)TCH.set(k,a=[]);a.push(t)}
@@ -103,7 +104,7 @@ function buildWorld(){
   {const dsn=Math.hypot(x-SNOW[0],z-SNOW[1]);if(dsn<SNOW[2]+60)c=mix3(c,[.88+n*.05,.9+n*.05,.95],sst(SNOW[2]+60,SNOW[2]-40,dsn)*sst(.6,.35,nn?1-nn[1]:0)*.92+sst(SNOW[2]+60,SNOW[2],dsn)*.0)}
   if(h>38&&Math.hypot(x-MOUNT[0],z-MOUNT[1])>140)c=mix3(c,[.9,.92,.96],sst(38,52,h));
   const wd=waterAt(x,z)-h;if(waterAt(x,z)>-90&&wd>-1.2)c=mix3(c,[.5,.46,.33],sst(-1.2,.2,wd)*.8);return c};
- for(let cx=0;cx<8;cx++)for(let cz=0;cz<8;cz++){const g=G(),i0=cx*NC,j0=cz*NC;
+ const NCH=Math.ceil((HN-1)/NC);for(let cx=0;cx<NCH;cx++)for(let cz=0;cz<NCH;cz++){const g=G(),i0=cx*NC,j0=cz*NC;
   for(let j=0;j<=NC;j++)for(let i=0;i<=NC;i++){const gi=Math.min(i0+i,HN-1),gj=Math.min(j0+j,HN-1),x=-WS+gi*HS,z=-WS+gj*HS,h=HGT[gj*HN+gi],e=HS,
     n=vnorm([hAt(x-e,z)-hAt(x+e,z),2*e,hAt(x,z-e)-hAt(x,z+e)]),c=gcol(x,z,h,n);g.P.push(x,h,z);g.N.push(n[0],n[1],n[2]);g.U.push(0,0);g.C.push(c[0],c[1],c[2]);g.W.push(0)}
   for(let j=0;j<NC;j++)for(let i=0;i<NC;i++){const a=j*(NC+1)+i,b=a+1,c=a+NC+1,d=c+1;g.I.push(a,c,b,b,c,d)}
@@ -181,7 +182,7 @@ function buildWorld(){
  obj(geo(vg),{shade:.8,pos:[0,0,0],cull:420,out:.025,outCol:[.18,.14,.12]});obj(geo(merge(pl)),{shade:.8,pos:[0,0,0],cull:300});
  // ---------- new regions (own random stream so nothing above shifts)
  const R2=mkRng(20261114),r2=(a,b)=>a+(b-a)*R2();
- for(let gx=-155;gx<=155;gx++)for(let gz=-155;gz<=155;gz++){const x=(gx+.5+R2()*.8)*9,z=(gz+.5+R2()*.8)*9,p=R2(),s=r2(.8,1.5),kind=R2(),inner=Math.abs(x)<688&&Math.abs(z)<688;
+ const GB=Math.floor(WS/9);for(let gx=-GB;gx<=GB;gx++)for(let gz=-GB;gz<=GB;gz++){const x=(gx+.5+R2()*.8)*9,z=(gz+.5+R2()*.8)*9,p=R2(),s=r2(.8,1.5),kind=R2(),inner=Math.abs(x)<688&&Math.abs(z)<688;
   if(Math.abs(x)>WS-16||Math.abs(z)>WS-16)continue;const zn=zoneAt(x,z),h=hAt(x,z);let dens=0,k=0;
   if(zn==='dense'){dens=inner?.45:.92;k=kind<.75?2:1}else if(zn==='forest'){dens=inner?0:.55;k=kind<.6?0:1}else if(zn==='swamp'){dens=.1;k=3}else if(zn==='mountain'){dens=h<36?.22*sst(40,16,h):0;k=4}else if(zn==='ruins'){dens=.08;k=1}
   if(p>dens||!treeOK(x,z))continue;const lc=k===2?[.07,.2,.1]:k===4?[.1,.26,.16]:kind<.4?[.12,.33,.16]:[.2,.42,.17];addSpec({x,z,s:k===2?s*1.25:s,k,lv:[lc[0]*r2(.85,1.15),lc[1]*r2(.85,1.15),lc[2]*r2(.85,1.15)],rot:[R2(),R2(),R2()]})}
