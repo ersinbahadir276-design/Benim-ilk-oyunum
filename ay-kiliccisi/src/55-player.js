@@ -177,7 +177,9 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
 // --------------------------------------------------------------- pose targets per state
 function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph),c=Math.cos(P.ph);let rate=14;
  const run=(mv,sprint)=>{const A=(sprint?.9:.5)*mv,B=(sprint?1.55:.95)*mv;q.LthX=-s*A;q.RthX=s*A;q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
-  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012)};
+  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012);
+  // pelvis turns with the forward leg and drops on the swing side; spine counters it so the head stays steady; heel strike + toe-off
+  q.pelY=-s*.1*mv;q.spY+=s*.1*mv;q.pelZ=-c*(sprint?.035:.055)*mv;q.spZ=-q.pelZ*.8;q.LftX=mv*(.9*Math.max(0,-s)*Math.max(0,c)-.3*Math.max(0,s)*Math.max(0,-c));q.RftX=mv*(.9*Math.max(0,s)*Math.max(0,-c)-.3*Math.max(0,-s)*Math.max(0,c))};
  switch(P.st){
  case'move':case'land':{const mv=cl(P.spd/3.4,0,1);
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
