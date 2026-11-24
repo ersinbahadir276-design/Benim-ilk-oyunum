@@ -31,6 +31,7 @@ src/        oyunun kaynağı (numara sırasıyla tek dosyada birleşir)
   20-world.js         2800 × 2800 m harita, bölgeler, su, akışlı orman, köy, kale, kamplar, harabeler
   25-perception.js    görüş konisi + engel + uyarı yayılması
   30-player-model.js  Selene modeli, kılıç, poz, kol IK'sı
+  32-anim.js          kahraman animasyon katmanı: eğimde ayak IK'sı, kalça inişi, dönüşte yatma, nefes/ağırlık aktarma
   40-wolves.js        kurtlar
   45-rig.js           goblin / köylü / muhafız / tüccar / timsah modelleri
   46-goblins.js  47-npcs.js  48-croc.js  49-dragon.js
@@ -43,8 +44,8 @@ test/       otomatik testler (Playwright)
 ```
 
 Derleme (bilgisayarda): `python3 tools/build.py` → `dist/ay-kiliccisi.html`.
-Testler: `node test/harness.js test/s-mech.js` (47 mekanik testi), `test/s-ui.js` (dokunmatik düğmeler,
-kayıt), `test/s-shots.js` ve `test/s-close.js` (ekran görüntüleri).
+Testler: `node test/harness.js test/s-mech.js` (53 mekanik testi), `test/s-ui.js` (dokunmatik düğmeler,
+kayıt), `test/s-shots.js`, `test/s-close.js` ve `test/s-footik.js` (ekran görüntüleri).
 
 ## Modeller ve lisanslar
 

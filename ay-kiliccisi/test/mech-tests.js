@@ -178,5 +178,44 @@ window.runMech = function () {
     const kinds = {}; for (const n of G.NPCS) kinds[n.kind] = (kinds[n.kind] || 0) + 1; freshP(0, 70, Math.PI); const pos0 = G.NPCS.map((n) => [n.x, n.z]); GT.tod = .25; sim(20); const moved = G.NPCS.filter((n, i) => Math.hypot(n.x - pos0[i][0], n.z - pos0[i][1]) > 2).length;
     ok('köy: köylü, tüccar, muhafız NPC\'leri var ve dolaşıyor', kinds.merchant >= 3 && kinds.guard >= 8 && (kinds.villager + kinds.villager2) >= 10 && moved >= 4, { türler: kinds, hareket_eden: moved });
   }
+  // ---------------------------------------------------------------- 13. animation realism: terrain foot IK + gait layer
+  {
+    const H = G.HB, A = G.ANIM;
+    const footClear = () => ['leftFoot', 'rightFoot'].map((n) => { const w = G.mpt(G.PM, G.SK.GP[H[n]]); return w[1] - G.hAt(w[0], w[2]); });
+    // flat-ish reference: clearance of the ankle on the meadow
+    freshP(T0[0], T0[1]); sim(1); const flat = footClear(), flatDrop = A.drop;
+    // find a slope (no water, walkable) near the start and stand across it
+    let best = null;
+    for (let r = 20; r <= 1300 && !best; r += 8) for (let a = 0; a < 6.28 && !best; a += 4 / r) { const x = T0[0] + Math.sin(a) * r, z = T0[1] + Math.cos(a) * r;
+      const gx = (G.hAt(x + 1, z) - G.hAt(x - 1, z)) / 2, gz = (G.hAt(x, z + 1) - G.hAt(x, z - 1)) / 2, m = Math.hypot(gx, gz);
+      if (m > .2 && m < .42 && G.depthAt(x, z) <= 0 && G.waterAt(x, z) < G.hAt(x, z) - 1) best = { x, z, m, yaw: Math.atan2(-gz, gx) };
+    }
+    if (!best) ok('animasyon: test için eğimli zemin bulundu', false);
+    else {
+      isolate(best.x, best.z); calmAll();
+      const stand = (on) => { A.on = on; freshP(best.x, best.z, best.yaw); sim(1.2); let c = footClear(); if (Math.abs(c[0] - c[1]) < .02) { P.yaw = best.yaw + Math.PI / 2; sim(1.2); c = footClear(); } return c; };
+      const off = stand(false), on = stand(true);
+      ok('animasyon: eğimde iki ayak da yere basıyor (ayak IK)', Math.abs(on[0] - on[1]) < .035 && Math.abs(off[0] - off[1]) > .06 && Math.min(...on) > -.04,
+        { eğim: +best.m.toFixed(2), ik_kapalı_fark_cm: +(Math.abs(off[0] - off[1]) * 100).toFixed(1), ik_açık_fark_cm: +(Math.abs(on[0] - on[1]) * 100).toFixed(1), düz_zemin_cm: flat.map((v) => +(v * 100).toFixed(1)) });
+      const need = Math.max(0, -Math.min(A.dyL, A.dyR));
+      ok('animasyon: kalça alçakta kalan ayak kadar iniyor (düz zeminde neredeyse hiç)', Math.abs(A.drop - need) < .005 && flatDrop < .02, { gereken_cm: +(need * 100).toFixed(1), kalça_inişi_cm: +(A.drop * 100).toFixed(1), düz_cm: +(flatDrop * 100).toFixed(1) });
+      // walking up and across the slope: no NaN, feet never sink deep into the ground
+      let minC = 9; IN.mz = 1; sim(3, () => { const c = footClear(); minC = Math.min(minC, ...c); if (nanPM()) return false; }); clearIn();
+      ok('animasyon: eğimde yürürken ayaklar zemine gömülmüyor', !nanPM() && minC > -.06, { en_düşük_ayak_cm: +(minC * 100).toFixed(1) });
+      // airborne: IK fades out
+      freshP(best.x, best.z, best.yaw); sim(.5); P.air = true; P.vy = 6; P.st = 'jump'; sim(.25); const wAir = A.w;
+      ok('animasyon: havadayken ayak IK kapanıyor', wAir < .2, { ağırlık: +wAir.toFixed(2) });
+    }
+    // banking: while running in a curve the body leans towards the centre of the turn
+    A.on = true; isolate(T0[0], T0[1]); freshP(T0[0], T0[1]); P.sprintHeld = true; IN.mz = 1; sim(1);
+    let lean = 0, n = 0; const v0 = [Math.sin(P.yaw), Math.cos(P.yaw)];
+    sim(1.2, () => { G.CAM.yaw += 1.6 / 60; const hd = G.mpt(G.PM, G.SK.GP[H.head]), hp = G.mpt(G.PM, G.SK.GP[H.hips]), cx = Math.cos(P.yaw), cz = -Math.sin(P.yaw);
+      const turnSign = Math.sign(A.turn); lean += ((hd[0] - hp[0]) * cx + (hd[2] - hp[2]) * cz) * turnSign; n++; });
+    clearIn(); lean /= n;
+    ok('animasyon: dönüşte gövde dönüşün içine yatıyor', lean > .03 && Math.abs(A.turn) > .5, { yatma_cm: +(lean * 100).toFixed(1), dönüş_hızı: +A.turn.toFixed(2) });
+    // idle: chest breathes (pose changes over time even with no input)
+    freshP(T0[0], T0[1]); sim(1); const c0 = P.ps.chX; sim(.9); const c1 = P.ps.chX;
+    ok('animasyon: beklerken nefes alma hareketi var', Math.abs(c1 - c0) > .01, { göğüs_farkı: +(c1 - c0).toFixed(3) });
+  }
   GT.paused = false; return out;
 };
