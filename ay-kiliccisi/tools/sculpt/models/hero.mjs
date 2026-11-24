@@ -88,14 +88,36 @@ export default function hero(ALL) {
 
   // ------------------------------------------------------------ legs
   const kn = B.leftLowerLeg, an = B.leftFoot, toe = B.leftToes;
-  L({ name: 'cuisse', mat: 'plate', bone: 'leftUpperLeg', rigid: true, k: 0.006, sdf: U(0.004, I(0.005, shell(cone([0.099, 0.99, 0.005], [0.099, 0.71, 0.01], 0.112, 0.088), 0.0095), zcut(-0.035, -1), slab(0.71, 0.99)),
-    I(0.003, cone([0.099, 0.97, 0.118], [0.099, 0.74, 0.096], 0.0095, 0.008), zcut(0.08, -1))) });
+  // cuisse: anatomical thigh (quadriceps bulge) covered by three overlapping front lames, a raised medial keel and a bronze lower edge
+  const LX = 0.099;
+  const thigh = U(0.05, cone([LX, 1.0, 0.005], [LX, 0.7, 0.012], 0.106, 0.082), ellipsoid([LX + 0.012, 0.88, 0.04], [0.085, 0.13, 0.075]));
+  const cuisseLames = [0, 1, 2].map((i) => { const top = 0.995 - i * 0.095, bot = top - 0.112;
+    return I(0.005, shell(grow(thigh, 0.014 - i * 0.003), 0.0085), zcut(-0.03 + i * 0.006, -1), plane([0, bot, 0], [0, -1, -0.25]), plane([0, top, 0], [0, 1, 0])); });
+  L({ name: 'cuisse', mat: 'plate', bone: 'leftUpperLeg', rigid: true, k: 0.004, sdf: U(0.003, ...cuisseLames,
+    I(0.003, cone([LX + 0.006, 0.985, 0.115], [LX + 0.004, 0.73, 0.1], 0.009, 0.007), zcut(0.08, -1))) });
+  L({ name: 'cuisseTrim', mat: 'trim', bone: 'leftUpperLeg', rigid: true, k: 0.003, sdf: U(0,
+    I(0.003, shell(grow(thigh, 0.009), 0.0105), zcut(-0.018, -1), slab(0.705, 0.722)),
+    I(0.003, shell(grow(thigh, 0.017), 0.0095), zcut(-0.03, -1), slab(0.985, 0.999))) });
+  L({ name: 'cuisseRivets', mat: 'rivet', bone: 'leftUpperLeg', rigid: true, k: 0, sdf: U(0, ...[0, 1, 2].flatMap((i) => [-1, 1].map((s) => {
+    const y = 0.975 - i * 0.095, a = s * 1.15; return sphere([LX + Math.sin(a) * 0.118, y, 0.012 + Math.cos(a) * 0.1], 0.0075); }))) });
+  // poleyn: domed cop, heart-shaped side wing with a keel, one articulation lame above and below, forward spike
+  const wingC = v3.add(kn, [0.072, 0.005, 0.0]);
+  const wing = I(0.006, shell(ellipsoid(v3.add(wingC, [-0.01, 0, 0]), [0.034, 0.088, 0.08]), 0.0075), xcut(wingC[0] - 0.004, -1));
   L({ name: 'poleyn', mat: 'plate', boneFn: () => [['leftLowerLeg', 0.55], ['leftUpperLeg', 0.45]], rigid: true, k: 0.005, sdf: U(0.008,
-    I(0.004, shell(ellipsoid(v3.add(kn, [0, 0, 0.03]), [0.077, 0.082, 0.072]), 0.0095), zcut(-0.01, -1)), I(0.004, shell(ellipsoid(v3.add(kn, [0.068, 0, 0.0]), [0.024, 0.072, 0.066]), 0.008), xcut(0.078, -1)),
-    horn([v3.add(kn, [0, 0.0, 0.095]), v3.add(kn, [0, 0.02, 0.125]), v3.add(kn, [0, 0.045, 0.142])], 0.015)) });
-  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.08, 0.062), 0.0095), slab(0.15, 0.58)),
-    I(0.003, cone([0.099, 0.57, 0.084], [0.099, 0.17, 0.068], 0.0105, 0.0085), zcut(0.06, -1))) });
-  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: I(0.003, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.083, 0.065), 0.011), slab(0.55, 0.568)) });
+    I(0.004, shell(ellipsoid(v3.add(kn, [0, 0, 0.03]), [0.079, 0.084, 0.074]), 0.0095), zcut(-0.01, -1)), wing,
+    horn([v3.add(kn, [0, 0.0, 0.098]), v3.add(kn, [0, 0.02, 0.128]), v3.add(kn, [0, 0.045, 0.146])], 0.015)) });
+  L({ name: 'kneeLames', mat: 'plate', rigid: false, tau: 0.02, k: 0.004, sdf: U(0,
+    I(0.004, shell(ellipsoid(v3.add(kn, [0, 0.07, 0.02]), [0.088, 0.06, 0.082]), 0.008), zcut(0.0, -1), slab(kn[1] + 0.065, kn[1] + 0.098))),
+    boneFn: () => [['leftUpperLeg', 0.75], ['leftLowerLeg', 0.25]] });
+  // greave: shin + calf swell, pointed keel down the front (two-sphere lens), hinge rivets on the outer side, bronze bands
+  const shin = U(0.05, cone([LX, 0.58, 0.008], [LX, 0.16, 0.012], 0.07, 0.054), ellipsoid([LX, 0.45, -0.022], [0.072, 0.12, 0.068]));
+  const keel = I(0.02, sphere([LX + 0.09, 0.4, -0.12], 0.25), sphere([LX - 0.09, 0.4, -0.12], 0.25));
+  const greaveSolid = I(0.012, grow(shin, 0.012), keel);
+  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: I(0.004, shell(greaveSolid, 0.0085), slab(0.155, 0.575)) });
+  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: U(0,
+    I(0.003, shell(grow(greaveSolid, 0.004), 0.0095), slab(0.552, 0.57)), I(0.003, shell(grow(greaveSolid, 0.004), 0.0095), slab(0.16, 0.18)),
+    I(0.003, shell(grow(greaveSolid, 0.01), 0.005), plane([LX + 0.009, 0, 0], [1, 0, 0]), plane([LX - 0.009, 0, 0], [-1, 0, 0]), zcut(0.05, -1), slab(0.18, 0.552))) });
+  L({ name: 'greaveRivets', mat: 'rivet', bone: 'leftLowerLeg', rigid: true, k: 0, sdf: U(0, ...[0.52, 0.42, 0.32, 0.22].map((y) => sphere([LX + 0.083 + (y - 0.37) * 0.02, y, -0.012], 0.0078))) });
   const foot = U(0.03, ellipsoid([an[0], 0.075, 0.02], [0.063, 0.075, 0.105]), cone([an[0], 0.06, 0.05], [an[0], 0.04, toe[2] + 0.06], 0.058, 0.026));
   const footFn = (x, y, z) => { const t = Math.max(0, Math.min(1, (z - 0.08) / 0.06)); return [['leftFoot', 1 - t], ['leftToes', t]]; };
   L({ name: 'sabaton', mat: 'plate', tau: 0.02, k: 0.008, sdf: I(0.004, foot, plane([0, 0.0, 0], [0, -1, 0])), boneFn: footFn });
