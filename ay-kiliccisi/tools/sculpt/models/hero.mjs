@@ -30,6 +30,10 @@ export default function hero(ALL) {
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  // crescent-moon crest of the Moon Swordsman: bronze relief on the keel, a pale moonstone between the horns, bronze studs at its horns
+  const moon = (c, r, t) => Sub(0.002, ellipsoid(c, [r, r, t]), ellipsoid(v3.add(c, [0, r * 0.42, 0]), [r * 0.86, r * 0.86, t * 3]));
+  C({ name: 'chestMoon', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: U(0.004, moon([0, 1.48, 0.19], 0.066, 0.016), symX(sphere([0.054, 1.535, 0.19], 0.009))) });
+  C({ name: 'chestGem', mat: 'gem', bone: 'UpperChest', rigid: true, k: 0, sdf: ellipsoid([0, 1.51, 0.196], [0.017, 0.02, 0.012]) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
@@ -109,6 +113,9 @@ export default function hero(ALL) {
   const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
   const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
+  // ember behind the T-slit: a recessed glowing back wall, so the light stays inside the visor instead of bleeding onto the plate
+  C({ name: 'ember', mat: 'glow', bone: 'Head', rigid: true, k: 0, sdf: I(0, grow(U(0, slitH, slitV), 0.007), zcut(0.172, 1), zcut(0.1, -1)) });
+  C({ name: 'browMoon', mat: 'trim', bone: 'Head', rigid: true, k: 0.002, sdf: moon([0, 1.965, 0.16], 0.03, 0.012) });
   C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
   C({ name: 'crest', mat: 'plate', bone: 'Head', rigid: true, k: 0.008, sdf: I(0.003, ellipsoid([0, 1.935, -0.02], [0.04, 0.163, 0.17]), box([0, 2.0, -0.02], [0.0085, 0.12, 0.2], null, 0.003), plane([0, 2.0, 0], [0, -1, 0.2])) });
   C({ name: 'bevor', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.8 - i * 0.03, 0.02], [0.118 - i * 0.008, 0.08, 0.14 - i * 0.008]), 0.008), slab(1.77 - i * 0.032, 1.805 - i * 0.032), zcut(-0.03, -1)))) });
@@ -132,7 +139,6 @@ export default function hero(ALL) {
 
   return {
     name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
-    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
       trim: { col: [0.42, 0.3, 0.13], gloss: 0.72, metal: 1, wear: 0.55, edge: [1.0, 0.82, 0.45], var: 0.12, freq: 30, tint: 0 },
@@ -142,6 +148,7 @@ export default function hero(ALL) {
       fur: { col: [0.3, 0.27, 0.24], col2: [0.12, 0.11, 0.1], freq: 40, freq2: 14, var: 0.32, gloss: 0.04, dirt: 0.6 },
       cloth: { col: [0.42, 0.06, 0.07], col2: [0.24, 0.035, 0.04], freq2: 5, var: 0.15, freq: 30, gloss: 0.12, dirt: 0.55, grad: [0.5, 1.2, [0.5, 0.5, 0.5]] },
       horn: { col: [0.36, 0.32, 0.28], col2: [0.6, 0.55, 0.46], freq2: 9, var: 0.18, freq: 60, gloss: 0.45, dirt: 0.5 },
+      gem: { col: [0.62, 0.7, 0.86], gloss: 0.95, metal: 0.3, var: 0.05, tint: 0 },
       glow: { col: [1.0, 0.34, 0.12], em: 1, gloss: 0 },
     },
   };

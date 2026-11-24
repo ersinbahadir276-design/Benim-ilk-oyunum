@@ -4,6 +4,11 @@ import { sculpt, pack } from './mesh.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), root = path.join(here, '../..');
 const SK = JSON.parse(fs.readFileSync(path.join(here, 'skeletons.json'), 'utf8'));
 const cacheDir = path.join(here, 'cache'); fs.mkdirSync(cacheDir, { recursive: true });
+// a fresh clone has no cache: unpack every model already in data/models.js first, so a single-model build never drops the others
+// (some, like `king`, come from import_elf.mjs and a source file that is not in the repo)
+{ const prev = path.join(root, 'data/models.js');
+  if (fs.existsSync(prev)) for (const m of fs.readFileSync(prev, 'utf8').matchAll(/(\w+):"([A-Za-z0-9+/=]+)"/g)) {
+    const f = path.join(cacheDir, m[1] + '.bin'); if (!fs.existsSync(f)) { fs.writeFileSync(f, zlib.gunzipSync(Buffer.from(m[2], 'base64'))); console.log('cache <- data/models.js:', m[1]); } } }
 const only = process.argv.slice(2);
 const list = fs.readdirSync(path.join(here, 'models')).filter((f) => f.endsWith('.mjs') && !f.startsWith('_')).map((f) => f.slice(0, -4));
 for (const name of list) {
