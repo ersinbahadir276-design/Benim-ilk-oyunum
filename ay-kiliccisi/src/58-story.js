@@ -70,7 +70,7 @@ function chooseFate(free){SYS.veyraFate=free?'freed':'killed';const V=VEYRA;if(f
 // panels render at a fixed size (same framing in portrait and landscape); eye/at heights are above the ground unless abs
 function shot(st,h){const rel=(p)=>st.abs?p:[p[0],p[1]+hAt(p[0],p[2]),p[2]],eye=rel(st.eye),at=rel(st.at),fov=(st.fov||50)*PI/180,CW=cv.width,CH=cv.height;cv.width=720;cv.height=Math.round(720*(h||.7));const save={x:P.x,z:P.z,y:P.y,yaw:P.yaw,ps:P.ps,rag:Object.assign({},P.rag),lift:P.lift};
  try{if(st.hero){P.x=st.hero.x;P.z=st.hero.z;P.y=hAt(P.x,P.z);P.yaw=st.hero.yaw;P.ps=Object.assign({},POSE0,st.hero.pose||{});P.rag.ang=st.hero.lie||0;P.rag.fx=0;P.rag.fz=-1}
-  applyPose(P.ps);PM=playerMatrix(0);if(st.hero&&st.hero.lie)PM[13]+=.12;for(const o of pObjs){o.M=PM;o.flash=0;o.vis=!st.noHero}
+  applyPose(P.ps);capeSim(0,true);PM=playerMatrix(0);if(st.hero&&st.hero.lie)PM[13]+=.12;for(const o of pObjs){o.M=PM;o.flash=0;o.vis=!st.noHero}
   if(st.setup)st.setup();streamForest(at[0],at[2],99);
   const L=mlook(eye,at,[0,1,0]),VP=mmul(mpersp(fov,cv.width/cv.height,.25,620),L.m),env=Object.assign({fogC:[.6,.72,.85],sun:[1,1,1],fog:[60,300],focus:at},st.env||{}),light=vnorm(vadd(vadd(vmul(L.r,-.45),vmul(L.u,.62)),vmul(L.f,-.62)));
   skinAll();drawWolves(P,GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawVeyra(GT.time);drawKing();drawAll(VP,eye,light,GT.time,env);

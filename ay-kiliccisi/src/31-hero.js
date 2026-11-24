@@ -90,3 +90,26 @@ function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape
  const mk=(list,o)=>{if(!list.length)return;const g=merge(list);const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);let off=0;for(const p of list){J.set(p.J4,off*4);Wt.set(p.W4,off*4);off+=p.P.length/3}
   if(!g.N||g.N.length!==g.P.length)normals(g);return addSkin(g,J,Wt,o)};
  HERO.armor=mk(parts.armor,{out:.004,outCol:OUT,shade:.95});HERO.cape=mk(parts.cape,{out:0,shade:.8,ds:1});HERO.glow=mk(parts.glow,{unlit:1,col:[1,.25,.15],shade:0})}
+// ---------- cape cloth: three spring-damped segments (CapeA→B→C) driven by the hero's real root motion.
+// Running flares it back, turning swings it out sideways, falling lifts it, the torso's lean is cancelled by gravity
+// (but the cloth never folds forward into the back). Pitch + = hem swings backwards (−Z), roll + = hem towards +X.
+const CAPE={p:[0,0,0],pv:[0,0,0],r:[0,0,0],rv:[0,0,0],last:null,fs:0,t:0};
+const CAPE_K=[70,52,40],CAPE_D=[.32,.28,.24];
+function capeTargets(fs,sx,vy,yawR,lean,side,t){const sp=Math.hypot(fs,sx),gp=Math.max(0,-lean),fl=cl(fs*.085,-.05,.7)+cl(-vy*.06,-.15,.45);
+ const fa=cl(sp/6,0,1)*.11,w=5+sp*1.6;
+ const pt=[cl(gp+fl,-.05,1.25)+fa*Math.sin(t*w),cl(fl*.3,-.2,.5)+fa*1.2*Math.sin(t*w-1.1),cl(fl*.25,-.2,.5)+fa*1.5*Math.sin(t*w-2.2)];
+ const rt=cl(side-sx*.08+yawR*.06,-.6,.6);return{pt,rt:[rt,rt*.3,rt*.25]}}
+function capeSim(dt,settle){const H=HB;if(!H||H.capeA===undefined)return;const R=SK.R,ids=[H.capeA,H.capeB,H.capeC];
+ const g=SK.GR[H.upperChest],lean=Math.atan2(g[7],g[4]),side=cl(Math.atan2(g[1],g[4]),-.6,.6);
+ let fs=0,sx=0,vy=0,yawR=0;const L=CAPE.last;
+ if(dt>0&&L&&!settle){const dx=(P.x-L.x)/dt,dz=(P.z-L.z)/dt;if(Math.hypot(dx,dz)*dt<3){const s=Math.sin(P.yaw),c=Math.cos(P.yaw);fs=dx*s+dz*c;sx=dx*c-dz*s;vy=cl((P.y-L.y)/dt,-15,15);yawR=cl(angd(P.yaw,L.yaw)/dt,-12,12)}}
+ CAPE.last={x:P.x,z:P.z,y:P.y,yaw:P.yaw};
+ const{pt,rt}=capeTargets(fs,sx,vy,yawR,lean,side,CAPE.t);
+ if(settle||!(dt>0)){if(settle)for(let i=0;i<3;i++){CAPE.p[i]=pt[i];CAPE.r[i]=rt[i];CAPE.pv[i]=CAPE.rv[i]=0}}
+ else{CAPE.t+=dt;const acc=(fs-CAPE.fs)/dt;CAPE.fs=fs;const n=Math.min(4,Math.ceil(dt/.017)),h=dt/n;
+  for(let s=0;s<n;s++)for(let i=0;i<3;i++){const k=CAPE_K[i],d=2*Math.sqrt(k)*CAPE_D[i];
+   // inertia: speeding up leaves the hem behind, braking throws it forward; a turn swings it out
+   const kick=cl(acc,-40,40)*.025*(1+i*.4),turn=yawR*.35*(1+i*.5);
+   CAPE.pv[i]+=(k*(pt[i]-CAPE.p[i])-d*CAPE.pv[i]+kick)*h;CAPE.rv[i]+=(k*(rt[i]-CAPE.r[i])-d*CAPE.rv[i]+turn)*h;
+   CAPE.p[i]=cl(CAPE.p[i]+CAPE.pv[i]*h,i?-.3:-.05,i?.7:1.35);CAPE.r[i]=cl(CAPE.r[i]+CAPE.rv[i]*h,-.7,.7)}}
+ for(let i=0;i<3;i++)R[ids[i]]=r3m(rX(CAPE.p[i]),rZ(CAPE.r[i]));skUpdate()}
