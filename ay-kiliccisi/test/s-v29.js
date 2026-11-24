@@ -1,5 +1,5 @@
 // v29 — shift lock (karakter kameraya bakar, yana yürür, yana/geri atılır), kilit yok + odak, yay nişangâhı
-module.exports = async ({ G, log }) => {
+const run = async ({ G, log }) => {
   await G(() => { window.__noAutoQ = 1; __G.GT.paused = true; });
   const R = await G(() => { const P = __G.P, X = __G.X, IN = __G.IN, CAM = __G.CAM, out = {};
     for (const g of __G.GOBS) { if (!g.dead) { g.dead = 1; g.x = 5000 } } for (const w of __G.wolves) { if (!w.boss) { w.dead = 300; w.st = 'dead'; w.x = 9000 } }
@@ -14,3 +14,5 @@ module.exports = async ({ G, log }) => {
   log('SHIFT LOCK: geri atılma — yüz önde', R.dashBack.kind === 'back' && Math.abs(R.dashBack.yaw) < .15, JSON.stringify(R.dashBack));
   log('KİLİT YOK: saldırı kameranın baktığı yöndeki düşmana döner, kilit kurulmaz', !R.atk.lock && Math.abs(R.atk.yaw - R.atk.want) < .3, JSON.stringify(R.atk));
 };
+
+run.shiftLock = 1; module.exports = run;
