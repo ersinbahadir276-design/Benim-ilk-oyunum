@@ -31,12 +31,39 @@ export default function hero(ALL) {
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
+  // --- v2 armour (oturum 8): the Moon Swordsman's crest. A raised crescent on the breastplate holding a glowing
+  // moonstone, a forged centre keel, and a diagonal leather baldric with a bronze buckle (breaks the symmetry so
+  // the silhouette reads as a person, not a statue).
+  const surfZ = (sdf, x, y) => { let z = 0.45; while (z > -0.1 && sdf.d(x, y, z) > 0) z -= 0.001; return z; };
+  const moonC = [-0.083, 1.535, surfZ(cuirSolid, -0.083, 1.535)];
+  const moonCut = I(0.002, grow(cuirSolid, 0.0095), zcut(moonC[2] - 0.05, -1));
+  const crescent = Sub(0.004, ellipsoid(moonC, [0.05, 0.05, 0.3]), ellipsoid(v3.add(moonC, [-0.022, 0.01, 0]), [0.043, 0.043, 0.35]));
+  C({ name: 'moonCrest', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.002, I(0.002, moonCut, crescent), cuirSolid) });
+  const stoneC = [-0.093, 1.54, surfZ(cuirSolid, -0.093, 1.54) + 0.004];
+  C({ name: 'moonStone', mat: 'moon', bone: 'UpperChest', rigid: true, k: 0.004, sdf: ellipsoid(stoneC, [0.017, 0.021, 0.011]) });
+  const keelPts = [0, 1, 2, 3, 4].map((i) => { const y = 1.585 - i * 0.012; return [0, y, surfZ(cuirSolid, 0, y)]; }).concat([1, 2, 3, 4].map((i) => { const y = 1.43 - i * 0.025; return [0, y, surfZ(cuirSolid, 0, y)]; }));
+  C({ name: 'keel', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.004, sdf: U(0, tube(keelPts.slice(0, 5), () => 0.0065), tube(keelPts.slice(5), (t) => 0.0075 - t * 0.003)) });
+  // baldric: a band between two diagonal planes, laid 1–11 mm over the cuirass all the way round
+  const bN = v3.norm([-0.44, 0.34, 0]), bC = [0.06, 1.518, 0];
+  const band = I(0, plane(v3.add(bC, v3.mul(bN, 0.022)), bN), plane(v3.sub(bC, v3.mul(bN, 0.022)), v3.mul(bN, -1)));
+  const strapOn = I(0.002, cuirSolid, slab(1.31, 1.68));
+  C({ name: 'baldric', mat: 'leather', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.003, I(0.002, shell(strapOn, 0.006, 0.007), band), neckHole, armHoles, ellipsoid(moonC, [0.068, 0.068, 0.3])) });
+  const bk = [0.11, 0, 0]; bk[1] = bC[1] - (bk[0] - bC[0]) * bN[0] / bN[1]; bk[2] = surfZ(cuirSolid, bk[0], bk[1]) + 0.014;
+  const bkR = rot.mul(rot.z(Math.atan2(bN[0], bN[1])), rot.x(-0.25));
+  C({ name: 'baldricBuckle', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: Sub(0.002, box(bk, [0.031, 0.024, 0.006], bkR, 0.004), box(bk, [0.019, 0.013, 0.02], bkR, 0.003)) });
+  C({ name: 'baldricRivets', mat: 'rivet', bone: 'UpperChest', rigid: true, k: 0, sdf: U(0, ...[-0.1, -0.17].map((x) => { const y = bC[1] - (x - bC[0]) * bN[0] / bN[1]; return sphere([x, y, surfZ(cuirSolid, x, y) + 0.013], 0.0075); })) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
   const beltE = ellipsoid([0, 1.13, 0.005], [0.212, 0.12, 0.172]);
   C({ name: 'belt', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: I(0.004, beltE, slab(1.103, 1.153)) });
   C({ name: 'buckle', mat: 'trim', bone: 'Hips', rigid: true, k: 0.003, sdf: Sub(0.003, box([0, 1.128, 0.178], [0.046, 0.034, 0.014], null, 0.008), box([0, 1.128, 0.19], [0.026, 0.015, 0.02], null, 0.004)) });
   C({ name: 'beltRivets', mat: 'rivet', bone: 'Hips', rigid: true, k: 0, sdf: U(0, ...[-1.25, -0.8, 0.8, 1.25, 2.2, 2.6, 3.0, 3.4, 3.8].map((a) => sphere([Math.sin(a) * 0.214, 1.128, 0.005 + Math.cos(a) * 0.174], 0.0085))) });
+  // belt pouches (left hip) and a flask (right back) hung from the belt
+  const pouch = (c, ry, h) => { const R = rot.y(ry); return { body: box(c, h, R, 0.012), flap: I(0.003, box(v3.add(c, [0, h[1] * 0.45, 0]), [h[0] + 0.004, h[1] * 0.6, h[2] + 0.005], R, 0.01), plane(v3.add(c, [0, h[1] * 0.05, 0]), [0, -1, 0])) }; };
+  const p1 = pouch([0.185, 1.075, 0.09], 0.95, [0.034, 0.04, 0.022]), p2 = pouch([0.212, 1.07, -0.01], 1.5, [0.026, 0.034, 0.019]);
+  C({ name: 'pouches', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: U(0.002, p1.body, p2.body) });
+  C({ name: 'pouchFlaps', mat: 'plate', bone: 'Hips', rigid: true, k: 0.003, sdf: U(0, p1.flap, p2.flap) });
+  C({ name: 'flask', mat: 'trim', bone: 'Hips', rigid: true, k: 0.004, sdf: U(0.01, ellipsoid([-0.16, 1.05, -0.135], [0.03, 0.045, 0.024], rot.y(-0.7)), cone([-0.16, 1.09, -0.135], [-0.16, 1.11, -0.135], 0.011, 0.009)) });
   // rear mail skirt and front tassets (three lames over each thigh)
   C({ name: 'skirt', mat: 'mail', tau: 0.05, sdf: I(0.006, shell(ellipsoid([0, 1.0, 0], [0.205, 0.22, 0.17]), 0.008), slab(0.93, 1.11), zcut(0.0, 1)),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.06) / 0.12)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.15)); return [['Hips', 1 - d * 0.75], ['leftUpperLeg', d * 0.75 * t], ['rightUpperLeg', d * 0.75 * (1 - t)]]; } });
@@ -65,6 +92,9 @@ export default function hero(ALL) {
   L({ name: 'pauldronTrim', mat: 'trim', boneFn: pFn, rigid: true, k: 0.003, sdf: U(0, I(0.004, shell(pd(1.0, 0.025, 0), 0.015), cutDome, plane(v3.add(shJ, [0, -0.008, 0]), [0.45, 1, 0]), xcut(0.135, -1)),
     I(0.004, shell(pd(1.15, -0.095, 0.04), 0.014), slab(1.48, 1.495), xcut(0.2, -1))) });
   L({ name: 'pauldronSpikes', mat: 'plate', boneFn: pFn, rigid: true, k: 0.012, sdf: U(0.006, horn([[0.29, 1.76, -0.02], [0.33, 1.83, -0.05], [0.36, 1.9, -0.1]], 0.024), horn([[0.33, 1.73, 0.05], [0.38, 1.78, 0.07], [0.43, 1.82, 0.07]], 0.019)) });
+  // roped crest along the top of each pauldron dome (local ellipsoid frame -> world through the same tilt)
+  const ridgePts = [-1.05, -0.6, -0.2, 0.2, 0.6, 1.0].map((t) => { const vy = 0.114 * Math.cos(t), vz = 0.144 * Math.sin(t); return v3.add(shJ, [0.035 + 0.435 * vy, 0.025 + 0.9 * vy, vz]); });
+  L({ name: 'pauldronRidge', mat: 'trim', boneFn: pFn, rigid: true, k: 0.003, sdf: disp(tube(ridgePts, (t) => 0.0085 - Math.abs(t - 0.5) * 0.005, 0.004), (x, y, z) => 0.0014 * Math.sin(z * 260 + y * 120), 0.0015) });
   L({ name: 'pauldronRivets', mat: 'rivet', boneFn: pFn, rigid: true, k: 0, sdf: U(0, ...[0, 1, 2, 3, 4].map((i) => { const a = -1 + i * 0.5; return sphere(v3.add(shJ, [0.05 + 0.115 * Math.cos(a), 0.035, 0.12 * Math.sin(a)]), 0.0095); })) });
 
   // ------------------------------------------------------------ arms: rerebrace, couter + fan, vambrace, mitten gauntlet
@@ -131,7 +161,7 @@ export default function hero(ALL) {
   for (const p of P.slice()) if (p.side) P.push({ ...p, side: 0, name: p.name + 'R', sdf: mirrorX(p.sdf), bone: p.bone && swap(p.bone), boneFn: p.boneFn && ((x, y, z) => p.boneFn(-x, y, z).map(([b, w]) => [swap(b), w])) });
 
   return {
-    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
+    name: 'hero', voxel: 0.005, tris: 24000, err: 0.0014, bones, parts: P,
     decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
@@ -143,6 +173,7 @@ export default function hero(ALL) {
       cloth: { col: [0.42, 0.06, 0.07], col2: [0.24, 0.035, 0.04], freq2: 5, var: 0.15, freq: 30, gloss: 0.12, dirt: 0.55, grad: [0.5, 1.2, [0.5, 0.5, 0.5]] },
       horn: { col: [0.36, 0.32, 0.28], col2: [0.6, 0.55, 0.46], freq2: 9, var: 0.18, freq: 60, gloss: 0.45, dirt: 0.5 },
       glow: { col: [1.0, 0.34, 0.12], em: 1, gloss: 0 },
+      moon: { col: [0.62, 0.82, 1.0], em: 1, gloss: 0.9, tint: 0 },
     },
   };
 }
