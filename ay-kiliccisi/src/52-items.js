@@ -64,7 +64,7 @@ function applyLooks(){const a=eqItem('armor'),t=a&&a.look?a.look.tint.slice():[1
 const ARMOR_OVERLAY={wolfhide:'armwolf',bone:'armbone',ash:'armash'};let armorSkin=null,upSkin=null;
 // forge upgrades show on the armour too: +3 silver inlay/bosses/rope bands (armup3), +5 adds gilded crescent moons
 // with moonstones (armup5, which includes the +3 work by drawing both). Moonstones keep their own pale glow.
-const UP_OVERLAY=[[5,['armup3','armup5']],[3,['armup3']]];const MOON_EM=[.45,.6,1];
+const UP_OVERLAY=[[5,['armup3','armup5']],[3,['armup3']]];const SW_UP=[[5,['swup3','swup5']],[3,['swup3']]];const MOON_EM=[.45,.6,1];
 function overlaySkin(keys,em){const ms=keys.map(k=>MODEL[k]);if(ms.some(m=>!m))return null;let nv=0,ni=0;for(const m of ms){nv+=m.nv;ni+=m.I.length}
  const P=new Float32Array(nv*3),N=new Float32Array(nv*3),Cc=new Float32Array(nv*3),M=new Float32Array(nv*4),J=new Uint8Array(nv*4),K=new Float32Array(nv*4),I=new (nv>65535?Uint32Array:Uint16Array)(ni);let v=0,o=0;
  for(const m of ms){P.set(m.P,v*3);N.set(m.N,v*3);Cc.set(m.C,v*3);M.set(m.M,v*4);for(let i=0;i<m.nv*4;i++){J[v*4+i]=m.J[i];K[v*4+i]=m.K[i]}for(let i=0;i<m.I.length;i++)I[o+i]=m.I[i]+v;v+=m.nv;o+=m.I.length}
@@ -76,7 +76,7 @@ function buildArmorOverlay(a){const key=a&&ARMOR_OVERLAY[a.base]||null,ok=HERO.a
  const ue=a&&UP_OVERLAY.find(([n])=>a.up>=n),uk=ue?ue[1].join('+'):null;
  if(!(upSkin&&upSkin.key===uk)){if(upSkin){dropSkin(upSkin);upSkin=null}const r=ok&&ue&&overlaySkin(ue[1],MOON_EM);if(r)upSkin={key:uk,...r}}}
 function buildSword(){const w=eqItem('weapon'),L=(w&&w.look)||BASES.rusty.look,H=HB;
- if(swordSkin){const i=skins.indexOf(swordSkin.s);if(i>=0)skins.splice(i,1);unobj(swordSkin.o);const j=pObjs.indexOf(swordSkin.o);if(j>=0)pObjs.splice(j,1);freeGeo(swordSkin.s.geo);if(swordSkin.og){unobj(swordSkin.og);const k=pObjs.indexOf(swordSkin.og);if(k>=0)pObjs.splice(k,1);const m=skins.indexOf(swordSkin.sg);if(m>=0)skins.splice(m,1)}swordSkin=null}
+ if(swordSkin){const i=skins.indexOf(swordSkin.s);if(i>=0)skins.splice(i,1);unobj(swordSkin.o);const j=pObjs.indexOf(swordSkin.o);if(j>=0)pObjs.splice(j,1);freeGeo(swordSkin.s.geo);if(swordSkin.og){unobj(swordSkin.og);const k=pObjs.indexOf(swordSkin.og);if(k>=0)pObjs.splice(k,1);const m=skins.indexOf(swordSkin.sg);if(m>=0)skins.splice(m,1)}if(swordSkin.up)dropSkin(swordSkin.up);swordSkin=null}
  const save=SK.R.map(r=>r);for(let i=0;i<SK.n;i++)SK.R[i]=R3I;for(const f of['Index','Middle','Ring','Little'])for(const[seg,a]of[['Proximal',1.1],['Intermediate',1.2],['Distal',.7]])SK.R[H['right'+f+seg]]=rZ(a);
  SK.root=[0,0,0];skUpdate();const GP=SK.GP,fc=[];
  for(const f of['Index','Middle','Ring','Little']){const a=GP[H['right'+f+'Proximal']],b=GP[H['right'+f+'Intermediate']],c=GP[H['right'+f+'Distal']],t=vadd(c,vmul(vsub(c,b),.8));fc.push(vmul(vadd(vadd(a,b),vadd(c,t)),.25))}
@@ -96,6 +96,16 @@ function buildSword(){const w=eqItem('weapon'),L=(w&&w.look)||BASES.rusty.look,H
  sw.push(tint(tube([Q(0,0,-.26),Q(0,0,.12)],{r:()=>.021,seg:6,n:2}),KC.leather));sw.push(tint(sphere(8,6,d=>vadd(Q(0,0,-.29),vmul(d,.032)),{c:Q(0,0,-.29)}),KC.bronze));
  const g=merge(sw),nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);for(let i=0;i<nv;i++){J[i*4]=H.rightHand;Wt[i*4]=1}
  const o=addSkin(g,J,Wt,{out:.004,outCol:[.04,.04,.06],shade:.9});swordSkin={o,s:skins[skins.length-1]};}
+ // forge ornaments on the blade (swup3 +3 silver runes/wire, swup5 +5 gold crescent + moonstones): sculpted in the sword's
+ // canonical frame, stretched with the blade like the base mesh, one extra skin lit with the armour trim's moonlight
+ const su=w&&SW_UP.find(([n])=>w.up>=n),sm=su&&su[1].map(k=>MODEL[k]);
+ if(swordSkin&&sm&&sm.every(m=>m)){const bl=(L1-.15)/(1.5-.15),wk=Wd/.068;let nv=0,ni=0;for(const m of sm){nv+=m.nv;ni+=m.I.length}
+  const Pp=new Float32Array(nv*3),Nn=new Float32Array(nv*3),Cc=new Float32Array(nv*3),M=new Float32Array(nv*4),I=new (nv>65535?Uint32Array:Uint16Array)(ni);let v=0,o=0;
+  for(const m of sm){for(let i=0;i<m.nv;i++){let x=m.P[i*3],y=m.P[i*3+1],z=m.P[i*3+2];if(z>.15){z=.15+(z-.15)*bl;y*=wk}const p=Q(x,y,z),k=(v+i)*3;Pp[k]=p[0];Pp[k+1]=p[1];Pp[k+2]=p[2];
+    const n=vnorm(vadd(vadd(vmul(sd,m.N[i*3]),vmul(up,m.N[i*3+1]/wk)),vmul(ax,m.N[i*3+2])));Nn[k]=n[0];Nn[k+1]=n[1];Nn[k+2]=n[2]}
+   Cc.set(m.C,v*3);M.set(m.M,v*4);for(let i=0;i<m.I.length;i++)I[o+i]=m.I[i]+v;v+=m.nv;o+=m.I.length}
+  const J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);for(let i=0;i<nv;i++){J[i*4]=H.rightHand;Wt[i*4]=1}
+  const ob=addSkin({P:Pp,N:Nn,C:Cc,M,U:new Float32Array(nv*2),W:new Float32Array(nv),I},J,Wt,{out:0,shade:.9,pbr:1});ob.em=MOON_EM.slice();swordSkin.up={o:ob,s:skins[skins.length-1],key:su[1].join('+')}}
  if(L.glow){const gg=tint(tube([Q(0,0,L0+.05),Q(0,0,L1-.3)],{r:()=>.012,flat:.5,seg:4,n:2,wide:up}),[1,1,1]),n2=gg.P.length/3,J2=new Uint8Array(n2*4),W2=new Float32Array(n2*4);for(let i=0;i<n2;i++){J2[i*4]=H.rightHand;W2[i*4]=1}
   swordSkin.og=addSkin(gg,J2,W2,{unlit:1,col:L.glow,shade:0});swordSkin.sg=skins[skins.length-1]}
  SK.tipRest=Q(0,0,L1-.05);SK.midRest=Q(0,0,L1*.55);SK.gripRest=cen;SK.gripAx=ax;SK.bladeLen=L1}
