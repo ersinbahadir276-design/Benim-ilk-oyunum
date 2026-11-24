@@ -30,6 +30,16 @@ export default function hero(ALL) {
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  // muscle-cuirass relief: raised pectoral plates over the chest, a forged keel and a pointed plackart over the belly
+  const cuirSkin = grow(cuirSolid, 0.006);
+  const pecs = I(0.006, U(0.03, symX(ellipsoid([0.092, 1.525, 0.12], [0.11, 0.085, 0.09], rot.z(-0.18)))), cuirSkin, slab(1.44, 1.64));
+  C({ name: 'pecs', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.008, sdf: Sub(0.006, pecs, neckHole, armHoles, engr) });
+  C({ name: 'keel', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.004, sdf: I(0.003, box([0, 1.48, 0.2], [0.009, 0.16, 0.08], null, 0.006), grow(cuirSolid, 0.011), slab(1.35, 1.6)) });
+  const plackTop = symX(plane([0, 1.475, 0], [0.42, 1, 0]));
+  const plackart = I(0.005, shell(cuirSolid, 0.006, 0.01), plackTop, slab(1.3, 1.5), zcut(0.02, -1));
+  C({ name: 'plackart', mat: 'plate', bone: 'Spine', rigid: true, k: 0.005, sdf: plackart });
+  C({ name: 'plackTrim', mat: 'trim', bone: 'Spine', rigid: true, k: 0.003, sdf: I(0.003, shell(cuirSolid, 0.0075, 0.012), plackTop, grow(U(0, symX(plane([0, 1.458, 0], [-0.42, -1, 0]))), 0), slab(1.3, 1.5), zcut(0.02, -1)) });
+  C({ name: 'plackRivets', mat: 'rivet', bone: 'Spine', rigid: true, k: 0, sdf: symX(U(0, ...[0, 1, 2].map((i) => { const x = 0.035 + i * 0.045, y = 1.455 - x * 0.42; const z = Math.sqrt(Math.max(0, 1 - Math.pow(x / 0.27, 2) - Math.pow((y - 1.48) / 0.27, 2))) * 0.2 + 0.018; return sphere([x, y, z - 0.004], 0.0085); }))) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
@@ -88,14 +98,17 @@ export default function hero(ALL) {
 
   // ------------------------------------------------------------ legs
   const kn = B.leftLowerLeg, an = B.leftFoot, toe = B.leftToes;
-  L({ name: 'cuisse', mat: 'plate', bone: 'leftUpperLeg', rigid: true, k: 0.006, sdf: U(0.004, I(0.005, shell(cone([0.099, 0.99, 0.005], [0.099, 0.71, 0.01], 0.112, 0.088), 0.0095), zcut(-0.035, -1), slab(0.71, 0.99)),
-    I(0.003, cone([0.099, 0.97, 0.118], [0.099, 0.74, 0.096], 0.0095, 0.008), zcut(0.08, -1))) });
+  const quad = U(0.05, cone([0.099, 0.99, 0.01], [0.099, 0.71, 0.012], 0.108, 0.08), ellipsoid([0.106, 0.86, 0.03], [0.1, 0.16, 0.088], rot.z(0.06)));
+  L({ name: 'cuisse', mat: 'plate', bone: 'leftUpperLeg', rigid: true, k: 0.006, sdf: U(0.004, I(0.005, shell(quad, 0.0095), zcut(-0.035, -1), slab(0.71, 0.99)),
+    I(0.003, tube([[0.099, 0.975, 0.112], [0.101, 0.86, 0.127], [0.099, 0.74, 0.096]], (t) => 0.0095 - t * 0.0015), zcut(0.08, -1))) });
+  L({ name: 'cuisseTrim', mat: 'trim', bone: 'leftUpperLeg', rigid: true, k: 0.003, sdf: I(0.004, shell(quad, 0.0135), zcut(-0.035, -1), slab(0.712, 0.735)) });
   L({ name: 'poleyn', mat: 'plate', boneFn: () => [['leftLowerLeg', 0.55], ['leftUpperLeg', 0.45]], rigid: true, k: 0.005, sdf: U(0.008,
     I(0.004, shell(ellipsoid(v3.add(kn, [0, 0, 0.03]), [0.077, 0.082, 0.072]), 0.0095), zcut(-0.01, -1)), I(0.004, shell(ellipsoid(v3.add(kn, [0.068, 0, 0.0]), [0.024, 0.072, 0.066]), 0.008), xcut(0.078, -1)),
     horn([v3.add(kn, [0, 0.0, 0.095]), v3.add(kn, [0, 0.02, 0.125]), v3.add(kn, [0, 0.045, 0.142])], 0.015)) });
-  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.08, 0.062), 0.0095), slab(0.15, 0.58)),
-    I(0.003, cone([0.099, 0.57, 0.084], [0.099, 0.17, 0.068], 0.0105, 0.0085), zcut(0.06, -1))) });
-  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: I(0.003, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.083, 0.065), 0.011), slab(0.55, 0.568)) });
+  const calf = U(0.045, cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.012], 0.074, 0.056), ellipsoid([0.101, 0.45, -0.03], [0.074, 0.13, 0.072]));
+  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(calf, 0.0095), slab(0.15, 0.58)),
+    I(0.003, tube([[0.099, 0.57, 0.084], [0.1, 0.42, 0.08], [0.099, 0.17, 0.07]], (t) => 0.0105 - t * 0.002), zcut(0.06, -1))) });
+  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: U(0, I(0.003, shell(calf, 0.012), slab(0.55, 0.568)), I(0.003, shell(calf, 0.0115), slab(0.152, 0.168))) });
   const foot = U(0.03, ellipsoid([an[0], 0.075, 0.02], [0.063, 0.075, 0.105]), cone([an[0], 0.06, 0.05], [an[0], 0.04, toe[2] + 0.06], 0.058, 0.026));
   const footFn = (x, y, z) => { const t = Math.max(0, Math.min(1, (z - 0.08) / 0.06)); return [['leftFoot', 1 - t], ['leftToes', t]]; };
   L({ name: 'sabaton', mat: 'plate', tau: 0.02, k: 0.008, sdf: I(0.004, foot, plane([0, 0.0, 0], [0, -1, 0])), boneFn: footFn });
@@ -106,7 +119,7 @@ export default function hero(ALL) {
   const skull = I(0.03, ellipsoid([0, 1.935, -0.012], [0.128, 0.145, 0.152]), box([0, 1.93, 0], [0.114, 0.2, 0.2]));
   const prow = I(0.008, ellipsoid([0, 1.885, 0.035], [0.118, 0.12, 0.165]), symX(plane([0, 0, 0.205], [0.5, 0, 0.866])), slab(1.775, 2.0), box([0, 1.9, 0], [0.116, 0.2, 0.3]));
   const slitH = box([0, 1.905, 0.17], [0.062, 0.0065, 0.1], null, 0.002), slitV = box([0, 1.872, 0.18], [0.006, 0.026, 0.1], null, 0.002);
-  const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
+  const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1].map((i) => box([s * (0.05 + i * 0.024), 1.842 - i * 0.006, 0.17], [0.0068, 0.017, 0.08], rot.y(s * 0.5), 0.004)))));
   const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
   C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
