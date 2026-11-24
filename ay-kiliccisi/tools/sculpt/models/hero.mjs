@@ -117,6 +117,29 @@ export default function hero(ALL) {
   C({ name: 'horns', mat: 'horn', bone: 'Head', rigid: true, k: 0.014, sdf: symX(disp(horn(hornPts, 0.037, 0.004), (x, y, z) => 0.0028 * Math.sin(Math.hypot(x - 0.11, y - 1.97, z - 0.02) * 115), 0.003)) });
   C({ name: 'helmRivets', mat: 'rivet', bone: 'Head', rigid: true, k: 0, sdf: symX(U(0, sphere([0.115, 1.925, 0.05], 0.0085), sphere([0.115, 1.89, -0.04], 0.0085), sphere([0.11, 1.97, -0.06], 0.0085))) });
 
+  // ------------------------------------------------------------ armour redesign (run 8): moon crest, war tabard, cape clasps, belt kit
+  // raised bronze crescent on the breastplate — the "Ay" (moon) of the game's title, worn as the order's mark
+  const cres = (c, r, off, rr) => Sub(0.002, ellipsoid(c, [r, r, 0.08]), ellipsoid(v3.add(c, [off, off * 0.55, 0]), [rr, rr, 0.1]));
+  C({ name: 'moonCrest', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, cres([-0.008, 1.47, 0.19], 0.072, 0.032, 0.062), shell(cuirSolid, 0.0055, 0.002)) });
+  C({ name: 'crestStar', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, U(0, ellipsoid([0.03, 1.49, 0.19], [0.007, 0.022, 0.08]), ellipsoid([0.03, 1.49, 0.19], [0.022, 0.007, 0.08])), shell(cuirSolid, 0.0055, 0.002)) });
+  // crimson war tabard hanging from under the belt between the tassets, ragged hem, swings with the hips and legs
+  const tabHem = { d: (x, y, z) => (0.655 + 0.03 * Math.max(0, fbm(x * 30, 0.7, 0.3, 2)) + 0.03 * Math.abs(x) / 0.09) - y, bb: [-1, 0.6, -1, 1, 3, 1] };
+  const tabFolds = (x, y, z) => { const t = Math.max(0, Math.min(1, (1.08 - y) / 0.4)); return t * (0.007 * Math.sin(x * 70 + 0.8) + 0.003 * fbm(x * 40, y * 20, 0, 2)); };
+  const tabSheet = disp(plane([0, 0.89, 0.204], [0, -0.083, 1]), tabFolds, 0.012);
+  const tabard = I(0.003, shell(tabSheet, 0.0062), symX(xcut(0.088, 1)), slab(0.6, 1.098), tabHem);
+  const tabFn = (x, y) => { const d = Math.max(0, Math.min(1, (1.06 - y) / 0.3)), t = Math.max(0, Math.min(1, (x + 0.08) / 0.16)); return [['Hips', 1 - d * 0.7], ['leftUpperLeg', d * 0.7 * t], ['rightUpperLeg', d * 0.7 * (1 - t)]]; };
+  C({ name: 'tabard', mat: 'cloth', tau: 0.03, k: 0.004, sdf: tabard, boneFn: tabFn });
+  C({ name: 'tabardMoon', mat: 'trim', tau: 0.03, k: 0.002, sdf: I(0.002, cres([-0.006, 0.93, 0.2], 0.05, 0.022, 0.042), shell(tabSheet, 0.0105)), boneFn: tabFn });
+  C({ name: 'tabardHem', mat: 'trim', tau: 0.03, k: 0.003, sdf: I(0.002, grow(tabard, 0.0016), slab(1.072, 1.094)), boneFn: tabFn });
+  // two bronze clasps chained across the collar hold the cape
+  C({ name: 'clasps', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: U(0.002, ...[-1, 1].map((s) => Sub(0.002, ellipsoid([s * 0.125, 1.615, 0.165], [0.024, 0.024, 0.012], rot.y(s * 0.5)), ellipsoid([s * 0.125, 1.615, 0.18], [0.011, 0.011, 0.01], rot.y(s * 0.5))))) });
+  C({ name: 'claspChain', mat: 'rivet', bone: 'UpperChest', rigid: true, k: 0, sdf: U(0, ...[...Array(9)].map((_, i) => { const t = (i + 0.5) / 9 * 2 - 1; return sphere([t * 0.105, 1.6 - 0.025 * (1 - t * t), 0.19 - 0.02 * t * t], 0.0062); })) });
+  // belt kit: a stitched leather pouch on the right hip, a sheathed rondel dagger on the left
+  C({ name: 'pouch', mat: 'leather', bone: 'Hips', rigid: true, k: 0.006, sdf: U(0.004, box([-0.2, 1.075, 0.075], [0.026, 0.045, 0.034], rot.y(-0.7), 0.012), box([-0.205, 1.11, 0.08], [0.03, 0.012, 0.038], rot.y(-0.7), 0.006)) });
+  C({ name: 'pouchStud', mat: 'trim', bone: 'Hips', rigid: true, k: 0, sdf: sphere([-0.183, 1.098, 0.106], 0.008) });
+  C({ name: 'dagger', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: cone([0.205, 1.1, -0.06], [0.215, 0.9, -0.1], 0.016, 0.006) });
+  C({ name: 'daggerHilt', mat: 'trim', bone: 'Hips', rigid: true, k: 0.003, sdf: U(0.003, cone([0.204, 1.11, -0.058], [0.2, 1.19, -0.042], 0.008, 0.008), ellipsoid([0.2, 1.2, -0.04], [0.018, 0.018, 0.008]), box([0.205, 1.11, -0.058], [0.028, 0.006, 0.008], null, 0.003)) });
+
   // ------------------------------------------------------------ tattered cape (folds shaped before the shell so the cloth never tears into strips)
   const y0 = 1.63, y1 = 0.5;
   const folds = (x, y, z) => { const t = Math.max(0, Math.min(1, (y0 - y) / (y0 - y1))), a = Math.atan2(x, -z); return t * (0.016 * Math.sin(a * 9 + 1.2 * fbm(x * 3, y * 2, 0, 2)) + 0.008 * fbm(x * 9, y * 4, z * 9, 2)); };
@@ -131,7 +154,7 @@ export default function hero(ALL) {
   for (const p of P.slice()) if (p.side) P.push({ ...p, side: 0, name: p.name + 'R', sdf: mirrorX(p.sdf), bone: p.bone && swap(p.bone), boneFn: p.boneFn && ((x, y, z) => p.boneFn(-x, y, z).map(([b, w]) => [swap(b), w])) });
 
   return {
-    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
+    name: 'hero', voxel: 0.005, tris: 23000, err: 0.0014, bones, parts: P,
     decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
