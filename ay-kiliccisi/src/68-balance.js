@@ -21,7 +21,7 @@ function assignChampions(){CAMPSITES.forEach((c,i)=>{const g=GOBS.find(o=>!o.big
   g.elite=1;g.champ=1;g.sc=1.15;g.title='KAMP ŞAMPİYONU';scaleFoe(g,(g.lv||regionLevel(g.hx,g.hz))+2,380);g.pk='elite';if(g.R)g.R.ob.col=[1.25,.78,.72]})}
 POSMAX.elite=125;
 // deflect: a champion (or any goblin against light-button spam) turns a light hit from the front and answers
-function gobDeflect(g,kind){if(g.big||g.dead)return false;const light=kind&&kind.startsWith&&kind.startsWith('light');if(!light)return false;
+function gobDeflect(g,kind){if(g.big||g.dead||g.shield)return false;/* a shield-bearer blocks with the shield, it does not also parry */const light=kind&&kind.startsWith&&kind.startsWith('light');if(!light)return false;
  if(/^(windup|strike|stagger|hurt|choked|pinned|escape|flee)$/.test(g.st))return false;if(Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))>1.1)return false;
  const H=habits(),ch=(g.elite?.42:.0)+(H.spam?(g.elite?.2:.18):0);if(Math.random()>=ch)return false;
  g.blockedAt=GT.clock;g.kx=g.kz=0;g.yaw=Math.atan2(P.x-g.x,P.z-g.z);if(Math.random()<(g.elite?.55:.3)){g.st='windup';g.t=.12;g.hitDone=false;g.peril=0;g.cn=g.elite?1:0;g.delay=0;floatText(g.x,(g.y||0)+1.9,g.z,'SAPTIRDI','')}return true}

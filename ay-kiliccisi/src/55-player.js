@@ -6,7 +6,7 @@ const P={x:SPAWN[0],z:SPAWN[2],y:0,yaw:PI,vx:0,vz:0,vy:0,air:false,st:'move',t:0
 const IN={mx:0,mz:0,kx:0,kz:0,wx:0,wz:0,atkHeld:false,atkAt:-9,atkUp:false,blockHeld:false};
 // buffered presses (game-time), consumed once when the action becomes legal (input-systems: 0.1-0.2 s window)
 const BUF={atk:-9,dodge:-9,jump:-9,inter:-9,hvy:-9};const press=(k)=>{BUF[k]=GT.clock};const take=(k,w=.18)=>{if(GT.clock-BUF[k]<=w){BUF[k]=-9;return true}return false};
-const COST={light:[12,13,15],heavy:24,heavyMax:14,run:18,jumpAtk:16,dodge:18,jump:10,sprint:14};
+const COST={light:[8,9,10],heavy:18,heavyMax:10,run:14,jumpAtk:12,dodge:14,jump:6,sprint:9};/* v30: stamina lasts longer (the user: it ran out too fast) */
 const PARRY_WIN=.24;
 // stance defence: Taş absorbs blocks, Rüzgâr dashes further/cheaper, Ay parries harder but tighter, Su parries easiest
 const STDEF={stone:{gd:.72,t:'Blok %28 daha az savunma canı harcar'},wind:{iv:.05,dc:.82,t:'Atılma daha ucuz, dokunulmazlık +0.05 sn'},moon:{pw:.8,pp:1.7,t:'Savuşturma penceresi dar ama düşman dengesini %70 daha çok kırar'},water:{pw:1.35,t:'Savuşturma penceresi %35 geniş'}};
@@ -61,7 +61,7 @@ function respawn(){if(DUN.on)leaveDungeon(true);const al=SYS.altarAt!==undefined
  note('[Sistem] Yeniden doğdun.')}
 // --------------------------------------------------------------- starting actions
 function canAct(cost){if(P.sta<=0){note('Dayanıklılık yetersiz');return false}return true}
-function spend(c){P.sta=Math.max(0,P.sta-c);P.staT=.85}
+function spend(c){P.sta=Math.max(0,P.sta-c);P.staT=.55}
 function aimAssist(range=4.2){if(shiftLock()){/* shift-lock: the swing goes where the camera looks; a foe within 45° of it pulls the swing onto him */let b=null,bd=range+.5;for(const f of foes()){const d=foeDist(f);if(d<bd&&Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw))<.8){bd=d;b=f}}if(P.focus&&!P.focus.dead&&foeDist(P.focus)<range+1.5&&Math.abs(angd(Math.atan2(P.focus.x-P.x,P.focus.z-P.z),CAM.yaw))<.8)b=P.focus;if(b){P.focus=b;P.yaw=Math.atan2(b.x-P.x,b.z-P.z)}else P.yaw=CAM.yaw;return}const fc=P.focus;const keep=fc&&!fc.dead&&foeDist(fc)<range+1.5&&foeHostile(fc)&&Math.abs(angd(Math.atan2(fc.x-P.x,fc.z-P.z),P.yaw))<2.2;const f=keep?fc:nearestFoe(range,1.7);if(f){P.focus=f;P.yaw=Math.atan2(f.x-P.x,f.z-P.z)}/* focus stays on one foe until it dies or steps away */else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
 function startLight(i){if(!canAct())return;const S=curStance(),sw=SWG[SYS.stance in SWG?SYS.stance:'stone'].L[i]||SWG.stone.L[0];spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T*(sw.fin?1.12:1);P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();P.atkStart=GT.clock;habitAdd('light');if(i===0&&(P.ripT||0)>GT.clock){P.ripT=0;P.atkT=.34;beginSwing('light',SWG.riposte,P.atkT);P.atk.rip=1;P.atk.cnt=1;P.counterT=0;if(P.ripV&&!P.ripV.dead){P.atk.tg=P.ripV;P.yaw=Math.atan2(P.ripV.x-P.x,P.ripV.z-P.z)}sfx.swing();return}
  beginSwing('light',sw,P.atkT);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
@@ -210,7 +210,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(P.air&&P.st!=='td'){P.vy-=19*dt;P.y+=P.vy*dt;const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);if(P.y<=g&&P.vy<=0){P.y=g;P.vy=0;P.air=false;if(P.st==='jump'){P.st='land';P.t=0;P.landT=.14;sfx.land()}}}
  else if(P.st!=='td'&&!P.held){const g=Math.max(ground(),waterAt(P.x,P.z)-1.25);P.y=g}
  // stamina regenerates after a short pause (slower while blocking); guard regenerates when not hit for a while
- if(P.staT>0)P.staT-=dt;else P.sta=Math.min(100,P.sta+(P.st==='block'?12:30)*dt*(1+gear('sta')/100)*(P.berserk>0?1.5:1)*(P.exhaustT>0?.5:1));
+ if(P.staT>0)P.staT-=dt;else P.sta=Math.min(100,P.sta+(P.st==='block'?18:42)*dt*(1+gear('sta')/100)*(P.berserk>0?1.5:1)*(P.exhaustT>0?.5:1));
  if(P.guardT>0)P.guardT-=dt;else P.guard=Math.min(100,P.guard+(P.st==='gbreak'?0:P.guard<25?9:16)*dt);
  if(P.st==='move'||P.st==='getup')P.hp=Math.min(maxHP(),P.hp+.45*dt);
  if(P.webT>0&&!P.td){P.x=lp(ox,P.x,.45);P.z=lp(oz,P.z,.45)}// spider web: half speed
