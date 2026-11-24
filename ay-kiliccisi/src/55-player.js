@@ -120,16 +120,16 @@ function cancelTakedown(){const td=P.td;if(!td)return;const v=td.v;P.td=null;P.p
 function updateTakedown(dt){const td=P.td,v=td.v;td.t+=dt;
  if(v.dead&&td.kind!=='stab'&&td.kind!=='wolf'){P.td=null;P.st='move';return}
  if(td.kind==='choke'){const back=v.yaw+PI;P.x=lp(P.x,v.x+Math.sin(back)*.5,Math.min(1,dt*12));P.z=lp(P.z,v.z+Math.cos(back)*.5,Math.min(1,dt*12));P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*12);
-  if(td.t>1.55&&!td.stabbed){td.stabbed=true;sfx.hit();const dead=v.hurt(999,Math.sin(P.yaw),Math.cos(P.yaw),'stab');spawnSparks(v.x,v.y+.8,v.z,16,[.8,.15,.15],3);GT.stop=.1;CAM.shake=.5;SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
+  if(td.t>1.55&&!td.stabbed){td.stabbed=true;sfx.hit();const dead=v.hurt((v.max||0)*3+999,Math.sin(P.yaw),Math.cos(P.yaw),'stab');spawnSparks(v.x,v.y+.8,v.z,16,[.8,.15,.15],3);GT.stop=.1;CAM.shake=.5;SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
   if(td.t>2.25){P.td=null;P.st='move';P.t=0}return}
  if(td.kind==='leap'){const u=Math.min(1,td.t/.42);P.x=lp(td.sx,td.gx,u);P.z=lp(td.sz,td.gz,u);P.y=lp(td.sy,hAt(P.x,P.z),u)+Math.sin(PI*u)*1.3;P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*14);
   if(u>=1){P.air=false;CAM.shake=.4;sfx.thud();td.kind=isWolf(v)?'wolf':'stab';td.t=0;if(!isWolf(v))v.grab('pinned')}return}
  if(td.kind==='wolf'){P.x=lp(P.x,v.x-Math.sin(v.yaw)*.15,Math.min(1,dt*10));P.z=lp(P.z,v.z-Math.cos(v.yaw)*.15,Math.min(1,dt*10));P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*10);v.st='mounted';v.t=td.t;
-  if(td.t>2.1&&!td.done){td.done=true;sfx.hit();CAM.shake=.5;GT.stop=.1;const dead=wolfHurt(v,999,Math.sin(P.yaw),Math.cos(P.yaw),P);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)GS.onKill(v,false)}
+  if(td.t>2.1&&!td.done){td.done=true;sfx.hit();CAM.shake=.5;GT.stop=.1;const dead=wolfHurt(v,(v.max||0)*3+999,Math.sin(P.yaw),Math.cos(P.yaw),P);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)GS.onKill(v,false)}
   if(td.t>2.6){P.td=null;P.st='move';P.t=0}return}
  if(td.kind==='stab'){// kneel on the goblin's back: raise the sword point-down with both hands, drive it in, pull out, stand up
   P.x=lp(P.x,v.x-Math.sin(v.yaw)*.1,Math.min(1,dt*10));P.z=lp(P.z,v.z-Math.cos(v.yaw)*.1,Math.min(1,dt*10));P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*10);
-  if(td.t>.62&&!td.done){td.done=true;sfx.stab();CAM.shake=.55;GT.stop=.12;const dead=v.hurt(999,0,0,'stab');spawnSparks(v.x,v.y+.25,v.z,18,[.8,.15,.15],3);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
+  if(td.t>.62&&!td.done){td.done=true;sfx.stab();CAM.shake=.55;GT.stop=.12;const dead=v.hurt((v.max||0)*3+999,0,0,'stab');spawnSparks(v.x,v.y+.25,v.z,18,[.8,.15,.15],3);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
   if(td.t>1.75){P.td=null;P.st='move';P.t=0}}}
 // --------------------------------------------------------------- per-frame update
 function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-dt*3);P.noise=0;P.t+=dt;P.jig=Math.max(0,P.jig-dt*2.2);

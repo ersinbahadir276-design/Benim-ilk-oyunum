@@ -11,7 +11,7 @@ function mkHuman(x,z,o){const geoK=o.dead?'dead':'guard',g=evGob(x,z,{lv:o.lv,hp
  g.R.ob.col=o.col||[1,1,1];g.shield=!!o.shield;g.shieldT=0;g.spdMul=o.spd||1;g.undead=!!o.dead;g.title=o.title||'';return g}
 // ---------- the shield
 function shieldBlock(g,kind){if(GT.clock<(g.shieldT||0))return false;const front=Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<1.2;
- if(!front||/^(stagger|sprawl|latched|escape|playdead)$/.test(g.st))return false;
+ if(!front||/^(stagger|sprawl|latched|escape|playdead|pinned|choked)$/.test(g.st)||/^(stab|assn|exec|fall|slam|spell|arrow|bleed)/.test(kind||''))return false;/* takedowns, spells and arrows are never turned by the shield */
  if(kind==='heavy'||kind==='kick'||kind==='throw'||kind==='jumpatk'||kind==='runatk'){g.shieldT=GT.clock+4;g.st='stagger';g.t=0;floatText(g.x,(g.y||0)+2,g.z,'KALKAN AÇILDI','crit');sfx.break();return false}
  g.blockedAt=GT.clock;g.kx*=.2;g.kz*=.2;sfx.clang();const p=[g.x+Math.sin(g.yaw)*.5,(g.y||0)+1.2,g.z+Math.cos(g.yaw)*.5];spawnSparks(p[0],p[1],p[2],8,[1,.9,.6],3);floatText(p[0],p[1]+.5,p[2],'KALKAN','');return true}
 function drawShields(){if(!HUM.shieldGeo){const s=G();box(s,-.36,-.48,-.05,.36,.48,.05,[.35,.22,.12]);box(s,-.3,-.42,.05,.3,.42,.08,[.5,.5,.55]);box(s,-.06,-.06,.08,.06,.06,.12,[.75,.6,.25]);HUM.shieldGeo=geo(s)}

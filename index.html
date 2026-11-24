@@ -2176,16 +2176,16 @@ function cancelTakedown(){const td=P.td;if(!td)return;const v=td.v;P.td=null;P.p
 function updateTakedown(dt){const td=P.td,v=td.v;td.t+=dt;
  if(v.dead&&td.kind!=='stab'&&td.kind!=='wolf'){P.td=null;P.st='move';return}
  if(td.kind==='choke'){const back=v.yaw+PI;P.x=lp(P.x,v.x+Math.sin(back)*.5,Math.min(1,dt*12));P.z=lp(P.z,v.z+Math.cos(back)*.5,Math.min(1,dt*12));P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*12);
-  if(td.t>1.55&&!td.stabbed){td.stabbed=true;sfx.hit();const dead=v.hurt(999,Math.sin(P.yaw),Math.cos(P.yaw),'stab');spawnSparks(v.x,v.y+.8,v.z,16,[.8,.15,.15],3);GT.stop=.1;CAM.shake=.5;SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
+  if(td.t>1.55&&!td.stabbed){td.stabbed=true;sfx.hit();const dead=v.hurt((v.max||0)*3+999,Math.sin(P.yaw),Math.cos(P.yaw),'stab');spawnSparks(v.x,v.y+.8,v.z,16,[.8,.15,.15],3);GT.stop=.1;CAM.shake=.5;SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
   if(td.t>2.25){P.td=null;P.st='move';P.t=0}return}
  if(td.kind==='leap'){const u=Math.min(1,td.t/.42);P.x=lp(td.sx,td.gx,u);P.z=lp(td.sz,td.gz,u);P.y=lp(td.sy,hAt(P.x,P.z),u)+Math.sin(PI*u)*1.3;P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*14);
   if(u>=1){P.air=false;CAM.shake=.4;sfx.thud();td.kind=isWolf(v)?'wolf':'stab';td.t=0;if(!isWolf(v))v.grab('pinned')}return}
  if(td.kind==='wolf'){P.x=lp(P.x,v.x-Math.sin(v.yaw)*.15,Math.min(1,dt*10));P.z=lp(P.z,v.z-Math.cos(v.yaw)*.15,Math.min(1,dt*10));P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*10);v.st='mounted';v.t=td.t;
-  if(td.t>2.1&&!td.done){td.done=true;sfx.hit();CAM.shake=.5;GT.stop=.1;const dead=wolfHurt(v,999,Math.sin(P.yaw),Math.cos(P.yaw),P);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)GS.onKill(v,false)}
+  if(td.t>2.1&&!td.done){td.done=true;sfx.hit();CAM.shake=.5;GT.stop=.1;const dead=wolfHurt(v,(v.max||0)*3+999,Math.sin(P.yaw),Math.cos(P.yaw),P);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)GS.onKill(v,false)}
   if(td.t>2.6){P.td=null;P.st='move';P.t=0}return}
  if(td.kind==='stab'){// kneel on the goblin's back: raise the sword point-down with both hands, drive it in, pull out, stand up
   P.x=lp(P.x,v.x-Math.sin(v.yaw)*.1,Math.min(1,dt*10));P.z=lp(P.z,v.z-Math.cos(v.yaw)*.1,Math.min(1,dt*10));P.yaw+=angd(v.yaw,P.yaw)*Math.min(1,dt*10);
-  if(td.t>.62&&!td.done){td.done=true;sfx.stab();CAM.shake=.55;GT.stop=.12;const dead=v.hurt(999,0,0,'stab');spawnSparks(v.x,v.y+.25,v.z,18,[.8,.15,.15],3);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
+  if(td.t>.62&&!td.done){td.done=true;sfx.stab();CAM.shake=.55;GT.stop=.12;const dead=v.hurt((v.max||0)*3+999,0,0,'stab');spawnSparks(v.x,v.y+.25,v.z,18,[.8,.15,.15],3);SYS.takedowns=(SYS.takedowns||0)+1;if(dead)onFoeKilled(v,false)}
   if(td.t>1.75){P.td=null;P.st='move';P.t=0}}}
 // --------------------------------------------------------------- per-frame update
 function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-dt*3);P.noise=0;P.t+=dt;P.jig=Math.max(0,P.jig-dt*2.2);
@@ -4044,7 +4044,7 @@ function mkHuman(x,z,o){const geoK=o.dead?'dead':'guard',g=evGob(x,z,{lv:o.lv,hp
  g.R.ob.col=o.col||[1,1,1];g.shield=!!o.shield;g.shieldT=0;g.spdMul=o.spd||1;g.undead=!!o.dead;g.title=o.title||'';return g}
 // ---------- the shield
 function shieldBlock(g,kind){if(GT.clock<(g.shieldT||0))return false;const front=Math.abs(angd(Math.atan2(P.x-g.x,P.z-g.z),g.yaw))<1.2;
- if(!front||/^(stagger|sprawl|latched|escape|playdead)$/.test(g.st))return false;
+ if(!front||/^(stagger|sprawl|latched|escape|playdead|pinned|choked)$/.test(g.st)||/^(stab|assn|exec|fall|slam|spell|arrow|bleed)/.test(kind||''))return false;/* takedowns, spells and arrows are never turned by the shield */
  if(kind==='heavy'||kind==='kick'||kind==='throw'||kind==='jumpatk'||kind==='runatk'){g.shieldT=GT.clock+4;g.st='stagger';g.t=0;floatText(g.x,(g.y||0)+2,g.z,'KALKAN AÇILDI','crit');sfx.break();return false}
  g.blockedAt=GT.clock;g.kx*=.2;g.kz*=.2;sfx.clang();const p=[g.x+Math.sin(g.yaw)*.5,(g.y||0)+1.2,g.z+Math.cos(g.yaw)*.5];spawnSparks(p[0],p[1],p[2],8,[1,.9,.6],3);floatText(p[0],p[1]+.5,p[2],'KALKAN','');return true}
 function drawShields(){if(!HUM.shieldGeo){const s=G();box(s,-.36,-.48,-.05,.36,.48,.05,[.35,.22,.12]);box(s,-.3,-.42,.05,.3,.42,.08,[.5,.5,.55]);box(s,-.06,-.06,.08,.06,.06,.12,[.75,.6,.25]);HUM.shieldGeo=geo(s)}
