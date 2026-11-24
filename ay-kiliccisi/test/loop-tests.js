@@ -9,7 +9,7 @@ window.runLoop = async function () {
   const calmAll = () => { for (const w of G.wolves) { if (!w.dead && !w.tame) { w.aware = 0; w.st = 'idle'; w.t = 0; w.calm = 0; w.cd = 0; } } for (const g of G.GOBS) { g.aware = 0; if (!g.dead) { g.st = 'idle'; g.t = 0; } } for (const c of G.CROCS) { c.aware = 0; if (!c.dead) { c.st = 'idle'; c.t = 0; } } };
   const freshP = (x, z, yaw = 0) => { clearIn(); G.tp(x, z); Object.assign(P, { yaw, st: 'move', t: 0, hp: X.maxHP(), sta: 100, guard: 100, inv: 0, pinBy: null, td: null, alive: true, air: false, vx: 0, vz: 0, vy: 0, crouch: false, exhausted: false, lift: 0, berserk: 0, rage: 0, lock: null }); P.rag.ang = 0; P.rag.av = 0; G.CAM.yaw = yaw; sim(.2); };
   const far = (list, x, z, r) => { for (const a of list) if (Math.hypot(a.x - x, a.z - z) < r && !a.role) { a.x += 400; a.z += 400; a.hx = a.x; a.hz = a.z; } };
-  const isolate = (x, z, r = 70) => { far(G.wolves.filter((w) => !w.boss), x, z, r); far(G.GOBS.filter((g) => !g.boss), x, z, r); far(G.CROCS, x, z, r); };
+  const isolate = (x, z, r = 70) => { far(G.wolves.filter((w) => !w.boss), x, z, r); far(G.GOBS.filter((g) => !g.boss), x, z, r); far(G.CROCS, x, z, r); far(G.X.SLIMES, x, z, r); };
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const waitPanels = async () => { for (let i = 0; i < 100; i++) { const m = document.getElementById('manhwa'); if (m.style.display !== 'block' || m.querySelector('.mh-next,.mh-ch')) return; await wait(100); } };
   const sec = async (name, fn) => { try { await fn(); } catch (e) { ok(name + ' (çalıştı)', false, String(e.stack || e).slice(0, 300)); } };

@@ -11,7 +11,7 @@ window.runMech = function () {
   const far = (list, x, z, r) => { for (const a of list) if (Math.hypot(a.x - x, a.z - z) < r) { a.x += 400; a.z += 400; a.hx = a.x; a.hz = a.z; } };
   const tree = G.TREES;
   // clear area helper: move every creature away from a test spot
-  const isolate = (x, z, r = 70) => { far(G.wolves, x, z, r); far(G.GOBS, x, z, r); far(G.CROCS, x, z, r); far(G.NPCS, x, z, r); };
+  const isolate = (x, z, r = 70) => { far(G.wolves, x, z, r); far(G.GOBS, x, z, r); far(G.CROCS, x, z, r); far(G.NPCS, x, z, r); far(G.X.SLIMES, x, z, r); };
   const lowestBody = () => { const H = G.HB, M = G.PM; let m = 9; for (const b of [H.head, H.upperChest, H.hips, H.leftHand, H.rightHand, H.leftLowerArm, H.rightLowerArm, H.leftLowerLeg, H.rightLowerLeg, H.leftFoot, H.rightFoot]) { const w = G.mpt(M, G.SK.GP[b]); m = Math.min(m, w[1] - G.hAt(w[0], w[2])); } return m; };
   const nanPM = () => Array.from(G.PM).some((v) => !isFinite(v));
   const T0 = [30, 420]; // open meadow south of spawn for most tests
@@ -174,8 +174,8 @@ window.runMech = function () {
   }
   // ---------------------------------------------------------------- 12. map and village
   {
-    const zones = new Set(); for (let x = -1380; x <= 1380; x += 60) for (let z = -1380; z <= 1380; z += 60) zones.add(G.zoneAt(x, z));
-    ok('harita: 2800×2800 m ve tüm bölgeler var', ['kingdom', 'dense', 'swamp', 'camp', 'mountain', 'lair', 'lake', 'river', 'ruins', 'forest'].every((z) => zones.has(z)), [...zones].join(','));
+    const zones = new Set(); for (let x = -2400; x <= 2400; x += 30) for (let z = -2400; z <= 2400; z += 30) zones.add(G.zoneAt(x, z));
+    ok('harita: 4900×4900 m ve tüm bölgeler var (başkent, goblin köyü, kar dahil)', ['kingdom', 'capital', 'gvil', 'snow', 'dense', 'swamp', 'camp', 'mountain', 'lair', 'lake', 'river', 'ruins', 'forest'].every((z) => zones.has(z)), [...zones].join(','));
     const kinds = {}; for (const n of G.NPCS) kinds[n.kind] = (kinds[n.kind] || 0) + 1; freshP(0, 70, Math.PI); const pos0 = G.NPCS.map((n) => [n.x, n.z]); GT.tod = .25; sim(20); const moved = G.NPCS.filter((n, i) => Math.hypot(n.x - pos0[i][0], n.z - pos0[i][1]) > 2).length;
     ok('köy: köylü, tüccar, muhafız NPC\'leri var ve dolaşıyor', kinds.merchant >= 3 && kinds.guard >= 8 && (kinds.villager + kinds.villager2) >= 10 && moved >= 4, { türler: kinds, hareket_eden: moved });
   }

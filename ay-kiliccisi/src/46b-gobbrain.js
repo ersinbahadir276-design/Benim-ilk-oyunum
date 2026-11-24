@@ -7,7 +7,7 @@
 // when he closes in, and fight with the knife only when cornered.
 const GOBDEAD=[];
 function assignLookouts(){CAMPSITES.forEach((c,i)=>{const g=GOBS.find(o=>!o.big&&!o.archer&&!o.boss&&o.camp===c&&o.group==='camp'+i);if(!g)return;g.lookout=1;g.eye=2.0;
-  const p=collide(c.x+Math.cos(c.gate)*11,c.z+Math.sin(c.gate)*11,.4);g.x=g.hx=p[0];g.z=g.hz=p[1];g.y=hAt(g.x,g.z);g.yaw=c.gate;g.patrol=null})}
+  const p=collide(c.x+Math.cos(c.gate)*11,c.z+Math.sin(c.gate)*11,.4);g.x=g.hx=p[0];g.z=g.hz=p[1];g.y=hAt(g.x,g.z);g.yaw=Math.atan2(Math.cos(c.gate),Math.sin(c.gate));/* face OUT of the gate (the gate angle is in cos/sin form) */g.patrol=null})}
 function gobCampAlarm(g){const c=g.camp;let n=0;for(const o of GOBS){if(o.dead||o===g||o.so)continue;if((c&&o.camp===c&&Math.hypot(o.x-g.x,o.z-g.z)<80)||Math.hypot(o.x-g.x,o.z-g.z)<30){o.aware=1;o.ls=[P.x,P.z];o.unseen=0;o.alarmT=GT.clock+20;if(!o.hostile()){o.st='chase';o.t=0}n++}}
  sfx.horn();CAM.shake=Math.max(CAM.shake,.15);note('[!] Gözcü boru çaldı — kamp ayağa kalktı ('+n+' goblin)!','red')}
 function gobCallHelp(g){g.helped=1;sfx.gobShout();let n=0;for(const o of GOBS){if(o.dead||o===g||o.hostile()||o.so)continue;if(Math.hypot(o.x-g.x,o.z-g.z)<38){o.aware=1;o.ls=[P.x,P.z];o.st='chase';o.t=0;n++}}if(n)note('[!] Goblin yardım çağırdı — '+n+' goblin geliyor!','red');floatText(g.x,(g.y||0)+1.9,g.z,'YARDIM!','')}
