@@ -30,7 +30,8 @@ function applyPose(q){const R=SK.R,H=HB;
  R[H.leftUpperArm]=r3m(rY(q.LaY),r3m(rX(q.LaX),rZ(-q.LaZ)));R[H.leftLowerArm]=rY(-q.Lel);R[H.leftHand]=r3m(rX(q.LwX),rY(q.LwY));
  R[H.rightUpperArm]=r3m(rY(q.RaY),r3m(rX(q.RaX),rZ(q.RaZ)));R[H.rightLowerArm]=rY(q.Rel);R[H.rightHand]=r3m(rX(q.RwX),r3m(rY(q.RwY),rZ(q.RwZ)));
  const e=(th,kn)=>SK.L1*Math.cos(q.pel+th)+SK.L2*Math.cos(q.pel+th+kn);
- SK.root=[0,-(SK.L1+SK.L2-Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)))+q.hipY,0];skUpdate();
+ if(H.capeA!==undefined){R[H.capeA]=r3m(rX(CAPE.a),rZ(CAPE.s));R[H.capeB]=rX(CAPE.b);R[H.capeC]=r3m(rX(CAPE.c),rZ(CAPE.s*.5))}
+ SK.root=[0,-(SK.L1+SK.L2-Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)))+q.hipY+fikBase(),0];skUpdate();feetIK();
  // reverse grip (blade tip down, both hands): right hand to a point in front of the chest, blade axis turned straight down
  if(q.rev>.02){const h=lp(1.02,.82,cl(q.revDn||0,0,1));armIK('right',[-.02,h,.27],[-.6,.2,-.5],[0,-1,0],q.rev)}
  // left hand joins the grip (two-handed swings, charged heavy attack, guard, reverse grip)
