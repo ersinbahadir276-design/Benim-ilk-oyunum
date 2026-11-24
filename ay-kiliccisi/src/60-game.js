@@ -120,7 +120,7 @@ function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||
  pShadow.M=mtrs([P.x,hAt(P.x,P.z)+.07,P.z],[0,0,0]);const ps=down?.75:.42;pShadow.M[0]*=ps;pShadow.M[10]*=ps;
  for(const w of WATERS)w.alpha=w.alpha;
  streamForest(P.x,P.z,(window.__G&&__G.fastStream)?99:1);for(const f of CAMPFIRES){const k=1+Math.sin(GT.time*13+f.x)*.12;f.o.M=mtrs([f.x,f.y+.1,f.z],[0,GT.time*.7,0]);f.o.M[5]*=k*(1+Math.sin(GT.time*9)*.15)}
- updateAltars(GT.time);if(HERO.glow){const g=P.berserk>0?1.6+.4*Math.sin(GT.time*12):(P.rage>=100?1.1+.3*Math.sin(GT.time*6):1);HERO.glow.col=[g,.25*g,.15*g]}if(HERO.armor){const a=eqItem('armor'),t=HERO.armor.pbr?[1,1,1]:(a&&a.look?a.look.tint:[1,1,1]),k=P.berserk>0?.25+.15*Math.sin(GT.time*10):0;HERO.armor.col=[t[0]*(1+k),t[1]*(1-k*.4),t[2]*(1-k*.4)]}
+ updateAltars(GT.time);if(HERO.glow){const g=P.berserk>0?1.6+.4*Math.sin(GT.time*12):(P.rage>=100?1.1+.3*Math.sin(GT.time*6):1);HERO.glow.col=[g,.25*g,.15*g]}if(armorSkin&&armorSkin.k==='heroAsh'){const f=1+.25*Math.sin(GT.time*3.1)+.12*Math.sin(GT.time*7.7)+(P.berserk>0?.8:0);armorSkin.o.em=[1.3*f,.42*f,.12*f]}if(HERO.armor){const a=eqItem('armor'),t=HERO.armor.pbr?[1,1,1]:(a&&a.look?a.look.tint:[1,1,1]),k=P.berserk>0?.25+.15*Math.sin(GT.time*10):0;HERO.armor.col=[t[0]*(1+k),t[1]*(1-k*.4),t[2]*(1-k*.4)]}
  skinAll();drawWolves(P,GT.time);drawVeyra(GT.time);drawGobs(GT.time);drawHeroBow();drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawTele();drawAll(VPm,eye,light,GT.time,env);updateMarks()}
 // ---------- HUD
 let hudT=0,chkT=0,saveT=0;
@@ -184,7 +184,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,get armorSkin(){return armorSkin},skins,makeItem,equip,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,

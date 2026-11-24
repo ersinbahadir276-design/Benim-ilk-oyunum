@@ -58,7 +58,15 @@ function upgrade(it){if(it.up>=5){note('En yüksek seviye (+5)');return false}co
  SYS.gold-=c.gold;SYS.shards-=c.shards;it.up++;note('[Demirci] '+it.name+' +'+it.up,'gold');sfx.anvil();applyLooks();save(P);return true}
 // ---------- looks: weapon geometry + armour tint follow the equipped items
 let swordSkin=null;
-function applyLooks(){const a=eqItem('armor'),t=a&&a.look?a.look.tint.slice():[1,1,1];if(HERO.armor){if(HERO.armor.pbr){HERO.armor.tintM=t;HERO.armor.col=[1,1,1]}else HERO.armor.col=t}buildSword()}
+function applyLooks(){const a=eqItem('armor'),t=a&&a.look?a.look.tint.slice():[1,1,1];if(HERO.armor){if(HERO.armor.pbr){HERO.armor.tintM=t;HERO.armor.col=[1,1,1]}else HERO.armor.col=t}buildArmorSet();buildSword()}
+// armour sets are more than a tint: each base has its own sculpted overlay (tools/sculpt/models/hero{Wolf,Bone,Ash}.mjs)
+// skinned to Kael's skeleton and drawn over the Kara Plaka mesh; swapping armour swaps the overlay.
+const ARMOR_SET={wolfhide:'heroWolf',bone:'heroBone',ash:'heroAsh'};let armorSkin=null;
+function buildArmorSet(){const a=eqItem('armor'),k=a&&ARMOR_SET[a.base],want=k&&typeof MODEL!=='undefined'&&MODEL[k]?k:null;if(armorSkin&&armorSkin.k===want)return;
+ if(armorSkin){const i=skins.indexOf(armorSkin.s);if(i>=0)skins.splice(i,1);unobj(armorSkin.o);const j=pObjs.indexOf(armorSkin.o);if(j>=0)pObjs.splice(j,1);freeGeo(armorSkin.s.geo);armorSkin=null}
+ if(!want)return;const m=MODEL[want],nv=m.nv,J=new Uint8Array(nv*4);for(let i=0;i<nv*4;i++)J[i]=m.J[i];
+ const o=addSkin({P:m.P,N:m.N,C:m.C,M:m.M,U:new Float32Array(nv*2),W:new Float32Array(nv),I:m.I},J,m.K,{out:.003,outCol:[.03,.03,.045],shade:1,pbr:1});
+ o.em=want==='heroAsh'?[1.3,.42,.12]:[1,.62,.2];armorSkin={k:want,o,s:skins[skins.length-1]};if(SK.A)skinAll()}
 function buildSword(){const w=eqItem('weapon'),L=(w&&w.look)||BASES.rusty.look,H=HB;
  if(swordSkin){const i=skins.indexOf(swordSkin.s);if(i>=0)skins.splice(i,1);unobj(swordSkin.o);const j=pObjs.indexOf(swordSkin.o);if(j>=0)pObjs.splice(j,1);freeGeo(swordSkin.s.geo);if(swordSkin.og){unobj(swordSkin.og);const k=pObjs.indexOf(swordSkin.og);if(k>=0)pObjs.splice(k,1);const m=skins.indexOf(swordSkin.sg);if(m>=0)skins.splice(m,1)}swordSkin=null}
  const save=SK.R.map(r=>r);for(let i=0;i<SK.n;i++)SK.R[i]=R3I;for(const f of['Index','Middle','Ring','Little'])for(const[seg,a]of[['Proximal',1.1],['Intermediate',1.2],['Distal',.7]])SK.R[H['right'+f+seg]]=rZ(a);
