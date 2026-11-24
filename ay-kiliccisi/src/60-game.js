@@ -107,9 +107,9 @@ function queueTelegraphs(){// v25: no arrows/strips for attacks — attacks are 
  dragonTele()}
 // ---------- camera, environment, render
 function render(dtReal){const down=P.st==='down'||P.st==='dead';if(!window.__G||!__G.__lockCam){const k=1-Math.exp(-dtReal*12);CAM.tx=lp(CAM.tx,P.x,k);CAM.tz=lp(CAM.tz,P.z,k);CAM.ty=lp(CAM.ty,P.y+(down?.7:P.crouch?1.15:P.st==='td'&&P.td&&P.td.kind!=='choke'?.9:1.5),1-Math.exp(-dtReal*8))}
- CAM.shake=Math.max(0,CAM.shake-dtReal*1.3);const sh=CAM.shake*CAM.shake*(SYS.lowShake?.3:1),T=GT.time,tg=[CAM.tx+Math.sin(T*47)*Math.cos(T*31)*sh*.38,CAM.ty+Math.sin(T*53+1.7)*sh*.3,CAM.tz+Math.sin(T*41+.6)*Math.cos(T*37)*sh*.38];
- const fx=Math.sin(CAM.yaw),fz=Math.cos(CAM.yaw),cp=Math.cos(CAM.pitch),spt=Math.sin(CAM.pitch);const boss=DRAGON&&!DRAGON.dead&&DRAGON.hostile()&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<60;let dist=CAM.dist*(P.st==='draw'?.5:1)*(down?.85:1)*(boss?1.5:1)*(DUN.on&&DUN.bossOn?1.25:1)*camFrame(dtReal),eye;
- for(;;){eye=[tg[0]-fx*cp*dist,tg[1]+spt*dist,tg[2]-fz*cp*dist];if(dist<=1.2||eye[1]>9||!inBuilding(eye[0],eye[2],.35)&&!(DUN.on&&!dunLos(tg[0],tg[2],eye[0],eye[2]))&&(DUN.on||!camTree(eye,tg)))break;dist-=.35}
+ CAM.shake=Math.max(0,CAM.shake-dtReal*1.3);const sh=CAM.shake*CAM.shake*(SYS.lowShake?.3:1),T=GT.time,tg=[CAM.tx+Math.sin(T*47)*Math.cos(T*31)*sh*.38,CAM.ty+Math.sin(T*53+1.7)*sh*.3,CAM.tz+Math.sin(T*41+.6)*Math.cos(T*37)*sh*.38];CAM.aimK=lp(CAM.aimK||0,P.st==='draw'?1:0,Math.min(1,dtReal*8));if(CAM.aimK>.01){const k=CAM.aimK;tg[0]+=Math.cos(CAM.yaw)*-.85*k;tg[2]+=-Math.sin(CAM.yaw)*-.85*k;tg[1]+=.45*k}
+ const fx=Math.sin(CAM.yaw),fz=Math.cos(CAM.yaw),cp=Math.cos(CAM.pitch),spt=Math.sin(CAM.pitch);const boss=DRAGON&&!DRAGON.dead&&DRAGON.hostile()&&Math.hypot(DRAGON.x-P.x,DRAGON.z-P.z)<60;let dist=CAM.dist*(1-.55*(CAM.aimK||0))*(down?.85:1)*(boss?1.5:1)*(DUN.on&&DUN.bossOn?1.25:1)*camFrame(dtReal),eye;
+ for(;;){eye=[tg[0]-fx*cp*dist,tg[1]+spt*dist,tg[2]-fz*cp*dist];if(dist<=1.2||eye[1]>9||!inBuilding(eye[0],eye[2],.35)&&!(DUN.on&&!dunLos(tg[0],tg[2],eye[0],eye[2]))&&(DUN.on||!camTree(eye,tg)))break;dist-=.35}CAM.eye=eye;CAM.tgt=tg;
  eye[1]=Math.max(eye[1],hAt(eye[0],eye[2])+.35,waterAt(eye[0],eye[2])+.3);CAM.eye=eye;
  const L=mlook(eye,tg,[0,1,0]);VPm=mmul(mpersp(58*PI/180,cv.width/cv.height,.25,620),L.m);
  const dk=cl(Math.sin(GT.tod*2*PI)*1.7+.62,0,1),m3=(a,b,t)=>[lp(a[0],b[0],t),lp(a[1],b[1],t),lp(a[2],b[2],t)],dusk=1-Math.abs(dk-.5)*2;GT.night=dk<.35;

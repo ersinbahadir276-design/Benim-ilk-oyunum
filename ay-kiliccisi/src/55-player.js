@@ -62,7 +62,7 @@ function respawn(){if(DUN.on)leaveDungeon(true);const al=SYS.altarAt!==undefined
 // --------------------------------------------------------------- starting actions
 function canAct(cost){if(P.sta<=0){note('Dayanıklılık yetersiz');return false}return true}
 function spend(c){P.sta=Math.max(0,P.sta-c);P.staT=.85}
-function aimAssist(range=4.2){const f=P.lock&&!P.lock.dead&&foeDist(P.lock)<range+3?P.lock:nearestFoe(range,1.7);if(f)P.yaw=Math.atan2(f.x-P.x,f.z-P.z);else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
+function aimAssist(range=4.2){const fc=P.focus;const keep=fc&&!fc.dead&&foeDist(fc)<range+1.5&&foeHostile(fc);const f=keep?fc:nearestFoe(range,1.7);if(f){P.focus=f;P.yaw=Math.atan2(f.x-P.x,f.z-P.z)}/* focus stays on one foe until it dies or steps away */else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
 function startLight(i){if(!canAct())return;const S=curStance(),sw=SWG[SYS.stance in SWG?SYS.stance:'stone'].L[i]||SWG.stone.L[0];spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T*(sw.fin?1.12:1);P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();P.atkStart=GT.clock;habitAdd('light');if(i===0&&(P.ripT||0)>GT.clock){P.ripT=0;P.atkT=.34;beginSwing('light',SWG.riposte,P.atkT);P.atk.rip=1;P.atk.cnt=1;P.counterT=0;if(P.ripV&&!P.ripV.dead){P.atk.tg=P.ripV;P.yaw=Math.atan2(P.ripV.x-P.x,P.ripV.z-P.z)}sfx.swing();return}
  beginSwing('light',sw,P.atkT);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startCharge(){if(!canAct())return;P.st='charge';P.t=0;P.charge=0;P.crouch=false;aimAssist();sfx.charge()}

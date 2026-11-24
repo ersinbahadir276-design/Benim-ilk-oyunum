@@ -10,10 +10,10 @@ const camSet=()=>SYS.cam||(SYS.cam={sx:1,sy:1,inv:0,dist:4.8,bs:1});
 function camInit(){SYS.cam=Object.assign({sx:1,sy:1,inv:0,dist:4.8,bs:1},SYS.cam||{});CAM.dist=SYS.cam.dist;hudApply()}
 // ---------- target switching
 function lockCands(){return foes().filter(f=>!f.dead&&Math.hypot(f.x-P.x,f.z-P.z)<28&&!(f.alt&&f.alt()>8))}
-function switchLock(dir){const cur=P.lock;if(!cur){toggleLock();return}const ac=angd(Math.atan2(cur.x-P.x,cur.z-P.z),CAM.yaw);let best=null,bd=1e9;
+function switchLock(dir){const cur=P.focus&&!P.focus.dead?P.focus:null;if(!cur){const f=nearestFoe(14,PI);if(f){P.focus=f;sfx.lock();floatText(f.x,(f.y||0)+2,f.z,'ODAK','')}return}const ac=angd(Math.atan2(cur.x-P.x,cur.z-P.z),CAM.yaw);let best=null,bd=1e9;
  for(const f of lockCands()){if(f===cur)continue;const a=angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw),da=(a-ac)*-dir;if(da<=.02)continue;const s=da+Math.hypot(f.x-P.x,f.z-P.z)*.02;if(s<bd){bd=s;best=f}}
- if(best){P.lock=best;sfx.lock();floatText(best.x,(best.y||0)+2,best.z,'◎','')}}
-function relock(){let best=null,bd=15;for(const f of lockCands()){if(!foeHostile(f))continue;const d=Math.hypot(f.x-P.x,f.z-P.z);if(d<bd){bd=d;best=f}}P.lock=best;if(best)sfx.lock()}
+ if(best){P.focus=best;sfx.lock();floatText(best.x,(best.y||0)+2,best.z,'ODAK','')}}
+function relock(){P.lock=null;return;let best=null,bd=15;for(const f of lockCands()){if(!foeHostile(f))continue;const d=Math.hypot(f.x-P.x,f.z-P.z);if(d<bd){bd=d;best=f}}P.lock=best;if(best)sfx.lock()}
 // ---------- obstacles: tree crowns and trunks between the hero and the camera
 function camTree(eye,tg){const cx=Math.floor(eye[0]/TG),cz=Math.floor(eye[2]/TG);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=treeGrid.get((cx+i+200)*1000+cz+j+200);if(!a)continue;
   for(const t of a){if(t.h<3)continue;const gy=hAt(t.x,t.z),de=Math.hypot(eye[0]-t.x,eye[2]-t.z);if(t.r>.9){if(de<t.r+.35&&eye[1]<gy+t.r*1.6)return true}// a rock: just not inside it
