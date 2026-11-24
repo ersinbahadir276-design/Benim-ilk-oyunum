@@ -217,5 +217,33 @@ window.runMech = function () {
     freshP(T0[0], T0[1]); sim(1); const c0 = P.ps.chX; sim(.9); const c1 = P.ps.chX;
     ok('animasyon: beklerken nefes alma hareketi var', Math.abs(c1 - c0) > .01, { göğüs_farkı: +(c1 - c0).toFixed(3) });
   }
+  // ---------------------------------------------------------------- 14. keyframe attack clips
+  {
+    // curves: finite, never leave the range of their own keys (monotone Hermite), no jumps between 1/240 steps
+    let bad = [], worstJump = 0;
+    for (const name in G.HCLIP) for (const ch in G.HCLIP[name]) { const c = G.HCLIP[name][ch], vs = c.K.map((k) => k[1]), lo = Math.min(...vs) - 1e-6, hi = Math.max(...vs) + 1e-6;
+      let prev = G.clipVal(c, 0); for (let i = 1; i <= 240; i++) { const v = G.clipVal(c, i / 240); if (!Number.isFinite(v) || v < lo || v > hi) bad.push(name + '.' + ch); worstJump = Math.max(worstJump, Math.abs(v - prev)); prev = v; } }
+    ok('klip: tüm eğriler sonlu, anahtar aralığı dışına taşmıyor, kesintisiz', !bad.length && worstJump < .2, { hatalı: [...new Set(bad)].slice(0, 5).join(','), en_büyük_adım: +worstJump.toFixed(3) });
+    // in game: sample the sword tip in the hero's local frame through each light attack and the heavy attack
+    isolate(T0[0], T0[1]); calmAll();
+    const local = (w) => { const dx = w[0] - P.x, dz = w[2] - P.z, s = Math.sin(P.yaw), c = Math.cos(P.yaw); return { side: dx * c - dz * s, fwd: dx * s + dz * c, up: w[1] - P.y }; };
+    const swing = (start, dur, marks) => { freshP(T0[0], T0[1]); P.sta = 100; start(); const T = dur(), out = {}; let t = 0, ok2 = true;
+      sim(T * 1.02, () => { t += 1 / 60; const u = t / T; for (const m of marks) if (out[m] === undefined && u >= m) out[m] = { tip: local(G.swordTip()), hip: G.SK.root[1] }; if (nanPM()) ok2 = false; });
+      return { out, ok: ok2 } };
+    const S = G.curStance ? G.curStance() : null;
+    // forehand (pose 0): wind-up on one side, blade in front at the hit frame, carried through to the other side
+    const f = swing(() => { P.combo = 0; G.startLight(0); }, () => P.atkT || .46, [.2, .36, .47, .99]);
+    const a = f.out[.2].tip, h = f.out[.36].tip, ft = f.out[.47].tip;
+    ok('klip: hafif saldırı — hazırlık bir yanda, vuruş anında kılıç önde, savuruş öbür yana geçiyor',
+      f.ok && h.fwd > .45 && Math.sign(a.side) !== Math.sign(ft.side) && Math.abs(a.side - ft.side) > .8,
+      { hazırlık_yan: +a.side.toFixed(2), vuruş_ön: +h.fwd.toFixed(2), takip_yan: +ft.side.toFixed(2), duruş: S && S.n });
+    ok('klip: vuruşta ağırlık öne/aşağı aktarılıyor (kalça iner), sonra toparlanıyor', f.out[.36].hip < f.out[.2].hip - .015 && f.out[.99].hip > f.out[.47].hip,
+      { hazırlık: +f.out[.2].hip.toFixed(3), vuruş: +f.out[.36].hip.toFixed(3), takip: +f.out[.47].hip.toFixed(3), son: +f.out[.99].hip.toFixed(3) });
+    // heavy: blade high and behind the head during the coil, low and in front after the cleave
+    const hv = swing(() => { P.charge = .6; G.startHeavy(); }, () => P.hvT || .7, [.3, .5, .6]);
+    const c0 = hv.out[.3].tip, c1 = hv.out[.5].tip, c2 = hv.out[.6].tip;
+    ok('klip: ağır saldırı — yukarıda toplanıp vuruş anında önde ve aşağıda', hv.ok && c0.up > c1.up + .4 && c1.fwd > .45 && c2.up < c0.up,
+      { toplanma_yük: +c0.up.toFixed(2), vuruş_yük: +c1.up.toFixed(2), vuruş_ön: +c1.fwd.toFixed(2), takip_yük: +c2.up.toFixed(2) });
+  }
   GT.paused = false; return out;
 };
