@@ -62,7 +62,7 @@ function respawn(){if(DUN.on)leaveDungeon(true);const al=SYS.altarAt!==undefined
 // --------------------------------------------------------------- starting actions
 function canAct(cost){if(P.sta<=0){note('Dayanıklılık yetersiz');return false}return true}
 function spend(c){P.sta=Math.max(0,P.sta-c);P.staT=.85}
-function aimAssist(range=4.2){const fc=P.focus;const keep=fc&&!fc.dead&&foeDist(fc)<range+1.5&&foeHostile(fc);const f=keep?fc:nearestFoe(range,1.7);if(f){P.focus=f;P.yaw=Math.atan2(f.x-P.x,f.z-P.z)}/* focus stays on one foe until it dies or steps away */else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
+function aimAssist(range=4.2){if(shiftLock()){/* shift-lock: the swing goes where the camera looks; a foe within 45° of it pulls the swing onto him */let b=null,bd=range+.5;for(const f of foes()){const d=foeDist(f);if(d<bd&&Math.abs(angd(Math.atan2(f.x-P.x,f.z-P.z),CAM.yaw))<.8){bd=d;b=f}}if(P.focus&&!P.focus.dead&&foeDist(P.focus)<range+1.5&&Math.abs(angd(Math.atan2(P.focus.x-P.x,P.focus.z-P.z),CAM.yaw))<.8)b=P.focus;if(b){P.focus=b;P.yaw=Math.atan2(b.x-P.x,b.z-P.z)}else P.yaw=CAM.yaw;return}const fc=P.focus;const keep=fc&&!fc.dead&&foeDist(fc)<range+1.5&&foeHostile(fc)&&Math.abs(angd(Math.atan2(fc.x-P.x,fc.z-P.z),P.yaw))<2.2;const f=keep?fc:nearestFoe(range,1.7);if(f){P.focus=f;P.yaw=Math.atan2(f.x-P.x,f.z-P.z)}/* focus stays on one foe until it dies or steps away */else if(Math.hypot(IN.wx,IN.wz)>.3)P.yaw=Math.atan2(IN.wx,IN.wz)}
 function startLight(i){if(!canAct())return;const S=curStance(),sw=SWG[SYS.stance in SWG?SYS.stance:'stone'].L[i]||SWG.stone.L[0];spend(COST.light[Math.min(i,2)]*S.cost);P.atkT=S.T*(sw.fin?1.12:1);P.st='attack';P.t=0;P.combo=i;P.hitDone=false;P.queued=false;P.crouch=false;aimAssist();P.atkStart=GT.clock;habitAdd('light');if(i===0&&(P.ripT||0)>GT.clock){P.ripT=0;P.atkT=.34;beginSwing('light',SWG.riposte,P.atkT);P.atk.rip=1;P.atk.cnt=1;P.counterT=0;if(P.ripV&&!P.ripV.dead){P.atk.tg=P.ripV;P.yaw=Math.atan2(P.ripV.x-P.x,P.ripV.z-P.z)}sfx.swing();return}
  beginSwing('light',sw,P.atkT);P.atk.cnt=P.counterT>0;if(P.atk.cnt)P.counterT=0;sfx.swing()}
 function startCharge(){if(!canAct())return;P.st='charge';P.t=0;P.charge=0;P.crouch=false;aimAssist();sfx.charge()}
@@ -77,8 +77,8 @@ function startDodge(){if(!canAct())return;const SD=stDef();habitAdd('dodge');P.d
  // dash fatigue: the 2nd dash inside a second has shorter invulnerability, the 3rd none — dashing is not a shield you can hold
  spend(COST.dodge*(1+.35*(n-1))*(SD.dc||1));P.st='dodge';P.t=0;P.inv=(iframes()+(SD.iv||0))*[1,.55,0][Math.min(n,3)-1];if(n>=3){floatText(P.x,P.y+2,P.z,'YORGUN ATILMA','red')}P.crouch=false;P.charge=0;const l=Math.hypot(IN.wx,IN.wz);
  let dx,dz;if(l>.3){dx=IN.wx/l;dz=IN.wz/l}else{dx=Math.sin(P.yaw);dz=Math.cos(P.yaw)}P.ddx=dx;P.ddz=dz;
- const f=P.lock&&!P.lock.dead?P.lock:nearestFoe(7,PI),face=f?Math.atan2(f.x-P.x,f.z-P.z):Math.atan2(dx,dz),a=angd(Math.atan2(dx,dz),face);
- P.dodgeKind=Math.abs(a)<.8?'fwd':Math.abs(a)>2.35?'back':a>0?'left':'right';P.yaw=f?face:Math.atan2(dx,dz);P.dodgeFace=P.yaw;
+ const sl=shiftLock(),f=sl?null:(P.lock&&!P.lock.dead?P.lock:nearestFoe(7,PI)),face=sl?CAM.yaw:f?Math.atan2(f.x-P.x,f.z-P.z):Math.atan2(dx,dz),a=angd(Math.atan2(dx,dz),face);
+ P.dodgeKind=Math.abs(a)<.8?'fwd':Math.abs(a)>2.35?'back':a>0?'left':'right';P.yaw=sl||f?face:Math.atan2(dx,dz);P.dodgeFace=P.yaw;/* shift-lock: eyes forward, the body slides left, right or back */
  P.dodgeT=.3;P.dodgeSp=15.5;sfx.dodge();spawnSparks(P.x,P.y+.15,P.z,6,[.75,.82,1],2.2)}
 function startBlock(){if(P.guard<25){note('Savunma toparlanıyor…');return false}P.bspam=GT.clock-(P.blockRel||-9)<.4?Math.min(3,(P.bspam||0)+1):Math.max(0,(P.bspam||0)-(GT.clock-(P.blockRel||-9)>1.2?3:1));P.st='block';P.t=0;P.blockAt=GT.clock;if(P.bspam>0)spend(4*P.bspam);/* spamming L1 costs stamina */P.crouch=false;habitAdd('block');return true}
 // --------------------------------------------------------------- damage dealing
@@ -139,7 +139,8 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  // attack button: tap = light, hold = charge heavy (only when standing on the ground)
  const atkTap=IN.atkUp&&!IN.atkUsed&&GT.clock-IN.atkAt<.24,atkHold=IN.atkHeld&&!IN.atkUsed&&GT.clock-IN.atkAt>=.24,atkEdge=IN.atkEdge;IN.atkUp=false;IN.atkEdge=false;
  if(atkTap)press('atk');
- const moveFree=(sp,turn=12)=>{if(P.slowT>0)sp*=.55;if(il>.05){P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*turn);P.vx=lp(P.vx,wx/il*sp,Math.min(1,dt*12));P.vz=lp(P.vz,wz/il*sp,Math.min(1,dt*12))}else{P.vx=lp(P.vx,0,Math.min(1,dt*14));P.vz=lp(P.vz,0,Math.min(1,dt*14))}};
+ const moveFree=(sp,turn=12)=>{if(P.slowT>0)sp*=.55;if(shiftLock()&&!DUN.cine){P.yaw+=angd(CAM.yaw,P.yaw)*Math.min(1,dt*14);if(il>.05){const back=Math.cos(angd(Math.atan2(wx,wz),CAM.yaw))<-.3;sp*=back?.72:.9}}/* shift-lock: face the camera, strafe; walking backwards is slower */
+  if(il>.05){if(!shiftLock())P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*turn);P.vx=lp(P.vx,wx/il*sp,Math.min(1,dt*12));P.vz=lp(P.vz,wz/il*sp,Math.min(1,dt*12))}else{P.vx=lp(P.vx,0,Math.min(1,dt*14));P.vz=lp(P.vz,0,Math.min(1,dt*14))}};
  const slide=(k)=>{P.vx*=Math.exp(-dt*k);P.vz*=Math.exp(-dt*k)};
  let move=true;
  switch(P.st){

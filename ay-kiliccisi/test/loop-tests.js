@@ -148,11 +148,11 @@ window.runLoop = async function () {
   await sec('hedef', async () => {
     freshP(T0[0], T0[1]); isolate(T0[0], T0[1]); calmAll();
     const g = smallGob(); g.x = P.x + 6; g.z = P.z + 6; g.st = 'chase'; g.aware = 1; G.CAM.yaw = 0.5;
-    X.toggleLock(); ok('hedef kilidi: önündeki düşmanı seçiyor', P.lock === g);
-    G.CAM.yaw = -1.2; for (let i = 0; i < 90; i++) { GT.time += DT; G.step(DT); G.render(DT); }
-    const want = Math.atan2(g.x - P.x, g.z - P.z), err = Math.abs(Math.atan2(Math.sin(want - G.CAM.yaw), Math.cos(want - G.CAM.yaw)));
-    ok('hedef kilidi: kamera hedefe dönüyor', err < .25, { sapma: +err.toFixed(2) });
-    X.toggleLock(); ok('hedef kilidi: tekrar basınca bırakıyor', !P.lock);
+    P.focus = null; X.toggleLock(); ok('v29 ODAK (kilit yok): R3 önündeki düşmana odaklanıyor, kamera kilitlenmiyor', P.focus === g && !P.lock);
+    G.CAM.yaw = -1.2; for (let i = 0; i < 30; i++) { GT.time += DT; G.step(DT); G.render(DT); }
+    ok('v29 ODAK: kamera serbest kalıyor (oyuncu çevirir)', Math.abs(G.CAM.yaw + 1.2) < .3, { yaw: +G.CAM.yaw.toFixed(2) });
+    g.x = P.x + 2; g.z = P.z + 2; g.st = 'chase'; g.cd = 9; P.yaw = 0; G.press('atk'); for (let i = 0; i < 6; i++) { GT.time += DT; G.step(DT) } const want = Math.atan2(g.x - P.x, g.z - P.z), err = Math.abs(Math.atan2(Math.sin(want - P.yaw), Math.cos(want - P.yaw)));
+    ok('v29 ODAK: saldırınca karakter odaktaki düşmana dönüyor', err < .3, { sapma: +err.toFixed(2) });
   });
 
   // ---------------------------------------------------------------- 12. mini boss: Kül Yele (alpha wolf)

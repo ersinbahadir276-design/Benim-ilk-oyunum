@@ -52,8 +52,11 @@ function hudBind(){document.addEventListener('pointerdown',e=>{if(!document.body
 // ---------- settings rows (SİSTEM → AYAR)
 function camSettingsHtml(){const c=camSet(),row=(id,t,v)=>'<div class="wr"><span>'+t+'</span><span><button data-cs="'+id+'" data-d="-1">−</button> <b style="display:inline-block;min-width:40px;text-align:center">'+v+'</b> <button data-cs="'+id+'" data-d="1">+</button></span></div>';
  return'<div class="wt2">KAMERA VE KONTROLLER</div>'+row('sx','Kamera hızı (yatay)',c.sx.toFixed(1))+row('sy','Kamera hızı (dikey)',c.sy.toFixed(1))+row('dist','Kamera uzaklığı',c.dist.toFixed(1)+' m')+row('bs','Düğme boyutu',Math.round((hudLoad().bs||c.bs)*100)+'%')+
-  '<div class="wr"><span>Dikey bakışı ters çevir</span><button data-cs="inv">'+(c.inv?'AÇIK':'KAPALI')+'</button></div><div class="wr"><span>Düğmelerin yerini değiştir</span><button data-cs="edit">DÜZENLE</button></div>'+
+  '<div class="wr"><span>Shift Lock (karakter kameraya bakar)</span><button data-cs="shift">'+(c.shift===0?'KAPALI':'AÇIK')+'</button></div><div class="wr"><span>Dikey bakışı ters çevir</span><button data-cs="inv">'+(c.inv?'AÇIK':'KAPALI')+'</button></div><div class="wr"><span>Düğmelerin yerini değiştir</span><button data-cs="edit">DÜZENLE</button></div>'+
   '<div class="sk" style="font-size:11px;opacity:.8">İki parmakla sıkıştır = yakınlaştır. Hedef kilitliyken kamera tarafında hızlıca sağa/sola kaydır = hedef değiştir.</div>'}
 function camSettingsBind(root){for(const b of root.querySelectorAll('[data-cs]'))b.addEventListener('click',()=>{const k=b.dataset.cs,d=+(b.dataset.d||0),c=camSet();
   if(k==='sx'||k==='sy')c[k]=cl(+(c[k]+d*.1).toFixed(1),.3,2.5);else if(k==='dist'){c.dist=cl(+(c.dist+d*.3).toFixed(1),2.6,8);CAM.dist=c.dist}else if(k==='bs'){const h=hudLoad();h.bs=cl(+((h.bs||c.bs)+d*.1).toFixed(2),.7,1.5);c.bs=h.bs;hudSave(h);hudApply()}
-  else if(k==='inv')c.inv=c.inv?0:1;else if(k==='edit'){toggleWin(P);hudEdit(true);return}save(P);renderWin(P)})}
+  else if(k==='inv')c.inv=c.inv?0:1;if(k==='shift')c.shift=c.shift===0?1:0;else if(k==='edit'){toggleWin(P);hudEdit(true);return}save(P);renderWin(P)})}
+
+// SHIFT-LOCK (default on): the hero faces the camera direction, strafes and dashes sideways/back while looking ahead
+function shiftLock(){return !(SYS.cam&&SYS.cam.shift===0)&&!DUN.cine}
