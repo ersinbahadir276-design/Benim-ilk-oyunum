@@ -219,7 +219,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
   q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
- const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}
+ animLayer(q,GT.dt);const p=P.ps,k=Math.min(1,GT.dt*rate),kg=Math.min(1,GT.dt*18);for(const n in q){const kk=n==='gL'||n==='gR'||n==='slL'||n==='slR'?kg:k;p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*kk)}animCape(GT.dt)}
 // model matrix: yaw, scale, ragdoll tilt about the feet in the fall direction, dodge rolls; then lifted so no bone sinks into the ground
 function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);for(let k=0;k<12;k++)M[k]*=PSC;
  if(R.ang>.001){const ax=vnorm([R.fz,0,-R.fx]),A=axisAng(ax,R.ang),m4=new Float32Array([A[0],A[3],A[6],0,A[1],A[4],A[7],0,A[2],A[5],A[8],0,0,0,0,1]);M=mmul(mmul(M,mtrs([0,.06,0],[0,0,0])),mmul(m4,mtrs([0,-.06,0],[0,0,0])))}

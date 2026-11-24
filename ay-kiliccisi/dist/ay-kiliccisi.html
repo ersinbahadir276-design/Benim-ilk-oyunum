@@ -670,15 +670,13 @@ function buildPlayer(TX){PLD=heroBuild();skInit();
  SK.R[HB.rightThumbProximal]=r3m(rY(.2),rZ(.45));SK.R[HB.rightThumbIntermediate]=rZ(.6);SK.R[HB.rightThumbDistal]=rZ(.45);
  heroMesh(TX)}
 // ---------- pose application (procedural joint angles) + optional arm IK targets
-const POSE0={hipY:0,pel:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0};
+const POSE0={hipY:0,pel:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0,gL:0,gR:0,slL:0,slR:0};
 function applyPose(q){const R=SK.R,H=HB;
  R[H.hips]=rX(q.pel);R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),rY(q.hdY));
- R[H.leftUpperLeg]=r3m(rX(q.LthX),rZ(q.LthZ));R[H.rightUpperLeg]=r3m(rX(q.RthX),rZ(q.RthZ));R[H.leftLowerLeg]=rX(q.Lkn);R[H.rightLowerLeg]=rX(q.Rkn);
- R[H.leftFoot]=rX(cl(-(q.pel+q.LthX+q.Lkn),-.9,.9));R[H.rightFoot]=rX(cl(-(q.pel+q.RthX+q.Rkn),-.9,.9));
+ const rootY=legIK(q);applyCape();
  R[H.leftUpperArm]=r3m(rY(q.LaY),r3m(rX(q.LaX),rZ(-q.LaZ)));R[H.leftLowerArm]=rY(-q.Lel);R[H.leftHand]=r3m(rX(q.LwX),rY(q.LwY));
  R[H.rightUpperArm]=r3m(rY(q.RaY),r3m(rX(q.RaX),rZ(q.RaZ)));R[H.rightLowerArm]=rY(q.Rel);R[H.rightHand]=r3m(rX(q.RwX),r3m(rY(q.RwY),rZ(q.RwZ)));
- const e=(th,kn)=>SK.L1*Math.cos(q.pel+th)+SK.L2*Math.cos(q.pel+th+kn);
- SK.root=[0,-(SK.L1+SK.L2-Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)))+q.hipY,0];skUpdate();
+ SK.root=[0,rootY,0];skUpdate();
  // reverse grip (blade tip down, both hands): right hand to a point in front of the chest, blade axis turned straight down
  if(q.rev>.02){const h=lp(1.02,.82,cl(q.revDn||0,0,1));armIK('right',[-.02,h,.27],[-.6,.2,-.5],[0,-1,0],q.rev)}
  // left hand joins the grip (two-handed swings, charged heavy attack, guard, reverse grip)
@@ -794,6 +792,65 @@ function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape
  const mk=(list,o)=>{if(!list.length)return;const g=merge(list);const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);let off=0;for(const p of list){J.set(p.J4,off*4);Wt.set(p.W4,off*4);off+=p.P.length/3}
   if(!g.N||g.N.length!==g.P.length)normals(g);return addSkin(g,J,Wt,o)};
  HERO.armor=mk(parts.armor,{out:.004,outCol:OUT,shade:.95});HERO.cape=mk(parts.cape,{out:0,shade:.8,ds:1});HERO.glow=mk(parts.glow,{unlit:1,col:[1,.25,.15],shade:0})}
+// ---- 32-anim.js
+// ===================== hero animation layer: foot IK on terrain, cape physics, lean, look-at =====================
+// Runs on top of the hand-made poses in poseTarget (55-player.js):
+//  * animLayer(q,dt)  — before smoothing: body leans into turns and acceleration, idle weight shift + breathing,
+//                       head turns towards the locked target, per-foot ground height + slope for the leg IK.
+//  * legIK(q)         — inside applyPose: pelvis drops to the lower foot, the uphill leg bends (2-bone, sagittal),
+//                       feet tilt with the slope. Without ground data (cutscenes: gL=gR=0) it is the old behaviour.
+//  * animCape(dt)     — damped springs on CapeA/B/C: hangs with gravity, lifts with speed and falling,
+//                       lags behind turns, never folds into the thighs.
+const ANIM={yaw:null,spd:0,acc:0,yawRate:0,on:true};
+const capeState=()=>P.cape||(P.cape={a:[0,0,0],v:[0,0,0],r:0,rv:0});
+function animLayer(q,dt){if(!ANIM.on||!(dt>0))return;
+ // yaw rate and forward acceleration, filtered (raw values jitter with the frame time)
+ if(ANIM.yaw===null)ANIM.yaw=P.yaw;const yr=angd(P.yaw,ANIM.yaw)/dt;ANIM.yaw=P.yaw;ANIM.yawRate+=(cl(yr,-8,8)-ANIM.yawRate)*Math.min(1,dt*8);
+ const ac=(P.spd-ANIM.spd)/dt;ANIM.spd=P.spd;ANIM.acc+=(cl(ac,-30,30)-ANIM.acc)*Math.min(1,dt*6);
+ const st=P.st,loco=st==='move'||st==='land',mv=cl(P.spd/3.4,0,1.6);
+ if(loco&&!P.crouch){
+  // bank into turns (spine roll; +x is the hero's left, a left turn raises yaw), lean with acceleration
+  q.spZ+=cl(-ANIM.yawRate*mv*.05,-.22,.22);q.pel+=cl(ANIM.acc*.012,-.12,.16)*cl(mv,0,1);q.spX+=cl(ANIM.acc*.01,-.08,.12)*cl(mv,0,1);
+  if(mv<.08){const t=GT.time;// idle: slow weight shift between the feet, breathing lifts the shoulders
+   q.spZ+=Math.sin(t*.42)*.025;q.LthZ+=Math.sin(t*.42)*.02;q.RthZ+=Math.sin(t*.42)*.02;q.hipY-=.006*(1+Math.sin(t*.84));
+   const br=Math.sin(t*1.6);q.chX+=br*.012;q.LaZ-=br*.015;q.RaZ-=br*.015}}
+ // look at the locked target (head first, chest a little), only while the body is free to do so
+ if(P.lock&&!P.lock.dead&&(loco||st==='block'||st==='charge'||st==='shoot')){const d=angd(Math.atan2(P.lock.x-P.x,P.lock.z-P.z),P.yaw);
+  if(Math.abs(d)<2.2){q.hdY+=cl(d,-.85,.85)*.75;q.chY+=cl(d,-.85,.85)*.2}}
+ // ground under each foot (model space offset from the root height) + slope along the facing
+ const grounded=!P.air&&(loco||st==='block'||st==='parry'||st==='charge'||st==='drink'||st==='shoot'||st==='hurt'||st==='attack'||st==='heavy'||st==='exec'||st==='skill'&&!P.air);
+ if(grounded&&P.rag.ang<.05&&Math.abs(P.y-hAt(P.x,P.z))<.08){const s=Math.sin(P.yaw),c=Math.cos(P.yaw),fx=s,fz=c,H=HB;
+  for(const[k,sl,b]of[['gL','slL',H.leftFoot],['gR','slR',H.rightFoot]]){const g=SK.GP[b],wx=P.x+c*g[0]*PSC+s*g[2]*PSC,wz=P.z-s*g[0]*PSC+c*g[2]*PSC;
+   q[k]=cl(hAt(wx,wz)-P.y,-.4,.4);const ahead=hAt(wx+fx*.15,wz+fz*.15),behind=hAt(wx-fx*.15,wz-fz*.15);q[sl]=cl(Math.atan2(ahead-behind,.3),-.4,.4)}}}
+// leg extension (hip to ankle, vertical) for thigh angle th, knee kn and pelvis tilt p
+const legExt=(p,th,kn)=>SK.L1*Math.cos(p+th)+SK.L2*Math.cos(p+th+kn);
+// bend a leg (knee +d, thigh -d/2 keeps the foot under the hip) until its extension is `target`
+function legBend(p,th,kn,target){if(legExt(p,th,kn)<=target)return[th,kn];let lo=0,hi=2.3;for(let i=0;i<14;i++){const m=(lo+hi)/2;if(legExt(p,th-m/2,kn+m)>target)lo=m;else hi=m}return[th-hi/2,kn+hi]}
+function legIK(q){const R=SK.R,H=HB,Lt=SK.L1+SK.L2,gL=q.gL||0,gR=q.gR||0;let LthX=q.LthX,Lkn=q.Lkn,RthX=q.RthX,Rkn=q.Rkn;
+ const eL=legExt(q.pel,LthX,Lkn),eR=legExt(q.pel,RthX,Rkn);let root;
+ if(Math.abs(gL)<1e-4&&Math.abs(gR)<1e-4)root=-(Lt-Math.max(eL,eR));
+ else{// pelvis follows the lower ground (but a leg may not have to fold more than ~55%); the other leg bends to reach its ground
+  root=Math.min(gL,gR)-(Lt-Math.max(eL,eR));const minE=Lt*.45;root=Math.max(root,Math.max(gL,gR)+minE-Lt);
+  [LthX,Lkn]=legBend(q.pel,LthX,Lkn,Lt+root-gL);[RthX,Rkn]=legBend(q.pel,RthX,Rkn,Lt+root-gR)}
+ R[H.leftUpperLeg]=r3m(rX(LthX),rZ(q.LthZ));R[H.rightUpperLeg]=r3m(rX(RthX),rZ(q.RthZ));R[H.leftLowerLeg]=rX(Lkn);R[H.rightLowerLeg]=rX(Rkn);
+ // feet stay level with the ground: undo the leg chain, then tilt by the slope (uphill = toes up), only for a planted foot
+ const pl=(g,th,kn)=>{const e=legExt(q.pel,th,kn);return cl(1-Math.abs(Lt+root-g-e)/.06,0,1)};
+ R[H.leftFoot]=rX(cl(-(q.pel+LthX+Lkn)-(q.slL||0)*pl(gL,LthX,Lkn),-.9,.9));R[H.rightFoot]=rX(cl(-(q.pel+RthX+Rkn)-(q.slR||0)*pl(gR,RthX,Rkn),-.9,.9));
+ return root+q.hipY}
+// cape: three hinged segments on damped springs, angles relative to the upper chest (+ = swings back)
+function animCape(dt){const C=capeState(),q=P.ps;if(!(dt>0))return;dt=Math.min(dt,1/30);
+ const lying=P.st==='down'||P.st==='dead'||P.st==='getup'||P.st==='dodge'&&P.roll||P.rag.ang>.3;
+ const body=lying?0:(q.pel||0)+(q.spX||0)+(q.chX||0);// how far the chest is pitched forward
+ const drag=lying?0:cl(P.spd/6.5,0,1),fall=P.air?cl(-P.vy*.07,0,.7):0,t=GT.time;
+ const flutter=drag*(.07*Math.sin(t*9.3)+.04*Math.sin(t*15.7+1));
+ // the world angle the wind and gravity want; relative = world - body pitch; the cape may not fold under the thighs
+ const thighBack=Math.max(0,(q.LthX||0)+(q.pel||0),(q.RthX||0)+(q.pel||0));
+ const want=[.04+drag*.55+fall*.6-body,drag*.35+fall*.5+flutter,drag*.25+fall*.4+flutter*1.6];
+ want[0]=Math.max(want[0],thighBack*.45-.05,-.12);
+ const K=[70,55,45],D=[9,7,5.5];
+ for(let i=0;i<3;i++){const acc=K[i]*(want[i]-C.a[i])-D[i]*C.v[i];C.v[i]+=acc*dt;C.a[i]+=C.v[i]*dt;C.a[i]=cl(C.a[i],-.5,1.6)}
+ const rw=lying?0:cl(ANIM.yawRate*.12,-.4,.4)*(.4+drag);C.rv+=(60*(rw-C.r)-8*C.rv)*dt;C.r+=C.rv*dt}
+function applyCape(){const H=HB,C=capeState();if(H.capeA===undefined)return;const R=SK.R;R[H.capeA]=r3m(rZ(C.r),rX(C.a[0]));R[H.capeB]=rX(C.a[1]);R[H.capeC]=rX(C.a[2])}
 // ---- 40-wolves.js
 // ===================== wolves: model, perception, behaviour =====================
 const WG={},wolves=[],wslots=[],WSLOTS=9,W_UP=.32,W_LO=.3;
@@ -1936,7 +1993,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
   q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
- const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}
+ animLayer(q,GT.dt);const p=P.ps,k=Math.min(1,GT.dt*rate),kg=Math.min(1,GT.dt*18);for(const n in q){const kk=n==='gL'||n==='gR'||n==='slL'||n==='slR'?kg:k;p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*kk)}animCape(GT.dt)}
 // model matrix: yaw, scale, ragdoll tilt about the feet in the fall direction, dodge rolls; then lifted so no bone sinks into the ground
 function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);for(let k=0;k<12;k++)M[k]*=PSC;
  if(R.ang>.001){const ax=vnorm([R.fz,0,-R.fx]),A=axisAng(ax,R.ang),m4=new Float32Array([A[0],A[3],A[6],0,A[1],A[4],A[7],0,A[2],A[5],A[8],0,0,0,0,1]);M=mmul(mmul(M,mtrs([0,.06,0],[0,0,0])),mmul(m4,mtrs([0,-.06,0],[0,0,0])))}
@@ -2440,7 +2497,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,ANIM,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
