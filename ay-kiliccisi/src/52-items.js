@@ -68,7 +68,7 @@ const UP_OVERLAY=[[5,['armup3','armup5']],[3,['armup3']]];const SW_UP=[[5,['swup
 function overlaySkin(keys,em){const ms=keys.map(k=>MODEL[k]);if(ms.some(m=>!m))return null;let nv=0,ni=0;for(const m of ms){nv+=m.nv;ni+=m.I.length}
  const P=new Float32Array(nv*3),N=new Float32Array(nv*3),Cc=new Float32Array(nv*3),M=new Float32Array(nv*4),J=new Uint8Array(nv*4),K=new Float32Array(nv*4),I=new (nv>65535?Uint32Array:Uint16Array)(ni);let v=0,o=0;
  for(const m of ms){P.set(m.P,v*3);N.set(m.N,v*3);Cc.set(m.C,v*3);M.set(m.M,v*4);for(let i=0;i<m.nv*4;i++){J[v*4+i]=m.J[i];K[v*4+i]=m.K[i]}for(let i=0;i<m.I.length;i++)I[o+i]=m.I[i]+v;v+=m.nv;o+=m.I.length}
- const ob=addSkin({P,N,C:Cc,M,U:new Float32Array(nv*2),W:new Float32Array(nv),I},J,K,{out:.003,outCol:[.03,.03,.045],shade:1,pbr:1});ob.em=em;return{o:ob,s:skins[skins.length-1]}}
+ const sp=helmSplit(I,J,K),ob=addSkin({P,N,C:Cc,M,U:new Float32Array(nv*2),W:new Float32Array(nv),I:sp.I},J,K,{out:.003,outCol:[.03,.03,.045],shade:1,pbr:1});ob.em=em;if(sp.cut)helmParts(ob,sp.I.length,sp.n);return{o:ob,s:skins[skins.length-1]}}
 function dropSkin(sk){const i=skins.indexOf(sk.s);if(i>=0)skins.splice(i,1);unobj(sk.o);const j=pObjs.indexOf(sk.o);if(j>=0)pObjs.splice(j,1);freeGeo(sk.s.geo)}
 function buildArmorOverlay(a){const key=a&&ARMOR_OVERLAY[a.base]||null,ok=HERO.armor&&HERO.armor.pbr;
  if(!(armorSkin&&armorSkin.key===key)){if(armorSkin){dropSkin(armorSkin);armorSkin=null;HERO.overlay=null}

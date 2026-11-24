@@ -11,8 +11,24 @@ function heroBuild(){const RIG=makeHumanRig(heroProportions());
 const KC={iron:[.17,.18,.21],mid:[.25,.26,.3],edge:[.42,.43,.49],dark:[.08,.08,.1],red:[.5,.07,.08],bronze:[.42,.32,.18],leather:[.22,.15,.11],fur:[.16,.15,.15],bone:[.62,.58,.5]};
 // sculpted hero (tools/sculpt/models/hero.mjs): one CPU-skinned mesh with gloss/metal/glow channels
 function heroMesh(TX){const m=MODEL.hero;if(!m)return heroMeshOld(TX);const nv=m.nv,J=new Uint8Array(nv*4);for(let i=0;i<nv*4;i++)J[i]=m.J[i];
- const ob=addSkin({P:m.P,N:m.N,C:m.C,M:m.M,U:new Float32Array(nv*2),W:new Float32Array(nv),I:m.I},J,m.K,{out:.0035,outCol:[.03,.03,.045],shade:1,pbr:1});
- HERO.armor=ob;HERO.cape=null;HERO.glow={set col(v){ob.em=v;if(HERO.overlay)HERO.overlay.em=v},get col(){return ob.em}}}
+ const sp=helmSplit(m.I,J,m.K);
+ const ob=addSkin({P:m.P,N:m.N,C:m.C,M:m.M,U:new Float32Array(nv*2),W:new Float32Array(nv),I:sp.I},J,m.K,{out:.0035,outCol:[.03,.03,.045],shade:1,pbr:1});helmParts(ob,sp.I.length,sp.n);
+ HERO.armor=ob;HERO.cape=null;HERO.glow={set col(v){ob.em=v;if(HERO.overlay)HERO.overlay.em=v},get col(){return ob.em}};
+ // the bare head (tools/sculpt/models/herohead.mjs): only drawn and skinned while the helm is off
+ const hm=MODEL.herohead;if(hm){const hJ=new Uint8Array(hm.nv*4);for(let i=0;i<hm.nv*4;i++)hJ[i]=hm.J[i];
+  HERO.head=addSkin({P:hm.P,N:hm.N,C:hm.C,M:hm.M,U:new Float32Array(hm.nv*2),W:new Float32Array(hm.nv),I:hm.I},hJ,hm.K,{out:.0025,outCol:[.05,.035,.03],shade:1,pbr:1});
+  HERO.headSkin=skins[skins.length-1];helmParts(HERO.head,0,hm.I.length)}
+ setHelm(HERO.bare)}
+// ---------- helm on/off. Triangles skinned only to the Head bone (the helm, crest, horns, bevor, the burning slit, and the
+// helm pieces of armour/upgrade overlays) are moved to the end of each index buffer, so taking the helm off is just
+// drawing fewer indices: no second mesh, no rebuild. The bare head is drawn instead (its count is 0 while the helm is on).
+function helmSplit(I,J,K){const hb=HB.head,keep=[],cut=[];
+ for(let t=0;t<I.length;t+=3){let h=1;for(let k=0;k<3&&h;k++){const v=I[t+k];let w=0;for(let j=0;j<4;j++)if(J[v*4+j]===hb)w+=K[v*4+j];if(w<.999)h=0}
+  (h?cut:keep).push(I[t],I[t+1],I[t+2])}
+ const out=new I.constructor(I.length);out.set(keep);out.set(cut,keep.length);return{I:out,n:keep.length,cut:cut.length}}
+function helmParts(ob,nOn,nOff){ob.nOn=nOn;ob.nOff=nOff;HERO.parts=(HERO.parts||[]).filter(o=>objs.includes(o));HERO.parts.push(ob);ob.geo.n=HERO.bare?nOff:nOn}
+// bare=true shows Kael's face (settings «Miğferi çıkar», and story panels before the armour takes him)
+function setHelm(bare){HERO.bare=!!bare;for(const o of HERO.parts||[])o.geo.n=HERO.bare?o.nOff:o.nOn;if(HERO.headSkin)HERO.headSkin.off=!HERO.bare}
 function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape:[],glow:[]};
  // weights: fn(x,y,z) -> [[bone,w],...]
  const W=(g,fn)=>{const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);for(let i=0;i<nv;i++){const l=fn(g.P[i*3],g.P[i*3+1],g.P[i*3+2]);for(let k=0;k<l.length&&k<4;k++){J[i*4+k]=l[k][0];Wt[i*4+k]=l[k][1]}}g.J4=J;g.W4=Wt;return g};

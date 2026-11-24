@@ -70,11 +70,11 @@ function chooseFate(free){SYS.veyraFate=free?'freed':'killed';const V=VEYRA;if(f
 // panels render at a fixed size (same framing in portrait and landscape); eye/at heights are above the ground unless abs
 function shot(st,h){const rel=(p)=>st.abs?p:[p[0],p[1]+hAt(p[0],p[2]),p[2]],eye=rel(st.eye),at=rel(st.at),fov=(st.fov||50)*PI/180,CW=cv.width,CH=cv.height;cv.width=720;cv.height=Math.round(720*(h||.7));const save={x:P.x,z:P.z,y:P.y,yaw:P.yaw,ps:P.ps,rag:Object.assign({},P.rag),lift:P.lift};
  try{if(st.hero){P.x=st.hero.x;P.z=st.hero.z;P.y=hAt(P.x,P.z);P.yaw=st.hero.yaw;P.ps=Object.assign({},POSE0,st.hero.pose||{});P.rag.ang=st.hero.lie||0;P.rag.fx=0;P.rag.fz=-1}
-  applyPose(P.ps);PM=playerMatrix(0);updateCape(PM,0);if(st.hero&&st.hero.lie)PM[13]+=.12;for(const o of pObjs){o.M=PM;o.flash=0;o.vis=!st.noHero}
+  applyPose(P.ps);PM=playerMatrix(0);updateCape(PM,0);if(st.hero&&st.hero.lie)PM[13]+=.12;for(const o of pObjs){o.M=PM;o.flash=0;o.vis=!st.noHero}setHelm(st.hero&&st.hero.helm===0?true:SYS.helmOff)
   if(st.setup)st.setup();streamForest(at[0],at[2],99);
   const L=mlook(eye,at,[0,1,0]),VP=mmul(mpersp(fov,cv.width/cv.height,.25,620),L.m),env=Object.assign({fogC:[.6,.72,.85],sun:[1,1,1],fog:[60,300],focus:at},st.env||{}),light=vnorm(vadd(vadd(vmul(L.r,-.45),vmul(L.u,.62)),vmul(L.f,-.62)));
   skinAll();drawWolves(P,GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawVeyra(GT.time);drawKing();drawAll(VP,eye,light,GT.time,env);
-  return cv.toDataURL('image/jpeg',.8)}finally{cv.width=CW;cv.height=CH;if(st.teardown)st.teardown();Object.assign(P,{x:save.x,z:save.z,y:save.y,yaw:save.yaw,ps:save.ps,lift:save.lift});P.rag=save.rag}}
+  return cv.toDataURL('image/jpeg',.8)}finally{cv.width=CW;cv.height=CH;if(st.teardown)st.teardown();setHelm(SYS.helmOff);Object.assign(P,{x:save.x,z:save.z,y:save.y,yaw:save.yaw,ps:save.ps,lift:save.lift});P.rag=save.rag}}
 // the queen's hair (data/hair.js): a scalp cap and alpha-cut hair cards, carried by the head bone
 function kingHair(){if(typeof HAIRDATA==='undefined')return null;const d=(b,T)=>new T(Uint8Array.from(atob(b),c=>c.charCodeAt(0)).buffer),mk=(h,o)=>{const nv=h.nv,C=new Float32Array(nv*3).fill(1);return obj(geo({P:d(h.P,Float32Array),N:d(h.N,Float32Array),U:d(h.U,Float32Array),C,W:new Float32Array(nv),I:d(h.I,Uint16Array)}),o)};
  const im=new Image();const cards=mk(HAIRDATA.cards,{shade:.9,ds:1,cut:.45,col:[1.05,.95,.95],pos:[0,0,0],cull:300}),cap=mk(HAIRDATA.cap,{shade:.9,col:[.36,.07,.07],pos:[0,0,0],cull:300});cards.vis=cap.vis=false;
@@ -87,12 +87,12 @@ const RED={fogC:[.32,.07,.06],sun:[1.1,.55,.45],fog:[25,160]},DUSK={fogC:[.25,.2
 const PANELS={
  prologue:()=>[
   {h:.62,st:{eye:[52,26,92],at:[0,10,0],env:RED,noHero:true,setup:()=>fires(true,[[-30,-34,9],[34,-30,8],[30,34,10],[-34,30,7],[0,0,12],[-14,40,6],[16,55,7]]),teardown:()=>fires(false)},nar:'Krallık düştü.',nar2:'Gökyüzü yanıyordu.'},
-  {h:.8,st:{eye:[1.9,1.15,17.4],at:[0,1.25,12.7],fov:44,env:RED,hero:{x:0,z:14.6,yaw:PI,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=0;KING.z=12;KING.yaw=0;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
+  {h:.8,st:{eye:[1.9,1.15,17.4],at:[0,1.25,12.7],fov:44,env:RED,hero:{x:0,z:14.6,yaw:PI,helm:0,pose:{LthX:-1.45,Lkn:1.7,RthX:.15,Rkn:2.0,pel:.25,spX:.45,hdX:.5,RaZ:.9,RaX:.4,Rel:.3,LaZ:.6,LaX:.3}},setup:()=>{KING.vis=true;KING.x=0;KING.z=12;KING.yaw=0;fires(true,[[-8,8,6],[9,9,5],[0,2,8]])},teardown:()=>{KING.vis=false;fires(false)}},
    nar:'Kael o gece surlardaki binlerce askerden biriydi.',nar2:'Şeytan Kraliçe ona bakmadı bile.'},
   {h:.7,st:{eye:[4.6,1.7,19.6],at:[2.2,1.45,17],fov:40,env:RED,noHero:true,setup:()=>{Object.assign(VEYRA,{x:2.2,z:17,y:hAt(2.2,17),yaw:PI*.85,forceShow:true,hidden:false,forcePose:{RsX:-1.6,ReX:-.4,LsX:-.3,hdP:-.05}});fires(true,[[-6,6,2.6],[7,5,2.2]])},teardown:()=>{VEYRA.forceShow=false;VEYRA.forcePose=null;fires(false);if(!SYS.veyraFate&&SHRINE){VEYRA.x=SHRINE.x;VEYRA.z=SHRINE.z;VEYRA.yaw=0}}},
    nar:'Yangının içinde boynuzlu bir kız gördü. Kılıcı kor gibiydi. Sonra her şey karardı.',say:[{who:'Kael',txt:'Demek böyle bitiyor...',x:12,y:70}]},
   {h:.45,black:true,sys:['Ölüm algılandı.','Koşul sağlandı: «Pişmanlık»','Geri dönüş başlatılıyor...']},
-  {h:.72,st:{eye:[SPAWN[0]+1.5,3.2,SPAWN[2]+2.4],at:[SPAWN[0],.5,SPAWN[2]],env:{fogC:[.8,.82,.78],sun:[1.1,1.05,.95],fog:[60,260]},hero:{x:SPAWN[0],z:SPAWN[2],yaw:PI,lie:1.45,pose:{LaZ:.5,RaZ:.6,hdX:-.2}}},
+  {h:.72,st:{eye:[SPAWN[0]+1.5,3.2,SPAWN[2]+2.4],at:[SPAWN[0],.5,SPAWN[2]],env:{fogC:[.8,.82,.78],sun:[1.1,1.05,.95],fog:[60,260]},hero:{x:SPAWN[0],z:SPAWN[2],yaw:PI,lie:1.45,helm:0,pose:{LaZ:.5,RaZ:.6,hdX:-.2}}},
    nar:'Sabah. Orman.',say:[{who:'Kael',txt:'Üç yıl önce mi?.. Krallık hâlâ ayakta.',x:46,y:14}]},
   {h:.6,st:{eye:[SPAWN[0]+.35,1.9,SPAWN[2]-1.7],at:[SPAWN[0],1.8,SPAWN[2]],fov:30,env:{fogC:[.2,.08,.08],sun:[1,.75,.7],fog:[4,40]},hero:{x:SPAWN[0],z:SPAWN[2],yaw:PI,pose:{hdX:.15}},setup:()=>{if(HERO.glow)HERO.glow.col=[2.4,.5,.3]},teardown:()=>{if(HERO.glow)HERO.glow.col=[1,.25,.15]}},
    whisper:'Bu sefer daha çok kan, Kael.',sys:['Sınıf: Kara Zırh','Uyarı: zırh lanetlidir.']}],

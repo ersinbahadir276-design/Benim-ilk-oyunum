@@ -5,7 +5,7 @@ function skInit(){const B=PLD.bones;SK.n=B.length;SK.par=B.map(b=>b.p);SK.rest=B
 function skUpdate(){const{n,par,loc,R,GR,GP,rest,A}=SK;
  for(let i=0;i<n;i++){const p=par[i];if(p<0){GR[i]=R[i];GP[i]=vadd(rest[i],SK.root)}else{GR[i]=r3m(GR[p],R[i]);GP[i]=vadd(GP[p],r3v(GR[p],loc[i]))}
   const g=GR[i],t=vsub(GP[i],r3v(g,rest[i])),o=i*12;A[o]=g[0];A[o+1]=g[1];A[o+2]=g[2];A[o+3]=t[0];A[o+4]=g[3];A[o+5]=g[4];A[o+6]=g[5];A[o+7]=t[1];A[o+8]=g[6];A[o+9]=g[7];A[o+10]=g[8];A[o+11]=t[2]}}
-function skinAll(){const A=SK.A;for(const s of skins){const p=s.restP,q=s.restN,J=s.J,W=s.W,P=s.P,N=s.N,nv=s.nv;
+function skinAll(){const A=SK.A;for(const s of skins){if(s.off)continue;const p=s.restP,q=s.restN,J=s.J,W=s.W,P=s.P,N=s.N,nv=s.nv;
  for(let v=0;v<nv;v++){const v3=v*3,v4=v*4,x=p[v3],y=p[v3+1],z=p[v3+2],nx=q[v3],ny=q[v3+1],nz=q[v3+2];let px=0,py=0,pz=0,ax=0,ay=0,az=0;
   for(let k=0;k<4;k++){const w=W[v4+k];if(w===0)continue;const o=J[v4+k]*12,a0=A[o],a1=A[o+1],a2=A[o+2],a4=A[o+4],a5=A[o+5],a6=A[o+6],a8=A[o+8],a9=A[o+9],a10=A[o+10];
    px+=w*(a0*x+a1*y+a2*z+A[o+3]);py+=w*(a4*x+a5*y+a6*z+A[o+7]);pz+=w*(a8*x+a9*y+a10*z+A[o+11]);ax+=w*(a0*nx+a1*ny+a2*nz);ay+=w*(a4*nx+a5*ny+a6*nz);az+=w*(a8*nx+a9*ny+a10*nz)}
