@@ -9,7 +9,9 @@ import fs from 'fs';
 const file = process.argv[2] || new URL('../../../assets/models/hero_anims1.glb', import.meta.url).pathname;
 const OUT = new URL('../../data/anims.js', import.meta.url).pathname;
 const FPS = 30;
-const CLIPS = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop', cidle: 'Crouch_Idle_Loop', cwalk: 'Crouch_Fwd_Loop' };
+const CLIPS = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop', cidle: 'Crouch_Idle_Loop', cwalk: 'Crouch_Fwd_Loop',
+  // one-shot clips (played by normalised time, not looped): jump take-off / airborne loop / landing, chest hit
+  jstart: 'Jump_Start', jloop: 'Jump_Loop', jland: 'Jump_Land', hit: 'Hit_Chest' };
 // our bone -> source bone (UE mannequin names)
 const MAP = { Hips: 'pelvis', Spine: 'spine_01', Chest: 'spine_02', UpperChest: 'spine_03', Neck: 'neck_01', Head: 'Head' };
 for (const [S, s] of [['left', 'l'], ['right', 'r']]) Object.assign(MAP, { [S + 'Shoulder']: 'clavicle_' + s, [S + 'UpperArm']: 'upperarm_' + s, [S + 'LowerArm']: 'lowerarm_' + s, [S + 'Hand']: 'hand_' + s,
@@ -19,6 +21,7 @@ const PAR = { Hips: null, Spine: 'Hips', Chest: 'Spine', UpperChest: 'Chest', Ne
 for (const S of ['left', 'right']) Object.assign(PAR, { [S + 'Shoulder']: 'UpperChest', [S + 'UpperArm']: S + 'Shoulder', [S + 'LowerArm']: S + 'UpperArm', [S + 'Hand']: S + 'LowerArm',
   [S + 'UpperLeg']: 'Hips', [S + 'LowerLeg']: S + 'UpperLeg', [S + 'Foot']: S + 'LowerLeg', [S + 'Toes']: S + 'Foot' });
 const BONES = Object.keys(MAP);
+const ONE = { jstart: 1, jloop: 1, jland: 1, hit: 1 };
 
 // ---------------------------------------------------------------- GLB
 const buf = fs.readFileSync(file), jl = buf.readUInt32LE(12), J = JSON.parse(buf.subarray(20, 20 + jl).toString());
@@ -98,7 +101,7 @@ for (const [key, name] of Object.entries(CLIPS)) {
     const dz = (B[low][2] - B.hip[2]) - (A[low][2] - A.hip[2]); if (Math.abs(dz) < 0.6) v.push(-dz * FPS); }
   const vp = v.filter((x) => x > 0.3).sort((x, y) => x - y); const speed = vp.length ? vp[Math.floor(vp.length * 0.7)] : 0; // touch-down/lift-off frames drag the median down
   // phase: frame 0 = left foot furthest forward
-  let f0 = 0; if (speed > 0.2) { let best = -1e9; frames.forEach((fr, i) => { const z = fr.fl[2] - fr.hip[2]; if (z > best) { best = z; f0 = i; } }); }
+  let f0 = 0; if (speed > 0.2 && !ONE[key]) { let best = -1e9; frames.forEach((fr, i) => { const z = fr.fl[2] - fr.hip[2]; if (z > best) { best = z; f0 = i; } }); }
   const rot = frames.slice(f0).concat(frames.slice(0, f0));
   const hip0 = frames.reduce((s, fr) => s + fr.hip[1], 0) / n;
   // pack: per frame, per bone 4 int16; hip dy (mm, relative to our rest hip height) int16
@@ -106,6 +109,7 @@ for (const [key, name] of Object.entries(CLIPS)) {
   rot.forEach((fr, f) => { BONES.forEach((b, k) => { let qq = fr.loc[b]; if (f > 0) { const o = ((f - 1) * BONES.length + k) * 4; if (q[o] * qq[0] + q[o + 1] * qq[1] + q[o + 2] * qq[2] + q[o + 3] * qq[3] < 0) qq = qq.map((x) => -x); }
     for (let c = 0; c < 4; c++) q[(f * BONES.length + k) * 4 + c] = Math.round(qq[c] * 32767); });
     hy[f] = Math.round((fr.hip[1] - ourHipY) * 1000); });
+  if (ONE[key]) console.log('   prof hip/footL/footR (cm):', frames.filter((_, i) => i % 4 === 0).map((f) => [f.hip[1], f.fl[1], f.fr[1]].map((v) => Math.round(v * 100)).join('/')).join(' '));
   out[key] = { n, dur: +dur.toFixed(4), speed: +speed.toFixed(3), q: Buffer.from(q.buffer).toString('base64'), hy: Buffer.from(hy.buffer).toString('base64') };
   console.log(key.padEnd(7), name.padEnd(18), 'frames', n, 'dur', dur.toFixed(2), 'speed', speed.toFixed(2), 'm/s', 'hip mean dy', ((hip0 - ourHipY) * 100).toFixed(1), 'cm');
 }

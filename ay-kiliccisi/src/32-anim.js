@@ -3,7 +3,7 @@
 // per bone local quaternions (int16) + hip height. Locomotion (idle / walk / jog / sprint / crouch) plays these clips;
 // the sword arm stays procedural (applyPose + IK) so the greatsword grip is untouched. Moving clips share one normalised
 // gait phase (every loop starts with the left foot forward), so blends between them never cross the legs.
-const CLIP={ready:false},GAIT={ph:0,it:0,w:{idle:1}};
+const CLIP={ready:false},GAIT={ph:0,it:0,w:{idle:1},u:{}};
 // game speed each moving clip is played at its natural cadence (m/s); measured clip speeds are in ANIMS.clips[k].speed
 const GAIT_REF={walk:1.4,jog:3.7,sprint:6.6,cwalk:1.3};
 // bones the clips drive: hips, spine, head and both legs, plus the free (left) arm. Right arm = sword arm, procedural.
@@ -18,17 +18,37 @@ function animInit(){CLIP.init=true;if(typeof ANIMS==='undefined'||!HB)return;
  CLIP.acc=new Float32Array(CLIP.idx.length*4);CLIP.ready=true}
 // gait weights + phase from the hero's real ground speed (called once per frame from poseTarget)
 function gaitUpdate(dt,moving){if(!CLIP.init)animInit();if(!CLIP.ready)return;const s=moving?P.spd:0,W={};
+ // one-shot action clips, played by normalised time (u 0..1) so they always fit the game state's own duration
+ if(ACTION_CLIP(W)){GAIT.it+=dt;gaitBlend(W,dt);return}
  if(P.crouch){const k=sst(.08,.7,s);W.cidle=1-k;W.cwalk=k}
  else{const K=[['idle',0],['walk',GAIT_REF.walk],['jog',GAIT_REF.jog],['sprint',GAIT_REF.sprint]];
   if(s<=.12)W.idle=1;else if(s>=K[3][1])W.sprint=1;
   else for(let i=0;i<3;i++)if(s<K[i+1][1]){const t=(s-K[i][1])/(K[i+1][1]-K[i][1]),u=i===0?sst(0,1,t):t;W[K[i][0]]=1-u;W[K[i+1][0]]=u;break}}
  // moving clips: phase advances so each one keeps its own cadence at its reference speed
  let rate=0;for(const k in W){const c=CLIP.clips[k];if(!c||!GAIT_REF[k])continue;rate+=W[k]*cl(s/GAIT_REF[k],.45,1.6)/c.dur}
- GAIT.ph=(GAIT.ph+rate*dt)%1;GAIT.it+=dt;GAIT.w=W}
+ GAIT.ph=(GAIT.ph+rate*dt)%1;GAIT.it+=dt;gaitBlend(W,dt)}
+// locomotion weights are already continuous in speed; a switch into or out of an action clip cross-fades (~0.1 s)
+// instead of popping. A fading one-shot keeps the last normalised time it was given (holds its final pose).
+const ONE_SHOT={jstart:1,jloop:1,jland:1,hit:1};
+function gaitBlend(W,dt){const O=GAIT.w;let act=false;for(const k in W)if(ONE_SHOT[k])act=true;for(const k in O)if(ONE_SHOT[k])act=true;
+ if(!act){GAIT.w=W;return}const a=Math.min(1,dt*12),N={};let tot=0;
+ for(const k in O)N[k]=(O[k]||0)*(1-a);for(const k in W)N[k]=(N[k]||0)+W[k]*a;
+ for(const k in N){if(N[k]<.01)delete N[k];else tot+=N[k]}for(const k in N)N[k]/=tot;GAIT.w=N}
+// jump: take-off (from the frame the feet leave the ground) -> airborne tuck loop; land: first 0.45 s of Jump_Land (the
+// knee-bend absorbing the fall) squeezed into the short land state; hurt: Hit_Chest over the 0.38 s flinch.
+// Jump-attack landings (landT .38) keep their procedural slam pose. Returns true when an action clip owns the pose.
+const JS_T0=.1,JS_RATE=1.5,JL_SPAN=.45;
+function ACTION_CLIP(W){const C=CLIP.clips,st=P.st;
+ if(st==='jump'&&C.jstart&&C.jloop){const k=sst(.38,.6,P.t);W.jstart=1-k;W.jloop=k;GAIT.u.jstart=cl((JS_T0+P.t*JS_RATE)/C.jstart.dur,0,1);return true}
+ if(st==='land'&&C.jland&&(P.landT||.15)<.3){W.jland=1;GAIT.u.jland=cl(P.t/(P.landT||.15),0,1)*JL_SPAN/C.jland.dur;return true}
+ if(st==='hurt'&&C.hit){W.hit=1;GAIT.u.hit=cl(P.t/.38,0,1);return true}
+ return false}
+// clip weight wanted by a pose state (1 = the clip layer drives legs/spine/left arm)
+const clipStateW=()=>P.st==='move'||P.st==='jump'||P.st==='hurt'||(P.st==='land'&&(P.landT||.15)<.3)?1:0;
 // blended local rotation (quaternion) of every driven bone + hip height offset (m)
 function clipSample(){const acc=CLIP.acc,nb=CLIP.nb,idx=CLIP.idx;acc.fill(0);let hy=0,tw=0;
  for(const k in GAIT.w){const w=GAIT.w[k],c=CLIP.clips[k];if(!c||w<1e-3)continue;tw+=w;
-  const u=(GAIT_REF[k]?GAIT.ph:(GAIT.it/c.dur)%1)*c.n,f0=Math.floor(u)%c.n,f1=(f0+1)%c.n,t=u-Math.floor(u);
+  const one=GAIT.u[k]!==undefined,u=one?GAIT.u[k]*(c.n-1):(GAIT_REF[k]?GAIT.ph:(GAIT.it/c.dur)%1)*c.n,f0=Math.floor(u)%c.n,f1=one?Math.min(f0+1,c.n-1):(f0+1)%c.n,t=u-Math.floor(u);
   hy+=w*lp(c.hy[f0],c.hy[f1],t)/1000;
   for(let j=0;j<idx.length;j++){const s=CLIP.slot[j],a=(f0*nb+s)*4,b=(f1*nb+s)*4,o=j*4,Q=c.q;
    let x=lp(Q[a],Q[b],t),y=lp(Q[a+1],Q[b+1],t),z=lp(Q[a+2],Q[b+2],t),ww=lp(Q[a+3],Q[b+3],t);

@@ -183,7 +183,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
   else if(mv>.08)run(mv,P.sprinting&&P.spd>4.6);
   else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
-  if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}else q.clipW=1;break}
+  if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}q.clipW=clipStateW();break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
   else if(pc===1){q.RaZ=.45;q.RaX=0;q.RaY=lp(2.15,-.55,sl);q.Rel=lp(.3,.08,sl);q.chY=lp(.6,-.55,sl);q.spY=lp(.25,-.2,sl);q.RthX=-.5;q.Rkn=.55;q.LthX=.35;q.Lkn=.25}
@@ -192,7 +192,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
  case'heavy':{rate=30;const u=P.t/(P.hvT||.7),sl=sst(.32,.55,u);q.two=1;q.RaZ=lp(-1.6,-.7,sl);q.RaY=.25;q.RaX=lp(-1.1,1.7,sl);q.Rel=lp(.75,.05,sl);q.chX=lp(-.3,.55,sl);q.spX=lp(-.15,.35,sl);q.pel=lp(.1,.25,sl);
   q.LthX=lp(-.55,-.9,sl);q.Lkn=lp(.7,1.0,sl);q.RthX=.4;q.Rkn=.4;q.hipY=-.08*sl;q.RwX=lp(-.6,.4,sl);break}
  case'runatk':{rate=30;const u=P.t/.6,sl=sst(.25,.5,u);q.RaZ=.3;q.RaX=lp(-.9,.2,sl);q.RaY=lp(-1.1,1.9,sl);q.Rel=lp(.7,.05,sl);q.chY=lp(-.7,.7,sl);q.spX=.35;q.pel=.2;q.LthX=-.9;q.Lkn=.9;q.RthX=.55;q.Rkn=.3;q.LaX=.7;q.Lel=1.1;break}
- case'jump':{rate=16;const up=P.vy>0;q.pel=.15;q.LthX=up?-.9:-.5;q.Lkn=up?1.4:.9;q.RthX=up?-.2:-.35;q.Rkn=up?.9:.6;q.LaZ=.7;q.LaX=-.5;q.RaZ=.8;q.RaX=-.5;q.Rel=.8;q.spX=.1;break}
+ case'jump':{rate=16;const up=P.vy>0;q.pel=.15;q.LthX=up?-.9:-.5;q.Lkn=up?1.4:.9;q.RthX=up?-.2:-.35;q.Rkn=up?.9:.6;q.LaZ=.7;q.LaX=-.5;q.RaZ=.8;q.RaX=-.5;q.Rel=.8;q.spX=.1;q.clipW=1;break}
  case'jumpatk':{rate=26;q.two=1;q.RaZ=-1.4;q.RaX=lp(-1.1,1.5,sst(0,.25,P.t));q.Rel=.2;q.RaY=.2;q.chX=.45;q.spX=.35;q.pel=.3;q.LthX=-1.2;q.Lkn=1.6;q.RthX=-.6;q.Rkn=1.4;break}
  case'dodge':{rate=30;if(P.dodgeKind==='back'){q.pel=-.15;q.spX=-.25;q.LthX=.3;q.Lkn=.6;q.RthX=-.4;q.Rkn=.9;q.LaZ=.8;q.LaX=-.3;q.RaX=-.6;q.Rel=.9}
   else{q.pel=.9;q.spX=.7;q.chX=.4;q.hdX=.5;q.LthX=q.RthX=-1.5;q.Lkn=q.Rkn=2.1;q.LaZ=.9;q.LaX=-.6;q.Lel=1.6;q.RaZ=.9;q.RaX=-.6;q.Rel=1.6}break}
@@ -207,7 +207,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(k2==='roar'){const k=sst(0,.35,P.t)-sst(.75,1,P.t);q.chX=-.45*k;q.hdX=-.6*k;q.LaZ=lp(1.22,.5,k);q.LaX=-.4*k;q.Lel=.8;q.RaZ=lp(1.12,.6,k);q.spX=-.2*k;q.LthX=-.4*k;q.Lkn=.6*k;q.RthX=.3*k}
   else if(k2==='dash'){q.two=1;q.RaZ=.2;q.RaX=.3;q.RaY=1.9;q.Rel=.1;q.spX=.5;q.pel=.35;q.LthX=-1.1;q.Lkn=1.2;q.RthX=.6;q.Rkn=.4;q.chY=.6}
   else if(k2==='slam'){q.two=1;const air=P.air;q.RaZ=-1.4;q.RaX=air?-1.0:1.6;q.Rel=air?.7:.05;q.RaY=.2;q.chX=air?-.3:.6;q.spX=air?-.1:.4;q.pel=air?.1:.4;q.LthX=air?-1:-1.2;q.Lkn=air?1.3:1.5;q.RthX=air?-.6:.4;q.Rkn=air?1.2:.6;q.hipY=air?0:-.15}break}
- case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;break}
+ case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;q.clipW=1;break}
  case'td':{rate=18;const td=P.td;if(!td)break;
   if(td.kind==='choke'){q.choke=td.t<1.4?1:Math.max(0,1-(td.t-1.4)*6);q.chokeH=.86;q.spX=.32;q.pel=.22;q.hipY=-.1;q.LthX=-.85;q.Lkn=1.15;q.RthX=-.3;q.Rkn=.8;q.chY=Math.sin(td.t*15)*.05;
    if(td.t>1.35){const u=sst(1.35,1.6,td.t);q.RaZ=.25;q.RaX=lp(-.4,-1.3,u);q.RaY=lp(-.6,.2,u);q.Rel=lp(1.6,.15,u)}}

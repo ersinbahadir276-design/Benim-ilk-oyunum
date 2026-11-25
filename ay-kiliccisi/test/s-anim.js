@@ -26,9 +26,20 @@ module.exports = async ({ page, G, log, shot }) => {
     IN.atkHeld = true; IN.atkAt = GT.clock; IN.atkEdge = true; IN.atkUsed = false; sim(.05); IN.atkHeld = false; IN.atkEdge = false; IN.atkUp = true; sim(.25);
     out.atkSt = P.st; out.atkW = P.ps.clipW;
     out.nan = nanA();
-    sim(1.0); return out;
+    sim(1.0);
+    // jump: take-off clip, then airborne loop; landing clip; feet stay above the ground the whole time
+    IN.mz = 0; sim(.6); P.vy = 6.6; P.air = true; P.st = 'jump'; P.t = 0; P.jumpAt = GT.clock;
+    sim(.12); out.jW0 = JSON.stringify(GAIT.w); out.jCw = P.ps.clipW; let jGap = 9, jLand = 0, landW = '', airT = 0;
+    for (let i = 0; i < 90; i++) { sim(1 / 60); if (P.air) airT += 1 / 60; const f = foot(), gy = g.hAt(P.x, P.z); jGap = Math.min(jGap, Math.min(f.l[1], f.r[1]) - gy - SK.rest[HB.leftFoot][1]);
+      if (P.st === 'jump' && P.t > .55) out.jW1 = JSON.stringify(GAIT.w);
+      if (P.st === 'land' && !jLand) { jLand = 1; sim(.05); landW = JSON.stringify(GAIT.w); out.landHip = g.mpt(g.PM, SK.GP[HB.hips])[1] - gy; } }
+    out.jGap = jGap; out.landW = landW; out.airT = airT; out.afterJump = JSON.stringify(GAIT.w); out.standHip = g.mpt(g.PM, SK.GP[HB.hips])[1] - g.hAt(P.x, P.z);
+    // hurt: chest-hit clip owns the pose, then fades back to idle
+    P.st = 'hurt'; P.t = 0; P.hurtDir = [0, 1]; sim(.12); out.hurtW = JSON.stringify(GAIT.w); out.hurtCw = P.ps.clipW; sim(.8); out.afterHurt = JSON.stringify(GAIT.w); out.afterHurtSt = P.st;
+    out.nan2 = nanA();
+    return out;
   });
-  log('ANIMS yüklü (6 klip)', r.ready === 6, r.ready);
+  log('ANIMS yüklü (10 klip)', r.ready === 10, r.ready);
   log('dururken klip katmanı açık', r.idleW > .95 && /idle/.test(r.idleWeights), r.idleW.toFixed(2) + ' ' + r.idleWeights);
   log('dururken ayak yerde', Math.abs(r.idleFootGap) < .05, r.idleFootGap.toFixed(3));
   log('koşarken jog klibi', /jog/.test(r.runWeights) && r.runW > .95, r.runWeights + ' hız ' + r.runSpd.toFixed(2));
@@ -39,6 +50,14 @@ module.exports = async ({ page, G, log, shot }) => {
   log('çömelme klibi', /cwalk/.test(r.crouchWeights) && r.crouchHipH < .85 && Math.abs(r.crouchGap) < .06, r.crouchWeights + ' kalça ' + r.crouchHipH.toFixed(2) + ' ayak ' + r.crouchGap.toFixed(3));
   log('saldırıda klip katmanı kapanıyor', r.atkSt === 'attack' && r.atkW < .6, r.atkSt + ' ' + r.atkW.toFixed(2));
   log('iskelette NaN yok', !r.nan);
+  log('zıplama: kalkış klibi', /jstart/.test(r.jW0) && r.jCw > .8, r.jW0 + ' cw ' + r.jCw.toFixed(2));
+  log('zıplama: havada döngü klibi', /jloop/.test(r.jW1 || ''), r.jW1);
+  log('zıplarken ayak zemine gömülmüyor', r.jGap > -.05, r.jGap.toFixed(3) + ' hava ' + r.airT.toFixed(2) + ' sn');
+  log('iniş: diz büküp karşılama klibi', /jland/.test(r.landW) && r.landHip < r.standHip - .05, r.landW + ' kalça ' + (r.landHip || 0).toFixed(2) + ' / ayakta ' + r.standHip.toFixed(2));
+  log('inişten sonra yürüme katmanına dönüş', /idle|walk/.test(r.afterJump) && !/jland|jstart|jloop/.test(r.afterJump), r.afterJump);
+  log('darbe: göğse vuruş klibi', /hit/.test(r.hurtW) && r.hurtCw > .7, r.hurtW + ' cw ' + r.hurtCw.toFixed(2));
+  log('darbeden sonra beklemeye dönüş', r.afterHurtSt === 'move' && !/hit/.test(r.afterHurt), r.afterHurtSt + ' ' + r.afterHurt);
+  log('eylem kliplerinde NaN yok', !r.nan2);
   await G(() => { const g = __G; g.GT.paused = false; g.IN.mz = 1; });
   await shot('anim-run', { wait: 900 });
 };
