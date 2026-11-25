@@ -701,6 +701,32 @@ function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H
  SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
  if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
  skUpdate()}
+// ---------- terrain foot IK: the procedural poses assume flat ground; on slopes, steps and rocks each ankle is moved to the
+// terrain under it (two-bone leg IK, knee keeps its hinge), the pelvis drops so the downhill foot can reach, and the sole
+// tilts to the ground normal. Blended in/out by state (off in the air, while rolling, lying, swimming or in takedowns).
+const FIK_ON={move:1,land:1,attack:1,charge:1,heavy:1,block:1,parry:1,gbreak:1,exec:1,shoot:1,drink:1,hurt:1,runatk:1,assn:1,skill:1};
+function footIK(dt){const F=P.fik||(P.fik={w:0,drop:0,h:[0,0],n:[[0,1,0],[0,1,0]]}),H=HB,B=PLD.bones;
+ const swim=depthAt(P.x,P.z)>.3,on=FIK_ON[P.st]&&!P.air&&!swim&&P.rag.ang<.05&&!(P.st==='skill'&&P.air)&&!(window.__G&&__G.noFootIK);
+ const k=dt>0?Math.min(1,dt*14):1;F.w+=((on?1:0)-F.w)*(dt>0?Math.min(1,dt*8):1);if(F.w<.01){F.w=on?F.w:0;F.drop=0;F.h=[0,0];return}
+ const M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]),toM=(v)=>[M[0]*v[0]+M[1]*v[1]+M[2]*v[2],M[4]*v[0]+M[5]*v[1]+M[6]*v[2],M[8]*v[0]+M[9]*v[1]+M[10]*v[2]];
+ const legs=[['left',0],['right',1]],A0=[],tgt=[];
+ for(const[S,i]of legs){const a=SK.GP[H[S+'Foot']].slice(),w=mpt(M,a),g=hAt(w[0],w[2]),e=.18;
+  const h=cl(g-P.y,-.4,.4),nW=vnorm([hAt(w[0]-e,w[2])-hAt(w[0]+e,w[2]),2*e,hAt(w[0],w[2]-e)-hAt(w[0],w[2]+e)]),nM=toM(nW);
+  F.h[i]+=(h-F.h[i])*k;for(let j=0;j<3;j++)F.n[i][j]+=(nM[j]-F.n[i][j])*k;A0.push(a)}
+ const drop=Math.min(0,F.h[0],F.h[1]);F.drop+=(drop-F.drop)*k;
+ // pelvis down (whole skeleton), then each ankle back to its animated height + terrain offset
+ SK.root[1]+=F.drop*F.w;skUpdate();
+ for(const[S,i]of legs){const U=H[S+'UpperLeg'],Lo=H[S+'LowerLeg'],Ft=H[S+'Foot'],a=A0[i];tgt[i]=[a[0],a[1]+F.h[i]*F.w,a[2]];
+  const L1=Math.hypot(...vsub(B[Lo].r,B[U].r)),L2=Math.hypot(...vsub(B[Ft].r,B[Lo].r)),Sp=SK.GP[U],d=cl(Math.hypot(...vsub(tgt[i],Sp)),Math.abs(L1-L2)+.02,L1+L2-.003);
+  const footG=SK.GR[Ft];
+  // knee: interior angle from the law of cosines (rest leg is straight, knee bends about its local X)
+  const kn=Math.PI-Math.acos(cl((L1*L1+L2*L2-d*d)/(2*L1*L2),-1,1)),cur=Math.PI-Math.acos(cl((L1*L1+L2*L2-Math.pow(Math.hypot(...vsub(SK.GP[Ft],Sp)),2))/(2*L1*L2),-1,1));
+  SK.R[Lo]=r3m(SK.R[Lo],rX(kn-cur));skUpdate();
+  // thigh: swing so hip->ankle points at the target
+  const Q=fromTo(vnorm(vsub(SK.GP[Ft],Sp)),vnorm(vsub(tgt[i],Sp)));SK.R[U]=r3m(r3t(SK.GR[SK.par[U]]),r3m(Q,SK.GR[U]));skUpdate();
+  // sole: keep the animated foot orientation, tilted onto the ground normal (less while the foot is lifted)
+  const lift=cl((a[1]-B[Ft].r[1])/.12,0,1),n=vnorm(F.n[i]),T=fromTo([0,1,0],vnorm(vadd(vmul([0,1,0],lift+(1-F.w)),vmul(n,(1-lift)*F.w))));
+  SK.R[Ft]=r3m(r3t(SK.GR[Lo]),r3m(T,footG));skUpdate()}}
 // ---- 31-hero.js
 // ===================== Kael, the Black Armor: our own armour design on the berserk_armor proportions =====================
 // Blackened plate, horned helm with a burning eye slit, wolf-fur mantle, tattered cape and a huge two-handed sword.
@@ -2348,7 +2374,7 @@ function step(dt){GT.dt=dt;if(dt>0){GT.clock+=dt;updatePlayer(dt);
   updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt;
   const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
- poseTarget();applyPose(P.ps);PM=playerMatrix(dt);
+ poseTarget();applyPose(P.ps);footIK(dt);PM=playerMatrix(dt);
  if(P.pinBy){const w=P.pinBy,b=mpt(PM,SK.GP[w.part.bone]),ty=Math.atan2(b[0]-w.x,b[2]-w.z);w.yaw+=angd(ty,w.yaw)*.25;const gx=b[0]-Math.sin(w.yaw)*.95*w.sc,gz=b[2]-Math.cos(w.yaw)*.95*w.sc;w.x=lp(w.x,gx,.25);w.z=lp(w.z,gz,.25);w.y=hAt(w.x,w.z)}
  queueTelegraphs()}
 // enemies' visible tells on the ground
