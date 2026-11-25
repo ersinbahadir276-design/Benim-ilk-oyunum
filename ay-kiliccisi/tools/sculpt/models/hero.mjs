@@ -30,6 +30,11 @@ export default function hero(ALL) {
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  // bronze crescent moon on the breastplate (the Moon Swordsman's sigil) with a small star in its hollow
+  const zcyl = (cx, cy, r) => cone([cx, cy, 0.05], [cx, cy, 0.3], r, r);
+  const crescent = Sub(0.002, zcyl(0, 1.475, 0.058), zcyl(0.026, 1.49, 0.05));
+  const star = U(0, ...[0, 1, 2, 3].map((i) => box([0.028, 1.488, 0.2], [0.0035, 0.017 - (i % 2) * 0.006, 0.08], rot.z(i * Math.PI / 4), 0.001)));
+  C({ name: 'sigil', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, grow(cuirSolid, 0.006), U(0, crescent, star), zcut(0.1, -1)) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
@@ -105,8 +110,10 @@ export default function hero(ALL) {
   // ------------------------------------------------------------ the great helm: flat-sided skull, beaked visor with a keel, T-slit, fin crest, swept horns
   const skull = I(0.03, ellipsoid([0, 1.935, -0.012], [0.128, 0.145, 0.152]), box([0, 1.93, 0], [0.114, 0.2, 0.2]));
   const prow = I(0.008, ellipsoid([0, 1.885, 0.035], [0.118, 0.12, 0.165]), symX(plane([0, 0, 0.205], [0.5, 0, 0.866])), slab(1.775, 2.0), box([0, 1.9, 0], [0.116, 0.2, 0.3]));
-  const slitH = box([0, 1.905, 0.17], [0.062, 0.0065, 0.1], null, 0.002), slitV = box([0, 1.872, 0.18], [0.006, 0.026, 0.1], null, 0.002);
-  const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
+  const slitH = box([0, 1.905, 0.17], [0.056, 0.0052, 0.1], null, 0.002), slitV = box([0, 1.876, 0.18], [0.0042, 0.022, 0.1], null, 0.0015);
+  // round breathing holes drilled along the surface normal of each cheek (two staggered rows)
+  const breaths = symX(U(0, ...[0, 1, 2, 3, 4].map((i) => { const x = 0.036 + i * 0.014, y = 1.85 - (i % 2) * 0.016 - i * 0.003, n = [Math.sin(0.55), 0, Math.cos(0.55)];
+    return cone([x - n[0] * 0.05, y, 0.12 - n[2] * 0.05], [x + n[0] * 0.08, y, 0.12 + n[2] * 0.08], 0.0042, 0.0042); })));
   const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
   C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
