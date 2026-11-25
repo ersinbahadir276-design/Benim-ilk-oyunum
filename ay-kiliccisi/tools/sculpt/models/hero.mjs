@@ -43,6 +43,22 @@ export default function hero(ALL) {
   for (let i = 0; i < 3; i++) { const y1 = 1.105 - i * 0.062, e = ellipsoid([0.1, 1.0, 0.02], [0.15 + i * 0.006, 0.3, 0.16 + i * 0.006]);
     L({ name: 'tasset' + i, mat: i === 2 ? 'trim' : 'plate', tau: 0.02, k: 0.004, sdf: I(0.005, shell(e, 0.007), slab(y1 - 0.07, y1), zcut(-0.02, -1), xcut(0.012, -1)), boneFn: () => [['leftUpperLeg', 0.55 + i * 0.15], ['Hips', 0.45 - i * 0.15]] }); }
 
+  // ------------------------------------------------------------ the moon-sword's mark: keel ridge and a raised crescent on the breastplate
+  const moonC = [0, 1.48, 0.0], moon = Sub(0.006, sphere(moonC, 0.075), sphere(v3.add(moonC, [0.032, 0.022, 0]), 0.064));
+  const moonMark = I(0.003, grow(cuirSolid, 0.009), shell(cuirSolid, 0.02), { d: (x, y, z) => moon.d(x, y, 0), bb: [-0.09, 1.39, 0.1, 0.09, 1.57, 0.3] }, zcut(0.1, -1));
+  C({ name: 'moonMark', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: moonMark });
+  // crimson tabard hanging from the belt between the tassets, bronze-edged hem
+  const tabY0 = 1.11, tabY1 = 0.6;
+  const tabSurf = disp(ellipsoid([0, 0.98, 0.0], [0.2, 0.5, 0.222]), (x, y) => 0.004 * Math.sin(x * 70) * Math.max(0, (tabY0 - y) / 0.5), 0.005);
+  const tabHem = (x) => tabY1 + 0.04 * Math.abs(x) / 0.12 + 0.012 * noise(x * 60, 0.5, 2.3);
+  const tabard = I(0.004, shell(tabSurf, 0.006), symX(plane([0.062, 1.1, 0], [1, 0.1, 0])), { d: (x, y) => tabHem(x) - y, bb: [-1, tabY1, -1, 1, 3, 1] }, slab(0, tabY0), zcut(0.06, -1));
+  const tabFn = (x, y) => { const d = Math.max(0, Math.min(1, (1.08 - y) / 0.3)), t = Math.max(0, Math.min(1, (x + 0.07) / 0.14)); return [['Hips', 1 - d * 0.8], ['leftUpperLeg', d * 0.8 * t + 1e-4], ['rightUpperLeg', d * 0.8 * (1 - t) + 1e-4]]; };
+  C({ name: 'tabard', mat: 'cloth', tau: 0.03, k: 0.004, sdf: tabard, boneFn: tabFn });
+  C({ name: 'tabardHem', mat: 'trim', tau: 0.03, k: 0.003, sdf: I(0.003, grow(tabard, 0.002), { d: (x, y) => y - tabHem(x) - 0.018, bb: [-1, 0, -1, 1, 3, 1] }), boneFn: tabFn });
+  // leather pouch on the left hip with a bronze clasp
+  L({ name: 'pouch', mat: 'leather', bone: 'Hips', rigid: true, k: 0.008, sdf: U(0.006, box([0.19, 1.07, 0.06], [0.026, 0.045, 0.034], rot.y(0.5), 0.012), I(0.004, box([0.19, 1.104, 0.06], [0.03, 0.014, 0.038], rot.y(0.5), 0.008), plane([0, 1.095, 0], [0, -1, 0.0]))) });
+  L({ name: 'pouchClasp', mat: 'trim', bone: 'Hips', rigid: true, k: 0, sdf: sphere([0.19 + 0.033 * Math.sin(0.5), 1.09, 0.06 + 0.033 * Math.cos(0.5)], 0.008) });
+
   // ------------------------------------------------------------ gorget and wolf-fur mantle
   C({ name: 'gorget', mat: 'plate', tau: 0.03, k: 0.006, sdf: Sub(0.006, U(0.004, ...[0, 1].map((i) => I(0.004, shell(cone([0, 1.6, 0], [0, 1.79, 0.015], 0.125 - i * 0.022, 0.092 - i * 0.016), 0.007), slab(1.64 + i * 0.065, 1.7 + i * 0.065)))), cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.07, 0.066)),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (y - 1.65) / 0.12)); return [['Neck', t], ['UpperChest', 1 - t]]; } });
@@ -105,9 +121,15 @@ export default function hero(ALL) {
   // ------------------------------------------------------------ the great helm: flat-sided skull, beaked visor with a keel, T-slit, fin crest, swept horns
   const skull = I(0.03, ellipsoid([0, 1.935, -0.012], [0.128, 0.145, 0.152]), box([0, 1.93, 0], [0.114, 0.2, 0.2]));
   const prow = I(0.008, ellipsoid([0, 1.885, 0.035], [0.118, 0.12, 0.165]), symX(plane([0, 0, 0.205], [0.5, 0, 0.866])), slab(1.775, 2.0), box([0, 1.9, 0], [0.116, 0.2, 0.3]));
-  const slitH = box([0, 1.905, 0.17], [0.062, 0.0065, 0.1], null, 0.002), slitV = box([0, 1.872, 0.18], [0.006, 0.026, 0.1], null, 0.002);
-  const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
-  const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
+  // visor: a shallow recessed eye band (no deep channels), two narrow scowling eye slits that glow, round breaths
+  const eyeBand = I(0.004, box([0, 1.903, 0.2], [0.1, 0.019, 0.06], null, 0.006), plane([0, 0, 0.152], [0, 0, -1]));
+  const eye = (s) => box([s * 0.042, 1.904, 0.17], [0.03, 0.0055, 0.04], rot.z(s * -0.16), 0.002);
+  const slits = U(0, eye(1), eye(-1));
+  const breaths = U(0, ...[-1, 1].flatMap((s) => [0, 1, 2].flatMap((i) => [0, 1].map((j) => sphere([s * (0.03 + i * 0.019), 1.848 - j * 0.02 - i * 0.004, 0.2], 0.0062)))));
+  const helm = Sub(0.004, U(0.02, skull, prow), eyeBand, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
+  const eyesD = Sub(0.002, I(0.004, U(0.02, skull, prow), plane([0, 0, 0.135], [0, 0, -1])), slits);
+  C({ name: 'visorEyes', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: I(0.002, eyesD, box([0, 1.903, 0.2], [0.098, 0.017, 0.06])) });
+  C({ name: 'eyeGlow', mat: 'glow', bone: 'Head', rigid: true, k: 0, sdf: I(0, U(0.02, skull, prow), grow(slits, -0.0008), plane([0, 0, 0.142], [0, 0, -1])) });
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
   C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
   C({ name: 'crest', mat: 'plate', bone: 'Head', rigid: true, k: 0.008, sdf: I(0.003, ellipsoid([0, 1.935, -0.02], [0.04, 0.163, 0.17]), box([0, 2.0, -0.02], [0.0085, 0.12, 0.2], null, 0.003), plane([0, 2.0, 0], [0, -1, 0.2])) });
@@ -132,7 +154,6 @@ export default function hero(ALL) {
 
   return {
     name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
-    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
       trim: { col: [0.42, 0.3, 0.13], gloss: 0.72, metal: 1, wear: 0.55, edge: [1.0, 0.82, 0.45], var: 0.12, freq: 30, tint: 0 },
