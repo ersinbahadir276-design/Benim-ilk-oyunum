@@ -670,15 +670,15 @@ function buildPlayer(TX){PLD=heroBuild();skInit();
  SK.R[HB.rightThumbProximal]=r3m(rY(.2),rZ(.45));SK.R[HB.rightThumbIntermediate]=rZ(.6);SK.R[HB.rightThumbDistal]=rZ(.45);
  heroMesh(TX)}
 // ---------- pose application (procedural joint angles) + optional arm IK targets
-const POSE0={hipY:0,pel:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0};
+const POSE0={hipY:0,hipX:0,pel:0,pelY:0,pelZ:0,hdZ:0,Lft:0,Rft:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0};
 function applyPose(q){const R=SK.R,H=HB;
- R[H.hips]=rX(q.pel);R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),rY(q.hdY));
+ R[H.hips]=r3m(rY(q.pelY),r3m(rX(q.pel),rZ(q.pelZ)));R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),r3m(rY(q.hdY),rZ(q.hdZ)));
  R[H.leftUpperLeg]=r3m(rX(q.LthX),rZ(q.LthZ));R[H.rightUpperLeg]=r3m(rX(q.RthX),rZ(q.RthZ));R[H.leftLowerLeg]=rX(q.Lkn);R[H.rightLowerLeg]=rX(q.Rkn);
- R[H.leftFoot]=rX(cl(-(q.pel+q.LthX+q.Lkn),-.9,.9));R[H.rightFoot]=rX(cl(-(q.pel+q.RthX+q.Rkn),-.9,.9));
+ R[H.leftFoot]=rX(cl(q.Lft-(q.pel+q.LthX+q.Lkn),-.9,.9));R[H.rightFoot]=rX(cl(q.Rft-(q.pel+q.RthX+q.Rkn),-.9,.9));
  R[H.leftUpperArm]=r3m(rY(q.LaY),r3m(rX(q.LaX),rZ(-q.LaZ)));R[H.leftLowerArm]=rY(-q.Lel);R[H.leftHand]=r3m(rX(q.LwX),rY(q.LwY));
  R[H.rightUpperArm]=r3m(rY(q.RaY),r3m(rX(q.RaX),rZ(q.RaZ)));R[H.rightLowerArm]=rY(q.Rel);R[H.rightHand]=r3m(rX(q.RwX),r3m(rY(q.RwY),rZ(q.RwZ)));
  const e=(th,kn)=>SK.L1*Math.cos(q.pel+th)+SK.L2*Math.cos(q.pel+th+kn);
- SK.root=[0,-(SK.L1+SK.L2-Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)))+q.hipY,0];skUpdate();
+ SK.root=[q.hipX,-(SK.L1+SK.L2-Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)))+q.hipY,0];skUpdate();
  // reverse grip (blade tip down, both hands): right hand to a point in front of the chest, blade axis turned straight down
  if(q.rev>.02){const h=lp(1.02,.82,cl(q.revDn||0,0,1));armIK('right',[-.02,h,.27],[-.6,.2,-.5],[0,-1,0],q.rev)}
  // left hand joins the grip (two-handed swings, charged heavy attack, guard, reverse grip)
@@ -794,6 +794,64 @@ function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape
  const mk=(list,o)=>{if(!list.length)return;const g=merge(list);const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);let off=0;for(const p of list){J.set(p.J4,off*4);Wt.set(p.W4,off*4);off+=p.P.length/3}
   if(!g.N||g.N.length!==g.P.length)normals(g);return addSkin(g,J,Wt,o)};
  HERO.armor=mk(parts.armor,{out:.004,outCol:OUT,shade:.95});HERO.cape=mk(parts.cape,{out:0,shade:.8,ds:1});HERO.glow=mk(parts.glow,{unlit:1,col:[1,.25,.15],shade:0})}
+// ---- 32-gait.js
+// ===================== hero locomotion: keyframed gait cycles (walk / run / sprint) =====================
+// Replaces the old single-sine leg swing. Each leg follows hand-authored keyframe curves over its own phase
+// (0 = heel strike, ~.5 = toe-off for a walk, earlier for a run), sampled with periodic Catmull-Rom splines.
+// The right leg runs half a cycle behind the left. On top of the legs: ankle roll (heel strike -> toe-off),
+// pelvis twist and drop, sideways weight shift over the stance foot, chest counter-rotation, pendulum arms
+// with a small lag, a stabilised head, a flight lift for running, lean into acceleration and into turns.
+// The cycles blend by speed, so walk -> run -> sprint has no pops. Angles in radians; thigh: negative = forward,
+// knee: positive = bend, foot: positive = toes down (applied on top of applyPose's keep-the-foot-flat term).
+const HGAIT={
+ walk:{th:[[0,-.42],[.12,-.36],[.3,-.04],[.5,.3],[.62,.14],[.8,-.3],[.94,-.45]],
+       kn:[[0,.05],[.12,.3],[.3,.12],[.5,.24],[.64,.95],[.8,.72],[.94,.08]],
+       ft:[[0,-.18],[.1,.06],[.3,0],[.5,.38],[.62,.22],[.8,-.04],[.94,-.14]],
+       arm:.7,armR:.4,el:.35,elR:.55,twist:.22,drop:.05,sway:.028,chY:.12,spX:.05,pel:.02,fly:0},
+ run:{th:[[0,-.55],[.12,-.32],[.28,.25],[.4,.48],[.58,.12],[.74,-.62],[.9,-.74]],
+      kn:[[0,.25],[.12,.62],[.28,.38],[.4,.32],[.58,1.6],[.74,1.45],[.9,.42]],
+      ft:[[0,-.1],[.12,.08],[.28,.2],[.4,.5],[.58,.25],[.74,-.05],[.9,-.12]],
+      arm:.8,armR:.45,el:.95,elR:.75,twist:.18,drop:.04,sway:.018,chY:.16,spX:.14,pel:.07,fly:.035},
+ sprint:{th:[[0,-.72],[.1,-.42],[.25,.38],[.37,.66],[.54,.05],[.72,-.88],[.88,-1.02]],
+         kn:[[0,.3],[.1,.66],[.25,.36],[.37,.36],[.54,2.0],[.72,1.8],[.88,.5]],
+         ft:[[0,-.05],[.1,.1],[.25,.3],[.37,.6],[.54,.3],[.72,-.05],[.88,-.1]],
+         arm:.95,armR:.5,el:1.2,elR:.9,twist:.14,drop:.03,sway:.012,chY:.18,spX:.24,pel:.12,fly:.06}};
+// periodic Catmull-Rom through [t,v] keys (t in [0,1), sorted); u wraps
+function hgKey(K,u){u-=Math.floor(u);const n=K.length;let i=n-1;for(let k=0;k<n;k++)if(K[k][0]>u){i=k-1;break}if(i<0)i=n-1;
+ const at=j=>K[(j%n+n)%n],t0=K[i][0],t1=i+1<n?K[i+1][0]:K[0][0]+1,uu=u<t0?u+1:u,f=(uu-t0)/(t1-t0),
+  p0=at(i-1)[1],p1=at(i)[1],p2=at(i+1)[1],p3=at(i+2)[1],f2=f*f,f3=f2*f;
+ return .5*(2*p1+(-p0+p2)*f+(2*p0-5*p1+4*p2-p3)*f2+(-p0+3*p1-3*p2+p3)*f3)}
+// blend weights of the three cycles from ground speed (m/s)
+function hgWeights(spd,sprint){const r=sst(1.7,3.0,spd),s=sprint?sst(3.8,5.4,spd):0;return{walk:(1-r)*(1-s),run:r*(1-s),sprint:s}}
+// per-frame motion state: smoothed yaw rate and acceleration (for leaning)
+function hgTrack(dt){const g=P.gait||(P.gait={ly:P.yaw,ls:0,yr:0,ac:0});if(dt<=0)return g;
+ const yr=angd(P.yaw,g.ly)/dt,ac=(P.spd-g.ls)/dt,k=Math.min(1,dt*6);g.yr+=(cl(yr,-8,8)-g.yr)*k;g.ac+=(cl(ac,-25,25)-g.ac)*k;g.ly=P.yaw;g.ls=P.spd;return g}
+// write the moving pose into q. mv: 0..1 speed fraction (fades the cycle in from a stand), u: cycle phase 0..1
+function heroGait(q,u,spd,mv,sprint,g){const W=hgWeights(spd,sprint),fade=sst(.05,.35,mv),two=2*PI;
+ const mix=(f)=>W.walk*f(HGAIT.walk)+W.run*f(HGAIT.run)+W.sprint*f(HGAIT.sprint);
+ const uL=u,uR=u+.5;
+ q.LthX=fade*mix(c=>hgKey(c.th,uL));q.RthX=fade*mix(c=>hgKey(c.th,uR));
+ q.Lkn=.06+fade*(mix(c=>hgKey(c.kn,uL))-.06);q.Rkn=.06+fade*(mix(c=>hgKey(c.kn,uR))-.06);
+ q.Lft=fade*mix(c=>hgKey(c.ft,uL));q.Rft=fade*mix(c=>hgKey(c.ft,uR));
+ const P_=k=>mix(c=>c[k]);
+ // pelvis: swing-side hip leads (twist), swing side drops a little, body shifts over the stance foot
+ const thd=(q.LthX-q.RthX)*.5;q.pelY=P_('twist')*thd;q.spY=-q.pelY*.7;
+ const st=Math.sin(two*u);q.pelZ=fade*P_('drop')*st;q.spZ=-q.pelZ*1.1;q.hipX=fade*P_('sway')*st;
+ q.pel=fade*P_('pel');q.spX=fade*P_('spX');q.chY=-P_('chY')*thd/(.3+.4*W.run+.55*W.sprint)*fade;
+ // flight phase (run/sprint): both feet off the ground just after each toe-off
+ const fl=Math.max(0,Math.sin(two*(2*u-.3)));q.hipY=fade*P_('fly')*fl*fl;
+ // arms: pendulum opposite to the same-side leg, lagging a little; the sword arm swings less
+ const lag=.05,aL=mix(c=>hgKey(c.th,uL-lag)),aR=mix(c=>hgKey(c.th,uR-lag));
+ q.LaX=.05-fade*P_('arm')*aL;q.RaX=-.3-fade*P_('armR')*aR;q.Lel=.25+fade*(P_('el')-.25)+fade*.18*Math.max(0,-aR);q.Rel=.55+fade*(P_('elR')-.55);
+ q.LaZ=1.22-.12*fade*(W.run+W.sprint);
+ // lean: forward into acceleration, sideways into turns (more at speed); head stays level and looks ahead
+ const lean=cl(g.ac*.025,-.12,.2),bank=cl(-g.yr*spd*.03,-.24,.24);q.spX+=lean;q.spZ+=bank;q.hipX-=bank*.06;
+ q.hdX=-(q.spX+q.pel)*.55;q.hdY=-q.chY*.6-q.pelY*.3;q.hdZ=-q.spZ*.6}
+// standing idle: breathing, slow weight shift (contrapposto), a relaxed knee, looking around
+function heroIdle(q,t){const br=Math.sin(t*1.8),ws=Math.sin(t*.33)+.35*Math.sin(t*.91);
+ q.chX=br*.022;q.spX=.02+br*.008;q.LaZ=1.22-br*.02;q.RaZ=1.12-br*.015;q.LaX=.05+Math.sin(t*1.6+.5)*.02;q.Lel=.28+br*.03;
+ q.hipX=.022*ws;q.pelZ=.028*ws;q.spZ=-q.pelZ*.8;q.LthZ=.07;q.RthZ=-.07;q.Lkn=.06+.14*Math.max(0,-ws);q.Rkn=.06+.14*Math.max(0,ws);
+ q.Lft=-.02;q.Rft=-.02;q.hdY=Math.sin(t*.5)*.14+Math.sin(t*1.3)*.03;q.hdX=Math.sin(t*.27)*.05-.02}
 // ---- 40-wolves.js
 // ===================== wolves: model, perception, behaviour =====================
 const WG={},wolves=[],wslots=[],WSLOTS=9,W_UP=.32,W_LO=.3;
@@ -1893,13 +1951,12 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(!SYS.gate&&Math.hypot(P.x,P.z)<46){SYS.gate=1;P.cp=[0,60]}if(!SYS.knight&&Math.hypot(P.x-10,P.z-50)<5.5)SYS.knight=1}
 // --------------------------------------------------------------- pose targets per state
 function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph),c=Math.cos(P.ph);let rate=14;
- const run=(mv,sprint)=>{const A=(sprint?.9:.5)*mv,B=(sprint?1.55:.95)*mv;q.LthX=-s*A;q.RthX=s*A;q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
-  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012)};
+ const gt=hgTrack(GT.dt),u=P.ph/(2*PI);
  switch(P.st){
  case'move':case'land':{const mv=cl(P.spd/3.4,0,1);
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
-  else if(mv>.08)run(mv,P.sprinting&&P.spd>4.6);
-  else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
+  else if(mv>.04){heroGait(q,u,P.spd,mv,P.sprinting,gt);rate=30}
+  else heroIdle(q,t);
   if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
@@ -2440,7 +2497,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,hgKey,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
