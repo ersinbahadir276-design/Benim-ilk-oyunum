@@ -29,7 +29,7 @@ function gaitUpdate(dt,moving){if(!CLIP.init)animInit();if(!CLIP.ready)return;co
  GAIT.ph=(GAIT.ph+rate*dt)%1;GAIT.it+=dt;gaitBlend(W,dt)}
 // locomotion weights are already continuous in speed; a switch into or out of an action clip cross-fades (~0.1 s)
 // instead of popping. A fading one-shot keeps the last normalised time it was given (holds its final pose).
-const ONE_SHOT={jstart:1,jloop:1,jland:1,hit:1};
+const ONE_SHOT={jstart:1,jloop:1,jland:1,hit:1,roll:1};
 function gaitBlend(W,dt){const O=GAIT.w;let act=false;for(const k in W)if(ONE_SHOT[k])act=true;for(const k in O)if(ONE_SHOT[k])act=true;
  if(!act){GAIT.w=W;return}const a=Math.min(1,dt*12),N={};let tot=0;
  for(const k in O)N[k]=(O[k]||0)*(1-a);for(const k in W)N[k]=(N[k]||0)+W[k]*a;
@@ -42,9 +42,13 @@ function ACTION_CLIP(W){const C=CLIP.clips,st=P.st;
  if(st==='jump'&&C.jstart&&C.jloop){const k=sst(.38,.6,P.t);W.jstart=1-k;W.jloop=k;GAIT.u.jstart=cl((JS_T0+P.t*JS_RATE)/C.jstart.dur,0,1);return true}
  if(st==='land'&&C.jland&&(P.landT||.15)<.3){W.jland=1;GAIT.u.jland=cl(P.t/(P.landT||.15),0,1)*JL_SPAN/C.jland.dur;return true}
  if(st==='hurt'&&C.hit){W.hit=1;GAIT.u.hit=cl(P.t/.38,0,1);return true}
+ // forward dodge: Roll from the dive (crouched start skipped) to back on the feet, squeezed into the dodge's own duration
+ if(rollClip()){W.roll=1;GAIT.u.roll=(ROLL_T0+sst(0,1,P.t/P.dodgeT)*(ROLL_T1-ROLL_T0))/C.roll.dur;return true}
  return false}
+// Roll (1.47 s): 0.04 s crouch -> dive (hip 1.37 m) -> on the back (hip 0.06 m) -> up by ~1.1 s. The dodge plays 0.04-1.1 s.
+const ROLL_T0=.04,ROLL_T1=1.1,rollClip=()=>P.st==='dodge'&&P.dodgeKind==='fwd'&&!!(CLIP.ready&&CLIP.clips.roll);
 // clip weight wanted by a pose state (1 = the clip layer drives legs/spine/left arm)
-const clipStateW=()=>P.st==='move'||P.st==='jump'||P.st==='hurt'||(P.st==='land'&&(P.landT||.15)<.3)?1:0;
+const clipStateW=()=>P.st==='move'||rollClip()||P.st==='jump'||P.st==='hurt'||(P.st==='land'&&(P.landT||.15)<.3)?1:0;
 // blended local rotation (quaternion) of every driven bone + hip height offset (m)
 function clipSample(){const acc=CLIP.acc,nb=CLIP.nb,idx=CLIP.idx;acc.fill(0);let hy=0,tw=0;
  for(const k in GAIT.w){const w=GAIT.w[k],c=CLIP.clips[k];if(!c||w<1e-3)continue;tw+=w;
@@ -71,6 +75,7 @@ function applyClips(cw){if(!CLIP.init)animInit();if(!CLIP.ready||cw<.01)return n
   R[b]=q2r3(x,y,z,w)}
  return hy}
 // after skUpdate: put the lowest foot back on the ground (the source rig's legs are not exactly Kael's)
-function clipGround(cw){const H=HB,rest=SK.rest,GP=SK.GP;let d=1e9;
+// (not while rolling: the feet are in the air, playerMatrix's lying clearance keeps the body above the ground instead)
+function clipGround(cw){cw*=1-(GAIT.w.roll||0);if(cw<.01)return;const H=HB,rest=SK.rest,GP=SK.GP;let d=1e9;
  for(const b of[H.leftFoot,H.rightFoot,H.leftToes,H.rightToes])d=Math.min(d,GP[b][1]-rest[b][1]);
  if(Math.abs(d)>1e-4){SK.root[1]-=d*cw;skUpdate()}}

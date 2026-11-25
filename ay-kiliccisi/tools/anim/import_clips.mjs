@@ -11,7 +11,9 @@ const OUT = new URL('../../data/anims.js', import.meta.url).pathname;
 const FPS = 30;
 const CLIPS = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop', cidle: 'Crouch_Idle_Loop', cwalk: 'Crouch_Fwd_Loop',
   // one-shot clips (played by normalised time, not looped): jump take-off / airborne loop / landing, chest hit
-  jstart: 'Jump_Start', jloop: 'Jump_Loop', jland: 'Jump_Land', hit: 'Hit_Chest' };
+  jstart: 'Jump_Start', jloop: 'Jump_Loop', jland: 'Jump_Land', hit: 'Hit_Chest',
+  // forward dodge: full forward roll (the body flip lives in the pelvis rotation)
+  roll: 'Roll' };
 // our bone -> source bone (UE mannequin names)
 const MAP = { Hips: 'pelvis', Spine: 'spine_01', Chest: 'spine_02', UpperChest: 'spine_03', Neck: 'neck_01', Head: 'Head' };
 for (const [S, s] of [['left', 'l'], ['right', 'r']]) Object.assign(MAP, { [S + 'Shoulder']: 'clavicle_' + s, [S + 'UpperArm']: 'upperarm_' + s, [S + 'LowerArm']: 'lowerarm_' + s, [S + 'Hand']: 'hand_' + s,
@@ -21,7 +23,7 @@ const PAR = { Hips: null, Spine: 'Hips', Chest: 'Spine', UpperChest: 'Chest', Ne
 for (const S of ['left', 'right']) Object.assign(PAR, { [S + 'Shoulder']: 'UpperChest', [S + 'UpperArm']: S + 'Shoulder', [S + 'LowerArm']: S + 'UpperArm', [S + 'Hand']: S + 'LowerArm',
   [S + 'UpperLeg']: 'Hips', [S + 'LowerLeg']: S + 'UpperLeg', [S + 'Foot']: S + 'LowerLeg', [S + 'Toes']: S + 'Foot' });
 const BONES = Object.keys(MAP);
-const ONE = { jstart: 1, jloop: 1, jland: 1, hit: 1 };
+const ONE = { jstart: 1, jloop: 1, jland: 1, hit: 1, roll: 1 };
 
 // ---------------------------------------------------------------- GLB
 const buf = fs.readFileSync(file), jl = buf.readUInt32LE(12), J = JSON.parse(buf.subarray(20, 20 + jl).toString());

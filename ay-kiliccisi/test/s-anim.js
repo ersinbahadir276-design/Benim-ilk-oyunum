@@ -37,9 +37,18 @@ module.exports = async ({ page, G, log, shot }) => {
     // hurt: chest-hit clip owns the pose, then fades back to idle
     P.st = 'hurt'; P.t = 0; P.hurtDir = [0, 1]; sim(.12); out.hurtW = JSON.stringify(GAIT.w); out.hurtCw = P.ps.clipW; sim(.8); out.afterHurt = JSON.stringify(GAIT.w); out.afterHurtSt = P.st;
     out.nan2 = nanA();
+    // forward dodge: the Roll clip flips the hips (no model-matrix spin), body stays above the ground, back to locomotion after
+    sim(.6); IN.wx = 0; IN.wz = 1; P.yaw = 0; P.inv = 0; P.st = 'move'; P.sta = 100; g.startDodge(); out.dKind = P.dodgeKind;
+    let maxFlip = 0, minHip = 9, maxSpin = 0, rGap = 9, rollW = '';
+    for (let i = 0; i < Math.round(P.dodgeT * 60) - 1; i++) { sim(1 / 60); const M = g.PM, h = g.mpt(M, SK.GP[HB.hips]), hd = g.mpt(M, SK.GP[HB.head]), gy = g.hAt(P.x, P.z);
+      maxFlip = Math.max(maxFlip, h[1] - hd[1]); minHip = Math.min(minHip, h[1] - gy); maxSpin = Math.max(maxSpin, Math.abs(P.spin || 0)); if (i === 10) rollW = JSON.stringify(GAIT.w);
+      for (const b of [HB.head, HB.hips, HB.upperChest]) rGap = Math.min(rGap, g.mpt(M, SK.GP[b])[1] - gy); }
+    out.maxFlip = maxFlip; out.minHip = minHip; out.maxSpin = maxSpin; out.rGap = rGap; out.rollW = rollW;
+    IN.wx = 0; IN.wz = 0; sim(.8); out.afterRoll = JSON.stringify(GAIT.w); out.afterRollSt = P.st; out.afterRollHip = g.mpt(g.PM, SK.GP[HB.hips])[1] - g.hAt(P.x, P.z);
+    out.nan3 = nanA();
     return out;
   });
-  log('ANIMS yüklü (10 klip)', r.ready === 10, r.ready);
+  log('ANIMS yüklü (11 klip)', r.ready === 11, r.ready);
   log('dururken klip katmanı açık', r.idleW > .95 && /idle/.test(r.idleWeights), r.idleW.toFixed(2) + ' ' + r.idleWeights);
   log('dururken ayak yerde', Math.abs(r.idleFootGap) < .05, r.idleFootGap.toFixed(3));
   log('koşarken jog klibi', /jog/.test(r.runWeights) && r.runW > .95, r.runWeights + ' hız ' + r.runSpd.toFixed(2));
@@ -60,4 +69,10 @@ module.exports = async ({ page, G, log, shot }) => {
   log('eylem kliplerinde NaN yok', !r.nan2);
   await G(() => { const g = __G; g.GT.paused = false; g.IN.mz = 1; });
   await shot('anim-run', { wait: 900 });
+  log('ileri kaçınma: takla klibi', r.dKind === 'fwd' && /roll/.test(r.rollW) && r.maxSpin === 0, r.dKind + ' ' + r.rollW + ' spin ' + r.maxSpin);
+  log('takla: gövde gerçekten ters dönüyor (kalça başın üstünde)', r.maxFlip > .15, (r.maxFlip * 100).toFixed(0) + ' cm');
+  log('takla: kalça yere iniyor', r.minHip < .5, r.minHip.toFixed(2) + ' m');
+  log('takla: baş/gövde zemine gömülmüyor', r.rGap > .02, r.rGap.toFixed(3));
+  log('takladan sonra ayakta, yürüme katmanında', r.afterRollSt === 'move' && !/roll/.test(r.afterRoll) && r.afterRollHip > .8, r.afterRollSt + ' ' + r.afterRoll + ' kalça ' + r.afterRollHip.toFixed(2));
+  log('takla sırasında NaN yok', !r.nan3);
 };

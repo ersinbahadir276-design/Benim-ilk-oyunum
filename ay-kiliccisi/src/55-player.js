@@ -146,7 +146,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  case'jumpatk':{slide(2);P.vy-=8*dt;if(!P.air&&!P.hitDone){P.hitDone=true;doHit('jumpatk');P.t=0;P.st='land';P.landT=.38}break}
  case'land':{slide(14);if(P.t>(P.landT||.15)){P.st='move';P.t=0}break}
  case'dodge':{const u=Math.min(1,P.t/P.dodgeT),sp=P.dodgeSp*(1-u*.7);P.vx=P.ddx*sp;P.vz=P.ddz*sp;const e=u*u*(3-2*u);
-  P.spin=P.dodgeKind==='fwd'?2*PI*e:0;P.roll=P.dodgeKind==='left'?2*PI*e:P.dodgeKind==='right'?-2*PI*e:0;if(u>=1){P.st='move';P.t=0;P.spin=0;P.roll=0}break}
+  P.spin=P.dodgeKind==='fwd'&&!rollClip()?2*PI*e:0;P.roll=P.dodgeKind==='left'?2*PI*e:P.dodgeKind==='right'?-2*PI*e:0;if(u>=1){P.st='move';P.t=0;P.spin=0;P.roll=0}break}
  case'block':{const sp=1.5*il;moveFree(sp,6);if(il>.05&&!nearestFoe(8,PI))P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*6);else{const f=nearestFoe(10,PI);if(f)P.yaw+=angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw)*Math.min(1,dt*8)}
   if(!IN.blockHeld){P.st='move';P.t=0}else if(take('atk')){P.st='move';startLight(0)}else if(take('dodge'))startDodge();break}
  case'parry':slide(10);if(P.t>.32){P.st=IN.blockHeld?'block':'move';P.t=0}break;
@@ -195,7 +195,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
  case'jump':{rate=16;const up=P.vy>0;q.pel=.15;q.LthX=up?-.9:-.5;q.Lkn=up?1.4:.9;q.RthX=up?-.2:-.35;q.Rkn=up?.9:.6;q.LaZ=.7;q.LaX=-.5;q.RaZ=.8;q.RaX=-.5;q.Rel=.8;q.spX=.1;q.clipW=1;break}
  case'jumpatk':{rate=26;q.two=1;q.RaZ=-1.4;q.RaX=lp(-1.1,1.5,sst(0,.25,P.t));q.Rel=.2;q.RaY=.2;q.chX=.45;q.spX=.35;q.pel=.3;q.LthX=-1.2;q.Lkn=1.6;q.RthX=-.6;q.Rkn=1.4;break}
  case'dodge':{rate=30;if(P.dodgeKind==='back'){q.pel=-.15;q.spX=-.25;q.LthX=.3;q.Lkn=.6;q.RthX=-.4;q.Rkn=.9;q.LaZ=.8;q.LaX=-.3;q.RaX=-.6;q.Rel=.9}
-  else{q.pel=.9;q.spX=.7;q.chX=.4;q.hdX=.5;q.LthX=q.RthX=-1.5;q.Lkn=q.Rkn=2.1;q.LaZ=.9;q.LaX=-.6;q.Lel=1.6;q.RaZ=.9;q.RaX=-.6;q.Rel=1.6}break}
+  else{q.pel=.9;q.spX=.7;q.chX=.4;q.hdX=.5;q.LthX=q.RthX=-1.5;q.Lkn=q.Rkn=2.1;q.LaZ=.9;q.LaX=-.6;q.Lel=1.6;q.RaZ=.9;q.RaX=-.6;q.Rel=1.6}q.clipW=clipStateW();break}
  case'block':case'parry':{rate=22;q.two=1;q.RaZ=.55;q.RaX=-1.05;q.RaY=-.35;q.Rel=1.45;q.RwX=-.35;q.RwZ=.35;q.spX=.12;q.pel=.12;q.LthX=-.45;q.Lkn=.55;q.RthX=.2;q.Rkn=.35;q.hdX=-.1;
   if(P.st==='parry'){const k=1-P.t/.32;q.RaX-=.6*k;q.chX=-.2*k;q.hdX=-.3*k}break}
  case'gbreak':{rate=12;const k=Math.sin(P.t*9)*(1-P.t/1.4);q.RaZ=.2;q.RaX=-1.6;q.Rel=.3;q.LaZ=.5;q.LaX=-1.2;q.spX=-.35+k*.1;q.chX=-.2;q.hdX=-.4;q.pel=-.2;q.LthX=.3;q.Lkn=.5;q.RthX=-.3;q.Rkn=.6;break}
