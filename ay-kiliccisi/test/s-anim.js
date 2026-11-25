@@ -55,9 +55,20 @@ module.exports = async ({ page, G, log, shot }) => {
     out.maxFlip = maxFlip; out.minHip = minHip; out.maxSpin = maxSpin; out.rGap = rGap; out.rollW = rollW;
     IN.wx = 0; IN.wz = 0; sim(.8); out.afterRoll = JSON.stringify(GAIT.w); out.afterRollSt = P.st; out.afterRollHip = g.mpt(g.PM, SK.GP[HB.hips])[1] - g.hAt(P.x, P.z);
     out.nan3 = nanA();
+    // death while standing: Death01 owns the whole body (sword arm too), no ragdoll tilt; falls on the back, lies still, respawns
+    sim(.5); P.st = 'move'; P.t = 0; P.rag.ang = 0; P.yaw = 0; g.die(); out.dClip = !!P.deathClip; out.dRag0 = P.rag.ang;
+    let dMaxRag = 0, dGap = 9, dHip = [], dW = '', dArm = 0;
+    for (let i = 0; i < Math.round(3.3 * 60); i++) { sim(1 / 60); const M = g.PM, gy = g.hAt(P.x, P.z); dMaxRag = Math.max(dMaxRag, P.rag.ang);
+      for (const b of [HB.head, HB.hips, HB.upperChest]) dGap = Math.min(dGap, g.mpt(M, SK.GP[b])[1] - gy);
+      if (i % 15 === 0) dHip.push(+(g.mpt(M, SK.GP[HB.hips])[1] - gy).toFixed(2)); if (i === 30) { dW = JSON.stringify(GAIT.w); dArm = g.CLIP.armW; }
+      if (i === 150) { out.dHead = g.mpt(M, SK.GP[HB.head])[1] - gy; out.dChestDz = (() => { const c = g.mpt(M, SK.GP[HB.upperChest]), h = g.mpt(M, SK.GP[HB.hips]); return (c[0] - h[0]) * Math.sin(P.yaw) + (c[2] - h[2]) * Math.cos(P.yaw); })(); } }
+    out.dMaxRag = dMaxRag; out.dGap = dGap; out.dHip = dHip; out.dW = dW; out.dArm = dArm; out.dNan = nanA();
+    sim(.6); out.dAfterSt = P.st; out.dAfterClip = !!P.deathClip; sim(.6); out.dAfterW = JSON.stringify(GAIT.w); out.dAfterHip = g.mpt(g.PM, SK.GP[HB.hips])[1] - g.hAt(P.x, P.z);
+    // death while already knocked down keeps the procedural ragdoll (no clip on top of a lying body)
+    sim(.5); P.inv = 0; g.knockDown([0, -1], 1); sim(.4); g.die(); out.dDownClip = !!P.deathClip; sim(.3); out.dDownW = P.ps.clipW; sim(3.5);
     return out;
   });
-  log('ANIMS yüklü (14 klip)', r.ready === 14, r.ready);
+  log('ANIMS yüklü (15 klip)', r.ready === 15, r.ready);
   log('dururken klip katmanı açık', r.idleW > .95 && /idle/.test(r.idleWeights), r.idleW.toFixed(2) + ' ' + r.idleWeights);
   log('dururken ayak yerde', Math.abs(r.idleFootGap) < .05, r.idleFootGap.toFixed(3));
   log('koşarken jog klibi', /jog/.test(r.runWeights) && r.runW > .95, r.runWeights + ' hız ' + r.runSpd.toFixed(2));
@@ -91,4 +102,11 @@ module.exports = async ({ page, G, log, shot }) => {
   log('takla: baş/gövde zemine gömülmüyor', r.rGap > .02, r.rGap.toFixed(3));
   log('takladan sonra ayakta, yürüme katmanında', r.afterRollSt === 'move' && !/roll/.test(r.afterRoll) && r.afterRollHip > .8, r.afterRollSt + ' ' + r.afterRoll + ' kalça ' + r.afterRollHip.toFixed(2));
   log('takla sırasında NaN yok', !r.nan3);
+  log('ölüm: Death01 klibi tüm gövdeyi sürüyor (kılıç kolu dahil)', r.dClip && /death/.test(r.dW) && r.dArm > .9, r.dW + ' kol ' + r.dArm.toFixed(2));
+  log('ölüm: ragdoll eğimi yok (çift dönüş yok)', r.dRag0 === 0 && r.dMaxRag === 0, r.dMaxRag.toFixed(3));
+  log('ölüm: sırt üstü yere düşüyor', r.dHip[r.dHip.length - 1] < .3 && r.dHip[0] > .8 && r.dHead < .35 && r.dChestDz < -.2, 'kalça ' + r.dHip.join(' ') + ' baş ' + (r.dHead || 0).toFixed(2) + ' göğüs ' + (r.dChestDz || 0).toFixed(2));
+  log('ölüm: baş/gövde zemine gömülmüyor', r.dGap > .02, r.dGap.toFixed(3));
+  log('ölüm: NaN yok', !r.dNan);
+  log('ölümden sonra yeniden doğuş, ayakta', r.dAfterSt === 'move' && !r.dAfterClip && !/death/.test(r.dAfterW) && r.dAfterHip > .8, r.dAfterSt + ' ' + r.dAfterW + ' kalça ' + r.dAfterHip.toFixed(2));
+  log('yerdeyken ölüm: prosedürel ragdoll kalıyor', !r.dDownClip && r.dDownW < .05, 'klip ' + r.dDownClip + ' cw ' + r.dDownW.toFixed(2));
 };

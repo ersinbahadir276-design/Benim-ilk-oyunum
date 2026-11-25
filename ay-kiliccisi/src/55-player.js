@@ -43,8 +43,8 @@ function swordTip(){return mpt(PM,SK.GP[HB.rightHand].map((v,i)=>v+r3v(SK.GR[HB.
 function knockDown(dir,power){const l=Math.hypot(dir[0],dir[1])||1,fx=dir[0]/l,fz=dir[1]/l;// world fall direction -> model space
  const c=Math.cos(P.yaw),s=Math.sin(P.yaw);P.rag={ang:Math.max(P.rag.ang||0,.05),av:2.2+power*1.6,fx:fx*c-fz*s,fz:fx*s+fz*c,bounce:0,lag:0,lagv:-3*power};
  P.st='down';P.t=0;P.vx=fx*2.6*power;P.vz=fz*2.6*power;P.vy=0;P.air=false;P.sprintHeld=false;P.crouch=false;P.charge=0;P.struggle=0;P.jig=1;sfx.thud()}
-function die(){P.hp=0;P.st='dead';P.t=0;P.alive=false;P.berserk=0;P.lock=null;dropBag();SYS.deaths=(SYS.deaths||0)+1;if(P.pinBy){P.pinBy=null}if(P.td)cancelTakedown();if(P.rag.ang<.3)knockDown([-Math.sin(P.yaw),-Math.cos(P.yaw)],.8);P.st='dead';note('[Sistem] Öldün. Ruhun geri çağrılıyor…','red')}
-function respawn(){const al=SYS.altarAt!==undefined&&SYS.altarAt>=0?ALTARS[SYS.altarAt]:null,c=al?[al.x+1.6,al.z+1.6]:SYS.gate?[0,60]:[SPAWN[0],SPAWN[2]];SYS.flasks=SYS.flaskMax;P.x=c[0];P.z=c[1];P.hp=maxHP();P.sta=100;P.guard=100;P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;P.inv=2;P.pinBy=null;P.alive=true;P.air=false;P.vy=0;P.lift=0;CAM.tx=P.x;CAM.tz=P.z;
+function die(){P.hp=0;P.st='dead';P.t=0;P.alive=false;P.berserk=0;P.lock=null;dropBag();SYS.deaths=(SYS.deaths||0)+1;if(P.pinBy){P.pinBy=null}if(P.td)cancelTakedown();if(P.rag.ang<.3){if(clipHas('death')){P.deathClip=true;P.rag.ang=0;P.rag.av=0;P.vx=-Math.sin(P.yaw)*.6;P.vz=-Math.cos(P.yaw)*.6;P.vy=0;P.sprintHeld=false;P.crouch=false;P.charge=0;P.jig=0}else knockDown([-Math.sin(P.yaw),-Math.cos(P.yaw)],.8)}P.st='dead';note('[Sistem] Öldün. Ruhun geri çağrılıyor…','red')}
+function respawn(){const al=SYS.altarAt!==undefined&&SYS.altarAt>=0?ALTARS[SYS.altarAt]:null,c=al?[al.x+1.6,al.z+1.6]:SYS.gate?[0,60]:[SPAWN[0],SPAWN[2]];SYS.flasks=SYS.flaskMax;P.x=c[0];P.z=c[1];P.hp=maxHP();P.sta=100;P.guard=100;P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;P.deathClip=false;P.inv=2;P.pinBy=null;P.alive=true;P.air=false;P.vy=0;P.lift=0;CAM.tx=P.x;CAM.tz=P.z;
  for(const w of wolves)if(!w.tame&&!w.dead){w.aware=0;if(hostileSt(w)){w.st='return';w.t=0}}for(const g of GOBS)g.calmDown&&g.calmDown();for(const c of CROCS)c.calmDown&&c.calmDown();if(DRAGON)DRAGON.calmDown();
  note('[Sistem] Yeniden doğdun.')}
 // --------------------------------------------------------------- starting actions
@@ -161,7 +161,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
    if(P.struggle>=1){const w=P.pinBy;P.pinBy=null;w.st='recover';w.t=0;w.pitch=0;w.cd=rr(1.6,2.4);w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;sfx.hit();note('[Sistem] Kurdu üstünden attın!');P.t=0}}
   else if(P.t>.9&&R.ang>=1.4){P.st='getup';P.t=0}break}
  case'getup':{slide(10);const R=P.rag;R.ang=Math.max(0,1.45*(1-sst(.15,.95,P.t/1.0)));R.av=0;if(P.t>1.0){P.st='move';P.t=0;R.ang=0;P.inv=Math.max(P.inv,1.0);const p=collide(P.x,P.z,.34);P.x=p[0];P.z=p[1]}break}
- case'dead':{const R=P.rag;slide(5);if(R.ang<1.45){R.av+=Math.sin(Math.max(R.ang,.05))*9.5*dt;R.ang=Math.min(1.45,R.ang+R.av*dt)}if(P.t>3.6)respawn();break}}
+ case'dead':{const R=P.rag;slide(5);if(P.deathClip){const t0=(P.t-dt)*DEATH_RATE,t1=P.t*DEATH_RATE;if(t0<DEATH_HIT&&t1>=DEATH_HIT){sfx.thud();CAM.shake=Math.max(CAM.shake,.25)}}else if(R.ang<1.45){R.av+=Math.sin(Math.max(R.ang,.05))*9.5*dt;R.ang=Math.min(1.45,R.ang+R.av*dt)}if(P.t>3.6)respawn();break}}
  IN.mash=0;
  // integrate: horizontal velocity with collision and deep-water stop; vertical with gravity
  if(move){let nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;if(depthAt(nx,nz)>1.25){nx=P.x;nz=P.z;P.vx=P.vz=0}const p=collide(nx,nz,.34);P.x=p[0];P.z=p[1]}
@@ -217,7 +217,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
    q.LthX=lp(-1.35,0,stand);q.Lkn=lp(2.1,0,stand);q.RthX=lp(-.2,0,stand);q.Rkn=lp(2.2,0,stand);q.hdX=lp(.4,0,stand)}break}
  case'down':case'dead':{rate=10;const j=P.jig,n=(a,b)=>Math.sin(t*a+b)*j,R=P.rag,lag=cl(R.lag,-1.2,1.2);// limbs trail behind the falling body
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
-  q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
+  q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;q.clipW=clipStateW();break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
  gaitUpdate(GT.dt,P.st==='move');
  const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}

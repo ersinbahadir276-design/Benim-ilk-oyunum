@@ -8,7 +8,7 @@ const CLIP={ready:false},GAIT={ph:0,it:0,w:{idle:1},u:{}};
 const GAIT_REF={walk:1.4,jog:3.7,sprint:6.6,cwalk:1.3};
 // bones the clips drive: hips, spine, head and both legs, plus the free (left) arm. Right arm = sword arm: procedural,
 // except in the sword-combo clips (ARM_CLIPS), which also drive it so the cut comes from the hips through the arm.
-const CLIP_ARM={rightShoulder:1,rightUpperArm:1,rightLowerArm:1,rightHand:1},ARM_CLIPS={swA:1,swB:1,swC:1};
+const CLIP_ARM={rightShoulder:1,rightUpperArm:1,rightLowerArm:1,rightHand:1},ARM_CLIPS={swA:1,swB:1,swC:1,death:1};
 function animInit(){CLIP.init=true;if(typeof ANIMS==='undefined'||!HB)return;
  const b64=s=>{const t=atob(s),u=new Uint8Array(t.length);for(let i=0;i<t.length;i++)u[i]=t.charCodeAt(i);return u.buffer};
  const hum=n=>n[0].toLowerCase()+n.slice(1);CLIP.idx=[];CLIP.slot=[];
@@ -17,6 +17,7 @@ function animInit(){CLIP.init=true;if(typeof ANIMS==='undefined'||!HB)return;
  for(const k in ANIMS.clips){const c=ANIMS.clips[k],q16=new Int16Array(b64(c.q)),hy=new Int16Array(b64(c.hy)),q=new Float32Array(q16.length);
   for(let i=0;i<q.length;i++)q[i]=q16[i]/32767;CLIP.clips[k]={n:c.n,dur:c.dur,q,hy}}
  CLIP.acc=new Float32Array(CLIP.idx.length*4);CLIP.ready=true}
+const clipHas=k=>{if(!CLIP.init)animInit();return!!(CLIP.ready&&CLIP.clips[k])};
 // gait weights + phase from the hero's real ground speed (called once per frame from poseTarget)
 function gaitUpdate(dt,moving){if(!CLIP.init)animInit();if(!CLIP.ready)return;const s=moving?P.spd:0,W={};
  // one-shot action clips, played by normalised time (u 0..1) so they always fit the game state's own duration
@@ -30,7 +31,7 @@ function gaitUpdate(dt,moving){if(!CLIP.init)animInit();if(!CLIP.ready)return;co
  GAIT.ph=(GAIT.ph+rate*dt)%1;GAIT.it+=dt;gaitBlend(W,dt)}
 // locomotion weights are already continuous in speed; a switch into or out of an action clip cross-fades (~0.1 s)
 // instead of popping. A fading one-shot keeps the last normalised time it was given (holds its final pose).
-const ONE_SHOT={jstart:1,jloop:1,jland:1,hit:1,roll:1,swA:1,swB:1,swC:1};
+const ONE_SHOT={jstart:1,jloop:1,jland:1,hit:1,roll:1,swA:1,swB:1,swC:1,death:1};
 function gaitBlend(W,dt){const O=GAIT.w;let act=false;for(const k in W)if(ONE_SHOT[k])act=true;for(const k in O)if(ONE_SHOT[k])act=true;
  if(!act){GAIT.w=W;return}const a=Math.min(1,dt*12),N={};let tot=0;
  for(const k in O)N[k]=(O[k]||0)*(1-a);for(const k in W)N[k]=(N[k]||0)+W[k]*a;
@@ -42,6 +43,8 @@ const JS_T0=.1,JS_RATE=1.5,JL_SPAN=.45;
 function ACTION_CLIP(W){const C=CLIP.clips,st=P.st;
  if(st==='jump'&&C.jstart&&C.jloop){const k=sst(.38,.6,P.t);W.jstart=1-k;W.jloop=k;GAIT.u.jstart=cl((JS_T0+P.t*JS_RATE)/C.jstart.dur,0,1);return true}
  if(st==='land'&&C.jland&&(P.landT||.15)<.3){W.jland=1;GAIT.u.jland=cl(P.t/(P.landT||.15),0,1)*JL_SPAN/C.jland.dur;return true}
+ // death: Death01 in real time (stagger, knees give, falls on the back by ~0.93 s, lies still); whole body incl. sword arm
+ if(deathClip()){W.death=1;GAIT.u.death=Math.min(P.t*DEATH_RATE,DEATH_T1)/C.death.dur;return true}
  if(st==='hurt'&&C.hit){W.hit=1;GAIT.u.hit=cl(P.t/.38,0,1);return true}
  // forward dodge: Roll from the dive (crouched start skipped) to back on the feet, squeezed into the dodge's own duration
  if(rollClip()){W.roll=1;GAIT.u.roll=(ROLL_T0+sst(0,1,P.t/P.dodgeT)*(ROLL_T1-ROLL_T0))/C.roll.dur;return true}
@@ -56,9 +59,12 @@ const swordClip=()=>{if(P.st!=='attack'||!CLIP.ready)return null;const k=SW_POSE
 // normalised attack time u (0..1) -> clip time: wind-up until SW_HIT (the game's hit is at u .36, its slash .3-.58), then follow-through
 function swordTime(k,u){const S=SWORD[k];u=cl(u,0,1);return u<SW_HIT?lp(S.t0,S.imp,sst(0,1,u/SW_HIT)*.5+u/SW_HIT*.5):lp(S.imp,S.t1,(u-SW_HIT)/(1-SW_HIT))}
 // Roll (1.47 s): 0.04 s crouch -> dive (hip 1.37 m) -> on the back (hip 0.06 m) -> up by ~1.1 s. The dodge plays 0.04-1.1 s.
+// Death01 (2.4 s): hip 1.06 m -> 0.59 m at 0.6 s -> on the back (0.06 m) at 0.93 s; legs settle by ~1.4 s. Played 1.1x, held from 2.2 s.
+// P.deathClip is set by die() only when standing (a death while already knocked down keeps the procedural ragdoll).
+const DEATH_RATE=1.1,DEATH_T1=2.2,DEATH_HIT=.93,deathClip=()=>P.st==='dead'&&!!P.deathClip&&!!(CLIP.ready&&CLIP.clips.death);
 const ROLL_T0=.04,ROLL_T1=1.1,rollClip=()=>P.st==='dodge'&&P.dodgeKind==='fwd'&&!!(CLIP.ready&&CLIP.clips.roll);
 // clip weight wanted by a pose state (1 = the clip layer drives legs/spine/left arm)
-const clipStateW=()=>P.st==='move'||rollClip()||!!swordClip()||P.st==='jump'||P.st==='hurt'||(P.st==='land'&&(P.landT||.15)<.3)?1:0;
+const clipStateW=()=>P.st==='move'||rollClip()||deathClip()||!!swordClip()||P.st==='jump'||P.st==='hurt'||(P.st==='land'&&(P.landT||.15)<.3)?1:0;
 // blended local rotation (quaternion) of every driven bone + hip height offset (m)
 // right-arm bones accumulate only from ARM_CLIPS; CLIP.armW = their share of the blend (procedural arm keeps the rest)
 function clipSample(){const acc=CLIP.acc,nb=CLIP.nb,idx=CLIP.idx,arm=CLIP.arm;acc.fill(0);let hy=0,tw=0,aw=0;
@@ -86,8 +92,8 @@ function applyClips(cw){if(!CLIP.init)animInit();if(!CLIP.ready||cw<.01)return n
   R[b]=q2r3(x,y,z,w)}
  return hy}
 // after skUpdate: put the lowest foot back on the ground (the source rig's legs are not exactly Kael's)
-// (not while rolling: the feet are in the air, playerMatrix's lying clearance keeps the body above the ground instead)
+// (not while rolling or dying: the feet are in the air, playerMatrix's lying clearance keeps the body above the ground instead)
 // (nor during the airborne spin of Sword_Regular_C, whose own hip curve lifts the body)
-function clipGround(cw){cw*=1-(GAIT.w.roll||0)-(GAIT.w.swC&&GAIT.u.swC*CLIP.clips.swC.dur<.58?GAIT.w.swC:0);if(cw<.01)return;const H=HB,rest=SK.rest,GP=SK.GP;let d=1e9;
+function clipGround(cw){cw*=1-(GAIT.w.roll||0)-(GAIT.w.death||0)-(GAIT.w.swC&&GAIT.u.swC*CLIP.clips.swC.dur<.58?GAIT.w.swC:0);if(cw<.01)return;const H=HB,rest=SK.rest,GP=SK.GP;let d=1e9;
  for(const b of[H.leftFoot,H.rightFoot,H.leftToes,H.rightToes])d=Math.min(d,GP[b][1]-rest[b][1]);
  if(Math.abs(d)>1e-4){SK.root[1]-=d*cw;skUpdate()}}

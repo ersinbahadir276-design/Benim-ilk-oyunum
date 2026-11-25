@@ -11,7 +11,7 @@ Testler: `cd ay-kiliccisi && NODE_PATH=$(npm root -g) node test/harness.js test/
 | # | Özellik | Durum |
 |---|---|---|
 | 1 | Yüksek kaliteli erkek kahraman | **Büyük ölçüde var** — Kael (SDF heykel, 21k üçgen, PBR malzeme). Açık: kullanıcının istediği zırh yeniden tasarımı (tasarım yönü belirtilmemiş, onay bekliyor) |
-| 2 | Gerçekçi 3B karakter animasyonları | **Devam ediyor** — tur 1: hareket klipleri; tur 2: zıplama/iniş/darbe; tur 3: ileri takla; tur 4: hafif kombo kılıç klipleri. Açık: ağır/koşu/zıplama saldırısı, yan/geri kaçınma, ölüm, koşuda uçuş fazı, ayak IK'sı |
+| 2 | Gerçekçi 3B karakter animasyonları | **Devam ediyor** — tur 1: hareket klipleri; tur 2: zıplama/iniş/darbe; tur 3: ileri takla; tur 4: hafif kombo kılıç klipleri; tur 5: ölüm klibi. Açık: ağır/koşu/zıplama saldırısı, yan/geri kaçınma, koşuda uçuş fazı, ayak IK'sı |
 | 3 | Gönderilen GLB modellerin entegrasyonu | **Kısmen** — elf gövdesi, saç, ejderha, Quaternius klipleri oyunda. `hero.glb` (VRoid) ve `fox.glb` yalnızca eski yaban.html'de |
 | 4 | Çok sayıda hayvan ve yaratık | Kısmen — kurt, goblin, okçu, büyük goblin, timsah, ejderha (yaban.html'de 14 tür, Ay Kılıççısı'nda henüz yok) |
 | 5 | Yaratık evcilleştirme ve yapay zekâ | Kısmen — kurt besleme, görüş/uyarı yapay zekâsı, Veyra yoldaşı |
@@ -95,14 +95,33 @@ Testler: `cd ay-kiliccisi && NODE_PATH=$(npm root -g) node test/harness.js test/
   - A'nın savuruş devamında kılıç başın arkasında dik kalıyor.
   - Ağır saldırı ve iki elli tutuş hâlâ prosedürel.
 
+### Tur 5 — 2026-11-25: ölüm = gerçek düşme klibi (özellik 2 + 3)
+- Bu dal (`ccr-70a30f22-7zm4ho`) tur 4'ün dalını (`ccr-70a30f22-j9phxd`, tur 1+2+3+4) hızlı ileri sararak aldı ve üstüne kurdu.
+- `tools/anim/import_clips.mjs`: `hero_anims1.glb`'den `Death01` (2,4 sn) tek seferlik klip olarak eklendi. Profil: sendeleme →
+  0,6 sn'de dizler çöküyor (kalça 0,59 m) → 0,93 sn'de sırt üstü yerde (kalça 6 cm) → bacaklar ~1,4 sn'de duruluyor.
+  `PROFZ=1` teşhisi artık ölüm klibini de yazdırıyor. Eski 14 klip bayt bayt aynı. `data/anims.js` 142 → 159 KB.
+  (`Sword_Attack` de incelendi: 0,40 sn'de 37 m/s yatay kesik + adım; ağır saldırı tepeden iki elli olduğu için şimdilik alınmadı.)
+- `src/32-anim.js`: `dead` durumunda `Death01` gerçek zamanda (×1,1) oynuyor, 2,2 sn'den sonra son pozda duruyor. Ölüm klibi
+  tüm gövdeyi, kılıç kolu dahil sürüyor (`ARM_CLIPS`); düşerken «en alttaki ayağı zemine oturt» kapalı (gövdeyi zemin üstünde
+  `playerMatrix`'in yatık açıklık kontrolü tutuyor). `clipHas(k)` yardımcı fonksiyonu.
+- `src/55-player.js`: `die()` ayaktayken artık `knockDown` ragdoll eğimini başlatmıyor (yoksa klipteki düşüşle model matrisi
+  eğimi üst üste binip çift dönüş olurdu): `P.deathClip` işaretlenir, eğim 0, hafif geri kayma. Yere çarpma anında (0,93 sn)
+  gümleme sesi ve küçük kamera sarsıntısı. Zaten yerde yatarken ölünürse eski prosedürel ragdoll sürüyor. `respawn()` işareti siliyor.
+- `src/60-game.js`: test için `die`, `knockDown` dışa açık.
+- `test/s-anim.js`: 38 → 45 test (klip tüm gövdeyi ve kolu sürüyor, ragdoll eğimi 0, kalça 1,06 → 0,11 m / baş 0,11 m / göğüs
+  kalçanın 48 cm gerisinde = sırt üstü, baş/gövde zemine gömülmüyor, NaN yok, yeniden doğunca ayakta yürüme katmanında,
+  yerdeyken ölümde prosedürel ragdoll kalıyor) — 45/45. `test/s-deathshots.js`: 6 karelik ekran görüntüsü (`test/out/death-*.jpg`);
+  sendeleme, geriye devrilme ve yerde yatış gözle kontrol edildi.
+- Regresyon: s-mech 47/47, s-loop 71/71 (3 ölüm/yeniden doğuş testi dahil), s-stance 11/11, s-ui 7/7; s-perf mantık 0,08–0,33 ms/kare (değişmedi).
+- Bilinen kusur: yatarken pelerin gövdenin altında kalıp görünmüyor; düşerken kılıç gövdeyle birlikte savruluyor, elden bırakılmıyor.
+
 ## Sıradaki öncelikler
-0. **Dalları birleştir (kullanıcı):** zamanlanmış turların her biri ayrı bir `ccr-…` dalına itiliyor ve hiçbiri `main`'e birleştirilmedi. En güncel birikmiş dal artık `ccr-70a30f22-j9phxd` (tur 1+2+3+4). Bu dal `main`'e birleştirilmezse sonraki tur yine eski koddan başlar. Başka dallarda bitmiş işler de var: ayak IK'sı (`-8467z2`, `-p3ku0m`), pelerin fiziği (`-4zcmw1`), zırh denemeleri (`-tow8uj`, `-2wbxib`). Bunları yeniden yazmak yerine biri seçilip birleştirilmeli.
+0. **Dalları birleştir (kullanıcı):** zamanlanmış turların her biri ayrı bir `ccr-…` dalına itiliyor ve hiçbiri `main`'e birleştirilmedi. En güncel birikmiş dal artık `ccr-70a30f22-7zm4ho` (tur 1+2+3+4+5). Bu dal `main`'e birleştirilmezse sonraki tur yine eski koddan başlar. Başka dallarda bitmiş işler de var: ayak IK'sı (`-8467z2`, `-p3ku0m`), pelerin fiziği (`-4zcmw1`), zırh denemeleri (`-tow8uj`, `-2wbxib`). Bunları yeniden yazmak yerine biri seçilip birleştirilmeli.
 1. **Animasyon (devam):**
    - Kılıç ucu zemin çarpışması: savuruşta bıçak zemine girerse bileği ya da kalçayı düzelt.
-   - Ağır saldırı için klip yok; `Sword_Regular_C`'nin tepeden vuruşu yavaşlatılıp ağır saldırıya da uygulanabilir.
+   - Ağır saldırı için klip yok; `Sword_Regular_C`'nin tepeden vuruşu yavaşlatılıp ağır saldırıya da uygulanabilir (alt gövde + kalça; iki elli kollar prosedürel kalmalı). Şarj (`charge`) duruşu için `Sword_Idle` denenebilir.
    - Koşu saldırısı ve zıplama saldırısı.
    - Yan ve geri kaçınmalar: şu an model matrisiyle fıçı dönüşü ve prosedürel poz.
-   - Ölüm: `Death01` klibi, ragdoll ile çift dönüş olmamalı.
 2. Koşuda uçuş fazı: en alttaki ayak yalnızca temas karelerinde zemine sabitlensin.
 3. Kahraman: zırh yeniden tasarımı için kullanıcıdan yön/referans gerekiyor.
 4. Yaratıklar: yaban.html'deki 14 türü Ay Kılıççısı'na taşı. İlk aday `fox.glb` (iskeletli, animasyonlu).

@@ -13,7 +13,9 @@ const CLIPS = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprin
   // one-shot clips (played by normalised time, not looped): jump take-off / airborne loop / landing, chest hit
   jstart: 'Jump_Start', jloop: 'Jump_Loop', jland: 'Jump_Land', hit: 'Hit_Chest',
   // forward dodge: full forward roll (the body flip lives in the pelvis rotation)
-  roll: 'Roll' };
+  roll: 'Roll',
+  // death: stagger, knees give, falls on the back (hip 6 cm by 0.93 s), legs flop, lies still from ~1.4 s
+  death: 'Death01' };
 // Universal Animation Library 2: one-handed sword combo (A: right-to-left cut, B: backhand return, C: overhead finisher).
 // Only the lower body + pelvis are used in game (the sword arm and the upper torso stay procedural, see src/32-anim.js).
 const CLIPS2 = { swA: 'Sword_Regular_A', swB: 'Sword_Regular_B', swC: 'Sword_Regular_C' };
@@ -26,7 +28,7 @@ const PAR = { Hips: null, Spine: 'Hips', Chest: 'Spine', UpperChest: 'Chest', Ne
 for (const S of ['left', 'right']) Object.assign(PAR, { [S + 'Shoulder']: 'UpperChest', [S + 'UpperArm']: S + 'Shoulder', [S + 'LowerArm']: S + 'UpperArm', [S + 'Hand']: S + 'LowerArm',
   [S + 'UpperLeg']: 'Hips', [S + 'LowerLeg']: S + 'UpperLeg', [S + 'Foot']: S + 'LowerLeg', [S + 'Toes']: S + 'Foot' });
 const BONES = Object.keys(MAP);
-const ONE = { jstart: 1, jloop: 1, jland: 1, hit: 1, roll: 1, swA: 1, swB: 1, swC: 1 };
+const ONE = { jstart: 1, jloop: 1, jland: 1, hit: 1, roll: 1, swA: 1, swB: 1, swC: 1, death: 1 };
 
 // ---------------------------------------------------------------- GLB
 let buf, J, binOff, N, parent, byName, animByName;
@@ -102,7 +104,7 @@ for (const [key, name] of Object.entries(clips)) {
     const hp = convP(pos(W[byName.pelvis])), fl = convP(pos(W[byName.foot_l])), fr = convP(pos(W[byName.foot_r]));
     frames.push({ loc, hip: hp.map((v) => v * SC), fl: fl.map((v) => v * SC), fr: fr.map((v) => v * SC), hr: convP(pos(W[byName.hand_r])).map((v) => v * SC) }); }
   // PROFZ=1: sword-clip diagnostics (right-hand speed per frame -> impact time in src/32-anim.js SWORD; feet/hip layout and pelvis yaw)
-  if (process.env.PROFZ && key.startsWith('sw')) console.log('   hand_r speed m/s:', frames.map((f, i) => i ? Math.round(Math.hypot(...f.hr.map((v, j) => v - frames[i - 1].hr[j])) * FPS * 10) / 10 : 0).join(' '));
+  if (process.env.PROFZ && (key.startsWith('sw') || key === 'death')) console.log('   hand_r speed m/s:', frames.map((f, i) => i ? Math.round(Math.hypot(...f.hr.map((v, j) => v - frames[i - 1].hr[j])) * FPS * 10) / 10 : 0).join(' '));
   // ground speed from the planted (lower) foot, relative to the pelvis (works for in-place and root-motion clips)
   const minY = Math.min(...frames.map((f) => Math.min(f.fl[1], f.fr[1])));
   const v = []; for (let f = 0; f < n; f++) { const A = frames[f], B = frames[(f + 1) % n]; const low = A.fl[1] < A.fr[1] ? 'fl' : 'fr'; if (A[low][1] > minY + 0.09) continue;
@@ -117,7 +119,7 @@ for (const [key, name] of Object.entries(clips)) {
   rot.forEach((fr, f) => { BONES.forEach((b, k) => { let qq = fr.loc[b]; if (f > 0) { const o = ((f - 1) * BONES.length + k) * 4; if (q[o] * qq[0] + q[o + 1] * qq[1] + q[o + 2] * qq[2] + q[o + 3] * qq[3] < 0) qq = qq.map((x) => -x); }
     for (let c = 0; c < 4; c++) q[(f * BONES.length + k) * 4 + c] = Math.round(qq[c] * 32767); });
     hy[f] = Math.round((fr.hip[1] - ourHipY) * 1000); });
-  if (process.env.PROFZ && key.startsWith('sw')) console.log('   z hip/footL/footR rel (cm):', frames.filter((_, i) => i % 3 === 0).map((f) => [f.hip[2], f.fl[2] - f.hip[2], f.fr[2] - f.hip[2], f.fl[0]-f.hip[0], f.fr[0]-f.hip[0]].map((v) => Math.round(v * 100)).join('/') + '/yaw' + Math.round(Math.atan2(2*(f.loc.Hips[0]*f.loc.Hips[2]+f.loc.Hips[3]*f.loc.Hips[1]), 1-2*(f.loc.Hips[0]**2+f.loc.Hips[1]**2))*57)).join(' '));
+  if (process.env.PROFZ && (key.startsWith('sw') || key === 'death')) console.log('   z hip/footL/footR rel (cm):', frames.filter((_, i) => i % 3 === 0).map((f) => [f.hip[2], f.fl[2] - f.hip[2], f.fr[2] - f.hip[2], f.fl[0]-f.hip[0], f.fr[0]-f.hip[0]].map((v) => Math.round(v * 100)).join('/') + '/yaw' + Math.round(Math.atan2(2*(f.loc.Hips[0]*f.loc.Hips[2]+f.loc.Hips[3]*f.loc.Hips[1]), 1-2*(f.loc.Hips[0]**2+f.loc.Hips[1]**2))*57)).join(' '));
   if (ONE[key]) console.log('   prof hip/footL/footR (cm):', frames.filter((_, i) => i % 4 === 0).map((f) => [f.hip[1], f.fl[1], f.fr[1]].map((v) => Math.round(v * 100)).join('/')).join(' '));
   out[key] = { n, dur: +dur.toFixed(4), speed: +speed.toFixed(3), q: Buffer.from(q.buffer).toString('base64'), hy: Buffer.from(hy.buffer).toString('base64') };
   console.log(key.padEnd(7), name.padEnd(18), 'frames', n, 'dur', dur.toFixed(2), 'speed', speed.toFixed(2), 'm/s', 'hip mean dy', ((hip0 - ourHipY) * 100).toFixed(1), 'cm');
