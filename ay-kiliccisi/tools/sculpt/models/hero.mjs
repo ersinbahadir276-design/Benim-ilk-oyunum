@@ -37,6 +37,28 @@ export default function hero(ALL) {
   C({ name: 'belt', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: I(0.004, beltE, slab(1.103, 1.153)) });
   C({ name: 'buckle', mat: 'trim', bone: 'Hips', rigid: true, k: 0.003, sdf: Sub(0.003, box([0, 1.128, 0.178], [0.046, 0.034, 0.014], null, 0.008), box([0, 1.128, 0.19], [0.026, 0.015, 0.02], null, 0.004)) });
   C({ name: 'beltRivets', mat: 'rivet', bone: 'Hips', rigid: true, k: 0, sdf: U(0, ...[-1.25, -0.8, 0.8, 1.25, 2.2, 2.6, 3.0, 3.4, 3.8].map((a) => sphere([Math.sin(a) * 0.214, 1.128, 0.005 + Math.cos(a) * 0.174], 0.0085))) });
+  // --- armour pass 2: keel ridge, raised crescent-moon emblem with a moonstone, diagonal baldric, belt pouch
+  const onPlate = (t) => I(0.002, grow(cuirSolid, t), zcut(0.08, -1));
+  C({ name: 'keel', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.004, sdf: I(0.003, onPlate(0.006), box([0, 1.5, 0.2], [0.0065, 0.11, 0.06], null, 0.003), xcut(-0.0065, 1), slab(1.36, 1.6)) });
+  const moonC = [0, 1.425], crescent = Sub(0.003, cone([moonC[0], moonC[1], 0], [moonC[0], moonC[1], 0.4], 0.052, 0.052), cone([0.024, moonC[1] + 0.012, 0], [0.024, moonC[1] + 0.012, 0.4], 0.045, 0.045));
+  C({ name: 'moon', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: I(0.002, onPlate(0.009), crescent) });
+  C({ name: 'moonstone', mat: 'gem', bone: 'UpperChest', rigid: true, k: 0.002, sdf: ellipsoid([0.012, 1.428, 0.196], [0.013, 0.016, 0.009]) });
+  const strapBand = shell(plane([0, 1.56, 0], [0.6, 0.8, 0]), 0.021);
+  C({ name: 'baldric', mat: 'leather', bone: 'UpperChest', rigid: true, k: 0.003, sdf: I(0.003, shell(grow(cuirSolid, 0.008), 0.0055), strapBand, slab(1.3, 1.72)) });
+  const bkA = -Math.atan(0.75), bkC = [0.07, 1.5075, 0.192];
+  C({ name: 'baldricBuckle', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: Sub(0.002, box(bkC, [0.022, 0.028, 0.008], rot.mul(rot.z(bkA), rot.x(-0.25)), 0.005), box(v3.add(bkC, [0, 0, 0.006]), [0.012, 0.017, 0.01], rot.mul(rot.z(bkA), rot.x(-0.25)), 0.002)) });
+  C({ name: 'baldricRivets', mat: 'rivet', bone: 'UpperChest', rigid: true, k: 0, sdf: U(0, ...[-0.17, -0.11, 0.15, 0.2].map((x) => { const y = 1.56 - 0.75 * x, z = -0.31 + Math.sqrt(Math.max(0, 0.2704 - (Math.abs(x) + 0.14) ** 2 - (y - 1.47) ** 2)) + 0.014; return sphere([x, y, z], 0.0075); })) });
+  const pA = 2.35, pC = [Math.sin(pA) * 0.225, 1.085, 0.005 + Math.cos(pA) * 0.185];
+  C({ name: 'pouch', mat: 'leather', bone: 'Hips', rigid: true, k: 0.006, sdf: box(pC, [0.042, 0.04, 0.022], rot.y(pA), 0.012) });
+  C({ name: 'pouchFlap', mat: 'leather', bone: 'Hips', rigid: true, k: 0.003, sdf: I(0.003, box(v3.add(pC, [Math.sin(pA) * 0.006, 0.012, Math.cos(pA) * 0.006]), [0.045, 0.03, 0.024], rot.y(pA), 0.01), plane(v3.add(pC, [0, 0.0, 0]), [0, -1, 0])) });
+  C({ name: 'pouchStud', mat: 'trim', bone: 'Hips', rigid: true, k: 0, sdf: sphere(v3.add(pC, [Math.sin(pA) * 0.03, 0.005, Math.cos(pA) * 0.03]), 0.008) });
+  // front tabard: oxblood cloth hanging from the belt between the tassets, frayed hem, swings with both legs
+  const tabHem = { d: (x, y, z) => (0.7 + 0.03 * Math.abs(x) / 0.08 + 0.028 * Math.max(0, fbm(x * 30, 0.7, 2, 3)) + 0.018 * Math.max(0, noise(x * 90, 3.1, 1))) - y, bb: [-1, 0.6, -1, 1, 3, 1] };
+  const tabFold = (x, y) => { const t = Math.max(0, Math.min(1, (1.1 - y) / 0.4)); return t * (0.005 * Math.sin(x * 70 + 0.6) + 0.004 * fbm(x * 12, y * 6, 0, 2)); };
+  const INF_BB = 1e9;
+  const tabW = { d: (x, y) => Math.abs(x) - (0.07 + 0.016 * Math.max(0, Math.min(1, (1.1 - y) / 0.38))), bb: [-0.1, -INF_BB, -INF_BB, 0.1, INF_BB, INF_BB] };
+  C({ name: 'tabard', mat: 'cloth', tau: 0.04, k: 0.004, sdf: I(0.003, shell(disp(ellipsoid([0, 0.98, 0.0], [0.6, 0.48, 0.213]), tabFold, 0.012), 0.0055), tabW, tabHem, slab(0.6, 1.125), zcut(0.1, -1)),
+    boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.08) / 0.16)), d = Math.max(0, Math.min(1, (1.07 - y) / 0.3)); return [['Hips', 1 - d * 0.7], ['leftUpperLeg', d * 0.7 * t], ['rightUpperLeg', d * 0.7 * (1 - t)]]; } });
   // rear mail skirt and front tassets (three lames over each thigh)
   C({ name: 'skirt', mat: 'mail', tau: 0.05, sdf: I(0.006, shell(ellipsoid([0, 1.0, 0], [0.205, 0.22, 0.17]), 0.008), slab(0.93, 1.11), zcut(0.0, 1)),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.06) / 0.12)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.15)); return [['Hips', 1 - d * 0.75], ['leftUpperLeg', d * 0.75 * t], ['rightUpperLeg', d * 0.75 * (1 - t)]]; } });
@@ -131,7 +153,7 @@ export default function hero(ALL) {
   for (const p of P.slice()) if (p.side) P.push({ ...p, side: 0, name: p.name + 'R', sdf: mirrorX(p.sdf), bone: p.bone && swap(p.bone), boneFn: p.boneFn && ((x, y, z) => p.boneFn(-x, y, z).map(([b, w]) => [swap(b), w])) });
 
   return {
-    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
+    name: 'hero', voxel: 0.005, tris: 23000, err: 0.0014, bones, parts: P,
     decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
@@ -143,6 +165,7 @@ export default function hero(ALL) {
       cloth: { col: [0.42, 0.06, 0.07], col2: [0.24, 0.035, 0.04], freq2: 5, var: 0.15, freq: 30, gloss: 0.12, dirt: 0.55, grad: [0.5, 1.2, [0.5, 0.5, 0.5]] },
       horn: { col: [0.36, 0.32, 0.28], col2: [0.6, 0.55, 0.46], freq2: 9, var: 0.18, freq: 60, gloss: 0.45, dirt: 0.5 },
       glow: { col: [1.0, 0.34, 0.12], em: 1, gloss: 0 },
+      gem: { col: [0.62, 0.72, 0.86], gloss: 0.95, metal: 0.2, var: 0.05, tint: 0 },
     },
   };
 }
