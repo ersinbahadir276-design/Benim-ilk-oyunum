@@ -15,7 +15,9 @@ const CLIPS = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprin
   // forward dodge: full forward roll (the body flip lives in the pelvis rotation)
   roll: 'Roll',
   // death: stagger, knees give, falls on the back (hip 6 cm by 0.93 s), legs flop, lies still from ~1.4 s
-  death: 'Death01' };
+  death: 'Death01',
+  // sprint attack: horizontal two-step cut (blade peak ~0.40 s); played by the run attack (runatk)
+  swR: 'Sword_Attack' };
 // Universal Animation Library 2: one-handed sword combo (A: right-to-left cut, B: backhand return, C: overhead finisher).
 // Only the lower body + pelvis are used in game (the sword arm and the upper torso stay procedural, see src/32-anim.js).
 const CLIPS2 = { swA: 'Sword_Regular_A', swB: 'Sword_Regular_B', swC: 'Sword_Regular_C' };
@@ -28,7 +30,7 @@ const PAR = { Hips: null, Spine: 'Hips', Chest: 'Spine', UpperChest: 'Chest', Ne
 for (const S of ['left', 'right']) Object.assign(PAR, { [S + 'Shoulder']: 'UpperChest', [S + 'UpperArm']: S + 'Shoulder', [S + 'LowerArm']: S + 'UpperArm', [S + 'Hand']: S + 'LowerArm',
   [S + 'UpperLeg']: 'Hips', [S + 'LowerLeg']: S + 'UpperLeg', [S + 'Foot']: S + 'LowerLeg', [S + 'Toes']: S + 'Foot' });
 const BONES = Object.keys(MAP);
-const ONE = { jstart: 1, jloop: 1, jland: 1, hit: 1, roll: 1, swA: 1, swB: 1, swC: 1, death: 1 };
+const ONE = { jstart: 1, jloop: 1, jland: 1, hit: 1, roll: 1, swA: 1, swB: 1, swC: 1, death: 1, swR: 1 };
 
 // ---------------------------------------------------------------- GLB
 let buf, J, binOff, N, parent, byName, animByName;

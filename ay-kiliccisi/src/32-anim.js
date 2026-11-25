@@ -8,7 +8,7 @@ const CLIP={ready:false,match:1},CGAIT={ph:0,it:0,w:{idle:1},u:{}};
 const GAIT_REF={walk:1.4,jog:3.7,sprint:6.6,cwalk:1.3};
 // bones the clips drive: hips, spine, head and both legs, plus the free (left) arm. Right arm = sword arm: procedural,
 // except in the sword-combo clips (ARM_CLIPS), which also drive it so the cut comes from the hips through the arm.
-const CLIP_ARM={rightShoulder:1,rightUpperArm:1,rightLowerArm:1,rightHand:1},ARM_CLIPS={swA:1,swB:1,swC:1,death:1};
+const CLIP_ARM={rightShoulder:1,rightUpperArm:1,rightLowerArm:1,rightHand:1},ARM_CLIPS={swA:1,swB:1,swC:1,swR:1,death:1};
 function animInit(){CLIP.init=true;if(typeof ANIMS==='undefined'||!HB)return;
  const b64=s=>{const t=atob(s),u=new Uint8Array(t.length);for(let i=0;i<t.length;i++)u[i]=t.charCodeAt(i);return u.buffer};
  const hum=n=>n[0].toLowerCase()+n.slice(1);CLIP.idx=[];CLIP.slot=[];
@@ -55,7 +55,7 @@ function clipStrides(){if(!CLIP.ready||!PLD)return;const H=HB,sv={w:CGAIT.w,u:CG
  CGAIT.w=sv.w;CGAIT.u=sv.u;CGAIT.ph=sv.ph;R0.forEach((m,i)=>SK.R[i]=m);SK.root=root;skUpdate()}
 // locomotion weights are already continuous in speed; a switch into or out of an action clip cross-fades (~0.1 s)
 // instead of popping. A fading one-shot keeps the last normalised time it was given (holds its final pose).
-const ONE_SHOT={jstart:1,jloop:1,jland:1,hit:1,roll:1,swA:1,swB:1,swC:1,death:1};
+const ONE_SHOT={jstart:1,jloop:1,jland:1,hit:1,roll:1,swA:1,swB:1,swC:1,swR:1,death:1};
 function gaitBlend(W,dt){const O=CGAIT.w;let act=false;for(const k in W)if(ONE_SHOT[k])act=true;for(const k in O)if(ONE_SHOT[k])act=true;
  if(!act){CGAIT.w=W;return}const a=Math.min(1,dt*12),N={};let tot=0;
  for(const k in O)N[k]=(O[k]||0)*(1-a);for(const k in W)N[k]=(N[k]||0)+W[k]*a;
@@ -74,21 +74,26 @@ function ACTION_CLIP(W){const C=CLIP.clips,st=P.st;
  if(rollClip()){W.roll=1;CGAIT.u.roll=(ROLL_T0+sst(0,1,P.t/P.dodgeT)*(ROLL_T1-ROLL_T0))/C.roll.dur;return true}
  // light combo: the combo pose picks the clip; its time is warped so the clip's blade-speed peak lands on the game's hit
  const k=swordClip();if(k){W[k]=1;CGAIT.u[k]=swordTime(k,P.t/(P.atkT||.46))/C[k].dur;return true}
+ // sprint attack: Sword_Attack's lunge cut, blade peak warped onto the run attack's hit (u .38 of 0.6 s)
+ if(runClip()){W.swR=1;CGAIT.u.swR=swordTime('swR',P.t/RUN_T,RUN_HIT)/C.swR.dur;return true}
  return false}
 // Sword_Regular A/B/C (Universal Animation Library 2): A = forehand cut into a deep lunge (left foot back, hips side-on),
 // B = backhand return from that lunge, C = spinning leap into an overhead finisher. Times (s) measured from the right
 // hand's speed in tools/anim/import_clips.mjs: t0 = start, imp = fastest blade frame, t1 = recovered enough to hand back.
-const SWORD={swA:{t0:0,imp:.25,t1:.43},swB:{t0:0,imp:.27,t1:.53},swC:{t0:.3,imp:.66,t1:1.05}},SW_HIT=.4,SW_POSE=['swA','swB','swC'];
+// swR = Sword_Attack (1.53 s, UAL 1): wind-up, right foot lunges forward (hip 1.06 -> 0.64 m), flat cut peaking at 0.40 s
+// (37 m/s), small follow-through at ~0.85 s; t1 = hip back up, feet still in the lunge (the move state then blends out).
+const SWORD={swA:{t0:0,imp:.25,t1:.43},swB:{t0:0,imp:.27,t1:.53},swC:{t0:.3,imp:.66,t1:1.05},swR:{t0:.08,imp:.4,t1:.9}},SW_HIT=.4,RUN_T=.6,RUN_HIT=.38,SW_POSE=['swA','swB','swC'];
 const swordClip=()=>{if(P.st!=='attack'||!CLIP.ready)return null;const k=SW_POSE[curStance().pose[P.combo]||0];return CLIP.clips[k]?k:null};
 // normalised attack time u (0..1) -> clip time: wind-up until SW_HIT (the game's hit is at u .36, its slash .3-.58), then follow-through
-function swordTime(k,u){const S=SWORD[k];u=cl(u,0,1);return u<SW_HIT?lp(S.t0,S.imp,sst(0,1,u/SW_HIT)*.5+u/SW_HIT*.5):lp(S.imp,S.t1,(u-SW_HIT)/(1-SW_HIT))}
+function swordTime(k,u,h=SW_HIT){const S=SWORD[k];u=cl(u,0,1);return u<h?lp(S.t0,S.imp,sst(0,1,u/h)*.5+u/h*.5):lp(S.imp,S.t1,(u-h)/(1-h))}
+const runClip=()=>P.st==='runatk'&&!!(CLIP.ready&&CLIP.clips.swR);
 // Roll (1.47 s): 0.04 s crouch -> dive (hip 1.37 m) -> on the back (hip 0.06 m) -> up by ~1.1 s. The dodge plays 0.04-1.1 s.
 // Death01 (2.4 s): hip 1.06 m -> 0.59 m at 0.6 s -> on the back (0.06 m) at 0.93 s; legs settle by ~1.4 s. Played 1.1x, held from 2.2 s.
 // P.deathClip is set by die() only when standing (a death while already knocked down keeps the procedural ragdoll).
 const DEATH_RATE=1.1,DEATH_T1=2.2,DEATH_HIT=.93,deathClip=()=>P.st==='dead'&&!!P.deathClip&&!!(CLIP.ready&&CLIP.clips.death);
 const ROLL_T0=.04,ROLL_T1=1.1,rollClip=()=>P.st==='dodge'&&P.dodgeKind==='fwd'&&!!(CLIP.ready&&CLIP.clips.roll);
 // clip weight wanted by a pose state (1 = the clip layer drives legs/spine/left arm)
-const clipStateW=()=>P.st==='move'||rollClip()||deathClip()||!!swordClip()||P.st==='jump'||P.st==='hurt'||(P.st==='land'&&(P.landT||.15)<.3)?1:0;
+const clipStateW=()=>P.st==='move'||rollClip()||runClip()||deathClip()||!!swordClip()||P.st==='jump'||P.st==='hurt'||(P.st==='land'&&(P.landT||.15)<.3)?1:0;
 // blended local rotation (quaternion) of every driven bone + hip height offset (m)
 // right-arm bones accumulate only from ARM_CLIPS; CLIP.armW = their share of the blend (procedural arm keeps the rest)
 function clipSample(){const acc=CLIP.acc,nb=CLIP.nb,idx=CLIP.idx,arm=CLIP.arm;acc.fill(0);let hy=0,tw=0,aw=0;

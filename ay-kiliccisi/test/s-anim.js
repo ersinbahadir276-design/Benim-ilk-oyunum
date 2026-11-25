@@ -36,6 +36,13 @@ module.exports = async ({ page, G, log, shot }) => {
         swLen = Math.max(swLen, Math.hypot(...[0, 1, 2].map((j) => SK.GP[HB.rightHand][j] - rh0[j]))); }
       out.combo.push({ pose: S.pose[c], w: JSON.stringify(GAIT.w), pkU, pk, gMin, hipMin, swLen, nan: nanA() }); }
     P.st = 'move'; P.t = 0; sim(.8); out.afterAtk = JSON.stringify(GAIT.w); out.afterArmW = g.CLIP.armW;
+    // sprint attack: Sword_Attack (lunge cut) owns body + sword arm; blade peak on the run attack's hit (u .38); feet on the ground
+    { g.tp(6, 60); P.yaw = 0; IN.mx = 0; IN.mz = 1; P.sprintHeld = true; sim(1.2); out.rSpd = P.spd; out.rSprint = P.sprinting; P.sta = 100; g.startRunAtk(); out.rSt = P.st; let pk = 0, pkU = 0, last = null, gMin = 9, hipMin = 9, w = '', arm = 0, hitU = -1;
+      for (let i = 0; i < 35; i++) { sim(1 / 60); const h = g.mpt(g.PM, SK.GP[HB.rightHand]); if (last && P.st === 'runatk') { const v = Math.hypot(h[0] - last[0], h[1] - last[1], h[2] - last[2]) * 60; if (v > pk) { pk = v; pkU = P.t / .6; } } last = h;
+        if (P.hitDone && hitU < 0) hitU = P.t / .6; if (i === 12) { w = JSON.stringify(GAIT.w); arm = g.CLIP.armW; }
+        const f = foot(), gy = g.hAt(P.x, P.z); gMin = Math.min(gMin, Math.min(f.l[1], f.r[1]) - gy - SK.rest[HB.leftFoot][1]); hipMin = Math.min(hipMin, g.mpt(g.PM, SK.GP[HB.hips])[1] - gy); }
+      Object.assign(out, { rW: w, rArm: arm, rPk: pk, rPkU: pkU, rHitU: hitU, rGMin: gMin, rHipMin: hipMin, rNan: nanA() });
+      IN.mz = 0; P.sprintHeld = false; sim(.8); out.rAfter = JSON.stringify(GAIT.w); out.rAfterSt = P.st; out.rAfterArm = g.CLIP.armW; }
     // jump: take-off clip, then airborne loop; landing clip; feet stay above the ground the whole time
     IN.mz = 0; sim(.6); P.vy = 6.6; P.air = true; P.st = 'jump'; P.t = 0; P.jumpAt = GT.clock;
     sim(.12); out.jW0 = JSON.stringify(GAIT.w); out.jCw = P.ps.clipW; let jGap = 9, jLand = 0, landW = '', airT = 0;
@@ -68,7 +75,7 @@ module.exports = async ({ page, G, log, shot }) => {
     sim(.5); P.inv = 0; g.knockDown([0, -1], 1); sim(.4); g.die(); out.dDownClip = !!P.deathClip; sim(.3); out.dDownW = P.ps.clipW; sim(3.5);
     return out;
   });
-  log('ANIMS yüklü (15 klip)', r.ready === 15, r.ready);
+  log('ANIMS yüklü (16 klip)', r.ready === 16, r.ready);
   log('dururken klip katmanı açık', r.idleW > .95 && /idle/.test(r.idleWeights), r.idleW.toFixed(2) + ' ' + r.idleWeights);
   log('dururken ayak yerde', Math.abs(r.idleFootGap) < .05, r.idleFootGap.toFixed(3));
   log('koşarken jog klibi', /jog/.test(r.runWeights) && r.runW > .95, r.runWeights + ' hız ' + r.runSpd.toFixed(2));
@@ -85,6 +92,11 @@ module.exports = async ({ page, G, log, shot }) => {
     log(`kombo ${i + 1}: ayak zemine gömülmüyor, gövde ileri çöküyor`, c.gMin > -.04 && c.hipMin < 1.0, 'ayak ' + c.gMin.toFixed(3) + ' kalça en alçak ' + c.hipMin.toFixed(2));
     log(`kombo ${i + 1}: NaN yok`, !c.nan); });
   log('saldırıdan sonra yürüme katmanı, kol yine prosedürel', !/sw[ABC]/.test(r.afterAtk) && r.afterArmW < .01, r.afterAtk + ' kol ' + r.afterArmW.toFixed(2));
+  log('koşu saldırısı: Sword_Attack klibi gövdeyi ve kılıç kolunu sürüyor', r.rSt === 'runatk' && r.rSpd > 4 && /swR/.test(r.rW) && r.rArm > .7, r.rSt + ' hız ' + r.rSpd.toFixed(1) + ' ' + r.rW + ' kol ' + r.rArm.toFixed(2));
+  log('koşu saldırısı: kılıç en hızlı vuruş anında', Math.abs(r.rPkU - r.rHitU) < .12 && r.rPk > 10, 'u ' + r.rPkU.toFixed(2) + ' vuruş u ' + r.rHitU.toFixed(2) + ' el ' + r.rPk.toFixed(1) + ' m/s');
+  log('koşu saldırısı: ayak zemine gömülmüyor, hamlede kalça alçalıyor', r.rGMin > -.04 && r.rHipMin < .95, 'ayak ' + r.rGMin.toFixed(3) + ' kalça ' + r.rHipMin.toFixed(2));
+  log('koşu saldırısı: NaN yok', !r.rNan);
+  log('koşu saldırısından sonra yürüme katmanı', r.rAfterSt === 'move' && !/swR/.test(r.rAfter) && r.rAfterArm < .01, r.rAfterSt + ' ' + r.rAfter);
   log('iskelette NaN yok', !r.nan);
   log('zıplama: kalkış klibi', /jstart/.test(r.jW0) && r.jCw > .8, r.jW0 + ' cw ' + r.jCw.toFixed(2));
   log('zıplama: havada döngü klibi', /jloop/.test(r.jW1 || ''), r.jW1);

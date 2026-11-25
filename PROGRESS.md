@@ -6,11 +6,12 @@ Detailed design notes, the roadmap and the per-session game log are in `ay-kilic
 
 Build: `cd ay-kiliccisi && python3 tools/build.py && cp dist/ay-kiliccisi.html ../index.html`
 Tests: `cd ay-kiliccisi && NODE_PATH=$(npm root -g) node test/harness.js test/<scenario>.js`
-(s-mech 47, s-loop 71, s-stance 11, s-anim 45, s-footik 9, s-stride 9, s-rigfik 14, s-wolfik 11, s-wolfstride 10, s-crocik 14, s-dragonik 12, s-undead 16, s-ui 7, s-perf)
+(s-mech 47, s-loop 71, s-stance 11, s-anim 50, s-footik 9, s-stride 9, s-rigfik 14, s-wolfik 11, s-wolfstride 10, s-crocik 14, s-dragonik 12, s-undead 16, s-ui 7, s-perf)
 
 > **Branch warning.** Every run is pushed to its own `ccr-70a30f22-*` branch and nothing has been merged into `main` since PR #3,
-> so most runs restarted from old code (foot IK was written ~5 times, the armor redesign ~15 times). This run merged the two
-> longest lines into **`ccr-70a30f22-l05675`**. Next run: start from this branch (or merge it into `main` first).
+> so most runs restarted from old code (foot IK was written ~5 times, the armor redesign ~15 times). Run of 2026-11-25 19:37 merged
+> the two longest lines into `ccr-70a30f22-l05675`; the 2026-11-25 evening run fast-forwarded that into **`ccr-70a30f22-kw7h5m`**
+> and built on it. Next run: start from `ccr-70a30f22-kw7h5m` (or merge it into `main` first).
 
 ## Completed features
 
@@ -21,7 +22,7 @@ _None of the seven routine features is finished yet._
 | # | Feature | Status | What's still open |
 |---|---|---|---|
 | 1 | High-quality male protagonist | **Mostly done.** Kael is a sculpted SDF model (~21k tris, 58 bones, PBR material channels, physics-free cape bones, greatsword). | Armor redesign: ~15 separate attempts sit on unmerged branches (latest `-0ywtzy`, armor pass 2, 23k tris). One should be picked and merged; no design brief from the user yet. |
-| 2 | Realistic 3D character animations | **In progress (largest line).** Real CC0 motion clips (Quaternius) for idle/walk/jog/sprint/crouch, jump/land/hit, forward roll, light-combo sword cuts, death. Hero terrain foot IK + stride locking, now working together with the clips (this run). Terrain IK for all humanoid rigs, wolves (with paw gait locking), crocodile, dragon. | Heavy/sprint/jump attacks and side/back dodges are still procedural. No stride locking for NPCs, croc and dragon. Turn-in-place, directional hit reactions. Sword tip can clip the ground in clip B/C. |
+| 2 | Realistic 3D character animations | **In progress (largest line).** Real CC0 motion clips (Quaternius) for idle/walk/jog/sprint/crouch, jump/land/hit, forward roll, light-combo sword cuts, sprint attack (lunge cut), death. Hero terrain foot IK + stride locking, now working together with the clips (this run). Terrain IK for all humanoid rigs, wolves (with paw gait locking), crocodile, dragon. | Heavy and jump attacks and side/back dodges are still procedural (the clip library has no side/back dodge or two-handed overhead clip). No stride locking for NPCs, croc and dragon. Turn-in-place, directional hit reactions. Sword tip can clip the ground in clip B/C. |
 | 3 | Integration of submitted GLB models | **In progress.** Dragon (own clips), elf body (queen), hair GLB, Quaternius clip GLBs (`hero_anims1/2.glb`), skeleton proportions from berserk_armor/kawaiope/aldrich. | gwyndolin (Snake Priestess) unused; `hero.glb` (VRoid) and `fox.glb` only in `yaban.html`. NC/ND files can't be used. |
 | 4 | Multiple animals and creatures | **In progress.** Wolves, goblins (melee/archer/chief), crocodile, dragon, Veyra, skeleton warriors + skeleton archers. | Spider, golem, wraith; deer/birds; White Wolf; port species from `yaban.html`. |
 | 5 | Creature taming and AI | **Partial.** Vision cones, group alerts, hearing, utility-AI companion (Veyra), wolf feeding. | Real taming in Ay Kılıççısı (exists only in `yaban.html`); pet upgrade tree. |
@@ -29,6 +30,23 @@ _None of the seven routine features is finished yet._
 | 7 | Android performance and mobile controls | **Partial.** PlayStation-style touch layout, landscape/portrait, outlines culled past 30 m, auto quality step-down, perf test. | No real-device test, no graphics menu, no HUD editor, no LOD. |
 
 ## Run log
+
+### 2026-11-25 (evening) — sprint attack = real lunge-cut clip (feature 2 + 3)
+- **Repo review:** clean tree, no `PROGRESS.md` on this run's fresh branch (it was cut from `main`). Newest routine branch was
+  `-l05675` (the merge run); fast-forwarded into `ccr-70a30f22-kw7h5m` and continued from there. No new branches since.
+- **Clip import** (`tools/anim/import_clips.mjs`): `Sword_Attack` from `hero_anims1.glb` (Quaternius UAL 1, CC0) added as one-shot
+  clip `swR` (46 frames, 1.53 s). Profile (`PROFZ=1`): wind-up, right foot lunges forward, hip 1.06 → 0.64 m, flat cut with the
+  blade peaking at 0.40 s (37.5 m/s), small follow-through at ~0.85 s. The 15 existing clips are byte-identical (checked);
+  `data/anims.js` 159 → 169 KB.
+- **Game** (`src/32-anim.js`, `src/55-player.js`): the sprint attack (`runatk`, 0.6 s, hit at u 0.38) now plays `swR` over the
+  whole body including the sword arm (`ARM_CLIPS`), with 0.1 s cross-fades in and out. `swordTime` takes the hit point as a
+  parameter, so the clip's fastest blade frame lands on the run attack's own hit frame (measured u 0.36–0.39 vs hit 0.39).
+  Damage, timing, speed and stamina are unchanged. `startRunAtk` exported for tests.
+- **Tests:** `test/s-anim.js` 45 → 50 (clip owns body + arm at sprint speed 6.6 m/s; blade peak on the hit; feet not below the
+  ground, hip drops to 0.68 m in the lunge; no NaN; back to the locomotion layer and procedural arm afterwards) — 50/50.
+  New `test/s-runatkshots.js` (6 frames, `test/out/runatk-*.jpg`): checked by eye — sprint, lunge, low cut, recovery look right.
+  Regressions: s-mech 47/47, s-loop 71/71, s-stance 11/11, s-ui 7/7, s-stride 9/9, s-footik 9/9, s-perf OK (logic 0.17–0.32 ms/frame).
+- Known flaw: like combo B/C, the greatsword's tip comes within a few cm of the ground at the end of the cut (one-handed source clip).
 
 ### 2026-11-25 — merge of the two animation lines + clip foot-skate fix (feature 2)
 - **Repo review:** clean tree; no open issues; open PRs #4 and #5 are earlier routine branches (IK line). Found ~120 `ccr-*` branches;
@@ -64,7 +82,9 @@ _None of the seven routine features is finished yet._
 ## Next priorities
 1. **Housekeeping (needs the user):** merge `ccr-70a30f22-l05675` into `main`, or tell the routine which branch to start from.
    Then pick one armor branch (`-0ywtzy` is the newest) and merge it, instead of redoing the armor every run.
-2. Animation: clips for heavy / sprint / jump attacks and side/back dodges; sword-tip ground clearance; stride locking for NPCs.
+2. Animation: sword-tip ground clearance (a small wrist/elbow correction when the tip is under ~10 cm, for swA/B/C/swR);
+   heavy and jump attacks and side/back dodges have no matching clip in the library — either find CC0 clips for them or
+   build them by editing existing clips (e.g. Roll rotated ±90° for a side roll); stride locking for NPCs.
 3. GLB: Snake Priestess boss on the gwyndolin skeleton; bring `fox.glb` into Ay Kılıççısı.
 4. Creatures: first dungeon creatures (spider, golem); taming in Ay Kılıççısı.
 5. Android: graphics-quality menu and real-device feedback.
