@@ -22,11 +22,20 @@ module.exports = async ({ page, G, log, shot }) => {
     // crouch walk
     P.crouch = true; sim(1.0); out.crouchWeights = JSON.stringify(GAIT.w); { const f = foot(), gy = g.hAt(P.x, P.z); out.crouchHipH = g.mpt(g.PM, SK.GP[HB.hips])[1] - gy; out.crouchGap = Math.min(f.l[1], f.r[1]) - gy - SK.rest[HB.leftFoot][1]; }
     P.crouch = false; IN.mz = 0; sim(1.0);
-    // attack: clip layer must fade out so the sword swing poses stay procedural
-    IN.atkHeld = true; IN.atkAt = GT.clock; IN.atkEdge = true; IN.atkUsed = false; sim(.05); IN.atkHeld = false; IN.atkEdge = false; IN.atkUp = true; sim(.25);
-    out.atkSt = P.st; out.atkW = P.ps.clipW;
+    // attack: tapping ATTACK starts the light combo; the Sword_Regular clip of the combo pose owns legs, hips and sword arm
+    IN.atkHeld = true; IN.atkAt = GT.clock; IN.atkEdge = true; IN.atkUsed = false; sim(.05); IN.atkHeld = false; IN.atkEdge = false; IN.atkUp = true; sim(.12);
+    out.atkSt = P.st; out.atkW = P.ps.clipW; out.atkWeights = JSON.stringify(GAIT.w); out.armW = g.CLIP.armW;
     out.nan = nanA();
     sim(1.0);
+    // every combo pose -> its clip; the hand moves fastest around the game's hit frame; feet stay on the ground; pose != idle
+    const S = g.curStance(); out.combo = []; P.st = 'move'; sim(.5);
+    for (let c = 0; c < 3; c++) { P.sta = 100; g.startLight(c); const n = Math.round(P.atkT * 60); let pk = 0, pkU = 0, last = null, gMin = 9, hipMin = 9, swLen = 0;
+      const rh0 = SK.GP[HB.rightHand].slice();
+      for (let i = 0; i < n - 1; i++) { sim(1 / 60); const h = g.mpt(g.PM, SK.GP[HB.rightHand]); if (last) { const v = Math.hypot(h[0] - last[0], h[1] - last[1], h[2] - last[2]) * 60; if (v > pk) { pk = v; pkU = P.t / P.atkT; } } last = h;
+        const f = foot(), gy = g.hAt(P.x, P.z); gMin = Math.min(gMin, Math.min(f.l[1], f.r[1]) - gy - SK.rest[HB.leftFoot][1]); hipMin = Math.min(hipMin, g.mpt(g.PM, SK.GP[HB.hips])[1] - gy);
+        swLen = Math.max(swLen, Math.hypot(...[0, 1, 2].map((j) => SK.GP[HB.rightHand][j] - rh0[j]))); }
+      out.combo.push({ pose: S.pose[c], w: JSON.stringify(GAIT.w), pkU, pk, gMin, hipMin, swLen, nan: nanA() }); }
+    P.st = 'move'; P.t = 0; sim(.8); out.afterAtk = JSON.stringify(GAIT.w); out.afterArmW = g.CLIP.armW;
     // jump: take-off clip, then airborne loop; landing clip; feet stay above the ground the whole time
     IN.mz = 0; sim(.6); P.vy = 6.6; P.air = true; P.st = 'jump'; P.t = 0; P.jumpAt = GT.clock;
     sim(.12); out.jW0 = JSON.stringify(GAIT.w); out.jCw = P.ps.clipW; let jGap = 9, jLand = 0, landW = '', airT = 0;
@@ -48,7 +57,7 @@ module.exports = async ({ page, G, log, shot }) => {
     out.nan3 = nanA();
     return out;
   });
-  log('ANIMS yüklü (11 klip)', r.ready === 11, r.ready);
+  log('ANIMS yüklü (14 klip)', r.ready === 14, r.ready);
   log('dururken klip katmanı açık', r.idleW > .95 && /idle/.test(r.idleWeights), r.idleW.toFixed(2) + ' ' + r.idleWeights);
   log('dururken ayak yerde', Math.abs(r.idleFootGap) < .05, r.idleFootGap.toFixed(3));
   log('koşarken jog klibi', /jog/.test(r.runWeights) && r.runW > .95, r.runWeights + ' hız ' + r.runSpd.toFixed(2));
@@ -57,7 +66,14 @@ module.exports = async ({ page, G, log, shot }) => {
   log('koşarken ayak zemine gömülmüyor', r.runGapMin > -.04 && r.runGapMin < .04, r.runGapMin.toFixed(3) + '..' + r.runGapMax.toFixed(3));
   log('depar klibi', /sprint/.test(r.sprintWeights), r.sprintWeights);
   log('çömelme klibi', /cwalk/.test(r.crouchWeights) && r.crouchHipH < .85 && Math.abs(r.crouchGap) < .06, r.crouchWeights + ' kalça ' + r.crouchHipH.toFixed(2) + ' ayak ' + r.crouchGap.toFixed(3));
-  log('saldırıda klip katmanı kapanıyor', r.atkSt === 'attack' && r.atkW < .6, r.atkSt + ' ' + r.atkW.toFixed(2));
+  log('saldırı: kılıç klibi gövdeyi ve kılıç kolunu sürüyor', r.atkSt === 'attack' && r.atkW > .8 && /sw[ABC]/.test(r.atkWeights) && r.armW > .7, r.atkSt + ' cw ' + r.atkW.toFixed(2) + ' ' + r.atkWeights + ' kol ' + r.armW.toFixed(2));
+  const SWK = ['swA', 'swB', 'swC'];
+  r.combo.forEach((c, i) => {
+    log(`kombo ${i + 1}: duruş pozu ${c.pose} -> ${SWK[c.pose]}`, new RegExp(SWK[c.pose]).test(c.w), c.w);
+    log(`kombo ${i + 1}: kılıç en hızlı vuruş anında (u .3-.6)`, c.pkU > .28 && c.pkU < .62 && c.pk > 6, 'u ' + c.pkU.toFixed(2) + ' el ' + c.pk.toFixed(1) + ' m/s');
+    log(`kombo ${i + 1}: ayak zemine gömülmüyor, gövde ileri çöküyor`, c.gMin > -.04 && c.hipMin < 1.0, 'ayak ' + c.gMin.toFixed(3) + ' kalça en alçak ' + c.hipMin.toFixed(2));
+    log(`kombo ${i + 1}: NaN yok`, !c.nan); });
+  log('saldırıdan sonra yürüme katmanı, kol yine prosedürel', !/sw[ABC]/.test(r.afterAtk) && r.afterArmW < .01, r.afterAtk + ' kol ' + r.afterArmW.toFixed(2));
   log('iskelette NaN yok', !r.nan);
   log('zıplama: kalkış klibi', /jstart/.test(r.jW0) && r.jCw > .8, r.jW0 + ' cw ' + r.jCw.toFixed(2));
   log('zıplama: havada döngü klibi', /jloop/.test(r.jW1 || ''), r.jW1);

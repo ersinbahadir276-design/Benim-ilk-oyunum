@@ -187,7 +187,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
   else if(pc===1){q.RaZ=.45;q.RaX=0;q.RaY=lp(2.15,-.55,sl);q.Rel=lp(.3,.08,sl);q.chY=lp(.6,-.55,sl);q.spY=lp(.25,-.2,sl);q.RthX=-.5;q.Rkn=.55;q.LthX=.35;q.Lkn=.25}
-  else{q.RaZ=-1.3;q.RaY=.25;q.RaX=lp(-.65,1.8,sl);q.Rel=lp(.6,.05,sl);q.chX=lp(-.2,.5,sl);q.spX=lp(-.05,.3,sl);q.LthX=-.6;q.Lkn=.7;q.RthX=.3;q.Rkn=.3;q.RwX=lp(-.3,.3,sl);q.two=.0}break}
+  else{q.RaZ=-1.3;q.RaY=.25;q.RaX=lp(-.65,1.8,sl);q.Rel=lp(.6,.05,sl);q.chX=lp(-.2,.5,sl);q.spX=lp(-.05,.3,sl);q.LthX=-.6;q.Lkn=.7;q.RthX=.3;q.Rkn=.3;q.RwX=lp(-.3,.3,sl);q.two=.0}q.clipW=clipStateW();break}
  case'charge':{rate=12;const k=P.charge;q.two=1;q.RaZ=-1.25-k*.35;q.RaY=.2;q.RaX=-.85-k*.25;q.Rel=.75;q.chX=-.25*k;q.spX=-.12*k;q.LthX=-.55;q.Lkn=.7;q.RthX=.35;q.Rkn=.35;q.pel=.1;q.hipY=-.04*k;q.RwX=-.3-k*.3;break}
  case'heavy':{rate=30;const u=P.t/(P.hvT||.7),sl=sst(.32,.55,u);q.two=1;q.RaZ=lp(-1.6,-.7,sl);q.RaY=.25;q.RaX=lp(-1.1,1.7,sl);q.Rel=lp(.75,.05,sl);q.chX=lp(-.3,.55,sl);q.spX=lp(-.15,.35,sl);q.pel=lp(.1,.25,sl);
   q.LthX=lp(-.55,-.9,sl);q.Lkn=lp(.7,1.0,sl);q.RthX=.4;q.Rkn=.4;q.hipY=-.08*sl;q.RwX=lp(-.6,.4,sl);break}
