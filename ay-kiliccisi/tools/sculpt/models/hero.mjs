@@ -10,6 +10,10 @@ export default function hero(ALL) {
   const slab = (y0, y1) => I(0, plane([0, y1, 0], [0, 1, 0]), plane([0, y0, 0], [0, -1, 0]));
   const zcut = (z0, dir) => plane([0, 0, z0], [0, 0, dir]); // dir=-1 keeps z>z0, dir=1 keeps z<z0
   const xcut = (x0, dir) => plane([x0, 0, 0], [dir, 0, 0]);
+  // sphere-trace from the front onto a surface (to seat rivets and emblems exactly on the plate)
+  const onSurf = (node, x, y, z = 0.45) => { for (let i = 0; i < 500; i++) { const d = node.d(x, y, z); if (d < 0.0004) return [x, y, z]; z -= Math.max(d * 0.7, 0.0004); } return [x, y, z]; };
+  // crescent moon prism along z (the Moon Swordsman's sigil); horns point up when (ox,oy)=(0,+)
+  const crescent = (c, r, off, z0, z1) => Sub(0.0015, cone([c[0], c[1], z0], [c[0], c[1], z1], r), cone([c[0] + off[0], c[1] + off[1], z0 - 0.02], [c[0] + off[0], c[1] + off[1], z1 + 0.02], r * 0.82));
   const fingerW = (seg) => (x, y, z) => ['Index', 'Middle', 'Ring', 'Little'].map((f) => { const zf = B['left' + f + 'Proximal'][2]; return ['left' + f + seg, Math.exp(-Math.pow((z - zf) / 0.016, 2)) + 1e-4]; });
 
   // ------------------------------------------------------------ under-layer (only seen at the joints)
@@ -31,6 +35,15 @@ export default function hero(ALL) {
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
+  // plackart: a raised belly plate with a gothic pointed-arch top, bronze-edged, riveted
+  const core = I(0.012, lens, bodyE, taper);
+  const arch = symX(plane([0, 1.465, 0], [0.56, 1, 0]));
+  C({ name: 'plackart', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.004, sdf: Sub(0.004, I(0.004, grow(core, 0.011), arch, slab(1.322, 1.47), zcut(0.03, -1)), armHoles) });
+  C({ name: 'plackartTrim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: I(0.003, grow(core, 0.014), shell(arch, 0.0065), arch, slab(1.322, 1.47), zcut(0.03, -1)) });
+  C({ name: 'plackartRivets', mat: 'rivet', bone: 'UpperChest', rigid: true, k: 0, sdf: U(0, ...[[0, 1.43], [0.06, 1.39], [-0.06, 1.39], [0.12, 1.355], [-0.12, 1.355]].map(([x, y]) => sphere(onSurf(grow(core, 0.011), x, y), 0.0095))) });
+  // chest sigil: bronze crescent moon with a small star between its horns
+  const sig = crescent([0, 1.52], 0.06, [0, 0.026], 0.05, 0.3), star = sphere(onSurf(core, 0, 1.552), 0.013);
+  C({ name: 'sigil', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: U(0.002, I(0.002, sig, grow(core, 0.0065)), I(0.002, star, grow(core, 0.0075))) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
   const beltE = ellipsoid([0, 1.13, 0.005], [0.212, 0.12, 0.172]);
@@ -42,6 +55,12 @@ export default function hero(ALL) {
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.06) / 0.12)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.15)); return [['Hips', 1 - d * 0.75], ['leftUpperLeg', d * 0.75 * t], ['rightUpperLeg', d * 0.75 * (1 - t)]]; } });
   for (let i = 0; i < 3; i++) { const y1 = 1.105 - i * 0.062, e = ellipsoid([0.1, 1.0, 0.02], [0.15 + i * 0.006, 0.3, 0.16 + i * 0.006]);
     L({ name: 'tasset' + i, mat: i === 2 ? 'trim' : 'plate', tau: 0.02, k: 0.004, sdf: I(0.005, shell(e, 0.007), slab(y1 - 0.07, y1), zcut(-0.02, -1), xcut(0.012, -1)), boneFn: () => [['leftUpperLeg', 0.55 + i * 0.15], ['Hips', 0.45 - i * 0.15]] }); }
+
+  // front tabard: crimson cloth panel hanging from the belt between the tassets, bronze border and a crescent
+  const coneT = cone([0, 1.14, 0.0], [0, 0.74, 0.0], 0.182, 0.262), hem = symX(plane([0, 0.775, 0], [0.75, -1, 0]));
+  const tabBox = (t) => I(0.003, shell(coneT, t), symX(xcut(0.066, 1)), slab(0.6, 1.105), zcut(0.06, -1), hem);
+  const tabFn = (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.06) / 0.12)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.2)) * 0.8; return [['Hips', 1 - d], ['leftUpperLeg', d * t + 1e-4], ['rightUpperLeg', d * (1 - t) + 1e-4]]; };
+  C({ name: 'tabard', mat: 'tabard', tau: 0.02, k: 0.003, boneFn: tabFn, sdf: disp(tabBox(0.0045), (x, y) => 0.004 * Math.cos(x * 48) * Math.max(0, Math.min(1, (1.08 - y) * 3)), 0.005) });
 
   // ------------------------------------------------------------ gorget and wolf-fur mantle
   C({ name: 'gorget', mat: 'plate', tau: 0.03, k: 0.006, sdf: Sub(0.006, U(0.004, ...[0, 1].map((i) => I(0.004, shell(cone([0, 1.6, 0], [0, 1.79, 0.015], 0.125 - i * 0.022, 0.092 - i * 0.016), 0.007), slab(1.64 + i * 0.065, 1.7 + i * 0.065)))), cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.07, 0.066)),
@@ -66,6 +85,11 @@ export default function hero(ALL) {
     I(0.004, shell(pd(1.15, -0.095, 0.04), 0.014), slab(1.48, 1.495), xcut(0.2, -1))) });
   L({ name: 'pauldronSpikes', mat: 'plate', boneFn: pFn, rigid: true, k: 0.012, sdf: U(0.006, horn([[0.29, 1.76, -0.02], [0.33, 1.83, -0.05], [0.36, 1.9, -0.1]], 0.024), horn([[0.33, 1.73, 0.05], [0.38, 1.78, 0.07], [0.43, 1.82, 0.07]], 0.019)) });
   L({ name: 'pauldronRivets', mat: 'rivet', boneFn: pFn, rigid: true, k: 0, sdf: U(0, ...[0, 1, 2, 3, 4].map((i) => { const a = -1 + i * 0.5; return sphere(v3.add(shJ, [0.05 + 0.115 * Math.cos(a), 0.035, 0.12 * Math.sin(a)]), 0.0095); })) });
+
+  // haute-piece: a standing flange on each pauldron that guards the neck from a side cut, rolled bronze top
+  const haute = I(0.003, ellipsoid([0.255, 1.765, -0.01], [0.012, 0.11, 0.12], rot.z(-0.3)), slab(1.72, 1.9));
+  L({ name: 'haute', mat: 'plate', boneFn: pFn, rigid: true, k: 0.006, sdf: haute });
+  L({ name: 'hauteTrim', mat: 'trim', boneFn: pFn, rigid: true, k: 0.002, sdf: I(0.002, grow(haute, 0.0028), plane([0.255, 1.845, 0], [0.3, -1, 0])) });
 
   // ------------------------------------------------------------ arms: rerebrace, couter + fan, vambrace, mitten gauntlet
   const el = B.leftLowerArm;
@@ -110,6 +134,8 @@ export default function hero(ALL) {
   const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
   C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
+  const fore = onSurf(helm, 0, 1.978);
+  C({ name: 'helmSigil', mat: 'trim', bone: 'Head', rigid: true, k: 0.002, sdf: I(0.002, crescent([0, 1.974], 0.022, [0, 0.011], 0.0, 0.4), sphere(fore, 0.04), grow(helm, 0.006)) });
   C({ name: 'crest', mat: 'plate', bone: 'Head', rigid: true, k: 0.008, sdf: I(0.003, ellipsoid([0, 1.935, -0.02], [0.04, 0.163, 0.17]), box([0, 2.0, -0.02], [0.0085, 0.12, 0.2], null, 0.003), plane([0, 2.0, 0], [0, -1, 0.2])) });
   C({ name: 'bevor', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.8 - i * 0.03, 0.02], [0.118 - i * 0.008, 0.08, 0.14 - i * 0.008]), 0.008), slab(1.77 - i * 0.032, 1.805 - i * 0.032), zcut(-0.03, -1)))) });
   C({ name: 'neckGuard', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.86 - i * 0.04, -0.02], [0.13 + i * 0.008, 0.11, 0.155 + i * 0.008]), 0.008), zcut(-0.02, 1), slab(1.78 - i * 0.04, 1.84 - i * 0.04)))) });
@@ -141,6 +167,7 @@ export default function hero(ALL) {
       leather: { col: [0.24, 0.155, 0.095], gloss: 0.28, var: 0.22, freq: 45, dirt: 0.5 },
       fur: { col: [0.3, 0.27, 0.24], col2: [0.12, 0.11, 0.1], freq: 40, freq2: 14, var: 0.32, gloss: 0.04, dirt: 0.6 },
       cloth: { col: [0.42, 0.06, 0.07], col2: [0.24, 0.035, 0.04], freq2: 5, var: 0.15, freq: 30, gloss: 0.12, dirt: 0.55, grad: [0.5, 1.2, [0.5, 0.5, 0.5]] },
+      tabard: { col: [0.4, 0.05, 0.06], col2: [0.24, 0.03, 0.035], freq2: 6, var: 0.12, freq: 40, gloss: 0.06, dirt: 0.3 },
       horn: { col: [0.36, 0.32, 0.28], col2: [0.6, 0.55, 0.46], freq2: 9, var: 0.18, freq: 60, gloss: 0.45, dirt: 0.5 },
       glow: { col: [1.0, 0.34, 0.12], em: 1, gloss: 0 },
     },
