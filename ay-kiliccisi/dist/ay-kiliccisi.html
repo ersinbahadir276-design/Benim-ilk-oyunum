@@ -670,15 +670,16 @@ function buildPlayer(TX){PLD=heroBuild();skInit();
  SK.R[HB.rightThumbProximal]=r3m(rY(.2),rZ(.45));SK.R[HB.rightThumbIntermediate]=rZ(.6);SK.R[HB.rightThumbDistal]=rZ(.45);
  heroMesh(TX)}
 // ---------- pose application (procedural joint angles) + optional arm IK targets
-const POSE0={hipY:0,pel:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0};
+const POSE0={hipY:0,pel:0,spX:0,spY:0,spZ:0,chX:0,chY:0,hdX:0,hdY:0,LthX:0,RthX:0,LthZ:.04,RthZ:-.04,Lkn:0,Rkn:0,LaZ:1.22,LaX:.05,LaY:0,Lel:.25,RaZ:1.12,RaX:-.3,RaY:0,Rel:.55,RwX:0,RwY:0,RwZ:0,LwX:0,LwY:0,two:0,rev:0,choke:0,pelY:0,pelZ:0,hipX:0,LftX:0,RftX:0,hipFix:0};
 function applyPose(q){const R=SK.R,H=HB;
- R[H.hips]=rX(q.pel);R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),rY(q.hdY));
+ R[H.hips]=r3m(rY(q.pelY||0),r3m(rX(q.pel),rZ(q.pelZ||0)));R[H.spine]=r3m(rX(q.spX),r3m(rY(q.spY),rZ(q.spZ)));R[H.chest]=r3m(rX(q.chX),rY(q.chY));R[H.neck]=rX(q.hdX*.4);R[H.head]=r3m(rX(q.hdX*.6),rY(q.hdY));
  R[H.leftUpperLeg]=r3m(rX(q.LthX),rZ(q.LthZ));R[H.rightUpperLeg]=r3m(rX(q.RthX),rZ(q.RthZ));R[H.leftLowerLeg]=rX(q.Lkn);R[H.rightLowerLeg]=rX(q.Rkn);
- R[H.leftFoot]=rX(cl(-(q.pel+q.LthX+q.Lkn),-.9,.9));R[H.rightFoot]=rX(cl(-(q.pel+q.RthX+q.Rkn),-.9,.9));
+ R[H.leftFoot]=rX(cl(-(q.pel+q.LthX+q.Lkn)+(q.LftX||0),-1.1,1.1));R[H.rightFoot]=rX(cl(-(q.pel+q.RthX+q.Rkn)+(q.RftX||0),-1.1,1.1));
  R[H.leftUpperArm]=r3m(rY(q.LaY),r3m(rX(q.LaX),rZ(-q.LaZ)));R[H.leftLowerArm]=rY(-q.Lel);R[H.leftHand]=r3m(rX(q.LwX),rY(q.LwY));
  R[H.rightUpperArm]=r3m(rY(q.RaY),r3m(rX(q.RaX),rZ(q.RaZ)));R[H.rightLowerArm]=rY(q.Rel);R[H.rightHand]=r3m(rX(q.RwX),r3m(rY(q.RwY),rZ(q.RwZ)));
  const e=(th,kn)=>SK.L1*Math.cos(q.pel+th)+SK.L2*Math.cos(q.pel+th+kn);
- SK.root=[0,-(SK.L1+SK.L2-Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)))+q.hipY,0];skUpdate();
+ const ext=Math.max(e(q.LthX,q.Lkn),e(q.RthX,q.Rkn)),hf=q.hipFix||0;// hipFix: gait sets the hip height itself (flight phase: both feet in the air)
+ SK.root=[q.hipX||0,-(SK.L1+SK.L2-(hf>0?lp(ext,q.hipH,hf):ext))+q.hipY,0];skUpdate();
  // reverse grip (blade tip down, both hands): right hand to a point in front of the chest, blade axis turned straight down
  if(q.rev>.02){const h=lp(1.02,.82,cl(q.revDn||0,0,1));armIK('right',[-.02,h,.27],[-.6,.2,-.5],[0,-1,0],q.rev)}
  // left hand joins the grip (two-handed swings, charged heavy attack, guard, reverse grip)
@@ -794,6 +795,49 @@ function heroMeshOld(TX){const B=PLD.bones,H=HB,P=i=>B[i].r,parts={armor:[],cape
  const mk=(list,o)=>{if(!list.length)return;const g=merge(list);const nv=g.P.length/3,J=new Uint8Array(nv*4),Wt=new Float32Array(nv*4);let off=0;for(const p of list){J.set(p.J4,off*4);Wt.set(p.W4,off*4);off+=p.P.length/3}
   if(!g.N||g.N.length!==g.P.length)normals(g);return addSkin(g,J,Wt,o)};
  HERO.armor=mk(parts.armor,{out:.004,outCol:OUT,shade:.95});HERO.cape=mk(parts.cape,{out:0,shade:.8,ds:1});HERO.glow=mk(parts.glow,{unlit:1,col:[1,.25,.15],shade:0})}
+// ---- 32-gait.js
+// ===================== hero gait: planted feet, leg IK, pelvis and torso motion =====================
+// Instead of swinging the thighs with a sine (which made the planted foot skate over the ground), each foot follows
+// a path in the hips' frame: in stance it slides backwards at exactly the body's speed (so in the world it stays put),
+// in swing it lifts and travels forwards. A two-bone sagittal IK turns that path into thigh/knee angles.
+// The phase P.ph advances by distance (updatePlayer), 2*PI per gait cycle of heroGaitParams().cycle metres.
+// b: 0 = slow walk .. 1 = jog; sprint has its own set. Numbers are fractions of the leg length L (hip -> ankle).
+function heroGaitParams(mv,sprint){const b=sst(.3,.85,mv);
+ if(sprint)return{b:1,h0:.9,duty:.28,half:.41,lift:.36,bob:.035,lean:.3,arm:.85,twist:.16,sway:.008};
+ const half=lp(.25,.36,b),duty=lp(.6,.36,b);
+ return{b,h0:lp(.96,.92,b),duty,half,lift:lp(.12,.25,b),bob:lp(.006,.025,b),lean:lp(.04,.13,b),arm:lp(.35,.6,b),twist:lp(.07,.11,b),sway:lp(.022,.012,b)}}
+// metres of travel per gait cycle (two steps)
+function heroGaitCycle(mv,sprint){const g=heroGaitParams(mv,sprint);return 2*g.half*(SK.L1+SK.L2)/g.duty}
+// one leg: phase u in [0,1), u=0 at touchdown. Returns hip-frame ankle target {z,y} (y up, z forward), foot pitch, forwardness f in [-1,1]
+function heroGaitFoot(u,g,L){const D=g.duty,H=g.half*L;let z,y=0,pitch=0;
+ if(u<D){const s=u/D;z=H-2*H*s;pitch=lp(-.22,0,sst(0,.18,s))+.55*sst(.72,1,s);y=.07*L*sst(.72,1,s)*sst(.72,1,s)}
+ else{const w=(u-D)/(1-D),e=w*w*w*(w*(w*6-15)+10);z=-H+2*H*e;y=g.lift*L*Math.sin(PI*Math.pow(w,.75))+.07*L*(1-sst(0,.25,w));pitch=lp(.55,-.22,sst(.15,.9,w))}
+ return{z,y,pitch,f:z/H}}
+// sagittal two-bone IK: hip at origin, ankle target (z forward, -depth). Returns world-sagittal thigh angle (forward +) and knee flex.
+function heroLegIK(z,depth,L1,L2){const d=cl(Math.hypot(z,depth),.05,(L1+L2)*.999),a=Math.atan2(z,depth),
+ b=Math.acos(cl((L1*L1+d*d-L2*L2)/(2*L1*d),-1,1)),k=PI-Math.acos(cl((L1*L1+L2*L2-d*d)/(2*L1*L2),-1,1));return[a+b,k]}
+// fills q with the locomotion pose; mv = speed/3.4 clamped, t = time. Writes the exact leg channels to q.__gait.
+function heroGaitPose(q,mv,sprint,t){const g=heroGaitParams(mv,sprint),L1=SK.L1,L2=SK.L2,L=L1+L2,ph=P.ph/(2*PI),uL=ph-Math.floor(ph),uR=(uL+.5)%1;
+ const lean=g.lean+cl(P.accS||0,-4,4)*.025;q.pel=lean*.45;q.spX=lean*.55;
+ const fl=heroGaitFoot(uL,g,L),fr=heroGaitFoot(uR,g,L),zc=.03*L;
+ // stance compression (run) / vault (walk): the stance leg is a bit shorter at mid-stance when jogging
+ const stS=(u)=>u<g.duty?Math.sin(PI*u/g.duty):0,h=g.h0*L-g.bob*L*Math.max(stS(uL),stS(uR))*(g.b*2-1);
+ const[lt,lk]=heroLegIK(fl.z+zc,h-fl.y,L1,L2),[rt,rk]=heroLegIK(fr.z+zc,h-fr.y,L1,L2);
+ q.hipFix=1;q.hipH=h;q.LthX=-lt-q.pel;q.Lkn=lk;q.RthX=-rt-q.pel;q.Rkn=rk;q.LftX=fl.pitch;q.RftX=fr.pitch;
+ // pelvis: turns with the forward leg, drops on the swing side, weight moves over the stance foot
+ const stanceL=uL<g.duty?1:0,stanceR=uR<g.duty?1:0,ws=stanceL-stanceR;
+ q.pelY=-g.twist*fl.f*.5;q.pelZ=.045*ws*(1-g.b*.4);q.hipX=g.sway*L*Math.sin(2*PI*(uL-.25*g.duty))*(sprint?.5:1);
+ // torso counter-rotates, arms swing against the legs (sword arm less), head stays level
+ q.spY=-q.pelY;q.chY=g.twist*fl.f*.7;q.LaX=.05+g.arm*.75*fl.f;q.RaX=-.3-g.arm*.4*fr.f;q.Lel=lp(.35,1.2,sprint?1:g.b*.6)+.15*Math.max(0,-fr.f);q.Rel=sprint?.9:lp(.5,.6,g.b);q.LaZ=lp(1.22,1.1,g.b);
+ q.hdX=-(q.pel+q.spX)*.55;q.chX=.02*Math.sin(t*2.2);
+ q.__gait=1}
+// idle: weight drifts slowly from foot to foot, the unloaded knee softens, chest breathes, head looks around
+function heroIdlePose(q,t){const w=Math.sin(t*.42+.6*Math.sin(t*.13)),br=Math.sin(t*1.5);
+ q.hipX=.022*w;q.pelZ=.035*w;q.Lkn=.08+.1*Math.max(0,-w);q.Rkn=.08+.1*Math.max(0,w);q.LthX=-.04*Math.max(0,-w);q.RthX=-.04*Math.max(0,w);q.LthZ=.04+.03*w;q.RthZ=-.04+.03*w;
+ q.chX=.025*br;q.spX=.03;q.LaZ=1.2-.02*br;q.RaZ=1.1-.02*br;q.LaX=.06+.02*br;q.Lel=.3;q.hdY=Math.sin(t*.5)*.12+.1*Math.sin(t*.17);q.hdX=.04*Math.sin(t*.31)}
+// turn banking + start/stop lean, measured once per pose update
+function heroGaitTrack(dt){if(!(dt>0))return;const yr=angd(P.yaw,P._py===undefined?P.yaw:P._py)/dt;P._py=P.yaw;P.yawRate=lp(P.yawRate||0,cl(yr,-12,12),Math.min(1,dt*10));
+ const sp=P.spd||0,a=(sp-(P._ps===undefined?sp:P._ps))/dt;P._ps=sp;P.accS=lp(P.accS||0,cl(a,-20,20),Math.min(1,dt*6))}
 // ---- 40-wolves.js
 // ===================== wolves: model, perception, behaviour =====================
 const WG={},wolves=[],wslots=[],WSLOTS=9,W_UP=.32,W_LO=.3;
@@ -1888,18 +1932,16 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  if(P.staT>0)P.staT-=dt;else P.sta=Math.min(100,P.sta+(P.st==='block'?12:30)*dt*(1+gear('sta')/100)*(P.berserk>0?1.5:1)*(P.exhaustT>0?.5:1));
  if(P.guardT>0)P.guardT-=dt;else P.guard=Math.min(100,P.guard+(P.st==='gbreak'?0:P.guard<25?9:16)*dt);
  if(P.st==='move'||P.st==='getup')P.hp=Math.min(maxHP(),P.hp+.45*dt);
- const mv=Math.hypot(P.x-ox,P.z-oz);P.spd=dt>0?mv/dt:0;if(P.st==='move'){SYS.walked+=mv;P.ph+=mv*(P.sprinting?2.5:P.crouch?5.2:4.3)}
+ const mv=Math.hypot(P.x-ox,P.z-oz);P.spd=dt>0?mv/dt:0;if(P.st==='move'){SYS.walked+=mv;P.ph+=mv*(P.crouch?5.2:2*PI/heroGaitCycle(cl(P.spd/3.4,0,1),P.sprinting&&P.spd>4.6))}
  if(P.sprinting)P.noise=Math.max(P.noise,9);
  if(!SYS.gate&&Math.hypot(P.x,P.z)<46){SYS.gate=1;P.cp=[0,60]}if(!SYS.knight&&Math.hypot(P.x-10,P.z-50)<5.5)SYS.knight=1}
 // --------------------------------------------------------------- pose targets per state
-function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph),c=Math.cos(P.ph);let rate=14;
- const run=(mv,sprint)=>{const A=(sprint?.9:.5)*mv,B=(sprint?1.55:.95)*mv;q.LthX=-s*A;q.RthX=s*A;q.Lkn=.12+Math.max(0,c)*B;q.Rkn=.12+Math.max(0,-c)*B;q.LaX=s*A*.75;q.RaX=-.3-s*A*.45;q.Lel=sprint?1.15:.4;q.Rel=sprint?.9:.55;
-  q.spX=sprint?.2:.05;q.pel=sprint?.1:.02;q.chY=s*.14*mv;q.spY=-s*.06*mv;q.hipY=-Math.abs(s)*(sprint?.03:.012)};
+function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph),c=Math.cos(P.ph);let rate=14;heroGaitTrack(GT.dt);
  switch(P.st){
  case'move':case'land':{const mv=cl(P.spd/3.4,0,1);
   if(P.crouch){q.pel=.36;q.spX=.32;q.hdX=-.5;q.LthX=-1.02-s*.32*mv;q.RthX=-1.02+s*.32*mv;q.Lkn=1.72+Math.max(0,c)*.3*mv;q.Rkn=1.72+Math.max(0,-c)*.3*mv;q.LaZ=1.05;q.Lel=.9;q.RaZ=1.0;q.RaX=-.5;q.Rel=.9}
-  else if(mv>.08)run(mv,P.sprinting&&P.spd>4.6);
-  else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
+  else if(mv>.08)heroGaitPose(q,mv,P.sprinting&&P.spd>4.6,t);
+  else heroIdlePose(q,t);
   if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
@@ -1936,7 +1978,14 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
   q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
- const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}
+ // turn banking: lean into the turn while moving
+ if(P.st==='move'&&!P.crouch)q.spZ+=cl(-(P.yawRate||0)*.04*cl(P.spd/3.4,0,1.4),-.22,.22);
+ const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k);
+ // locomotion: the feet must follow the gait exactly (a low-pass would lag the phase and make the planted foot skate);
+ // the weight ramps in/out so starting, stopping and attacking still blend smoothly
+ P.locoW=lp(P.locoW||0,q.__gait&&P.st==='move'?1:0,Math.min(1,GT.dt*(q.__gait?7:12)));
+ if(q.__gait){p.hipH=q.hipH;if(P.locoW>.01)for(const n of GAITCH)p[n]=lp(p[n],q[n],P.locoW)}}
+const GAITCH=['LthX','RthX','Lkn','Rkn','LftX','RftX','pelY','pelZ','hipX','pel','hipFix'];
 // model matrix: yaw, scale, ragdoll tilt about the feet in the fall direction, dodge rolls; then lifted so no bone sinks into the ground
 function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);for(let k=0;k<12;k++)M[k]*=PSC;
  if(R.ang>.001){const ax=vnorm([R.fz,0,-R.fx]),A=axisAng(ax,R.ang),m4=new Float32Array([A[0],A[3],A[6],0,A[1],A[4],A[7],0,A[2],A[5],A[8],0,0,0,0,1]);M=mmul(mmul(M,mtrs([0,.06,0],[0,0,0])),mmul(m4,mtrs([0,-.06,0],[0,0,0])))}
