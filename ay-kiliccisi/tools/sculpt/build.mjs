@@ -5,6 +5,10 @@ const here = path.dirname(fileURLToPath(import.meta.url)), root = path.join(here
 const SK = JSON.parse(fs.readFileSync(path.join(here, 'skeletons.json'), 'utf8'));
 const cacheDir = path.join(here, 'cache'); fs.mkdirSync(cacheDir, { recursive: true });
 const only = process.argv.slice(2);
+// the cache is not in git: seed it from the shipped data/models.js so rebuilding one model keeps all the others
+{ const mf = path.join(root, 'data/models.js');
+  if (fs.existsSync(mf)) for (const m of fs.readFileSync(mf, 'utf8').matchAll(/(\w+):"([A-Za-z0-9+/=]+)"/g)) {
+    const f = path.join(cacheDir, m[1] + '.bin'); if (!fs.existsSync(f)) fs.writeFileSync(f, zlib.gunzipSync(Buffer.from(m[2], 'base64'))); } }
 const list = fs.readdirSync(path.join(here, 'models')).filter((f) => f.endsWith('.mjs') && !f.startsWith('_')).map((f) => f.slice(0, -4));
 for (const name of list) {
   if (only.length && !only.includes(name)) continue;
