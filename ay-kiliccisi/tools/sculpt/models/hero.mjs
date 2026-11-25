@@ -27,12 +27,19 @@ export default function hero(ALL) {
   const taper = symX(plane([0.285, 1.66, 0], [0.36, -0.13, 0]));
   const neckHole = cone([0, 1.6, 0.02], [0, 1.9, 0.04], 0.098, 0.13), armHoles = symX(sphere([0.315, 1.645, 0], 0.1));
   const cuirSolid = I(0.012, lens, bodyE, taper, slab(1.3, 1.69));
-  const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
-  const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
+  const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles);
+  const ext = (t) => ({ d: (x, y) => t.d(x, y, 0.3), bb: [t.bb[0], t.bb[1], -1, t.bb[3], t.bb[4], 1] }); // a tube pushed straight through z
+  const onCuir = (r) => I(0.002, shell(grow(cuirSolid, 0.004), 0.0045), r); // a band that sits exactly on the plate surface
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  const filR = U(0, symX(ext(tube([[0.025, 1.64, 0.3], [0.1, 1.55, 0.3], [0.15, 1.45, 0.3], [0.17, 1.37, 0.3]], () => 0.009))),
+    symX(ext(tube([[0.03, 1.4, 0.3], [0.085, 1.36, 0.3], [0.15, 1.34, 0.3]], () => 0.008))), symX(ext(tube([[0.1, 1.55, 0.3], [0.075, 1.5, 0.3], [0.09, 1.45, 0.3]], () => 0.007))));
+  const filigree = I(0, onCuir(filR), zcut(0.08, -1), slab(1.33, 1.66));
+  C({ name: 'cuirFiligree', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: Sub(0.003, filigree, neckHole, armHoles) });
+  C({ name: 'cuirKeel', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.004, sdf: Sub(0.003, I(0.003, grow(cuirSolid, 0.009), box([0, 1.48, 0.25], [0.011, 0.2, 0.08], null, 0.008), zcut(0.1, -1)), neckHole) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
-  for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
-    C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
+  for (let i = 0; i < 4; i++) { const y1 = 1.322 - i * 0.042, e = ellipsoid([0, 1.33 - i * 0.03, 0.005], [0.186 + i * 0.008, 0.26, 0.15 + i * 0.008]);
+    C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.003, sdf: I(0.004, shell(e, 0.008), slab(y1 - 0.05, y1)) });
+    C({ name: 'lameEdge' + i, mat: i === 3 ? 'trim' : 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.002, sdf: I(0.003, shell(grow(e, 0.003), 0.008), slab(y1 - 0.05, y1 - 0.038)) }); }
   const beltE = ellipsoid([0, 1.13, 0.005], [0.212, 0.12, 0.172]);
   C({ name: 'belt', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: I(0.004, beltE, slab(1.103, 1.153)) });
   C({ name: 'buckle', mat: 'trim', bone: 'Hips', rigid: true, k: 0.003, sdf: Sub(0.003, box([0, 1.128, 0.178], [0.046, 0.034, 0.014], null, 0.008), box([0, 1.128, 0.19], [0.026, 0.015, 0.02], null, 0.004)) });
@@ -93,9 +100,11 @@ export default function hero(ALL) {
   L({ name: 'poleyn', mat: 'plate', boneFn: () => [['leftLowerLeg', 0.55], ['leftUpperLeg', 0.45]], rigid: true, k: 0.005, sdf: U(0.008,
     I(0.004, shell(ellipsoid(v3.add(kn, [0, 0, 0.03]), [0.077, 0.082, 0.072]), 0.0095), zcut(-0.01, -1)), I(0.004, shell(ellipsoid(v3.add(kn, [0.068, 0, 0.0]), [0.024, 0.072, 0.066]), 0.008), xcut(0.078, -1)),
     horn([v3.add(kn, [0, 0.0, 0.095]), v3.add(kn, [0, 0.02, 0.125]), v3.add(kn, [0, 0.045, 0.142])], 0.015)) });
-  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.08, 0.062), 0.0095), slab(0.15, 0.58)),
-    I(0.003, cone([0.099, 0.57, 0.084], [0.099, 0.17, 0.068], 0.0105, 0.0085), zcut(0.06, -1))) });
-  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: I(0.003, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.083, 0.065), 0.011), slab(0.55, 0.568)) });
+  const leg = U(0.05, cone([0.099, 0.58, 0.012], [0.099, 0.2, 0.018], 0.072, 0.05), ellipsoid([0.099, 0.43, -0.022], [0.07, 0.13, 0.068]), cone([0.099, 0.24, 0.015], [0.099, 0.13, 0.02], 0.05, 0.068));
+  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(leg, 0.0095), slab(0.14, 0.58)),
+    I(0.003, cone([0.099, 0.57, 0.09], [0.099, 0.2, 0.074], 0.011, 0.008), zcut(0.06, -1))) });
+  L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: U(0, I(0.003, shell(grow(leg, 0.003), 0.011), slab(0.548, 0.568)), I(0.003, shell(grow(leg, 0.003), 0.011), slab(0.142, 0.162))) });
+  L({ name: 'greaveRivets', mat: 'rivet', bone: 'leftLowerLeg', rigid: true, k: 0, sdf: U(0, ...[0.75, 1.6, 2.4, -0.75, -1.6].map((a) => sphere([0.099 + Math.sin(a) * 0.083, 0.558, 0.012 + Math.cos(a) * 0.083], 0.008))) });
   const foot = U(0.03, ellipsoid([an[0], 0.075, 0.02], [0.063, 0.075, 0.105]), cone([an[0], 0.06, 0.05], [an[0], 0.04, toe[2] + 0.06], 0.058, 0.026));
   const footFn = (x, y, z) => { const t = Math.max(0, Math.min(1, (z - 0.08) / 0.06)); return [['leftFoot', 1 - t], ['leftToes', t]]; };
   L({ name: 'sabaton', mat: 'plate', tau: 0.02, k: 0.008, sdf: I(0.004, foot, plane([0, 0.0, 0], [0, -1, 0])), boneFn: footFn });
