@@ -43,8 +43,8 @@ function swordTip(){return mpt(PM,SK.GP[HB.rightHand].map((v,i)=>v+r3v(SK.GR[HB.
 function knockDown(dir,power){const l=Math.hypot(dir[0],dir[1])||1,fx=dir[0]/l,fz=dir[1]/l;// world fall direction -> model space
  const c=Math.cos(P.yaw),s=Math.sin(P.yaw);P.rag={ang:Math.max(P.rag.ang||0,.05),av:2.2+power*1.6,fx:fx*c-fz*s,fz:fx*s+fz*c,bounce:0,lag:0,lagv:-3*power};
  P.st='down';P.t=0;P.vx=fx*2.6*power;P.vz=fz*2.6*power;P.vy=0;P.air=false;P.sprintHeld=false;P.crouch=false;P.charge=0;P.struggle=0;P.jig=1;sfx.thud()}
-function die(){P.hp=0;P.st='dead';P.t=0;P.alive=false;P.berserk=0;P.lock=null;dropBag();SYS.deaths=(SYS.deaths||0)+1;if(P.pinBy){P.pinBy=null}if(P.td)cancelTakedown();if(P.rag.ang<.3)knockDown([-Math.sin(P.yaw),-Math.cos(P.yaw)],.8);P.st='dead';note('[Sistem] Öldün. Ruhun geri çağrılıyor…','red')}
-function respawn(){const al=SYS.altarAt!==undefined&&SYS.altarAt>=0?ALTARS[SYS.altarAt]:null,c=al?[al.x+1.6,al.z+1.6]:SYS.gate?[0,60]:[SPAWN[0],SPAWN[2]];SYS.flasks=SYS.flaskMax;P.x=c[0];P.z=c[1];P.hp=maxHP();P.sta=100;P.guard=100;P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;P.inv=2;P.pinBy=null;P.alive=true;P.air=false;P.vy=0;P.lift=0;CAM.tx=P.x;CAM.tz=P.z;
+function die(){P.hp=0;P.st='dead';P.t=0;P.alive=false;P.berserk=0;P.lock=null;dropBag();SYS.deaths=(SYS.deaths||0)+1;if(P.pinBy){P.pinBy=null}if(P.td)cancelTakedown();if(P.rag.ang<.3){if(clipHas('death')){P.deathClip=true;P.rag.ang=0;P.rag.av=0;P.vx=-Math.sin(P.yaw)*.6;P.vz=-Math.cos(P.yaw)*.6;P.vy=0;P.sprintHeld=false;P.crouch=false;P.charge=0;P.jig=0}else knockDown([-Math.sin(P.yaw),-Math.cos(P.yaw)],.8)}P.st='dead';note('[Sistem] Öldün. Ruhun geri çağrılıyor…','red')}
+function respawn(){const al=SYS.altarAt!==undefined&&SYS.altarAt>=0?ALTARS[SYS.altarAt]:null,c=al?[al.x+1.6,al.z+1.6]:SYS.gate?[0,60]:[SPAWN[0],SPAWN[2]];SYS.flasks=SYS.flaskMax;P.x=c[0];P.z=c[1];P.hp=maxHP();P.sta=100;P.guard=100;P.st='move';P.t=0;P.rag.ang=0;P.rag.av=0;P.deathClip=false;P.inv=2;P.pinBy=null;P.alive=true;P.air=false;P.vy=0;P.lift=0;CAM.tx=P.x;CAM.tz=P.z;
  for(const w of wolves)if(!w.tame&&!w.dead){w.aware=0;if(hostileSt(w)){w.st='return';w.t=0}}for(const g of GOBS)g.calmDown&&g.calmDown();for(const c of CROCS)c.calmDown&&c.calmDown();if(DRAGON)DRAGON.calmDown();
  note('[Sistem] Yeniden doğdun.')}
 // --------------------------------------------------------------- starting actions
@@ -146,7 +146,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
  case'jumpatk':{slide(2);P.vy-=8*dt;if(!P.air&&!P.hitDone){P.hitDone=true;doHit('jumpatk');P.t=0;P.st='land';P.landT=.38}break}
  case'land':{slide(14);if(P.t>(P.landT||.15)){P.st='move';P.t=0}break}
  case'dodge':{const u=Math.min(1,P.t/P.dodgeT),sp=P.dodgeSp*(1-u*.7);P.vx=P.ddx*sp;P.vz=P.ddz*sp;const e=u*u*(3-2*u);
-  P.spin=P.dodgeKind==='fwd'?2*PI*e:0;P.roll=P.dodgeKind==='left'?2*PI*e:P.dodgeKind==='right'?-2*PI*e:0;if(u>=1){P.st='move';P.t=0;P.spin=0;P.roll=0}break}
+  P.spin=P.dodgeKind==='fwd'&&!rollClip()?2*PI*e:0;P.roll=P.dodgeKind==='left'?2*PI*e:P.dodgeKind==='right'?-2*PI*e:0;if(u>=1){P.st='move';P.t=0;P.spin=0;P.roll=0}break}
  case'block':{const sp=1.5*il;moveFree(sp,6);if(il>.05&&!nearestFoe(8,PI))P.yaw+=angd(Math.atan2(wx,wz),P.yaw)*Math.min(1,dt*6);else{const f=nearestFoe(10,PI);if(f)P.yaw+=angd(Math.atan2(f.x-P.x,f.z-P.z),P.yaw)*Math.min(1,dt*8)}
   if(!IN.blockHeld){P.st='move';P.t=0}else if(take('atk')){P.st='move';startLight(0)}else if(take('dodge'))startDodge();break}
  case'parry':slide(10);if(P.t>.32){P.st=IN.blockHeld?'block':'move';P.t=0}break;
@@ -161,7 +161,7 @@ function updatePlayer(dt){P.inv=Math.max(0,P.inv-dt);P.flash=Math.max(0,P.flash-
    if(P.struggle>=1){const w=P.pinBy;P.pinBy=null;w.st='recover';w.t=0;w.pitch=0;w.cd=rr(1.6,2.4);w.kx=-Math.sin(w.yaw)*7;w.kz=-Math.cos(w.yaw)*7;w.flash=1;sfx.hit();note('[Sistem] Kurdu üstünden attın!');P.t=0}}
   else if(P.t>.9&&R.ang>=1.4){P.st='getup';P.t=0}break}
  case'getup':{slide(10);const R=P.rag;R.ang=Math.max(0,1.45*(1-sst(.15,.95,P.t/1.0)));R.av=0;if(P.t>1.0){P.st='move';P.t=0;R.ang=0;P.inv=Math.max(P.inv,1.0);const p=collide(P.x,P.z,.34);P.x=p[0];P.z=p[1]}break}
- case'dead':{const R=P.rag;slide(5);if(R.ang<1.45){R.av+=Math.sin(Math.max(R.ang,.05))*9.5*dt;R.ang=Math.min(1.45,R.ang+R.av*dt)}if(P.t>3.6)respawn();break}}
+ case'dead':{const R=P.rag;slide(5);if(P.deathClip){const t0=(P.t-dt)*DEATH_RATE,t1=P.t*DEATH_RATE;if(t0<DEATH_HIT&&t1>=DEATH_HIT){sfx.thud();CAM.shake=Math.max(CAM.shake,.25)}}else if(R.ang<1.45){R.av+=Math.sin(Math.max(R.ang,.05))*9.5*dt;R.ang=Math.min(1.45,R.ang+R.av*dt)}if(P.t>3.6)respawn();break}}
  IN.mash=0;
  // integrate: horizontal velocity with collision and deep-water stop; vertical with gravity
  if(move){let nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;if(depthAt(nx,nz)>1.25){nx=P.x;nz=P.z;P.vx=P.vz=0}const p=collide(nx,nz,.34);P.x=p[0];P.z=p[1]}
@@ -204,19 +204,19 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
    // a slow pose filter lags and flattens the stride cycle; once the walk has settled, follow it closely
    if(GAIT.lin)rate=lp(14,1e3,sst(.15,.45,P.gaitT))}
   else{q.chX=Math.sin(t*1.6)*.02;q.hdY=Math.sin(t*.5)*.12;q.LaX=.05+Math.sin(t*1.6)*.02}
-  if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}break}
+  if(P.st==='land'){q.pel=.25;q.LthX=q.RthX=-.7;q.Lkn=q.Rkn=1.1;rate=25}q.clipW=clipStateW();break}
  case'attack':{rate=34;const u=P.t/(P.atkT||.46),w=sst(0,.3,u),sl=sst(.3,.58,u),pc=curStance().pose[P.combo]||0;q.spX=.14;q.Lel=.85;q.LaX=.45;q.LaZ=1.0;
   if(pc===0){q.RaZ=.2;q.RaX=-.1;q.RaY=lp(-.75,2.15,sl);q.Rel=lp(.45,.08,sl);q.chY=lp(-.55,.65,sl);q.spY=lp(-.2,.25,sl);q.LthX=-.5;q.Lkn=.55;q.RthX=.35;q.Rkn=.25;if(u<.3)q.RaY=lp(P.ps.RaY,-.75,w)}
   else if(pc===1){q.RaZ=.45;q.RaX=0;q.RaY=lp(2.15,-.55,sl);q.Rel=lp(.3,.08,sl);q.chY=lp(.6,-.55,sl);q.spY=lp(.25,-.2,sl);q.RthX=-.5;q.Rkn=.55;q.LthX=.35;q.Lkn=.25}
-  else{q.RaZ=-1.3;q.RaY=.25;q.RaX=lp(-.65,1.8,sl);q.Rel=lp(.6,.05,sl);q.chX=lp(-.2,.5,sl);q.spX=lp(-.05,.3,sl);q.LthX=-.6;q.Lkn=.7;q.RthX=.3;q.Rkn=.3;q.RwX=lp(-.3,.3,sl);q.two=.0}break}
+  else{q.RaZ=-1.3;q.RaY=.25;q.RaX=lp(-.65,1.8,sl);q.Rel=lp(.6,.05,sl);q.chX=lp(-.2,.5,sl);q.spX=lp(-.05,.3,sl);q.LthX=-.6;q.Lkn=.7;q.RthX=.3;q.Rkn=.3;q.RwX=lp(-.3,.3,sl);q.two=.0}q.clipW=clipStateW();break}
  case'charge':{rate=12;const k=P.charge;q.two=1;q.RaZ=-1.25-k*.35;q.RaY=.2;q.RaX=-.85-k*.25;q.Rel=.75;q.chX=-.25*k;q.spX=-.12*k;q.LthX=-.55;q.Lkn=.7;q.RthX=.35;q.Rkn=.35;q.pel=.1;q.hipY=-.04*k;q.RwX=-.3-k*.3;break}
  case'heavy':{rate=30;const u=P.t/(P.hvT||.7),sl=sst(.32,.55,u);q.two=1;q.RaZ=lp(-1.6,-.7,sl);q.RaY=.25;q.RaX=lp(-1.1,1.7,sl);q.Rel=lp(.75,.05,sl);q.chX=lp(-.3,.55,sl);q.spX=lp(-.15,.35,sl);q.pel=lp(.1,.25,sl);
   q.LthX=lp(-.55,-.9,sl);q.Lkn=lp(.7,1.0,sl);q.RthX=.4;q.Rkn=.4;q.hipY=-.08*sl;q.RwX=lp(-.6,.4,sl);break}
  case'runatk':{rate=30;const u=P.t/.6,sl=sst(.25,.5,u);q.RaZ=.3;q.RaX=lp(-.9,.2,sl);q.RaY=lp(-1.1,1.9,sl);q.Rel=lp(.7,.05,sl);q.chY=lp(-.7,.7,sl);q.spX=.35;q.pel=.2;q.LthX=-.9;q.Lkn=.9;q.RthX=.55;q.Rkn=.3;q.LaX=.7;q.Lel=1.1;break}
- case'jump':{rate=16;const up=P.vy>0;q.pel=.15;q.LthX=up?-.9:-.5;q.Lkn=up?1.4:.9;q.RthX=up?-.2:-.35;q.Rkn=up?.9:.6;q.LaZ=.7;q.LaX=-.5;q.RaZ=.8;q.RaX=-.5;q.Rel=.8;q.spX=.1;break}
+ case'jump':{rate=16;const up=P.vy>0;q.pel=.15;q.LthX=up?-.9:-.5;q.Lkn=up?1.4:.9;q.RthX=up?-.2:-.35;q.Rkn=up?.9:.6;q.LaZ=.7;q.LaX=-.5;q.RaZ=.8;q.RaX=-.5;q.Rel=.8;q.spX=.1;q.clipW=1;break}
  case'jumpatk':{rate=26;q.two=1;q.RaZ=-1.4;q.RaX=lp(-1.1,1.5,sst(0,.25,P.t));q.Rel=.2;q.RaY=.2;q.chX=.45;q.spX=.35;q.pel=.3;q.LthX=-1.2;q.Lkn=1.6;q.RthX=-.6;q.Rkn=1.4;break}
  case'dodge':{rate=30;if(P.dodgeKind==='back'){q.pel=-.15;q.spX=-.25;q.LthX=.3;q.Lkn=.6;q.RthX=-.4;q.Rkn=.9;q.LaZ=.8;q.LaX=-.3;q.RaX=-.6;q.Rel=.9}
-  else{q.pel=.9;q.spX=.7;q.chX=.4;q.hdX=.5;q.LthX=q.RthX=-1.5;q.Lkn=q.Rkn=2.1;q.LaZ=.9;q.LaX=-.6;q.Lel=1.6;q.RaZ=.9;q.RaX=-.6;q.Rel=1.6}break}
+  else{q.pel=.9;q.spX=.7;q.chX=.4;q.hdX=.5;q.LthX=q.RthX=-1.5;q.Lkn=q.Rkn=2.1;q.LaZ=.9;q.LaX=-.6;q.Lel=1.6;q.RaZ=.9;q.RaX=-.6;q.Rel=1.6}q.clipW=clipStateW();break}
  case'block':case'parry':{rate=22;q.two=1;q.RaZ=.55;q.RaX=-1.05;q.RaY=-.35;q.Rel=1.45;q.RwX=-.35;q.RwZ=.35;q.spX=.12;q.pel=.12;q.LthX=-.45;q.Lkn=.55;q.RthX=.2;q.Rkn=.35;q.hdX=-.1;
   if(P.st==='parry'){const k=1-P.t/.32;q.RaX-=.6*k;q.chX=-.2*k;q.hdX=-.3*k}break}
  case'gbreak':{rate=12;const k=Math.sin(P.t*9)*(1-P.t/1.4);q.RaZ=.2;q.RaX=-1.6;q.Rel=.3;q.LaZ=.5;q.LaX=-1.2;q.spX=-.35+k*.1;q.chX=-.2;q.hdX=-.4;q.pel=-.2;q.LthX=.3;q.Lkn=.5;q.RthX=-.3;q.Rkn=.6;break}
@@ -228,7 +228,7 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   else if(k2==='roar'){const k=sst(0,.35,P.t)-sst(.75,1,P.t);q.chX=-.45*k;q.hdX=-.6*k;q.LaZ=lp(1.22,.5,k);q.LaX=-.4*k;q.Lel=.8;q.RaZ=lp(1.12,.6,k);q.spX=-.2*k;q.LthX=-.4*k;q.Lkn=.6*k;q.RthX=.3*k}
   else if(k2==='dash'){q.two=1;q.RaZ=.2;q.RaX=.3;q.RaY=1.9;q.Rel=.1;q.spX=.5;q.pel=.35;q.LthX=-1.1;q.Lkn=1.2;q.RthX=.6;q.Rkn=.4;q.chY=.6}
   else if(k2==='slam'){q.two=1;const air=P.air;q.RaZ=-1.4;q.RaX=air?-1.0:1.6;q.Rel=air?.7:.05;q.RaY=.2;q.chX=air?-.3:.6;q.spX=air?-.1:.4;q.pel=air?.1:.4;q.LthX=air?-1:-1.2;q.Lkn=air?1.3:1.5;q.RthX=air?-.6:.4;q.Rkn=air?1.2:.6;q.hipY=air?0:-.15}break}
- case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;break}
+ case'hurt':{rate=26;const k=1-P.t/.38;q.spX=-.35*k;q.chX=-.25*k;q.hdX=-.4*k;q.LaZ=.8;q.LaX=-.6*k;q.RaX=-.7*k;q.clipW=1;break}
  case'td':{rate=18;const td=P.td;if(!td)break;
   if(td.kind==='choke'){q.choke=td.t<1.4?1:Math.max(0,1-(td.t-1.4)*6);q.chokeH=.86;q.spX=.32;q.pel=.22;q.hipY=-.1;q.LthX=-.85;q.Lkn=1.15;q.RthX=-.3;q.Rkn=.8;q.chY=Math.sin(td.t*15)*.05;
    if(td.t>1.35){const u=sst(1.35,1.6,td.t);q.RaZ=.25;q.RaX=lp(-.4,-1.3,u);q.RaY=lp(-.6,.2,u);q.Rel=lp(1.6,.15,u)}}
@@ -238,8 +238,9 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
    q.LthX=lp(-1.35,0,stand);q.Lkn=lp(2.1,0,stand);q.RthX=lp(-.2,0,stand);q.Rkn=lp(2.2,0,stand);q.hdX=lp(.4,0,stand)}break}
  case'down':case'dead':{rate=10;const j=P.jig,n=(a,b)=>Math.sin(t*a+b)*j,R=P.rag,lag=cl(R.lag,-1.2,1.2);// limbs trail behind the falling body
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
-  q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
+  q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;q.clipW=clipStateW();break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
+ gaitUpdate(GT.dt,P.st==='move');
  const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}
 // model matrix: yaw, scale, ragdoll tilt about the feet in the fall direction, dodge rolls; then lifted so no bone sinks into the ground
 function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);for(let k=0;k<12;k++)M[k]*=PSC;

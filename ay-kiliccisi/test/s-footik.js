@@ -43,7 +43,8 @@ module.exports = async ({ page, shot, G, log }) => {
   // walking up and across the slope: stays finite and planted feet stay close to the ground
   const walk = await G((sp) => {
     const g = __G; g.FIK.on = 1; g.tp(sp.x, sp.z); g.P.yaw = sp.yaw + .8; g.IN.mz = 1; let worst = 0, nan = false, n = 0; const B = g.PLD().bones;
-    for (let i = 0; i < 150; i++) { g.GT.time += 1 / 60; g.step(1 / 60);
+    // (the first 12 frames are skipped: the measure above left the IK switched off, and it fades back in over ~0.2 s)
+    for (let i = 0; i < 150; i++) { g.GT.time += 1 / 60; g.step(1 / 60); if (i < 12) continue;
       for (const S of ['left', 'right']) { const f = g.HB[S + 'Foot'], w = g.mpt(g.PM, g.SK.GP[f]), gap = w[1] - B[f].r[1] - g.hAt(w[0], w[2]); if (!isFinite(gap)) nan = true; if (gap < worst) worst = gap; }
       n++; }
     g.IN.mz = 0; return { worst: +worst.toFixed(3), nan, n };
