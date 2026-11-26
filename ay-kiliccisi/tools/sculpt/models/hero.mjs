@@ -30,6 +30,10 @@ export default function hero(ALL) {
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  // crescent-moon emblem (the Moon Swordsman's mark): a prism cut by the plate's own offset surface, so the relief hugs the curve
+  const crescent = Sub(0.002, cone([0, 1.49, 0.05], [0, 1.49, 0.32], 0.066, 0.066), cone([0.03, 1.512, 0.04], [0.03, 1.512, 0.33], 0.058, 0.058));
+  const star = box([0.012, 1.497, 0.2], [0.014, 0.014, 0.12], rot.z(Math.PI / 4), 0.003);
+  C({ name: 'emblem', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, U(0, crescent, star), grow(cuirSolid, 0.0085), plane([0, 0, 0.1], [0, 0, -1])) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
@@ -40,8 +44,11 @@ export default function hero(ALL) {
   // rear mail skirt and front tassets (three lames over each thigh)
   C({ name: 'skirt', mat: 'mail', tau: 0.05, sdf: I(0.006, shell(ellipsoid([0, 1.0, 0], [0.205, 0.22, 0.17]), 0.008), slab(0.93, 1.11), zcut(0.0, 1)),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.06) / 0.12)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.15)); return [['Hips', 1 - d * 0.75], ['leftUpperLeg', d * 0.75 * t], ['rightUpperLeg', d * 0.75 * (1 - t)]]; } });
-  for (let i = 0; i < 3; i++) { const y1 = 1.105 - i * 0.062, e = ellipsoid([0.1, 1.0, 0.02], [0.15 + i * 0.006, 0.3, 0.16 + i * 0.006]);
-    L({ name: 'tasset' + i, mat: i === 2 ? 'trim' : 'plate', tau: 0.02, k: 0.004, sdf: I(0.005, shell(e, 0.007), slab(y1 - 0.07, y1), zcut(-0.02, -1), xcut(0.012, -1)), boneFn: () => [['leftUpperLeg', 0.55 + i * 0.15], ['Hips', 0.45 - i * 0.15]] }); }
+  for (let i = 0; i < 3; i++) { const y1 = 1.105 - i * 0.058, e = cone([0.1, y1 + 0.03, 0.02], [0.118, y1 - 0.11, 0.035], 0.128 + i * 0.008, 0.162 + i * 0.008);
+    L({ name: 'tasset' + i, mat: 'plate', tau: 0.02, k: 0.004, sdf: I(0.005, shell(e, 0.007), slab(y1 - 0.074, y1), zcut(-0.01, -1), xcut(0.018, -1)), boneFn: () => [['leftUpperLeg', 0.55 + i * 0.15], ['Hips', 0.45 - i * 0.15]] }); }
+
+  { const y1 = 1.105 - 2 * 0.058, e = cone([0.1, y1 + 0.03, 0.02], [0.118, y1 - 0.11, 0.035], 0.144, 0.178);
+    L({ name: 'tassetTrim', mat: 'trim', tau: 0.02, k: 0.003, sdf: I(0.004, shell(e, 0.0085), slab(y1 - 0.074, y1 - 0.06), zcut(-0.01, -1), xcut(0.018, -1)), boneFn: () => [['leftUpperLeg', 0.85], ['Hips', 0.15]] }); }
 
   // ------------------------------------------------------------ gorget and wolf-fur mantle
   C({ name: 'gorget', mat: 'plate', tau: 0.03, k: 0.006, sdf: Sub(0.006, U(0.004, ...[0, 1].map((i) => I(0.004, shell(cone([0, 1.6, 0], [0, 1.79, 0.015], 0.125 - i * 0.022, 0.092 - i * 0.016), 0.007), slab(1.64 + i * 0.065, 1.7 + i * 0.065)))), cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.07, 0.066)),
@@ -50,7 +57,7 @@ export default function hero(ALL) {
   for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2, cx = Math.sin(a) * 0.2, cz = Math.cos(a) * 0.165 - 0.025, back = Math.cos(a) < 0.2;
     tufts.push(ellipsoid([cx, 1.695 + 0.012 * Math.sin(i * 2.7), cz], [0.07, 0.05, 0.07], rot.y(a)));
     if (back || Math.abs(Math.sin(a)) > 0.7) { const o = [Math.sin(a) * 0.255, 1.66, Math.cos(a) * 0.21 - 0.03]; tufts.push(horn([o, v3.add(o, [Math.sin(a) * 0.04, -0.07, Math.cos(a) * 0.04]), v3.add(o, [Math.sin(a) * 0.05, -0.14 - (i % 3) * 0.02, Math.cos(a) * 0.06])], 0.034, 0.006)); } }
-  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.011 * fbm(x * 55, y * 12, z * 55, 3) + 0.005 * noise(x * 170, y * 25, z * 170), 0.018);
+  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.014 * fbm(x * 28, y * 7, z * 28, 3) + 0.0025 * Math.sin(Math.atan2(x, z) * 31 + 9 * fbm(x * 6, y * 6, z * 6, 2)), 0.018);
   C({ name: 'fur', mat: 'fur', bone: 'UpperChest', tau: 0.012, k: 0.02, sdf: Sub(0.01, fur, cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.082, 0.078)) });
 
   // ------------------------------------------------------------ pauldrons
@@ -105,11 +112,15 @@ export default function hero(ALL) {
   // ------------------------------------------------------------ the great helm: flat-sided skull, beaked visor with a keel, T-slit, fin crest, swept horns
   const skull = I(0.03, ellipsoid([0, 1.935, -0.012], [0.128, 0.145, 0.152]), box([0, 1.93, 0], [0.114, 0.2, 0.2]));
   const prow = I(0.008, ellipsoid([0, 1.885, 0.035], [0.118, 0.12, 0.165]), symX(plane([0, 0, 0.205], [0.5, 0, 0.866])), slab(1.775, 2.0), box([0, 1.9, 0], [0.116, 0.2, 0.3]));
-  const slitH = box([0, 1.905, 0.17], [0.062, 0.0065, 0.1], null, 0.002), slitV = box([0, 1.872, 0.18], [0.006, 0.026, 0.1], null, 0.002);
-  const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
-  const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
+  // eye slits: slanted upward at the temples (a scowl), cut only 4 cm deep so the glow sits inside instead of opening a black void
+  const slitH = symX(box([0.047, 1.907, 0.2], [0.031, 0.0058, 0.04], rot.mul(rot.y(0.45), rot.z(0.17)), 0.002));
+  const frontZ = (x, y) => Math.min((0.205 - 0.5 * Math.abs(x)) / 0.866, 0.035 + 0.165 * Math.sqrt(Math.max(0, 1 - (x / 0.118) ** 2 - ((y - 1.885) / 0.12) ** 2)));
+  const breaths = symX(U(0, ...[[0.036, 1.848], [0.056, 1.852], [0.076, 1.858], [0.046, 1.826], [0.066, 1.832], [0.086, 1.84]].map(([x, y]) => sphere([x, y, frontZ(x, y) + 0.004], 0.0068))));
+  const helm = Sub(0.004, U(0.02, skull, prow), slitH, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
-  C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
+  // scowling brow band: follows the visor surface just above the eye slits instead of a straight rod that only pokes through in the middle
+  C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: symX(tube([0, 0.025, 0.05, 0.075, 0.1].map((x) => { const y = 1.93 + 0.2 * x; return [x, y, Math.min(frontZ(x, y), 0.03 + 0.15 * Math.sqrt(Math.max(0, 1 - (x / 0.128) ** 2))) - 0.001]; }), (t) => 0.0085 - 0.002 * t, 0.006)) });
+  C({ name: 'nasal', mat: 'plate', bone: 'Head', rigid: true, k: 0.006, sdf: I(0.003, tube([[0, 1.95, frontZ(0, 1.95) - 0.004], [0, 1.9, frontZ(0, 1.9) + 0.003], [0, 1.84, frontZ(0, 1.84) + 0.002], [0, 1.795, frontZ(0, 1.80) - 0.006]], (t) => 0.013 - 0.004 * t), box([0, 1.88, 0.2], [0.0105, 0.1, 0.1], null, 0.003)) });
   C({ name: 'crest', mat: 'plate', bone: 'Head', rigid: true, k: 0.008, sdf: I(0.003, ellipsoid([0, 1.935, -0.02], [0.04, 0.163, 0.17]), box([0, 2.0, -0.02], [0.0085, 0.12, 0.2], null, 0.003), plane([0, 2.0, 0], [0, -1, 0.2])) });
   C({ name: 'bevor', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.8 - i * 0.03, 0.02], [0.118 - i * 0.008, 0.08, 0.14 - i * 0.008]), 0.008), slab(1.77 - i * 0.032, 1.805 - i * 0.032), zcut(-0.03, -1)))) });
   C({ name: 'neckGuard', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.86 - i * 0.04, -0.02], [0.13 + i * 0.008, 0.11, 0.155 + i * 0.008]), 0.008), zcut(-0.02, 1), slab(1.78 - i * 0.04, 1.84 - i * 0.04)))) });
@@ -132,7 +143,7 @@ export default function hero(ALL) {
 
   return {
     name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
-    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
+    decals: [{ mat: 'glow', sdf: I(0, grow(slitH, 0.0012), grow(U(0.02, skull, prow), -0.007)), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
       trim: { col: [0.42, 0.3, 0.13], gloss: 0.72, metal: 1, wear: 0.55, edge: [1.0, 0.82, 0.45], var: 0.12, freq: 30, tint: 0 },
