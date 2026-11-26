@@ -7,6 +7,33 @@ function heroBuild(){const RIG=makeHumanRig(heroProportions());
  const uc=RIG.hum.upperChest,hips=RIG.hum.hips,shY=RIG.bones[RIG.hum.leftUpperArm].r[1];
  const cA=RIG.bones.push({n:'CapeA',p:uc,r:[0,shY-.02,-.2]})-1,cB=RIG.bones.push({n:'CapeB',p:cA,r:[0,1.12,-.25]})-1,cC=RIG.bones.push({n:'CapeC',p:cB,r:[0,.66,-.28]})-1;
  RIG.hum.capeA=cA;RIG.hum.capeB=cB;RIG.hum.capeC=cC;return RIG}
+// ---------- cape secondary motion: three damped springs (one per cape bone) in the UpperChest frame.
+// Pitch: gravity keeps the cloth hanging, air drag lifts it with forward speed, falling lifts it, acceleration kicks it;
+// the back and the thighs are hard floors so the cloth never passes into the body. Roll: sideways speed and turning.
+const CAPE={th:[0,0,0],w:[0,0,0],r:0,rw:0,fwd:0,lat:0,yaw:null,yr:0,on:true};
+function capeStep(dt){const H=HB;if(!H||H.capeA===undefined||!(dt>0))return;dt=Math.min(dt,.05);
+ const c=Math.cos(P.yaw),s=Math.sin(P.yaw),fwd=P.vx*s+P.vz*c,lat=P.vx*c-P.vz*s;
+ const yr=CAPE.yaw===null?0:angd(P.yaw,CAPE.yaw)/dt;CAPE.yaw=P.yaw;CAPE.yr=lp(CAPE.yr,cl(yr,-12,12),Math.min(1,dt*10));
+ const acc=(fwd-CAPE.fwd)/dt;CAPE.fwd=fwd;CAPE.lat=lat;
+ // world "down" in the chest frame -> the pitch at which a free cloth would hang
+ const g=SK.GR[H.upperChest],d=r3v(r3t(g),[0,-1,0]),grav=Math.atan2(-d[2],-d[1]);
+ const f=Math.max(0,fwd),fall=Math.max(0,-(P.vy||0)),air=P.air?.25:0;
+ const drag=cl(.085*f+.007*f*f+.06*fall+air,0,1.15),q=P.ps||POSE0;
+ // thighs swung back (relative to the chest) push the lower cloth outwards
+ const lean=(q.spX||0)+(q.chX||0),leg=Math.max(q.LthX||0,q.RthX||0)-lean,floorB=Math.max(0,(.47*Math.sin(cl(leg,0,1.4))+.12-.17)/.46);
+ const floors=[-.05,Math.max(-.05,floorB),Math.max(-.05,floorB*.85)],T=CAPE.th,W=CAPE.w,t=GT.time;
+ const sub=2,h=dt/sub;for(let n=0;n<sub;n++){for(let i=0;i<3;i++){
+  const flut=(.03+.05*cl(f/6.6,0,1))*Math.sin(t*(7+i*2.3)+i*1.3)*cl(f/2,0,1);
+  const tgt=Math.max(grav,0)+grav*(grav<0?.6:0)+drag*(1+.3*i)+flut,base=i?T[i-1]:0;
+  const goal=i?lp(base,tgt,.55):tgt,k=[70,48,34][i],dmp=[9,7.5,6][i];
+  W[i]+=(k*(goal-T[i])-dmp*W[i]-(i?0:.35*acc))*h;T[i]+=W[i]*h;
+  if(T[i]<floors[i]){T[i]=floors[i];if(W[i]<0)W[i]*=-.15}if(T[i]>1.45){T[i]=1.45;if(W[i]>0)W[i]=0}
+  if(i&&T[i]<T[i-1]-.6){T[i]=T[i-1]-.6;W[i]=Math.max(W[i],W[i-1])}}
+  const rt=cl(-.07*lat+.05*CAPE.yr,-.5,.5);CAPE.rw+=(40*(rt-CAPE.r)-7*CAPE.rw)*h;CAPE.r=cl(CAPE.r+CAPE.rw*h,-.6,.6)}
+ if(!T.every(isFinite)||!isFinite(CAPE.r)){CAPE.th=[0,0,0];CAPE.w=[0,0,0];CAPE.r=CAPE.rw=0}}
+// cape bones' local rotations (relative pitch per link + roll mostly at the top); called from applyPose before skUpdate
+function capePose(R,H){if(H.capeA===undefined)return;const T=CAPE.th,r=CAPE.r;
+ R[H.capeA]=r3m(rX(T[0]),rZ(r));R[H.capeB]=r3m(rX(T[1]-T[0]),rZ(r*.35));R[H.capeC]=rX(T[2]-T[1])}
 // palette: blackened steel, worn edges, oxblood, old bronze, leather
 const KC={iron:[.17,.18,.21],mid:[.25,.26,.3],edge:[.42,.43,.49],dark:[.08,.08,.1],red:[.5,.07,.08],bronze:[.42,.32,.18],leather:[.22,.15,.11],fur:[.16,.15,.15],bone:[.62,.58,.5]};
 // sculpted hero (tools/sculpt/models/hero.mjs): one CPU-skinned mesh with gloss/metal/glow channels
