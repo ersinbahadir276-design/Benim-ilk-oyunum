@@ -30,9 +30,16 @@ export default function hero(ALL) {
   const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
   const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
+  const zc = (cx, cy, r) => cone([cx, cy, 0.05], [cx, cy, 0.35], r, r);
+  const moon = U(0.002, Sub(0.002, zc(0, 1.47, 0.062), zc(0.027, 1.488, 0.052)), box([0, 1.47, 0.2], [0.006, 0.075, 0.2], null, 0.002), box([0, 1.418, 0.2], [0.028, 0.005, 0.2], null, 0.002));
+  C({ name: 'emblem', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.002, sdf: I(0.002, moon, shell(cuirSolid, 0.0035, 0.002), zcut(0.1, -1)) });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
-  for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
-    C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
+  // fauld: thin overlapping plates, each flaring outward at its lower lip so the waist reads as layered steel, not stacked rings
+  for (let i = 0; i < 3; i++) { const y1 = 1.318 - i * 0.05;
+    const fl = cone([0, y1 + 0.03, 0.004], [0, y1 - 0.09, 0.008], 0.168 + i * 0.012, 0.218 + i * 0.012);
+    C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.003, sdf: U(0.004, I(0.004, shell(fl, 0.0075), slab(y1 - 0.06, y1)),
+      U(0, ...[-1.0, -0.45, 0.45, 1.0].map((a) => sphere([Math.sin(a) * (0.205 + i * 0.012), y1 - 0.045, 0.006 + Math.cos(a) * (0.17 + i * 0.01)], 0.0075)))) }); }
+  C({ name: 'waist', mat: 'leather', bone: 'Spine', tau: 0.04, sdf: ellipsoid([0, 1.24, 0], [0.165, 0.12, 0.13]) });
   const beltE = ellipsoid([0, 1.13, 0.005], [0.212, 0.12, 0.172]);
   C({ name: 'belt', mat: 'leather', bone: 'Hips', rigid: true, k: 0.004, sdf: I(0.004, beltE, slab(1.103, 1.153)) });
   C({ name: 'buckle', mat: 'trim', bone: 'Hips', rigid: true, k: 0.003, sdf: Sub(0.003, box([0, 1.128, 0.178], [0.046, 0.034, 0.014], null, 0.008), box([0, 1.128, 0.19], [0.026, 0.015, 0.02], null, 0.004)) });
@@ -42,6 +49,14 @@ export default function hero(ALL) {
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (x + 0.06) / 0.12)), d = Math.max(0, Math.min(1, (1.08 - y) / 0.15)); return [['Hips', 1 - d * 0.75], ['leftUpperLeg', d * 0.75 * t], ['rightUpperLeg', d * 0.75 * (1 - t)]]; } });
   for (let i = 0; i < 3; i++) { const y1 = 1.105 - i * 0.062, e = ellipsoid([0.1, 1.0, 0.02], [0.15 + i * 0.006, 0.3, 0.16 + i * 0.006]);
     L({ name: 'tasset' + i, mat: i === 2 ? 'trim' : 'plate', tau: 0.02, k: 0.004, sdf: I(0.005, shell(e, 0.007), slab(y1 - 0.07, y1), zcut(-0.02, -1), xcut(0.012, -1)), boneFn: () => [['leftUpperLeg', 0.55 + i * 0.15], ['Hips', 0.45 - i * 0.15]] }); }
+
+  const tabCone = cone([0, 1.12, 0.012], [0, 0.6, 0.07], 0.214, 0.245), tabWedge = symX(plane([0.072, 0, 0], [1, 0, -0.08]));
+  const tabHem = { d: (x, y, z) => (0.63 + 0.035 * Math.max(0, fbm(x * 30, 0.7, 2, 3)) + 0.02 * Math.abs(x) / 0.08) - y, bb: [-1, 0.5, -1, 1, 3, 1] };
+  const tabFold = (x, y) => 0.006 * Math.sin(x * 70 + 0.5) * Math.max(0, (1.08 - y) / 0.45);
+  const tab = I(0.003, shell(disp(tabCone, tabFold, 0.008), 0.0055), tabWedge, zcut(0.05, -1), slab(0.5, 1.1), tabHem);
+  const tabFn = (x, y) => { const d = Math.max(0, Math.min(1, (1.08 - y) / 0.4)); return [['Hips', 1 - d * 0.7], ['leftUpperLeg', d * 0.35], ['rightUpperLeg', d * 0.35]]; };
+  C({ name: 'tabard', mat: 'cloth', k: 0.006, tau: 0.03, boneFn: tabFn, sdf: Sub(0.002, tab, symX(I(0, plane([0.058, 0, 0], [-1, 0, 0]), plane([0.064, 0, 0], [1, 0, 0])))) });
+  C({ name: 'tabardEdge', mat: 'trim', k: 0.003, tau: 0.03, boneFn: tabFn, sdf: I(0.002, shell(disp(tabCone, tabFold, 0.008), 0.0062), symX(I(0, plane([0.058, 0, 0], [-1, 0, 0]), plane([0.064, 0, 0], [1, 0, 0]))), zcut(0.05, -1), slab(0.5, 1.1), tabHem) });
 
   // ------------------------------------------------------------ gorget and wolf-fur mantle
   C({ name: 'gorget', mat: 'plate', tau: 0.03, k: 0.006, sdf: Sub(0.006, U(0.004, ...[0, 1].map((i) => I(0.004, shell(cone([0, 1.6, 0], [0, 1.79, 0.015], 0.125 - i * 0.022, 0.092 - i * 0.016), 0.007), slab(1.64 + i * 0.065, 1.7 + i * 0.065)))), cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.07, 0.066)),
@@ -93,7 +108,7 @@ export default function hero(ALL) {
   L({ name: 'poleyn', mat: 'plate', boneFn: () => [['leftLowerLeg', 0.55], ['leftUpperLeg', 0.45]], rigid: true, k: 0.005, sdf: U(0.008,
     I(0.004, shell(ellipsoid(v3.add(kn, [0, 0, 0.03]), [0.077, 0.082, 0.072]), 0.0095), zcut(-0.01, -1)), I(0.004, shell(ellipsoid(v3.add(kn, [0.068, 0, 0.0]), [0.024, 0.072, 0.066]), 0.008), xcut(0.078, -1)),
     horn([v3.add(kn, [0, 0.0, 0.095]), v3.add(kn, [0, 0.02, 0.125]), v3.add(kn, [0, 0.045, 0.142])], 0.015)) });
-  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.08, 0.062), 0.0095), slab(0.15, 0.58)),
+  L({ name: 'greave', mat: 'plate', bone: 'leftLowerLeg', rigid: true, k: 0.006, sdf: U(0.006, I(0.004, shell(U(0.06, cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.08, 0.062), ellipsoid([0.099, 0.44, -0.022], [0.072, 0.13, 0.072])), 0.0095), slab(0.15, 0.58)),
     I(0.003, cone([0.099, 0.57, 0.084], [0.099, 0.17, 0.068], 0.0105, 0.0085), zcut(0.06, -1))) });
   L({ name: 'greaveTrim', mat: 'trim', bone: 'leftLowerLeg', rigid: true, k: 0.003, sdf: I(0.003, shell(cone([0.099, 0.58, 0.005], [0.099, 0.15, 0.01], 0.083, 0.065), 0.011), slab(0.55, 0.568)) });
   const foot = U(0.03, ellipsoid([an[0], 0.075, 0.02], [0.063, 0.075, 0.105]), cone([an[0], 0.06, 0.05], [an[0], 0.04, toe[2] + 0.06], 0.058, 0.026));
@@ -105,7 +120,7 @@ export default function hero(ALL) {
   // ------------------------------------------------------------ the great helm: flat-sided skull, beaked visor with a keel, T-slit, fin crest, swept horns
   const skull = I(0.03, ellipsoid([0, 1.935, -0.012], [0.128, 0.145, 0.152]), box([0, 1.93, 0], [0.114, 0.2, 0.2]));
   const prow = I(0.008, ellipsoid([0, 1.885, 0.035], [0.118, 0.12, 0.165]), symX(plane([0, 0, 0.205], [0.5, 0, 0.866])), slab(1.775, 2.0), box([0, 1.9, 0], [0.116, 0.2, 0.3]));
-  const slitH = box([0, 1.905, 0.17], [0.062, 0.0065, 0.1], null, 0.002), slitV = box([0, 1.872, 0.18], [0.006, 0.026, 0.1], null, 0.002);
+  const slitH = box([0, 1.905, 0.17], [0.056, 0.0042, 0.1], null, 0.0015), slitV = box([0, 1.874, 0.18], [0.0038, 0.024, 0.1], null, 0.0015);
   const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
   const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
