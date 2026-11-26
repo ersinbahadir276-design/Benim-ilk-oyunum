@@ -50,7 +50,7 @@ export default function hero(ALL) {
   for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2, cx = Math.sin(a) * 0.2, cz = Math.cos(a) * 0.165 - 0.025, back = Math.cos(a) < 0.2;
     tufts.push(ellipsoid([cx, 1.695 + 0.012 * Math.sin(i * 2.7), cz], [0.07, 0.05, 0.07], rot.y(a)));
     if (back || Math.abs(Math.sin(a)) > 0.7) { const o = [Math.sin(a) * 0.255, 1.66, Math.cos(a) * 0.21 - 0.03]; tufts.push(horn([o, v3.add(o, [Math.sin(a) * 0.04, -0.07, Math.cos(a) * 0.04]), v3.add(o, [Math.sin(a) * 0.05, -0.14 - (i % 3) * 0.02, Math.cos(a) * 0.06])], 0.034, 0.006)); } }
-  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.011 * fbm(x * 55, y * 12, z * 55, 3) + 0.005 * noise(x * 170, y * 25, z * 170), 0.018);
+  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.013 * fbm(x * 38, y * 11, z * 38, 3) + 0.0025 * Math.sin(Math.atan2(x, z) * 37 + 14 * fbm(x * 6, y * 6, z * 6, 2)), 0.018);
   C({ name: 'fur', mat: 'fur', bone: 'UpperChest', tau: 0.012, k: 0.02, sdf: Sub(0.01, fur, cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.082, 0.078)) });
 
   // ------------------------------------------------------------ pauldrons
@@ -105,10 +105,17 @@ export default function hero(ALL) {
   // ------------------------------------------------------------ the great helm: flat-sided skull, beaked visor with a keel, T-slit, fin crest, swept horns
   const skull = I(0.03, ellipsoid([0, 1.935, -0.012], [0.128, 0.145, 0.152]), box([0, 1.93, 0], [0.114, 0.2, 0.2]));
   const prow = I(0.008, ellipsoid([0, 1.885, 0.035], [0.118, 0.12, 0.165]), symX(plane([0, 0, 0.205], [0.5, 0, 0.866])), slab(1.775, 2.0), box([0, 1.9, 0], [0.116, 0.2, 0.3]));
-  const slitH = box([0, 1.905, 0.17], [0.062, 0.0065, 0.1], null, 0.002), slitV = box([0, 1.872, 0.18], [0.006, 0.026, 0.1], null, 0.002);
-  const breaths = U(0, ...[-1, 1].map((s) => U(0, ...[0, 1, 2].map((i) => box([s * (0.045 + i * 0.016), 1.84 - i * 0.004, 0.17], [0.0045, 0.018, 0.08], rot.y(s * 0.5), 0.003)))));
-  const helm = Sub(0.004, U(0.02, skull, prow), slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), plane([0, 1.785, 0], [0, 1, -0.3]));
+  // two narrow eye slits that slope down toward the nose (a scowl), a thin breath slit under the keel
+  const slitH = symX(box([0.04, 1.906, 0.17], [0.034, 0.0075, 0.1], rot.z(0.16), 0.002)), slitV = box([0, 1.858, 0.19], [0.0055, 0.02, 0.1], null, 0.002);
+  // shallow breathing grooves on the cheeks (never cut through, so the chin edge stays clean)
+  const breaths = symX(U(0, ...[0, 1, 2].map((i) => box([0.052 + i * 0.017, 1.848 - i * 0.003, 0.15 - i * 0.017], [0.0055, 0.02, 0.012], rot.y(0.55 + i * 0.12), 0.003))));
+  const helmCut = plane([0, 1.79, 0], [0, 1, -0.3]), helmBody = U(0.02, skull, prow);
+  const helm = Sub(0.004, helmBody, slitH, slitV, breaths, cone([0, 1.6, 0.0], [0, 1.8, 0.0], 0.07, 0.068), helmCut);
   C({ name: 'helm', mat: 'plate', bone: 'Head', rigid: true, k: 0.01, sdf: helm });
+  // rolled bronze rim along the lower edge hides the cut and frames the face
+  C({ name: 'helmRim', mat: 'trim', bone: 'Head', rigid: true, k: 0.004, sdf: Sub(0.003, I(0.004, shell(grow(helmBody, 0.002), 0.005), plane([0, 1.776, 0], [0, -1, 0.3]), plane([0, 1.802, 0], [0, 1, -0.3])), cone([0, 1.6, 0.0], [0, 1.85, 0.0], 0.072, 0.07)) });
+  // sunken eye sockets: a darker recessed band behind the slits so the glow reads at a distance
+  C({ name: 'visorBand', mat: 'trim', bone: 'Head', rigid: true, k: 0.004, sdf: I(0.004, shell(grow(helmBody, 0.002), 0.004), slab(1.918, 1.93), zcut(0.06, -1)) });
   C({ name: 'brow', mat: 'trim', bone: 'Head', rigid: true, k: 0.006, sdf: U(0.008, cone([0, 1.928, 0.19], [0.118, 1.945, 0.075], 0.011, 0.009), cone([0, 1.928, 0.19], [-0.118, 1.945, 0.075], 0.011, 0.009)) });
   C({ name: 'crest', mat: 'plate', bone: 'Head', rigid: true, k: 0.008, sdf: I(0.003, ellipsoid([0, 1.935, -0.02], [0.04, 0.163, 0.17]), box([0, 2.0, -0.02], [0.0085, 0.12, 0.2], null, 0.003), plane([0, 2.0, 0], [0, -1, 0.2])) });
   C({ name: 'bevor', mat: 'plate', bone: 'Head', rigid: true, k: 0.004, sdf: U(0.004, ...[0, 1].map((i) => I(0.004, shell(ellipsoid([0, 1.8 - i * 0.03, 0.02], [0.118 - i * 0.008, 0.08, 0.14 - i * 0.008]), 0.008), slab(1.77 - i * 0.032, 1.805 - i * 0.032), zcut(-0.03, -1)))) });
@@ -132,7 +139,8 @@ export default function hero(ALL) {
 
   return {
     name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
-    decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
+    // glow only deep inside the slits: the rim stays steel, so the colour never bleeds across the flat visor
+    decals: [{ mat: 'glow', sdf: I(0, grow(U(0, slitH, slitV), 0.0012), zcut(0.168, 1)), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
       trim: { col: [0.42, 0.3, 0.13], gloss: 0.72, metal: 1, wear: 0.55, edge: [1.0, 0.82, 0.45], var: 0.12, freq: 30, tint: 0 },
