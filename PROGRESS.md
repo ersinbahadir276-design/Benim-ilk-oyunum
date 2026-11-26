@@ -13,7 +13,7 @@ Testler: `cd ay-kiliccisi && NODE_PATH=$(npm root -g) node test/harness.js test/
 | # | Özellik | Durum |
 |---|---|---|
 | 1 | Yüksek kaliteli erkek kahraman | **Kısmen** — Kael (Kara Zırh) SDF heykel modeli, 58+3 kemik, CPU deri, PBR ışık. Pelerin fiziği eklendi (bu çalışma). Kalan: zırhın yeniden tasarımı (kullanıcı isteği), saç/kumaş başka ikincil hareketler, uzak LOD |
-| 2 | Gerçekçi 3B karakter animasyonları | **Kısmen** — tüm hareketler kodla üretilen pozlar + kol IK. Kalan: ayak IK (eğimde), anahtar kareli klip sistemi, duruşlara özgü pozlar |
+| 2 | Gerçekçi 3B karakter animasyonları | **Kısmen** — kodla üretilen pozlar + kol IK + eğimde ayak IK ve başla hedefe bakış (çalışma 2). Kalan: gerçek hareket klipleri (Quaternius, başka dalda hazır), duruşlara özgü pozlar |
 | 3 | Gönderilen GLB modellerin entegrasyonu | **Kısmen** — ejderha, elf gövdesi (kraliçe), saç GLB'si bağlı; diğerlerinden yalnızca iskelet oranları alındı |
 | 4 | Çok sayıda hayvan ve yaratık | **Kısmen** — kurt, goblin (3 tür), timsah, ejderha. Kalan: iskelet, örümcek, golem, hortlak, geyik/kuş |
 | 5 | Yaratık evcilleştirme ve yapay zekâ | **Kısmen** — görüş/uyarı yapay zekâsı, Veyra yoldaşı, kurt besleme. Evcilleştirme sistemi eski oyunda (yaban.html) var, Ay Kılıççısı'na taşınmadı |
@@ -35,8 +35,21 @@ Hiçbir özellik henüz "tamamlandı" olarak işaretlenmedi.
 - Yeni test: `ay-kiliccisi/test/s-cape.js` (7 test). Regresyon: s-mech 47/47, s-loop 71/71, s-stance 11/11, s-save 1/1, s-perf hatasız (oyuncu mantığı ~0,15 ms/kare).
   s-ui 6/7: «SALDIR basılı tut = ağır saldırı» testi bu değişiklikten ÖNCE de başarısızdı (oturum 7'deki PlayStation düğme düzeni sonrası test güncellenmemiş) — sıradaki işlere eklendi.
 
+### Çalışma 2 — 2026-11-26 (özellik 2: animasyon)
+- **Sorun bulundu:** zamanlanmış çalışmaların her biri `main`'den ayrı bir `ccr-…` dalı açmış, hiçbiri birleştirilmemiş
+  (~30 dalda tekrarlanan kahraman zırhı / ayak IK / klip işleri). Bu çalışma önceki çalışmanın dalını (`ccr-70a30f22-j1ro1l`,
+  pelerin) temel aldı; böylece ilerleme artık birikiyor.
+- Ayak IK'sı (`ccr-70a30f22-4jf2et` dalında yazılmış, hiç birleşmemişti) bu çizgiye taşındı: `src/32-footik.js`.
+  Sıra: `applyPose → footIK → playerMatrix → capeStep` (pelerin IK sonrası bacaklara göre çarpışır).
+  - Eğimde iki kemikli bacak IK'sı, leğen alçalması, tabanın eğime yatması; baş kilitli/yakın düşmana döner.
+- `test/s-footik.js` genişletildi: eğimde IK + pelerin birlikte (pelerin bacağa girmez, sayılar kararlı). 6/6.
+- Regresyon: s-cape 7/7, s-ui 7/7 (önceki çalışmadaki «ağır saldırı» hatası bu kez tekrarlanmadı — kararsız test olabilir),
+  s-mech 47/47, s-loop 71/71, s-stance 11/11, s-perf hatasız (oyuncu mantığı ≤0,25 ms/kare).
+
 ## Sıradaki öncelikler
-1. Kahraman (özellik 1): zırhın yeniden tasarımı (`tools/sculpt/models/hero.mjs`, `npm install` gerekiyor), kürk yakaya küçük ikincil hareket.
-2. Animasyon (özellik 2): eğimli zeminde ayak IK'sı (kahraman ayakları eğimde havada/gömülü), duruşlara özgü saldırı pozları.
-3. Test borcu: `test/s-ui.js` yükleme→ağır saldırı testini yeni düğme düzenine (△ AĞIR) göre düzelt.
+1. Animasyon (özellik 2): `ccr-70a30f22-kw7h5m` dalındaki gerçek hareket klipleri hattını (Quaternius CC0: yürüme/koşu, kılıç kombosu,
+   takla, ölüm, zıplama; `tools/anim/import_clips.mjs`) bu çizgiye birleştir — 17 commit, `index.html` çakışmalarını yeniden derleyerek çöz.
+2. Kahraman (özellik 1): zırh yeniden tasarımı — diğer dallarda ~15 deneme var; en iyisini seçip (ör. `3evbtl`, `feknia`) buraya al, yenisini yazma.
+3. Kullanıcıya: bu dalların `main`'e birleştirilmesi (PR) gerekiyor; aksi halde site (index.html) eski kalıyor.
+4. `test/s-ui.js` ağır saldırı testi bazen başarısız oluyor — kararsızlığı incele.
 4. Yaratıklar (özellik 4): zindan yaratıkları (iskelet, örümcek) — `ay-kiliccisi/PROGRESS.md` DÜNYA DİREKTİFİ sırası.
