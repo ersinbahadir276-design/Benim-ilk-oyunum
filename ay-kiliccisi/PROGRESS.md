@@ -38,6 +38,25 @@ içindekini görmese de duyar. Veyra fayda puanlamasıyla karar verir (iyileşti
 uzak ateş / yakın kesik / yaklaş / takip), konuşur, güveni artar; önünde saldırıya hazırlanan düşmanın
 vuruşu ona da değer, yere düşerse ETKİLEŞ ile kaldırılır.
 
+## Zamanlanmış geliştirme görevi (otomatik oturumlar)
+
+Her çalıştırma aşağıdaki listeden tamamlanmamış en yüksek öncelikli özelliği ilerletir. Bitmemiş özellik işaretlenmez.
+
+- [ ] 1. Yüksek kaliteli erkek kahraman (Kael) — **devam ediyor**
+  - [x] Çalıştırma 1 (2026-11-26): göğüs zırhı kaslı gövdeyi izliyor (göğüs + karın kabarıklığı); oyma çizgileri artık
+        yüzeyi takip eden oluklar (eskiden sabit tüpler göğüste delik açıyordu); bronz kenarlı sivri karın plakası
+        (plackart) + perçinler; kürk yaka dikey tutam/iplik dokusu (eski sivri, pütürlü gürültü yerine), 36 tutam;
+        üçgen bütçesi 21k → 24k. `tools/sculpt/build.mjs`: önbellek boşsa `data/models.js`'den doldurur (yeni klonda
+        tek model derleyince diğer 14 modelin silinmesi engellendi). Testler: s-mech 47/47, s-loop 71/71, s-stance 11/11, s-hero/s-perf hatasız.
+  - [ ] Sıradaki: miğfer (yüz siperi daha keskin hatlı, yanak plakaları, T-yarığın ışıması daha ince), omuzluklar
+        (katmanlı, daha az "balon"), uyluk/diz plakalarının kütlesi, pelerin kenarı; miğfersiz yüz (hikâye sahneleri için) düşünülebilir
+- [ ] 2. Gerçekçi 3B karakter animasyonları (prosedürel pozlar var; yürüyüş/koşu/saldırı geçişleri, ağırlık hissi)
+- [ ] 3. Gönderilen GLB modellerin entegrasyonu (kök `assets/models/`: hero.glb + hero_anims1/2.glb, fox.glb, dragon.glb — yalnızca eski oyun yaban.html kullanıyor)
+- [ ] 4. Birden çok hayvan ve yaratık (şimdilik kurt, goblin, timsah, ejderha)
+- [ ] 5. Yaratık evcilleştirme ve yapay zekâ
+- [ ] 6. Açık dünya, dövüş, envanter ve ilerleme sistemleri (büyük kısmı var; DÜNYA DİREKTİFİ aşağıda)
+- [ ] 7. Android performansı ve mobil kontroller (dokunmatik düzen var; gerçek cihaz testi yok)
+
 ## Yol haritası
 
 ### Aşama 1 — tamamlandı
@@ -134,3 +153,4 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
   öfke çubuğu, boss adı + duruş çubuğu, hızlı yolculuk, manhwa görünümü (sabit oranlı paneller, sıra kuyruğu),
   görev pusulası, yeni sesler. Düzeltilenler: açılış sırası (Veyra/hikâye), kese ve mühür toplama artık oyun
   adımında, kavgada 4 m algı, Veyra'ya düşman vuruşu, Kırık Diş yere vurma halkası. s-loop.js 71/71.
+- Zamanlanmış çalıştırma 1 (2026-11-26): Kael göğüs zırhı/plackart/kürk iyileştirmesi, model derleme önbelleği güvenliği.

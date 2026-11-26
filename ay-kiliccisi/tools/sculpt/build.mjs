@@ -4,6 +4,10 @@ import { sculpt, pack } from './mesh.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), root = path.join(here, '../..');
 const SK = JSON.parse(fs.readFileSync(path.join(here, 'skeletons.json'), 'utf8'));
 const cacheDir = path.join(here, 'cache'); fs.mkdirSync(cacheDir, { recursive: true });
+// fresh checkout: the cache is not in git, so seed it from the committed data/models.js —
+// otherwise rebuilding one model would drop every other model from the output
+{ const dm = path.join(root, 'data/models.js');
+  if (fs.existsSync(dm)) for (const [, n, b64] of fs.readFileSync(dm, 'utf8').matchAll(/(?:^|\{)(\w+):"([^"]+)"/gm)) { const f = path.join(cacheDir, n + '.bin'); if (!fs.existsSync(f)) fs.writeFileSync(f, zlib.gunzipSync(Buffer.from(b64, 'base64'))); } }
 const only = process.argv.slice(2);
 const list = fs.readdirSync(path.join(here, 'models')).filter((f) => f.endsWith('.mjs') && !f.startsWith('_')).map((f) => f.slice(0, -4));
 for (const name of list) {

@@ -26,11 +26,22 @@ export default function hero(ALL) {
   const bodyE = ellipsoid([0, 1.48, -0.005], [0.27, 0.27, 0.2]);
   const taper = symX(plane([0.285, 1.66, 0], [0.36, -0.13, 0]));
   const neckHole = cone([0, 1.6, 0.02], [0, 1.9, 0.04], 0.098, 0.13), armHoles = symX(sphere([0.315, 1.645, 0], 0.1));
-  const cuirSolid = I(0.012, lens, bodyE, taper, slab(1.3, 1.69));
-  const engr = U(0, symX(tube([[0.02, 1.62, 0.2], [0.11, 1.52, 0.17], [0.15, 1.4, 0.13]], () => 0.0055)), symX(tube([[0.05, 1.36, 0.19], [0.13, 1.33, 0.15]], () => 0.005)));
-  const cuirass = Sub(0.008, cuirSolid, neckHole, armHoles, engr);
+  // pectoral swells + abdominal rise: the plate follows a muscled torso instead of a smooth egg
+  const pecs = symX(ellipsoid([0.092, 1.505, 0.112], [0.1, 0.072, 0.09], rot.z(-0.12)));
+  const abs = ellipsoid([0, 1.375, 0.1], [0.12, 0.085, 0.092]);
+  const cuirSolid = I(0.012, U(0.035, lens, pecs, abs), bodyE, taper, slab(1.3, 1.69));
+  const seg2 = (pts, w) => ({ d: (x, y) => { let m = 1e9; for (let i = 0; i < pts.length - 1; i++) { const [ax, ay] = pts[i], [bx, by] = pts[i + 1], dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy))); m = Math.min(m, Math.hypot(x - ax - t * dx, y - ay - t * dy)); } return m - w; } });
+  const groovePaths = [[[0.03, 1.63], [0.1, 1.55], [0.165, 1.43]], [[0.035, 1.46], [0.09, 1.445], [0.16, 1.47]]].map((pts) => seg2(pts, 0.0045));
+  const engr = { d: (x, y, z) => Math.max(Math.min(...groovePaths.map((g) => g.d(Math.abs(x), y))), -cuirSolid.d(x, y, z) - 0.0035, 0.04 - z), bb: [-0.3, 1.3, 0, 0.3, 1.7, 0.3] };
+  const cuirass = Sub(0.003, Sub(0.008, cuirSolid, neckHole, armHoles), engr);
+  const onCuir = (x, y) => { let z = 0.3; for (let i = 0; i < 80 && cuirSolid.d(x, y, z) > 0; i++) z -= 0.004; return z; };
   C({ name: 'cuirass', mat: 'plate', bone: 'UpperChest', rigid: true, k: 0.006, sdf: cuirass });
   C({ name: 'cuirRim', mat: 'trim', bone: 'UpperChest', rigid: true, k: 0.003, sdf: Sub(0.004, U(0, I(0.004, grow(cuirSolid, 0.006), slab(1.3, 1.322)), I(0.004, grow(cuirSolid, 0.006), shell(neckHole, 0.012))), neckHole, armHoles) });
+  // plackart: a pointed stomach plate riveted over the lower cuirass, bronze-edged
+  const plackTop = symX(plane([0, 1.47, 0], [0.62, 1, 0])), plackCut = I(0, slab(1.3, 1.6), plackTop, zcut(0.06, -1));
+  C({ name: 'plackart', mat: 'plate', bone: 'Spine', rigid: true, k: 0.004, sdf: I(0.004, shell(cuirSolid, 0.0055, 0.0085), plackCut) });
+  C({ name: 'plackTrim', mat: 'trim', bone: 'Spine', rigid: true, k: 0.003, sdf: I(0.003, shell(cuirSolid, 0.0075, 0.0095), shell(plackTop, 0.008), slab(1.3, 1.6), zcut(0.07, -1)) });
+  C({ name: 'plackRivets', mat: 'rivet', bone: 'Spine', rigid: true, k: 0, sdf: U(0, ...[[0.075, 1.39], [-0.075, 1.39], [0.14, 1.355], [-0.14, 1.355], [0, 1.43]].map(([x, y]) => sphere([x, y, onCuir(x, y) + 0.014], 0.0085))) });
   for (let i = 0; i < 3; i++) { const y1 = 1.315 - i * 0.05;
     C({ name: 'lame' + i, mat: 'plate', bone: i < 2 ? 'Spine' : 'Hips', rigid: true, k: 0.004, sdf: I(0.006, ellipsoid([0, 1.21, 0.005], [0.2 + i * 0.006, 0.23, 0.162 + i * 0.006]), slab(y1 - 0.056, y1)) }); }
   const beltE = ellipsoid([0, 1.13, 0.005], [0.212, 0.12, 0.172]);
@@ -47,10 +58,10 @@ export default function hero(ALL) {
   C({ name: 'gorget', mat: 'plate', tau: 0.03, k: 0.006, sdf: Sub(0.006, U(0.004, ...[0, 1].map((i) => I(0.004, shell(cone([0, 1.6, 0], [0, 1.79, 0.015], 0.125 - i * 0.022, 0.092 - i * 0.016), 0.007), slab(1.64 + i * 0.065, 1.7 + i * 0.065)))), cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.07, 0.066)),
     boneFn: (x, y) => { const t = Math.max(0, Math.min(1, (y - 1.65) / 0.12)); return [['Neck', t], ['UpperChest', 1 - t]]; } });
   const tufts = [];
-  for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2, cx = Math.sin(a) * 0.2, cz = Math.cos(a) * 0.165 - 0.025, back = Math.cos(a) < 0.2;
+  for (let i = 0; i < 36; i++) { const a = i / 36 * Math.PI * 2, cx = Math.sin(a) * 0.2, cz = Math.cos(a) * 0.165 - 0.025, back = Math.cos(a) < 0.2;
     tufts.push(ellipsoid([cx, 1.695 + 0.012 * Math.sin(i * 2.7), cz], [0.07, 0.05, 0.07], rot.y(a)));
-    if (back || Math.abs(Math.sin(a)) > 0.7) { const o = [Math.sin(a) * 0.255, 1.66, Math.cos(a) * 0.21 - 0.03]; tufts.push(horn([o, v3.add(o, [Math.sin(a) * 0.04, -0.07, Math.cos(a) * 0.04]), v3.add(o, [Math.sin(a) * 0.05, -0.14 - (i % 3) * 0.02, Math.cos(a) * 0.06])], 0.034, 0.006)); } }
-  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.011 * fbm(x * 55, y * 12, z * 55, 3) + 0.005 * noise(x * 170, y * 25, z * 170), 0.018);
+    if (back || Math.abs(Math.sin(a)) > 0.7) { const o = [Math.sin(a) * 0.255, 1.66, Math.cos(a) * 0.21 - 0.03]; tufts.push(horn([o, v3.add(o, [Math.sin(a) * 0.04, -0.07, Math.cos(a) * 0.04]), v3.add(o, [Math.sin(a) * 0.05, -0.12 - (i % 3) * 0.025, Math.cos(a) * 0.06])], 0.034, 0.006)); } }
+  const fur = disp(U(0.03, ...tufts, ellipsoid([0, 1.6, -0.19], [0.26, 0.13, 0.065])), (x, y, z) => 0.012 * fbm(x * 42, y * 5, z * 42, 3) + 0.004 * Math.abs(Math.sin(Math.atan2(x, z) * 38 + 2 * fbm(x * 9, y * 3, z * 9, 2))), 0.018);
   C({ name: 'fur', mat: 'fur', bone: 'UpperChest', tau: 0.012, k: 0.02, sdf: Sub(0.01, fur, cone([0, 1.6, 0.0], [0, 1.85, 0.03], 0.082, 0.078)) });
 
   // ------------------------------------------------------------ pauldrons
@@ -131,7 +142,7 @@ export default function hero(ALL) {
   for (const p of P.slice()) if (p.side) P.push({ ...p, side: 0, name: p.name + 'R', sdf: mirrorX(p.sdf), bone: p.bone && swap(p.bone), boneFn: p.boneFn && ((x, y, z) => p.boneFn(-x, y, z).map(([b, w]) => [swap(b), w])) });
 
   return {
-    name: 'hero', voxel: 0.005, tris: 21000, err: 0.0014, bones, parts: P,
+    name: 'hero', voxel: 0.005, tris: 24000, err: 0.0014, bones, parts: P,
     decals: [{ mat: 'glow', sdf: grow(U(0, slitH, slitV), 0.0012), onPart: ['helm'] }],
     mats: {
       plate: { col: [0.2, 0.205, 0.235], gloss: 0.62, metal: 1, wear: 0.55, edge: [0.7, 0.72, 0.78], dirt: 0.45, var: 0.1, freq: 22 },
