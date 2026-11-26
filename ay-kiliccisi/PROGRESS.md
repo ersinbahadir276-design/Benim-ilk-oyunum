@@ -5,9 +5,30 @@ Teslim edilen oyun: `dist/ay-kiliccisi.html` (tek HTML). Kaynak: `src/` + `data/
 Testler (Playwright + yazılımsal WebGL): `NODE_PATH=$(npm root -g) node test/harness.js test/<senaryo>.js`
 - `s-mech.js` → aşama 1 mekanikleri (47 test, `mech-tests.js`)
 - `s-loop.js` → aşama 2 oynanış döngüsü (71 test, `loop-tests.js`)
+- `s-anim.js` → animasyon gerçekçilik katmanı (6 test: eğimde ayak IK, kalça yuvarlanması, ağırlık aktarımı, dönüşte yatma)
 - `s-ui.js`, `s-save.js`, `s-portrait.js`, `s-perf.js` → dokunmatik, kayıt, dikey ekran, performans
 - `s-p2shots.js`, `s-p2portrait.js` → ekran görüntüleri (`test/out/`)
 Hikâye ve karakterler: `SENARYO.md`. Yayın: claude.ai artifact XSyZ8dWNspYrNFxSMeMqp4 (aynı adrese güncellenir).
+
+## Zamanlanmış geliştirme görevi — özellik listesi (her çalıştırmada güncellenir)
+Öncelik sırası ve durum. Bir özellik ancak gerçekten bitince [x] olur.
+- [ ] **Yüksek kaliteli erkek kahraman** — Kael heykel modeli oyunda (21k üçgen, 58 kemik, plaka/trim/kürk/pelerin malzemeleri). Kalan: kullanıcının istediği zırh yeniden tasarımı (yön/referans bekleniyor), uzak mesafe LOD.
+- [ ] **Gerçekçi 3B karakter animasyonları** — DEVAM EDİYOR. Oturum 8: gerçekçilik katmanı (aşağıya bak). Kalan: anahtar kareli klip sistemi + harmanlama (saldırılar için öngerilme/takip), ayağın eğime göre eğilmesi, yürürken ayak kayması (stride ↔ hız eşleşmesi), duruşlara özgü pozlar, NPC/düşmanlara aynı ayak IK.
+- [ ] **Gönderilen GLB modellerin entegrasyonu** — elf gövdesi (Şeytan Kraliçe), saç GLB, ejderha, şövalye heykeli entegre. Kalan: `assets/models/hero*.glb`, `fox.glb` (eski Yaban oyunu) Ay Kılıççısı'na alınmadı; Laevatain/Ainz/Mita kullanılmıyor (lisans/iskelet).
+- [ ] **Çok sayıda hayvan ve yaratık** — kurt, goblin, okçu, büyük goblin, timsah, ejderha. Kalan: geyik/kuş/tavşan (yaşayan dünya), iskelet, örümcek, golem, hortlak.
+- [ ] **Yaratık evcilleştirme ve yapay zekâ** — kurt besleme/evcilleştirme ve görüş/uyarı yapay zekâsı var; Veyra yoldaş. Kalan: diğer türler için evcilleştirme, evcil yaratık güçlendirme ağacı.
+- [ ] **Açık dünya, dövüş, envanter, ilerleme** — büyük ölçüde var (2,8 km harita, Tsushima tarzı dövüş, 7 sekmeli sistem, seviye/stat/ekipman). Kalan: DÜNYA DİREKTİFİ maddeleri 2–9 (aşağıda).
+- [ ] **Android performansı ve mobil kontroller** — dokunmatik düzen, 30 m dış çizgi sınırı var. Kalan: gerçek cihaz testi, kalite ayarları, LOD.
+
+### Oturum 8 (zamanlanmış çalıştırma, 2026-11-26) — animasyon gerçekçilik katmanı
+`55-player.js` `animLayer()` el ayarlı pozların üstüne eklenir (`poseTarget` sonunda), `30-player-model.js` kalçaya yuvarlanma/burulma (`pelZ`, `pelY`) aldı:
+- İki kemikli **ayak IK**: her ayak bileğinin altındaki zemin (bir önceki karenin pozu) gövde altındaki zeminle kıyaslanır; alçak ayak kalçayı indirir, yüksek ayağın dizi analitik olarak bükülür (ayak yönü korunur). Eğim 0,23'te hata ±3 mm (IK'sız 6 cm havada/gömülü). Yürüme, blok, saldırı, iksir vb. durumlarda açık; havada, yerdeyken, yakalanmışken kapalı.
+- **Yürüyüş:** kalça omuzlara ters burulur, salınan bacağın kalçası düşer (gövde ve bacaklar dik kalacak şekilde telafi), baş yolu izler (göğüs burulmasını telafi).
+- **Bekleme:** yavaş ağırlık aktarımı (alçak kalça tarafındaki diz bükülür) + nefes (göğüs, omuz, baş).
+- **Dönüşte içe yatma** (dönüş hızından) ve **hızlanırken öne / frende geriye eğilme**.
+- Test: `test/s-anim.js` 6/6; s-mech 47/47, s-loop 71/71, s-stance 11/11. s-ui'deki 2 hata (ağır saldırı bırakma, kayıt) bu değişiklikten önce de vardı.
+
+**Sıradaki öncelikler:** (1) animasyon: kahraman saldırıları için anahtar kareli klip + harmanlama sistemi, ayak tabanının eğime yatması, adım uzunluğu–hız eşleşmesi; (2) s-ui'deki 2 eski hatayı düzelt; (3) kahraman zırhı yeniden tasarımı için kullanıcıdan referans; (4) eski Yaban GLB'lerini (hero/fox) değerlendir.
 
 ## Tasarım kararları (oyun yönetmeni notları)
 

@@ -219,7 +219,34 @@ function poseTarget(){const q=Object.assign({},POSE0),t=GT.time,s=Math.sin(P.ph)
   q.LaZ=.35+n(23,1)*.3+lag*.4;q.LaX=-.4+n(19,2)*.4-lag*.6;q.Lel=.7+n(27,3)*.4;q.RaZ=.5+n(21,4)*.3+lag*.4;q.RaX=.3+n(25,5)*.4-lag*.5;q.Rel=.9+n(17,6)*.3;
   q.LthX=-.35+n(15,7)*.35+lag*.3;q.Lkn=.75+n(22,8)*.4;q.RthX=-.1+n(18,9)*.3+lag*.2;q.Rkn=.3+n(24,1.5)*.4;q.LthZ=.26;q.RthZ=-.2;q.hdX=-.3+lag*.5+n(29,2.5)*.25;q.hdY=n(13,3.5)*.5;q.spX=-.08+n(16,4.5)*.12;q.spY=n(14,5.5)*.2;break}
  case'getup':{rate=12;const u=P.t;q.pel=lp(.5,0,sst(.5,1,u));q.spX=lp(.6,.05,sst(.3,1,u));q.LthX=q.RthX=lp(-1.1,0,sst(.4,1,u));q.Lkn=lp(1.7,.1,sst(.4,1,u));q.Rkn=lp(1.2,.1,sst(.4,1,u));q.LaZ=.9;q.Lel=.8;q.LaX=lp(.6,0,u);break}}
+ animLayer(q,GT.dt);
  const p=P.ps,k=Math.min(1,GT.dt*rate);for(const n in q)p[n]=(p[n]===undefined?q[n]:p[n]+(q[n]-p[n])*k)}
+// --------------------------------------------------------------- realism layer over the hand-tuned poses
+// pelvis twist/roll in the gait, gaze stabilisation, idle breathing + weight shift, lean into turns and against
+// acceleration, and two-bone foot IK so both feet stand on uneven ground (the lower foot drops the pelvis, the upper knee bends)
+const IK_STATES={move:1,land:1,block:1,parry:1,charge:1,shoot:1,drink:1,attack:1,heavy:1,gbreak:1,hurt:1};
+function legShorten(th,kn,r){if(r<.002)return[th,kn];const L1=SK.L1,L2=SK.L2,D=k=>Math.sqrt(L1*L1+L2*L2+2*L1*L2*Math.cos(k)),al=k=>Math.atan2(L2*Math.sin(k),L1+L2*Math.cos(k));
+ const d=Math.max(D(kn)-r,.55*(L1+L2)),k2=Math.acos(cl((d*d-L1*L1-L2*L2)/(2*L1*L2),-1,1));return[th+al(kn)-al(k2),k2]}
+function animLayer(q,dt){const A=P.anim||(P.anim={yr:0,acc:0,lsp:P.spd||0,lyaw:P.yaw,fL:0,fR:0});
+ const yr=dt>0?angd(P.yaw,A.lyaw)/dt:0;A.lyaw=P.yaw;A.yr+=(cl(yr,-8,8)-A.yr)*Math.min(1,dt*6);
+ const ac=dt>0?((P.spd||0)-A.lsp)/dt:0;A.lsp=P.spd||0;A.acc+=(cl(ac,-25,25)-A.acc)*Math.min(1,dt*5);
+ const t=GT.time,mv=cl((P.spd||0)/3.4,0,1);
+ if(P.st==='move'&&!P.crouch){
+  if(mv>.08){const s=Math.sin(P.ph),c=Math.cos(P.ph),sp=P.sprinting&&P.spd>4.6;
+   q.pelY=-s*(sp?.16:.11)*mv;q.spY-=q.pelY*.8;          // hips twist against the shoulders
+   q.pelZ=-c*(sp?.045:.065)*mv;                          // the swing leg's hip drops
+   q.hdY-=q.chY*.7}                                     // eyes stay on the road
+  else{const w=Math.sin(t*.37)*.03,b=Math.sin(t*1.7); // idle: slow weight shift and breathing
+   q.pelZ=-w;q.Lkn+=.05+Math.max(0,w)*2.2;q.Rkn+=.05+Math.max(0,-w)*2.2;q.chX+=b*.018;q.LaZ-=b*.025;q.RaZ-=b*.025;q.hdX-=b*.01}
+  q.spZ-=cl(A.yr*.045*mv,-.2,.2);                        // lean into the turn
+  q.spX+=cl(A.acc*.01,-.1,.14)}                          // lean forward to accelerate, back to brake
+ if(q.pelZ){q.spZ-=q.pelZ*1.1;q.LthZ-=q.pelZ;q.RthZ-=q.pelZ}  // legs and upper body stay plumb
+ // foot IK: terrain under each ankle (last frame's pose) relative to the ground under the body
+ const H=HB,on=IK_STATES[P.st]&&!P.air&&P.rag.ang<.05&&!P.pinBy&&dt>0&&P.y<=hAt(P.x,P.z)+.03,f=Math.min(1,dt*14);
+ const dh=b=>{if(!on)return 0;const w=mpt(PM,SK.GP[b]),d=hAt(w[0],w[2])-P.y;return Math.abs(d)>.45?0:cl(d,-.32,.32)};
+ A.fL+=(dh(H.leftFoot)-A.fL)*f;A.fR+=(dh(H.rightFoot)-A.fR)*f;if(!on){A.fL*=.8;A.fR*=.8}
+ const drop=Math.min(0,A.fL,A.fR);q.hipY+=drop;
+ [q.LthX,q.Lkn]=legShorten(q.LthX,q.Lkn,(A.fL-drop)/PSC);[q.RthX,q.Rkn]=legShorten(q.RthX,q.Rkn,(A.fR-drop)/PSC)}
 // model matrix: yaw, scale, ragdoll tilt about the feet in the fall direction, dodge rolls; then lifted so no bone sinks into the ground
 function playerMatrix(dt){const R=P.rag;let M=mtrs([P.x,P.y,P.z],[0,P.yaw,0]);for(let k=0;k<12;k++)M[k]*=PSC;
  if(R.ang>.001){const ax=vnorm([R.fz,0,-R.fx]),A=axisAng(ax,R.ang),m4=new Float32Array([A[0],A[3],A[6],0,A[1],A[4],A[7],0,A[2],A[5],A[8],0,0,0,0,1]);M=mmul(mmul(M,mtrs([0,.06,0],[0,0,0])),mmul(m4,mtrs([0,-.06,0],[0,0,0])))}
