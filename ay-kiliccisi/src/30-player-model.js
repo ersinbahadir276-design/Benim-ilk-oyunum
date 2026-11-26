@@ -53,3 +53,40 @@ function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H
  SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
  if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
  skUpdate()}
+// ---------- cape secondary motion: the sculpted cape is skinned to CapeA/B/C; a damped spring per segment makes it
+// hang in world gravity (whatever the spine does), trail behind when running, swing on turns, lift when falling,
+// flutter in the wind, and get pushed back by the knees/shins instead of passing through the legs.
+const CAPE={p:[0,0,0],r:[0,0,0],v:[0,0,0],z:[0,0,0],zv:[0,0,0],last:null,vf:0,vs:0,vy:0,yaw:0,yr:0,hit:0};
+function capeSim(dt){const H=HB;if(H.capeA==null)return;const ids=[H.capeA,H.capeB,H.capeC],C=CAPE;
+ // body velocity in the model frame (model faces +z, its +x is the character's left)
+ let vf=0,vs=0,vy=0,yr=0;
+ if(C.last&&dt>0){const dx=(P.x-C.last[0])/dt,dy=(P.y-C.last[1])/dt,dz=(P.z-C.last[2])/dt;
+  if(Math.hypot(dx,dz)<25){const s=Math.sin(P.yaw),c=Math.cos(P.yaw);vf=dx*s+dz*c;vs=dx*c-dz*s;vy=cl(dy,-12,12);yr=cl(angd(P.yaw,C.yaw)/dt,-12,12)}}
+ C.last=[P.x,P.y,P.z];C.yaw=P.yaw;
+ if(dt>0){const k=1-Math.exp(-dt*10);C.vf=lp(C.vf,vf,k);C.vs=lp(C.vs,vs,k);C.vy=lp(C.vy,vy,k);C.yr=lp(C.yr,yr,k)}
+ const t=(window.__G&&__G.GT?__G.GT.time:0)||performance.now()/1000,spd=Math.hypot(C.vf,C.vs),down=P.st==='down'||P.st==='dead';
+ const gust=.03+.025*Math.sin(t*.7)+Math.min(spd,9)*.006;
+ // springs (stiffer near the shoulders, lower segments lag and swing further)
+ const KS=[70,48,34],DS=[11,8,6.5],GW=[.55,.9,1];
+ for(let i=0;i<3&&dt>0;i++){const h=Math.min(dt,1/30);
+  let tp=cl(C.vf*(.05+i*.016),-.25,1.0)+cl(-C.vy*.05,-.15,.5)+gust*Math.sin(t*(4.3+i*1.9)+i*1.7)*(1+i*.6)+gust*.6;
+  if(i>0)tp+=cl(C.vf*.015,0,.15);// cloth bunches out more towards the hem
+  const tz=cl(-C.vs*(.05+i*.02)+C.yr*(.05+i*.03),-.5,.5)+gust*.5*Math.sin(t*(3.1+i*1.3)+2*i);
+  C.v[i]+=(KS[i]*(tp-C.r[i])-DS[i]*C.v[i])*h;C.r[i]+=C.v[i]*h;C.zv[i]+=(KS[i]*(tz-C.z[i])-DS[i]*C.zv[i])*h;C.z[i]+=C.zv[i]*h;
+  C.r[i]=cl(C.r[i],-.3,1.4);C.z[i]=cl(C.z[i],-.6,.6)}
+ // chain: each segment's local rotation = gravity compensation (relative to its parent's current orientation) + spring swing
+ let PG=SK.GR[SK.par[ids[0]]];
+ for(let i=0;i<3;i++){const d=r3v(r3t(PG),[0,-1,0]),gp=down?0:Math.atan2(-d[2],-d[1]),gr=down?0:Math.atan2(d[0],-d[1]);
+  // gp/gr undo the parent's current tilt, so each segment's swing C.r/C.z is measured from world-down
+  let pitch=gp*GW[i]+C.r[i],roll=gr*GW[i]*.8+C.z[i];
+  if(i===0)pitch=Math.max(pitch,-.08);else pitch=Math.max(pitch,-.2);// never folds into the back
+  SK.R[ids[i]]=r3m(rZ(roll),rX(pitch));PG=r3m(PG,SK.R[ids[i]])}
+ skUpdate();
+ // leg collision: the hem must stay behind both knees and shins; push the segment back by the missing distance
+ let hit=0;for(let pass=0;pass<2;pass++){let moved=false;
+  for(let i=1;i<3;i++){const b=ids[i],A=SK.GP[b],end=i<2?SK.GP[ids[2]]:vadd(A,r3v(SK.GR[b],[0,-.4,-.04])),L=Math.hypot(...vsub(end,A));
+   for(const S of['left','right'])for(const j of[H[S+'LowerLeg'],H[S+'Foot']]){const q=SK.GP[j];if(q[1]>A[1]||q[1]<end[1]-.05)continue;
+    const u=cl((A[1]-q[1])/Math.max(A[1]-end[1],.05),0,1),cz=lp(A[2],end[2],u),need=cz-(q[2]-.11);
+    if(need>0){const add=Math.min(need/Math.max(L*u,.12),.6);SK.R[b]=r3m(SK.R[b],rX(add));C.r[i]+=add*.5;C.v[i]=Math.max(C.v[i],0);moved=true;hit++}}}
+  if(!moved)break;skUpdate()}
+ C.hit=hit}

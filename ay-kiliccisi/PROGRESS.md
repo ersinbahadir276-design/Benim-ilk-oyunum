@@ -127,6 +127,7 @@ metal parlaması, yansıma, ışıma `ob.em`, metal renklendirme `ob.tintM`).
 | tarisland dragon (yeni zip) | aynı ejderha | önceki dosyayla birebir aynı |
 
 ## Oturum günlüğü
+- Oturum 8 (zamanlanmış tur, 2026-11-26): pelerin ikincil hareketi (`capeSim`, 30-player-model.js) — CapeA/B/C kemikleri artık yay fiziğiyle sürülüyor (yerçekimi, koşu, dönüş, düşüş, rüzgâr, bacak çarpışması). Test s-cape.js 6/6; s-ui'deki eskimiş yükleme testi düzeltildi (7/7).
 - Oturum 2: tasarım belgesi, PROGRESS.md, SENARYO.md; Kara Zırh kahramanı; ganimet, sunak, sandık, duruş/İNFAZ,
   öfke, yetenekler, hedef kilidi, bölge seviyeleri, bosslar, Veyra, hikâye modülleri yazıldı.
 - Oturum 4: kullanıcı modelleri çok kötü buldu → SDF heykel hattı; kahraman, 8 insan, goblinler, kurt, Veyra, timsah, Şeytan Kral, kılıç yeniden yapıldı; yeni ışık.

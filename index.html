@@ -701,6 +701,43 @@ function armIK(side,target,pole,axisDown,w){const H=HB,U=H[side+'UpperArm'],Lo=H
  SK.R[U]=r3m(r3t(PG),Gu);SK.R[Lo]=r3m(r3t(Gu),Gl);
  if(axisDown&&side==='right'){skUpdate();const g=SK.GR[Hd],cur=r3v(g,SK.gripAx),Gh=r3m(fromTo(vnorm(cur),axisDown),g);SK.R[Hd]=r3m(r3t(Gl),Gh)}
  skUpdate()}
+// ---------- cape secondary motion: the sculpted cape is skinned to CapeA/B/C; a damped spring per segment makes it
+// hang in world gravity (whatever the spine does), trail behind when running, swing on turns, lift when falling,
+// flutter in the wind, and get pushed back by the knees/shins instead of passing through the legs.
+const CAPE={p:[0,0,0],r:[0,0,0],v:[0,0,0],z:[0,0,0],zv:[0,0,0],last:null,vf:0,vs:0,vy:0,yaw:0,yr:0,hit:0};
+function capeSim(dt){const H=HB;if(H.capeA==null)return;const ids=[H.capeA,H.capeB,H.capeC],C=CAPE;
+ // body velocity in the model frame (model faces +z, its +x is the character's left)
+ let vf=0,vs=0,vy=0,yr=0;
+ if(C.last&&dt>0){const dx=(P.x-C.last[0])/dt,dy=(P.y-C.last[1])/dt,dz=(P.z-C.last[2])/dt;
+  if(Math.hypot(dx,dz)<25){const s=Math.sin(P.yaw),c=Math.cos(P.yaw);vf=dx*s+dz*c;vs=dx*c-dz*s;vy=cl(dy,-12,12);yr=cl(angd(P.yaw,C.yaw)/dt,-12,12)}}
+ C.last=[P.x,P.y,P.z];C.yaw=P.yaw;
+ if(dt>0){const k=1-Math.exp(-dt*10);C.vf=lp(C.vf,vf,k);C.vs=lp(C.vs,vs,k);C.vy=lp(C.vy,vy,k);C.yr=lp(C.yr,yr,k)}
+ const t=(window.__G&&__G.GT?__G.GT.time:0)||performance.now()/1000,spd=Math.hypot(C.vf,C.vs),down=P.st==='down'||P.st==='dead';
+ const gust=.03+.025*Math.sin(t*.7)+Math.min(spd,9)*.006;
+ // springs (stiffer near the shoulders, lower segments lag and swing further)
+ const KS=[70,48,34],DS=[11,8,6.5],GW=[.55,.9,1];
+ for(let i=0;i<3&&dt>0;i++){const h=Math.min(dt,1/30);
+  let tp=cl(C.vf*(.05+i*.016),-.25,1.0)+cl(-C.vy*.05,-.15,.5)+gust*Math.sin(t*(4.3+i*1.9)+i*1.7)*(1+i*.6)+gust*.6;
+  if(i>0)tp+=cl(C.vf*.015,0,.15);// cloth bunches out more towards the hem
+  const tz=cl(-C.vs*(.05+i*.02)+C.yr*(.05+i*.03),-.5,.5)+gust*.5*Math.sin(t*(3.1+i*1.3)+2*i);
+  C.v[i]+=(KS[i]*(tp-C.r[i])-DS[i]*C.v[i])*h;C.r[i]+=C.v[i]*h;C.zv[i]+=(KS[i]*(tz-C.z[i])-DS[i]*C.zv[i])*h;C.z[i]+=C.zv[i]*h;
+  C.r[i]=cl(C.r[i],-.3,1.4);C.z[i]=cl(C.z[i],-.6,.6)}
+ // chain: each segment's local rotation = gravity compensation (relative to its parent's current orientation) + spring swing
+ let PG=SK.GR[SK.par[ids[0]]];
+ for(let i=0;i<3;i++){const d=r3v(r3t(PG),[0,-1,0]),gp=down?0:Math.atan2(-d[2],-d[1]),gr=down?0:Math.atan2(d[0],-d[1]);
+  // gp/gr undo the parent's current tilt, so each segment's swing C.r/C.z is measured from world-down
+  let pitch=gp*GW[i]+C.r[i],roll=gr*GW[i]*.8+C.z[i];
+  if(i===0)pitch=Math.max(pitch,-.08);else pitch=Math.max(pitch,-.2);// never folds into the back
+  SK.R[ids[i]]=r3m(rZ(roll),rX(pitch));PG=r3m(PG,SK.R[ids[i]])}
+ skUpdate();
+ // leg collision: the hem must stay behind both knees and shins; push the segment back by the missing distance
+ let hit=0;for(let pass=0;pass<2;pass++){let moved=false;
+  for(let i=1;i<3;i++){const b=ids[i],A=SK.GP[b],end=i<2?SK.GP[ids[2]]:vadd(A,r3v(SK.GR[b],[0,-.4,-.04])),L=Math.hypot(...vsub(end,A));
+   for(const S of['left','right'])for(const j of[H[S+'LowerLeg'],H[S+'Foot']]){const q=SK.GP[j];if(q[1]>A[1]||q[1]<end[1]-.05)continue;
+    const u=cl((A[1]-q[1])/Math.max(A[1]-end[1],.05),0,1),cz=lp(A[2],end[2],u),need=cz-(q[2]-.11);
+    if(need>0){const add=Math.min(need/Math.max(L*u,.12),.6);SK.R[b]=r3m(SK.R[b],rX(add));C.r[i]+=add*.5;C.v[i]=Math.max(C.v[i],0);moved=true;hit++}}}
+  if(!moved)break;skUpdate()}
+ C.hit=hit}
 // ---- 31-hero.js
 // ===================== Kael, the Black Armor: our own armour design on the berserk_armor proportions =====================
 // Blackened plate, horned helm with a burning eye slit, wolf-fur mantle, tattered cape and a huge two-handed sword.
@@ -2155,7 +2192,7 @@ function chooseFate(free){SYS.veyraFate=free?'freed':'killed';const V=VEYRA;if(f
 // panels render at a fixed size (same framing in portrait and landscape); eye/at heights are above the ground unless abs
 function shot(st,h){const rel=(p)=>st.abs?p:[p[0],p[1]+hAt(p[0],p[2]),p[2]],eye=rel(st.eye),at=rel(st.at),fov=(st.fov||50)*PI/180,CW=cv.width,CH=cv.height;cv.width=720;cv.height=Math.round(720*(h||.7));const save={x:P.x,z:P.z,y:P.y,yaw:P.yaw,ps:P.ps,rag:Object.assign({},P.rag),lift:P.lift};
  try{if(st.hero){P.x=st.hero.x;P.z=st.hero.z;P.y=hAt(P.x,P.z);P.yaw=st.hero.yaw;P.ps=Object.assign({},POSE0,st.hero.pose||{});P.rag.ang=st.hero.lie||0;P.rag.fx=0;P.rag.fz=-1}
-  applyPose(P.ps);PM=playerMatrix(0);if(st.hero&&st.hero.lie)PM[13]+=.12;for(const o of pObjs){o.M=PM;o.flash=0;o.vis=!st.noHero}
+  applyPose(P.ps);capeSim(0);PM=playerMatrix(0);if(st.hero&&st.hero.lie)PM[13]+=.12;for(const o of pObjs){o.M=PM;o.flash=0;o.vis=!st.noHero}
   if(st.setup)st.setup();streamForest(at[0],at[2],99);
   const L=mlook(eye,at,[0,1,0]),VP=mmul(mpersp(fov,cv.width/cv.height,.25,620),L.m),env=Object.assign({fogC:[.6,.72,.85],sun:[1,1,1],fog:[60,300],focus:at},st.env||{}),light=vnorm(vadd(vadd(vmul(L.r,-.45),vmul(L.u,.62)),vmul(L.f,-.62)));
   skinAll();drawWolves(P,GT.time);drawGobs(GT.time);drawNpcs(GT.time);drawCrocs(GT.time);drawDragon();drawVeyra(GT.time);drawKing();drawAll(VP,eye,light,GT.time,env);
@@ -2348,7 +2385,7 @@ function step(dt){GT.dt=dt;if(dt>0){GT.clock+=dt;updatePlayer(dt);
   updateLoot(dt);updateChests(dt);updatePosture(dt);updateRage(dt);updateLock(dt);updateBosses(dt);updateVeyra(dt);updateStory(dt);foeTicks(dt);updateBag(GT.time);updateSeals(GT.time);updateRings(dt);updateArrows(dt);checkStances();if(P.counterT>0)P.counterT-=dt;
   const lv=regionLevel(P.x,P.z);if(lv!==GT.lastLv){if(lv>SYS.lv+3)note('[!] Tehlikeli bölge: düşmanlar Sv.'+lv+' (sen Sv.'+SYS.lv+')','red');GT.lastLv=lv}
   const z=zoneAt(P.x,P.z);if(z!==lastZone){if(lastZone)note('Bölge: '+ZNAME[z]);lastZone=z}}
- poseTarget();applyPose(P.ps);PM=playerMatrix(dt);
+ poseTarget();applyPose(P.ps);capeSim(dt);PM=playerMatrix(dt);
  if(P.pinBy){const w=P.pinBy,b=mpt(PM,SK.GP[w.part.bone]),ty=Math.atan2(b[0]-w.x,b[2]-w.z);w.yaw+=angd(ty,w.yaw)*.25;const gx=b[0]-Math.sin(w.yaw)*.95*w.sc,gz=b[2]-Math.cos(w.yaw)*.95*w.sc;w.x=lp(w.x,gx,.25);w.z=lp(w.z,gz,.25);w.y=hAt(w.x,w.z)}
  queueTelegraphs()}
 // enemies' visible tells on the ground
@@ -2440,7 +2477,7 @@ function boot(TX){initGL();buildWorld();buildKnight(TX);buildWolfGeo();buildPlay
   fAvg+=(Math.min(raw,100)-fAvg)*.05;if(!window.__noAutoQ&&++fN>150&&fAvg>30&&QUAL.QL<3){QUAL.QL++;fN=0;fAvg=20;size();grassGeo.n=Math.floor(grassFull*[1,1,.5,.25][QUAL.QL]/3)*3}
   if(GT.paused||winOpen)dt=0;else if(GT.stop>0){GT.stop-=dtR;dt=0}else if(GT.slow>0){GT.slow-=dtR;dt*=.3}
   step(dt);render(dtR);if(dt>0||hudT<=0)uiTick(dtR)}
- window.__G={P,IN,CAM,GT,SYS,BUF,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
+ window.__G={P,IN,CAM,GT,SYS,BUF,get PLD(){return PLD},MODEL,HERO,CAPE,capeSim,wolves,GOBS,NPCS,CROCS,get DRAGON(){return DRAGON},BURNS,QUAL,step,mkWolf,note,TREES,objCount:()=>objs.length,hAt,zoneAt,depthAt,SK,HB,get PM(){return PM},mpt,r3v,press,
   hitPlayer,tdTarget,isWolf,los,canSee,hostileSt,render,clubSeg,segCapsule,crocHead,dBone,dPlay,drawn:()=>drawn,
   X:{makeItem,randomDrop,giveItem,equip,gear,hasFx,weaponDmg,armorDef,stat,salvage,upgrade,upgradeCost,LOOT,dropLoot,lootFor,drinkFlask,itemScore,
    ALTARS,restAt,openTravel,nearAltar,CHESTS,openChest,nearChest,dropBag,SEALS,regionLevel,scaleFoe,
